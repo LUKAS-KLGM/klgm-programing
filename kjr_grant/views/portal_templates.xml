@@ -1,0 +1,765 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Portal Home Eintrag ─────────────────────────────────────────── -->
+    <template id="portal_my_home_kjr_grant" name="KJR Zuschussanträge"
+              customize_show="True" inherit_id="portal.portal_my_home" priority="30">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Meine Zuschussanträge</t>
+                <t t-set="url" t-value="'/my/kjr-antraege'"/>
+                <t t-set="placeholder_count" t-value="'kjr_grant_count'"/>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- ── Portal: Antrags-Liste ──────────────────────────────────────── -->
+    <template id="portal_my_kjr_grants" name="Meine KJR-Zuschussanträge">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Meine Zuschussanträge</t>
+            </t>
+            <t t-if="not grants">
+                <div class="alert alert-info mt-3">
+                    Noch keine Anträge vorhanden.
+                    <a href="/kjr/antrag-stellen" class="alert-link">Jetzt ersten Antrag stellen →</a>
+                </div>
+            </t>
+            <t t-if="grants">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Zuschussanträge</h5>
+                        <a href="/kjr/antrag-stellen" class="btn btn-primary btn-sm">
+                            <i class="fa fa-plus me-1"/>Neuer Antrag
+                        </a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nummer</th>
+                                    <th>Maßnahme</th>
+                                    <th>Förderart</th>
+                                    <th>Zeitraum</th>
+                                    <th>Berechnet</th>
+                                    <th>Bewilligt</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="grants" t-as="grant">
+                                    <tr>
+                                        <td><a t-att-href="grant.access_url"><t t-esc="grant.name"/></a></td>
+                                        <td><t t-esc="grant.measure_name"/></td>
+                                        <td><t t-esc="grant.grant_type_id.name"/></td>
+                                        <td>
+                                            <t t-esc="grant.measure_start" t-options="{'widget':'date','format':'dd.MM.yyyy'}"/>
+                                            –
+                                            <t t-esc="grant.measure_end"   t-options="{'widget':'date','format':'dd.MM.yyyy'}"/>
+                                        </td>
+                                        <td><t t-esc="'%.2f €' % grant.grant_calculated"/></td>
+                                        <td>
+                                            <t t-if="grant.grant_approved">
+                                                <strong><t t-esc="'%.2f €' % grant.grant_approved"/></strong>
+                                            </t>
+                                            <t t-else="">—</t>
+                                        </td>
+                                        <td>
+                                            <span t-att-class="'badge rounded-pill kjr-badge-' + grant.state">
+                                                <t t-esc="dict(grant._fields['state'].selection).get(grant.state, grant.state)"/>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div t-if="pager" class="o_portal_pager text-center">
+                    <t t-call="portal.pager"/>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <!-- ── Portal: Antrags-Detail ─────────────────────────────────────── -->
+    <template id="portal_kjr_grant_detail" name="KJR Antrag Detail">
+        <t t-call="portal.portal_layout">
+            <div class="row mt-3">
+                <div class="col-lg-9">
+                    <div class="card mb-3">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="mb-0">Antrag <t t-esc="grant.name"/></h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <dl class="row mb-0">
+                                        <dt class="col-5">Antragsteller</dt>
+                                        <dd class="col-7"><t t-esc="grant.partner_id.name"/></dd>
+                                        <dt class="col-5">Förderart</dt>
+                                        <dd class="col-7"><t t-esc="grant.grant_type_id.name"/></dd>
+                                        <dt class="col-5">Maßnahme</dt>
+                                        <dd class="col-7"><t t-esc="grant.measure_name"/></dd>
+                                        <dt class="col-5">Ort</dt>
+                                        <dd class="col-7"><t t-esc="grant.measure_location or '—'"/></dd>
+                                    </dl>
+                                </div>
+                                <div class="col-md-6">
+                                    <dl class="row mb-0">
+                                        <dt class="col-5">Beginn</dt>
+                                        <dd class="col-7"><t t-esc="grant.measure_start" t-options="{'widget':'date','format':'dd.MM.yyyy'}"/></dd>
+                                        <dt class="col-5">Ende</dt>
+                                        <dd class="col-7"><t t-esc="grant.measure_end"   t-options="{'widget':'date','format':'dd.MM.yyyy'}"/></dd>
+                                        <dt class="col-5">Tage</dt>
+                                        <dd class="col-7"><t t-esc="grant.measure_days"/></dd>
+                                        <dt class="col-5">Status</dt>
+                                        <dd class="col-7">
+                                            <span t-att-class="'badge rounded-pill kjr-badge-' + grant.state">
+                                                <t t-esc="dict(grant._fields['state'].selection).get(grant.state, grant.state)"/>
+                                            </span>
+                                        </dd>
+                                    </dl>
+                                </div>
+                            </div>
+                            <hr/>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6>Teilnehmer</h6>
+                                    <dl class="row mb-0">
+                                        <dt class="col-7">TN gesamt</dt>
+                                        <dd class="col-5"><t t-esc="grant.tn_count"/></dd>
+                                        <dt class="col-7">Jugendleiter</dt>
+                                        <dd class="col-5"><t t-esc="grant.tn_leader_count"/></dd>
+                                        <dt class="col-7">Mit Juleica</dt>
+                                        <dd class="col-5"><t t-esc="grant.tn_leader_juleica"/></dd>
+                                    </dl>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Finanzen</h6>
+                                    <dl class="row mb-0">
+                                        <dt class="col-7">Kosten</dt>
+                                        <dd class="col-5"><t t-esc="'%.2f €' % grant.cost_total"/></dd>
+                                        <dt class="col-7">Einnahmen</dt>
+                                        <dd class="col-5"><t t-esc="'%.2f €' % grant.income_total"/></dd>
+                                        <dt class="col-7">Fehlbetrag</dt>
+                                        <dd class="col-5"><t t-esc="'%.2f €' % grant.deficit"/></dd>
+                                    </dl>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Förderung</h6>
+                                    <dl class="row mb-0">
+                                        <dt class="col-8">Berechnet</dt>
+                                        <dd class="col-4"><t t-esc="'%.2f €' % grant.grant_calculated"/></dd>
+                                        <dt class="col-8 fw-bold">Bewilligt</dt>
+                                        <dd class="col-4 fw-bold">
+                                            <t t-if="grant.grant_approved">
+                                                <t t-esc="'%.2f €' % grant.grant_approved"/>
+                                            </t>
+                                            <t t-else="">Ausstehend</t>
+                                        </dd>
+                                    </dl>
+                                </div>
+                            </div>
+                            <t t-if="grant.state == 'rejected' and grant.rejection_reason">
+                                <div class="alert alert-danger mt-3">
+                                    <strong>Ablehnungsgrund:</strong>
+                                    <t t-esc="grant.rejection_reason"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+
+                    <!-- Datei-Upload für Entwürfe/eingereichte Anträge -->
+                    <t t-if="grant.state in ('draft','submitted')">
+                        <div class="card mb-3">
+                            <div class="card-header"><h5 class="mb-0">Dokumente hochladen</h5></div>
+                            <div class="card-body">
+                                <form t-att-action="'/kjr/antrag/%d/upload' % grant.id"
+                                      method="post" enctype="multipart/form-data">
+                                    <input type="hidden" name="csrf_token"
+                                           t-att-value="request.csrf_token()"/>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Teilnehmerliste (PDF/XLSX)</label>
+                                            <input type="file" name="tn_list_file" class="form-control"
+                                                   accept=".pdf,.xlsx,.xls,.csv"/>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Bericht (PDF)</label>
+                                            <input type="file" name="report_file" class="form-control"
+                                                   accept=".pdf,.docx"/>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Belegliste (PDF/XLSX)</label>
+                                            <input type="file" name="receipt_file" class="form-control"
+                                                   accept=".pdf,.xlsx,.xls"/>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Weitere Dokumente</label>
+                                            <input type="file" name="other_file_1" class="form-control"
+                                                   multiple="1"/>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-secondary">
+                                        <i class="fa fa-upload me-1"/>Dateien hochladen
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </t>
+
+                    <!-- Chatter -->
+                    <div class="mt-3">
+                        <t t-call="portal.message_thread">
+                            <t t-set="object" t-value="grant"/>
+                            <t t-set="allow_composer" t-value="True"/>
+                        </t>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="col-lg-3">
+                    <div class="card">
+                        <div class="card-header"><h6 class="mb-0">Aktionen</h6></div>
+                        <div class="list-group list-group-flush">
+                            <a href="/my/kjr-antraege"
+                               class="list-group-item list-group-item-action">
+                                <i class="fa fa-arrow-left me-1"/>Zur Übersicht
+                            </a>
+                            <t t-if="grant.state in ('approved','paid')">
+                                <a t-att-href="'/report/pdf/kjr_grant.action_report_kjr_bescheid/%d' % grant.id"
+                                   target="_blank"
+                                   class="list-group-item list-group-item-action">
+                                    <i class="fa fa-download me-1"/>Bescheid herunterladen
+                                </a>
+                            </t>
+                            <t t-if="grant.state == 'draft'">
+                                <a href="/kjr/antrag-stellen"
+                                   class="list-group-item list-group-item-action">
+                                    <i class="fa fa-plus me-1"/>Weiteren Antrag stellen
+                                </a>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ── Website: Öffentliche Landingpage ─────────────────────────── -->
+    <template id="website_kjr_landing" name="KJR Zuschuss Landingpage">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-5 mb-5">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8 text-center">
+                        <h1 class="mb-3">Zuschussantrag stellen</h1>
+                        <p class="lead text-muted mb-4">
+                            Digitaler Zuschussantrag beim Kreisjugendring Oberallgäu.
+                            Melden Sie sich an oder registrieren Sie sich, um einen Antrag zu stellen.
+                        </p>
+                    </div>
+                </div>
+                <div class="row justify-content-center">
+                    <div class="col-md-5 mb-4">
+                        <div class="card shadow h-100">
+                            <div class="card-body text-center p-5">
+                                <i class="fa fa-sign-in text-primary" style="font-size:3rem;"/>
+                                <h3 class="mt-3 mb-3">Anmelden</h3>
+                                <p class="text-muted">
+                                    Sie haben bereits ein Konto? Melden Sie sich an,
+                                    um Ihren Antrag zu stellen oder bestehende Anträge einzusehen.
+                                </p>
+                                <a href="/web/login?redirect=/kjr/antrag-stellen"
+                                   class="btn btn-primary btn-lg w-100">
+                                    Anmelden
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-5 mb-4">
+                        <div class="card shadow h-100">
+                            <div class="card-body text-center p-5">
+                                <i class="fa fa-user-plus text-success" style="font-size:3rem;"/>
+                                <h3 class="mt-3 mb-3">Registrieren</h3>
+                                <p class="text-muted">
+                                    Erstmalig hier? Erstellen Sie ein Konto.
+                                    Mehrere Personen pro Verband können sich registrieren.
+                                </p>
+                                <a href="/web/signup?redirect=/kjr/antrag-stellen"
+                                   class="btn btn-success btn-lg w-100">
+                                    Konto erstellen
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row justify-content-center mt-3">
+                    <div class="col-lg-8">
+                        <div class="alert alert-info text-center">
+                            <strong>Hinweis:</strong> Mehrere Kontaktpersonen eines Verbandes können sich
+                            jeweils eigene Zugangsdaten erstellen. Die Anträge werden dem gewählten
+                            Mitgliedsverband zugeordnet.
+                        </div>
+                        <div class="text-center text-muted small">
+                            Bei Fragen wenden Sie sich an:<br/>
+                            Barbora Berlinger, Tel. 08321/612-1117,
+                            <a href="mailto:kreisjugendring@lra-oa.bayern.de">kreisjugendring@lra-oa.bayern.de</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ── Website: Antragsformular ───────────────────────────────────── -->
+    <template id="website_kjr_apply" name="KJR Zuschussantrag stellen">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-4 mb-5">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Start</a></li>
+                        <li class="breadcrumb-item active">Zuschussantrag stellen</li>
+                    </ol>
+                </nav>
+                <h1 class="mb-2">Zuschussantrag stellen</h1>
+                <p class="text-muted mb-4">
+                    Antrag beim Kreisjugendring Oberallgäu. Felder mit * sind Pflichtfelder.
+                </p>
+
+                <t t-if="errors">
+                    <div class="alert alert-danger">
+                        <strong>Bitte beheben:</strong>
+                        <ul class="mb-0 mt-1">
+                            <t t-foreach="errors.values()" t-as="err">
+                                <li><t t-esc="err"/></li>
+                            </t>
+                        </ul>
+                    </div>
+                </t>
+
+                <form method="post" action="/kjr/antrag-stellen"
+                      enctype="multipart/form-data" novalidate="novalidate">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                    <!-- 1. Maßnahme -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Maßnahme</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label fw-bold">Bezeichnung der Maßnahme *</label>
+                                    <input type="text" name="measure_name" class="form-control"
+                                           t-att-value="values.get('measure_name','')"
+                                           placeholder="z. B. Sommerfreizeit Jungschar 2026"
+                                           required="required"/>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label fw-bold">Beginn Datum *</label>
+                                    <input type="date" name="measure_start" class="form-control"
+                                           t-att-value="values.get('measure_start','')" required="required"/>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Uhrzeit</label>
+                                    <input type="time" name="measure_start_time" class="form-control"
+                                           t-att-value="values.get('measure_start_time','')"/>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label fw-bold">Ende Datum *</label>
+                                    <input type="date" name="measure_end" class="form-control"
+                                           t-att-value="values.get('measure_end','')" required="required"/>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Uhrzeit</label>
+                                    <input type="time" name="measure_end_time" class="form-control"
+                                           t-att-value="values.get('measure_end_time','')"/>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Ort der Maßnahme</label>
+                                    <input type="text" name="measure_location" class="form-control"
+                                           t-att-value="values.get('measure_location','')"
+                                           placeholder="z. B. Jugendzeltplatz NiSo"/>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">Anzahl der Teilnehmer *</label>
+                                    <input type="number" name="tn_count" class="form-control"
+                                           t-att-value="values.get('tn_count',0)" min="1" required="required"/>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Anzahl der Gruppenleitung</label>
+                                    <input type="number" name="tn_leader_count" class="form-control"
+                                           t-att-value="values.get('tn_leader_count',0)" min="0"/>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Davon mit Juleica</label>
+                                    <input type="number" name="tn_leader_juleica" class="form-control"
+                                           t-att-value="values.get('tn_leader_juleica',0)" min="0"/>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">TN aus anderen Regionen
+                                        <small class="text-muted">(max. 25 %)</small>
+                                    </label>
+                                    <input type="number" name="tn_external_count" class="form-control"
+                                           t-att-value="values.get('tn_external_count',0)" min="0"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Antragsteller -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Antragsteller/in (Organisation)</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label for="partner_id" class="form-label fw-bold">Organisation (KJR-Mitgliedsverband) *</label>
+                                    <select name="partner_id" id="partner_id" class="form-select" required="required">
+                                        <option value="">— Bitte wählen —</option>
+                                        <t t-foreach="kjr_members" t-as="member">
+                                            <option t-att-value="member.id"
+                                                    t-att-selected="values.get('partner_id') and int(values.get('partner_id',0)) == member.id">
+                                                <t t-esc="member.name"/>
+                                            </option>
+                                        </t>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Ansprechpartner/in *</label>
+                                    <input type="text" name="contact_person" class="form-control"
+                                           t-att-value="values.get('contact_person','')"
+                                           required="required"/>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">E-Mail</label>
+                                    <input type="email" name="contact_email" class="form-control"
+                                           t-att-value="values.get('contact_email','')"/>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Telefon</label>
+                                    <input type="tel" name="contact_phone" class="form-control"
+                                           t-att-value="values.get('contact_phone','')"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Teilnehmerliste -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Teilnehmerliste</h5>
+                            <button type="button" class="btn btn-light btn-sm" onclick="addParticipantRow()">
+                                <i class="fa fa-plus me-1"/>Teilnehmer hinzufügen
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small">
+                                Lt. KJR OA ist die Teilnehmerliste bei Maßnahmen mit Teilnehmern Pflicht.
+                                Bitte alle Teilnehmer hier eintragen.
+                            </p>
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="tn_table">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Nr.</th>
+                                            <th>Name, Vorname *</th>
+                                            <th>Geburtsdatum</th>
+                                            <th>PLZ</th>
+                                            <th>Wohnort</th>
+                                            <th>Leitung</th>
+                                            <th>Juleica</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tn_rows">
+                                        <tr class="tn-row">
+                                            <td class="tn-nr">1</td>
+                                            <td><input type="text" name="tn_name_1" class="form-control form-control-sm" required="required"/></td>
+                                            <td><input type="date" name="tn_birth_1" class="form-control form-control-sm"/></td>
+                                            <td><input type="text" name="tn_zip_1" class="form-control form-control-sm" style="width:80px"/></td>
+                                            <td><input type="text" name="tn_city_1" class="form-control form-control-sm"/></td>
+                                            <td class="text-center"><input type="checkbox" name="tn_leader_1" class="form-check-input"/></td>
+                                            <td class="text-center"><input type="checkbox" name="tn_juleica_1" class="form-check-input"/></td>
+                                            <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeParticipantRow(this)"><i class="fa fa-trash"/></button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <script type="text/javascript">
+                                function addParticipantRow() {
+                                    var tbody = document.getElementById('tn_rows');
+                                    var rows = tbody.querySelectorAll('.tn-row');
+                                    var nr = rows.length + 1;
+                                    var row = document.createElement('tr');
+                                    row.className = 'tn-row';
+                                    row.innerHTML =
+                                        '&lt;td class="tn-nr"&gt;' + nr + '&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="tn_name_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="date" name="tn_birth_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="tn_zip_' + nr + '" class="form-control form-control-sm" style="width:80px"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="tn_city_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
+                                        '&lt;td class="text-center"&gt;&lt;input type="checkbox" name="tn_leader_' + nr + '" class="form-check-input"/&gt;&lt;/td&gt;' +
+                                        '&lt;td class="text-center"&gt;&lt;input type="checkbox" name="tn_juleica_' + nr + '" class="form-check-input"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;button type="button" class="btn btn-sm btn-outline-danger" onclick="removeParticipantRow(this)"&gt;&lt;i class="fa fa-trash"&gt;&lt;/i&gt;&lt;/button&gt;&lt;/td&gt;';
+                                    tbody.appendChild(row);
+                                }
+                                function removeParticipantRow(btn) {
+                                    var row = btn.closest('tr');
+                                    row.remove();
+                                    var rows = document.querySelectorAll('#tn_rows .tn-row');
+                                    rows.forEach(function(r, i) { r.querySelector('.tn-nr').textContent = i + 1; });
+                                }
+                            </script>
+                        </div>
+                    </div>
+
+                    <!-- 4. Bankverbindung -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Überweisung des Zuschusses soll erfolgen auf:</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                Nur Organisationskonto. Bitte exakten Namen angeben.
+                                Ausnahme: Jugendleiterschulung (§ 4.4) — Privatkonto möglich.
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">IBAN</label>
+                                    <input type="text" name="payment_iban" class="form-control"
+                                           t-att-value="values.get('payment_iban','')"
+                                           placeholder="DE00 0000 0000 0000 0000 00"/>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Kontoinhaber (exakter Name)</label>
+                                    <input type="text" name="payment_account_holder" class="form-control"
+                                           t-att-value="values.get('payment_account_holder','')"/>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">BIC</label>
+                                    <input type="text" name="payment_bic" class="form-control"
+                                           t-att-value="values.get('payment_bic','')"/>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Geldinstitut</label>
+                                    <input type="text" name="payment_bank" class="form-control"
+                                           t-att-value="values.get('payment_bank','')"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Maßnahmenart -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Maßnahme <small>(zutreffendes ankreuzen)</small></h5>
+                        </div>
+                        <div class="card-body">
+                            <label for="grant_type_id" class="form-label fw-bold">Förderart *</label>
+                            <select name="grant_type_id" id="grant_type_id" class="form-select" required="required">
+                                <option value="">— Bitte wählen —</option>
+                                <t t-foreach="grant_types" t-as="gt">
+                                    <option t-att-value="gt.id"
+                                            t-att-selected="values.get('grant_type_id') and int(values.get('grant_type_id',0)) == gt.id">
+                                        <t t-esc="gt.name"/>
+                                    </option>
+                                </t>
+                            </select>
+                            <div class="form-text">
+                                s. Zuschussrichtlinien KJR OA — Erforderliche Unterlagen werden je nach Förderart geprüft.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Kostenaufstellung -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Kostenaufstellung</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small">Belege bitte in der Belegliste auflisten.</p>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Einnahmen</h6>
+                                    <t t-foreach="[
+                                        ('income_tn_fees',      '1. Teilnehmerbeiträge'),
+                                        ('income_municipality', '2. Zuschuss Gemeinde'),
+                                        ('income_association',  '3. Zuschuss Verband'),
+                                        ('income_bjr',          '4. Zuschuss BJR/BezJR'),
+                                        ('income_other',        '5. sonstige Zuschüsse'),
+                                    ]" t-as="inc_field">
+                                        <div class="mb-2">
+                                            <label class="form-label">
+                                                <t t-esc="inc_field[1]"/>
+                                            </label>
+                                            <div class="input-group">
+                                                <input type="number" t-att-name="inc_field[0]"
+                                                       class="form-control"
+                                                       t-att-value="values.get(inc_field[0], 0)"
+                                                       min="0" step="0.01"/>
+                                                <span class="input-group-text">€</span>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Förderfähige Kosten</h6>
+                                    <t t-foreach="[
+                                        ('cost_accommodation', '1. Unterkunftskosten, Miete, Verpflegung'),
+                                        ('cost_transport',     '2. Fahrtkosten'),
+                                        ('cost_referees',      '3. Honorare für Referenten'),
+                                        ('cost_allowances',    '4. Aufwandsentschädigung'),
+                                        ('cost_materials',     '5. notw. Arbeits- und Hilfsmittel'),
+                                        ('cost_jl_fees',       '6. Kursgebühren bei Teilnahme Jugendleiterschulung'),
+                                        ('cost_other',         '7. sonstige Ausgaben'),
+                                    ]" t-as="cost_field">
+                                        <div class="mb-2">
+                                            <label class="form-label">
+                                                <t t-esc="cost_field[1]"/>
+                                            </label>
+                                            <div class="input-group">
+                                                <input type="number" t-att-name="cost_field[0]"
+                                                       class="form-control"
+                                                       t-att-value="values.get(cost_field[0], 0)"
+                                                       min="0" step="0.01"/>
+                                                <span class="input-group-text">€</span>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. Dokumente -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">7. Dokumente</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted">
+                                Pflichtdokumente je nach Förderart. Dokumente können auch
+                                nach Einreichung nachgereicht werden.
+                            </p>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">
+                                        Maßnahmenbericht
+                                        <span class="badge bg-secondary">Pflicht</span>
+                                    </label>
+                                    <input type="file" name="report_file" class="form-control"
+                                           accept=".pdf,.docx,.doc"/>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">
+                                        Belegliste / Kostenaufstellung
+                                        <span class="badge bg-secondary">Pflicht</span>
+                                    </label>
+                                    <input type="file" name="receipt_file" class="form-control"
+                                           accept=".pdf,.xlsx,.xls"/>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Weitere Dokumente</label>
+                                    <input type="file" name="other_file_1" class="form-control"
+                                           multiple="1"/>
+                                    <div class="form-text">
+                                        Z. B. Juleica-Kopie, Programm-Vereinbarung, Neugründungsformular
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 8. Kurzbericht -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">8. Kurzbericht (optional)</h5>
+                        </div>
+                        <div class="card-body">
+                            <label class="form-label">Charakter, Inhalt und Ablauf der Maßnahme</label>
+                            <textarea name="measure_report" class="form-control" rows="4"
+                                      placeholder="Kurze Beschreibung..."><t t-esc="values.get('measure_report','')"/></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Datenschutzhinweis -->
+                    <div class="alert alert-secondary mb-4">
+                        <small>
+                            <strong>Datenschutzhinweis:</strong> Ihre Daten werden zum Zwecke
+                            der Bearbeitung des Zuschussantrages erhoben. Der Antragsteller erklärt sich
+                            mit einer möglichen Verwendungsprüfung durch den KJR einverstanden.
+                            Belege sind 5 Jahre aufzubewahren.
+                        </small>
+                    </div>
+
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" value="1"
+                               name="participant_consent" id="participant_consent"
+                               t-att-checked="values.get('participant_consent') and 'checked' or None"/>
+                        <label class="form-check-label" for="participant_consent">
+                            Ich bestätige, dass für alle minderjährigen Teilnehmer die Einwilligung
+                            der Erziehungsberechtigten zur Verarbeitung der angegebenen Daten vorliegt.
+                            <small class="text-muted d-block">Spätestens zur Einreichung des Antrags erforderlich.</small>
+                        </label>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fa fa-paper-plane me-1"/>Antrag als Entwurf speichern
+                        </button>
+                        <a href="/my/kjr-antraege" class="btn btn-outline-secondary btn-lg">Abbrechen</a>
+                    </div>
+                </form>
+            </div>
+        </t>
+    </template>
+
+    <!-- ── Website: Bestätigungsseite ────────────────────────────────── -->
+    <template id="website_kjr_confirmation" name="KJR Antrag Bestätigung">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-5 mb-5 text-center">
+                <div class="card shadow mx-auto" style="max-width: 600px;">
+                    <div class="card-body p-5">
+                        <i class="fa fa-check-circle text-success" style="font-size:4rem;"/>
+                        <h2 class="mt-3 mb-3">Antrag gespeichert!</h2>
+                        <t t-if="application">
+                            <p class="lead">
+                                Antrag <strong><t t-esc="application.name"/></strong>
+                                wurde als Entwurf gespeichert.
+                            </p>
+                            <p class="text-muted">
+                                Sie können jetzt Dokumente hochladen und den Antrag dann einreichen.
+                            </p>
+                        </t>
+                        <div class="mt-4 d-flex justify-content-center gap-2 flex-wrap">
+                            <t t-if="application">
+                                <a t-att-href="application.access_url" class="btn btn-primary">
+                                    Antrag ansehen &amp; einreichen
+                                </a>
+                            </t>
+                            <a href="/my/kjr-antraege" class="btn btn-outline-secondary">
+                                Alle meine Anträge
+                            </a>
+                            <a href="/kjr/antrag-stellen" class="btn btn-outline-primary">
+                                Weiteren Antrag stellen
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>

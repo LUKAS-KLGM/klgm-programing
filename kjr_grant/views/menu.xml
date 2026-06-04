@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_kjr_root"   name="KJR App" sequence="99"
+              web_icon="kjr_grant,static/description/icon.png"/>
+
+    <menuitem id="menu_kjr_dashboard" name="Dashboard"
+              parent="menu_kjr_root" sequence="5"/>
+    <menuitem id="menu_kjr_dash_open" name="Offene Anträge"
+              parent="menu_kjr_dashboard" action="action_kjr_dashboard_open" sequence="10"/>
+    <menuitem id="menu_kjr_dash_to_pay" name="Zur Auszahlung"
+              parent="menu_kjr_dashboard" action="action_kjr_dashboard_to_pay" sequence="20"/>
+    <menuitem id="menu_kjr_dash_overdue" name="Frist überschritten"
+              parent="menu_kjr_dashboard" action="action_kjr_dashboard_overdue" sequence="30"/>
+
+    <menuitem id="menu_kjr_applications" name="Anträge"
+              parent="menu_kjr_root" sequence="10"/>
+    <menuitem id="menu_kjr_all_applications" name="Alle Anträge"
+              parent="menu_kjr_applications" action="action_kjr_grant_application" sequence="10"/>
+    <menuitem id="menu_kjr_settlements" name="Abrechnungen"
+              parent="menu_kjr_applications" action="action_kjr_grant_settlement" sequence="20"/>
+
+    <menuitem id="menu_kjr_statistics" name="Statistiken"
+              parent="menu_kjr_root" sequence="15"/>
+    <menuitem id="menu_kjr_stats_graph" name="Zuschüsse nach Förderart"
+              parent="menu_kjr_statistics" action="action_kjr_grant_statistics" sequence="10"/>
+    <menuitem id="menu_kjr_stats_pivot" name="Auswertung"
+              parent="menu_kjr_statistics" action="action_kjr_grant_pivot" sequence="20"/>
+
+    <menuitem id="menu_kjr_members" name="Verbände"
+              parent="menu_kjr_root" sequence="20"/>
+    <menuitem id="menu_kjr_member_partners" name="Mitgliedsverbände"
+              parent="menu_kjr_members" action="action_kjr_member_partners" sequence="10"/>
+
+    <menuitem id="menu_kjr_juleica" name="Juleica"
+              parent="menu_kjr_root" sequence="13"/>
+    <menuitem id="menu_kjr_juleica_cards" name="Juleica-Karten"
+              parent="menu_kjr_juleica" action="action_kjr_juleica" sequence="10"/>
+
+    <menuitem id="menu_kjr_assembly_root" name="Vollversammlung"
+              parent="menu_kjr_root" sequence="22"/>
+    <menuitem id="menu_kjr_assembly_list" name="Versammlungen"
+              parent="menu_kjr_assembly_root" action="action_kjr_assembly" sequence="10"/>
+
+    <menuitem id="menu_kjr_funding_root" name="Fördermittel"
+              parent="menu_kjr_root" sequence="24"/>
+    <menuitem id="menu_kjr_funding_list" name="Akquise &amp; Anträge"
+              parent="menu_kjr_funding_root" action="action_kjr_funding" sequence="10"/>
+
+    <menuitem id="menu_kjr_budget" name="Haushalt"
+              parent="menu_kjr_root" sequence="25"
+              groups="kjr_grant.group_kjr_manager"/>
+    <menuitem id="menu_kjr_budget_list" name="Jahresbudgets"
+              parent="menu_kjr_budget" action="action_kjr_grant_budget" sequence="10"
+              groups="kjr_grant.group_kjr_manager"/>
+
+    <menuitem id="menu_kjr_settings" name="Einstellungen"
+              parent="menu_kjr_root" sequence="100"
+              groups="kjr_grant.group_kjr_manager"/>
+    <menuitem id="menu_kjr_grant_types" name="Förderarten"
+              parent="menu_kjr_settings" action="action_kjr_grant_type" sequence="10"
+              groups="kjr_grant.group_kjr_manager"/>
+
+</odoo>

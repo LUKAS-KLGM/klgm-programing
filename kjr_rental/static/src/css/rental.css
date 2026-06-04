@@ -1,0 +1,4 @@
+/* KJR Verleih – Website */
+.kjr-rental-card { transition: box-shadow .15s ease; border-left: 3px solid #1B3A6B; }
+.kjr-rental-card:hover { box-shadow: 0 .4rem .9rem rgba(0,0,0,.1); }
+.kjr-rental-card .card-title { color: #1B3A6B; }

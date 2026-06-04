@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_kjr_rental_item_user,kjr.rental.item user,model_kjr_rental_item,kjr_rental.group_kjr_rental_user,1,0,0,0
+access_kjr_rental_item_manager,kjr.rental.item manager,model_kjr_rental_item,kjr_rental.group_kjr_rental_manager,1,1,1,1
+access_kjr_rental_item_portal,kjr.rental.item portal,model_kjr_rental_item,base.group_portal,1,0,0,0
+access_kjr_rental_order_user,kjr.rental.order user,model_kjr_rental_order,kjr_rental.group_kjr_rental_user,1,1,1,0
+access_kjr_rental_order_manager,kjr.rental.order manager,model_kjr_rental_order,kjr_rental.group_kjr_rental_manager,1,1,1,1
+access_kjr_rental_order_portal,kjr.rental.order portal,model_kjr_rental_order,base.group_portal,1,0,0,0
+access_kjr_rental_line_user,kjr.rental.order.line user,model_kjr_rental_order_line,kjr_rental.group_kjr_rental_user,1,1,1,1
+access_kjr_rental_line_manager,kjr.rental.order.line manager,model_kjr_rental_order_line,kjr_rental.group_kjr_rental_manager,1,1,1,1
+access_kjr_rental_line_portal,kjr.rental.order.line portal,model_kjr_rental_order_line,base.group_portal,1,0,0,0

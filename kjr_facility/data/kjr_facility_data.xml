@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Stammdaten sind im Backend pflegbar; noupdate=1 erhält Anpassungen bei Updates. -->
+    <data noupdate="1">
+
+        <!-- ── Jugendhaus Diepolz ─────────────────────────────────────────── -->
+        <record id="facility_diepolz" model="kjr.facility">
+            <field name="name">Jugendhaus Diepolz</field>
+            <field name="code">DIE</field>
+            <field name="sequence">10</field>
+            <field name="facility_type">house</field>
+            <field name="color">4</field>
+            <field name="capacity">42</field>
+            <field name="supervision_ratio">6</field>
+            <field name="city">Diepolz</field>
+            <field name="description_short">Selbstversorgerhaus für Gruppen, 42 Betten in 12 Zimmern.</field>
+        </record>
+        <record id="room_diepolz_1" model="kjr.facility.room">
+            <field name="facility_id" ref="facility_diepolz"/>
+            <field name="name">Zimmer 1 (6 Betten)</field><field name="capacity">6</field>
+        </record>
+        <record id="room_diepolz_2" model="kjr.facility.room">
+            <field name="facility_id" ref="facility_diepolz"/>
+            <field name="name">Zimmer 2 (6 Betten)</field><field name="capacity">6</field>
+        </record>
+        <record id="room_diepolz_3" model="kjr.facility.room">
+            <field name="facility_id" ref="facility_diepolz"/>
+            <field name="name">Schlafsaal (12 Betten)</field><field name="capacity">12</field>
+        </record>
+        <record id="equip_diepolz_kitchen" model="kjr.facility.equipment">
+            <field name="facility_id" ref="facility_diepolz"/>
+            <field name="name">Großküche</field><field name="category">Küche</field>
+            <field name="icon">fa-cutlery</field>
+        </record>
+        <record id="equip_diepolz_beamer" model="kjr.facility.equipment">
+            <field name="facility_id" ref="facility_diepolz"/>
+            <field name="name">Beamer + Leinwand</field><field name="category">Technik</field>
+            <field name="price_per_day">15.0</field><field name="quantity">1</field>
+            <field name="icon">fa-video-camera</field>
+        </record>
+
+        <!-- ── Jugendzeltplatz NiSo (Oberstdorf) ──────────────────────────── -->
+        <record id="facility_niso" model="kjr.facility">
+            <field name="name">Jugendzeltplatz NiSo</field>
+            <field name="code">NISO</field>
+            <field name="sequence">20</field>
+            <field name="facility_type">campsite</field>
+            <field name="color">10</field>
+            <field name="capacity">40</field>
+            <field name="supervision_ratio">6</field>
+            <field name="city">Oberstdorf</field>
+            <field name="description_short">Naturnaher Zeltplatz (Naturschutzgebiet) für max. 40 Personen.</field>
+        </record>
+        <record id="room_niso_area" model="kjr.facility.room">
+            <field name="facility_id" ref="facility_niso"/>
+            <field name="name">Zeltwiese</field><field name="capacity">40</field>
+        </record>
+        <record id="equip_niso_fire" model="kjr.facility.equipment">
+            <field name="facility_id" ref="facility_niso"/>
+            <field name="name">Lagerfeuerstelle</field><field name="category">Außen</field>
+            <field name="icon">fa-fire</field>
+        </record>
+
+        <!-- ── Tarife (Preise/Steuer im Backend zu pflegen) ───────────────── -->
+        <record id="tariff_kjr_member" model="kjr.facility.tariff">
+            <field name="name">KJR-Mitgliedsverband</field>
+            <field name="tariff_type">kjr_member</field>
+            <field name="sequence">10</field>
+            <field name="price_per_person_night">6.0</field>
+        </record>
+        <record id="tariff_partner" model="kjr.facility.tariff">
+            <field name="name">Partnerorganisation</field>
+            <field name="tariff_type">partner</field>
+            <field name="sequence">20</field>
+            <field name="price_per_person_night">8.0</field>
+        </record>
+        <record id="tariff_standard" model="kjr.facility.tariff">
+            <field name="name">Standard (gemeinnützig)</field>
+            <field name="tariff_type">standard</field>
+            <field name="sequence">30</field>
+            <field name="price_per_person_night">11.0</field>
+        </record>
+        <record id="tariff_commercial" model="kjr.facility.tariff">
+            <field name="name">Kommerziell</field>
+            <field name="tariff_type">commercial</field>
+            <field name="sequence">40</field>
+            <field name="price_per_person_night">18.0</field>
+        </record>
+
+    </data>
+</odoo>

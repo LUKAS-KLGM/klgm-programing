@@ -1,0 +1,23 @@
+/* KJR Grant — Portal & Website Styles */
+
+/* Status-Badges */
+.kjr-badge-draft     { background-color: #6c757d; color: #fff; }
+.kjr-badge-submitted { background-color: #0d6efd; color: #fff; }
+.kjr-badge-in_review { background-color: #ffc107; color: #000; }
+.kjr-badge-approved  { background-color: #198754; color: #fff; }
+.kjr-badge-rejected  { background-color: #dc3545; color: #fff; }
+.kjr-badge-paid      { background-color: #20c997; color: #fff; }
+
+/* Antragsformular-Sektionen */
+.kjr-section-header {
+    background-color: #0d6efd;
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem 0.375rem 0 0;
+    margin-bottom: 0;
+}
+
+/* Bescheid-PDF */
+@media print {
+    .kjr-bescheid { page-break-inside: avoid; }
+}

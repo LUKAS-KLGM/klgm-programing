@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_rental_contract" model="ir.actions.report">
+        <field name="name">Verleihvertrag</field>
+        <field name="model">kjr.rental.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">kjr_rental.rental_contract_template</field>
+        <field name="report_file">kjr_rental.rental_contract_template</field>
+        <field name="print_report_name">'Verleihvertrag_%s' % (object.name or '').replace('/', '-')</field>
+        <field name="binding_model_id" ref="model_kjr_rental_order"/>
+        <field name="binding_type">report</field>
+        <field name="group_ids" eval="[(4, ref('kjr_rental.group_kjr_rental_user'))]"/>
+    </record>
+
+    <template id="rental_contract_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h3 class="text-primary">Kreisjugendring Oberallgäu — Materialverleih</h3>
+                        <hr/>
+                        <h4 class="text-center mb-4">Verleihvertrag <t t-esc="o.name"/></h4>
+                        <p>
+                            Entleiher: <strong><t t-esc="o.partner_id.name"/></strong><br/>
+                            Zeitraum:
+                            <span t-field="o.date_from" t-options='{"format":"dd.MM.yyyy"}'/> bis
+                            <span t-field="o.date_to" t-options='{"format":"dd.MM.yyyy"}'/>
+                            (<t t-esc="o.rental_days"/> Tage)
+                        </p>
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr><th>Artikel</th><th class="text-end">Menge</th><th class="text-end">Tagespreis</th><th class="text-end">Summe</th><th class="text-end">Kaution</th></tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="o.line_ids" t-as="line">
+                                    <tr>
+                                        <td><t t-esc="line.item_id.name"/></td>
+                                        <td class="text-end"><t t-esc="line.quantity"/></td>
+                                        <td class="text-end"><t t-esc="'%.2f €' % line.price_per_day"/></td>
+                                        <td class="text-end"><t t-esc="'%.2f €' % line.subtotal"/></td>
+                                        <td class="text-end"><t t-esc="'%.2f €' % line.deposit_subtotal"/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                            <tfoot>
+                                <tr class="fw-bold"><td colspan="3">Summe</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_total"/></td><td class="text-end"><t t-esc="'%.2f €' % o.deposit_total"/></td></tr>
+                            </tfoot>
+                        </table>
+                        <p class="small text-muted mt-3">
+                            Der Entleiher haftet für Beschädigung/Verlust. Die Kaution wird bei
+                            ordnungsgemäßer Rückgabe erstattet. Rückgabe spätestens am vereinbarten Datum.
+                        </p>
+                        <div class="row mt-5">
+                            <div class="col-6"><div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px;"><small>Entleiher (Datum, Unterschrift)</small></div></div>
+                            <div class="col-6 text-end"><div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px; margin-left:auto;"><small>Kreisjugendring Oberallgäu</small></div></div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

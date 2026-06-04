@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="privilege_kjr_rental" model="res.groups.privilege">
+            <field name="name">KJR Verleih</field>
+        </record>
+
+        <record id="group_kjr_rental_user" model="res.groups">
+            <field name="name">Sachbearbeiter Verleih</field>
+            <field name="privilege_id" ref="privilege_kjr_rental"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+        <record id="group_kjr_rental_manager" model="res.groups">
+            <field name="name">Administrator Verleih</field>
+            <field name="privilege_id" ref="privilege_kjr_rental"/>
+            <field name="implied_ids" eval="[(4, ref('group_kjr_rental_user'))]"/>
+        </record>
+
+        <!-- Buchungen: Portal nur eigene, Sachbearbeiter alle -->
+        <record id="rule_kjr_rental_portal_own" model="ir.rule">
+            <field name="name">KJR Verleih: Portal sieht nur eigene Ausleihen</field>
+            <field name="model_id" ref="model_kjr_rental_order"/>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+            <field name="domain_force">[('partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+        <record id="rule_kjr_rental_user_all" model="ir.rule">
+            <field name="name">KJR Verleih: Sachbearbeiter sieht alle Ausleihen</field>
+            <field name="model_id" ref="model_kjr_rental_order"/>
+            <field name="groups" eval="[(4, ref('group_kjr_rental_user'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Positionen: Portal nur eigene (über Order) -->
+        <record id="rule_kjr_rental_line_portal_own" model="ir.rule">
+            <field name="name">KJR Verleih: Portal sieht nur eigene Positionen</field>
+            <field name="model_id" ref="model_kjr_rental_order_line"/>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+            <field name="domain_force">[('order_id.partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Mehrmandanten-Trennung -->
+        <record id="rule_kjr_rental_company" model="ir.rule">
+            <field name="name">KJR Verleih: je Gesellschaft</field>
+            <field name="model_id" ref="model_kjr_rental_order"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+        <record id="rule_kjr_rental_line_company" model="ir.rule">
+            <field name="name">KJR Verleih: Positionen je Gesellschaft</field>
+            <field name="model_id" ref="model_kjr_rental_order_line"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('order_id.company_id', '=', False), ('order_id.company_id', 'in', company_ids)]</field>
+        </record>
+
+    </data>
+</odoo>

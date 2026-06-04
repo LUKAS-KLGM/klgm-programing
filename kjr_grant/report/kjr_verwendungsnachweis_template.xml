@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_kjr_verwendungsnachweis" model="ir.actions.report">
+        <field name="name">Verwendungsnachweis</field>
+        <field name="model">kjr.grant.settlement</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">kjr_grant.kjr_verwendungsnachweis_template</field>
+        <field name="report_file">kjr_grant.kjr_verwendungsnachweis_template</field>
+        <field name="print_report_name">'Verwendungsnachweis_%s' % (object.name or '').replace('/', '-')</field>
+        <field name="binding_model_id" ref="model_kjr_grant_settlement"/>
+        <field name="binding_type">report</field>
+        <field name="group_ids" eval="[(4, ref('kjr_grant.group_kjr_reviewer'))]"/>
+    </record>
+
+    <template id="kjr_verwendungsnachweis_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <t t-set="app" t-value="o.application_id"/>
+                    <div class="page">
+                        <div class="row mb-3">
+                            <div class="col-8">
+                                <h3 class="text-primary">Kreisjugendring Oberallgäu</h3>
+                                <p class="mb-0">Oberallgäuer Platz 2 · 87527 Sonthofen</p>
+                            </div>
+                            <div class="col-4 text-end">
+                                <p class="mb-0 text-muted">Abrechnung <t t-esc="o.name"/></p>
+                                <p class="text-muted">zum Antrag <t t-esc="app.name"/></p>
+                            </div>
+                        </div>
+                        <hr/>
+
+                        <h4 class="text-center mb-4">Verwendungsnachweis</h4>
+
+                        <p>
+                            Antragsteller: <strong><t t-esc="app.partner_id.name"/></strong><br/>
+                            Maßnahme: <strong><t t-esc="app.measure_name"/></strong><br/>
+                            Zeitraum:
+                            <span t-field="app.measure_start" t-options='{"format":"dd.MM.yyyy"}'/> bis
+                            <span t-field="app.measure_end" t-options='{"format":"dd.MM.yyyy"}'/><br/>
+                            Förderart: <t t-esc="app.grant_type_id.name"/>
+                        </p>
+
+                        <table class="table table-sm table-bordered mt-3">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Position</th>
+                                    <th class="text-end">Antrag (Plan)</th>
+                                    <th class="text-end">Abrechnung (Ist)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Teilnehmer</td>
+                                    <td class="text-end"><t t-esc="app.tn_count"/></td>
+                                    <td class="text-end"><t t-esc="o.actual_tn_count"/></td>
+                                </tr>
+                                <tr>
+                                    <td>Förderfähige Gesamtkosten</td>
+                                    <td class="text-end"><t t-esc="'%.2f €' % app.cost_total"/></td>
+                                    <td class="text-end"><t t-esc="'%.2f €' % o.actual_cost_total"/></td>
+                                </tr>
+                                <tr>
+                                    <td>Einnahmen (ohne KJR-Zuschuss)</td>
+                                    <td class="text-end"><t t-esc="'%.2f €' % app.income_total"/></td>
+                                    <td class="text-end"><t t-esc="'%.2f €' % o.actual_income_total"/></td>
+                                </tr>
+                                <tr class="fw-bold">
+                                    <td>Fehlbetrag</td>
+                                    <td class="text-end"><t t-esc="'%.2f €' % app.deficit"/></td>
+                                    <td class="text-end"><t t-esc="'%.2f €' % o.actual_deficit"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table class="table table-sm table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td>Bewilligter Zuschuss</td>
+                                    <td class="text-end"><t t-esc="'%.2f €' % app.grant_approved"/></td>
+                                </tr>
+                                <tr class="table-success fw-bold">
+                                    <td>Zuschuss auf Ist-Basis</td>
+                                    <td class="text-end"><t t-esc="'%.2f €' % o.grant_recalculated"/></td>
+                                </tr>
+                                <tr t-if="o.repayment_amount &gt; 0" class="table-danger fw-bold">
+                                    <td>Rückforderung</td>
+                                    <td class="text-end"><t t-esc="'%.2f €' % o.repayment_amount"/></td>
+                                </tr>
+                                <tr t-if="o.interest_amount &gt; 0">
+                                    <td>Verzugszinsen (<t t-esc="o.interest_days"/> Tage, <t t-esc="'%.2f' % o.interest_rate"/> % p. a.)</td>
+                                    <td class="text-end"><t t-esc="'%.2f €' % o.interest_amount"/></td>
+                                </tr>
+                                <tr t-if="o.interest_amount &gt; 0" class="table-danger fw-bold">
+                                    <td>Gesamtforderung inkl. Zinsen</td>
+                                    <td class="text-end"><t t-esc="'%.2f €' % o.total_reclaim"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <t t-if="o.settlement_note">
+                            <h6 class="mt-4">Bericht zur Durchführung</h6>
+                            <p style="white-space:pre-line;"><t t-esc="o.settlement_note"/></p>
+                        </t>
+
+                        <div class="row mt-5">
+                            <div class="col-6">
+                                <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px;">
+                                    <small>Antragsteller (Datum, Unterschrift)</small>
+                                </div>
+                            </div>
+                            <div class="col-6 text-end">
+                                <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px; margin-left:auto;">
+                                    <small>Kreisjugendring Oberallgäu (sachlich richtig)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

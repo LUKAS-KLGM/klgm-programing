@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_kjr_grant_budget_list" model="ir.ui.view">
+        <field name="name">kjr.grant.budget.list</field>
+        <field name="model">kjr.grant.budget</field>
+        <field name="arch" type="xml">
+            <list string="Jahresbudgets" editable="top"
+                  decoration-danger="usage_pct &gt; 90"
+                  decoration-warning="usage_pct &gt; 75 and usage_pct &lt;= 90"
+                  decoration-success="usage_pct &lt;= 75">
+                <field name="year"/>
+                <field name="grant_type_id" optional="show"/>
+                <field name="amount_total" string="Budget (€)"/>
+                <field name="amount_approved" string="Bewilligt (€)"/>
+                <field name="amount_paid" string="Ausgezahlt (€)"/>
+                <field name="amount_remaining" string="Verfügbar (€)"/>
+                <field name="usage_pct" string="Auslastung (%)" widget="progressbar"/>
+                <field name="note" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kjr_grant_budget_form" model="ir.ui.view">
+        <field name="name">kjr.grant.budget.form</field>
+        <field name="model">kjr.grant.budget</field>
+        <field name="arch" type="xml">
+            <form string="Jahresbudget">
+                <sheet>
+                    <group>
+                        <group string="Budget">
+                            <field name="year"/>
+                            <field name="grant_type_id"/>
+                            <field name="amount_total"/>
+                        </group>
+                        <group string="Verbrauch">
+                            <field name="amount_approved" readonly="1"/>
+                            <field name="amount_paid" readonly="1"/>
+                            <field name="amount_remaining" readonly="1"/>
+                            <field name="usage_pct" readonly="1" widget="progressbar"/>
+                        </group>
+                    </group>
+                    <group string="Anmerkungen">
+                        <field name="note" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kjr_grant_budget" model="ir.actions.act_window">
+        <field name="name">Jahresbudgets</field>
+        <field name="res_model">kjr.grant.budget</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

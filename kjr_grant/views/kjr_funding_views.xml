@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_kjr_funding_list" model="ir.ui.view">
+        <field name="name">kjr.funding.list</field>
+        <field name="model">kjr.funding</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="state == 'rejected'" decoration-success="state in ('approved','running')">
+                <field name="name"/>
+                <field name="funder"/>
+                <field name="project_name"/>
+                <field name="amount_requested" string="Beantragt (€)"/>
+                <field name="amount_approved" string="Bewilligt (€)"/>
+                <field name="deadline"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_kjr_funding_form" model="ir.ui.view">
+        <field name="name">kjr.funding.form</field>
+        <field name="model">kjr.funding</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,running,closed"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Förderprogramm">
+                            <field name="name"/>
+                            <field name="funder"/>
+                            <field name="funder_name" invisible="funder not in ('stiftung','other')"/>
+                            <field name="deadline"/>
+                            <field name="responsible_id"/>
+                        </group>
+                        <group string="Finanzen">
+                            <field name="amount_requested"/>
+                            <field name="amount_approved"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Projekt">
+                            <field name="project_name"/>
+                            <field name="project_start"/>
+                            <field name="project_end"/>
+                            <field name="verwendungsnachweis_deadline"/>
+                        </group>
+                    </group>
+                    <field name="project_description" placeholder="Projektbeschreibung..."/>
+                    <field name="note" placeholder="Anmerkungen..."/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_kjr_funding" model="ir.actions.act_window">
+        <field name="name">Fördermittel-Akquise</field>
+        <field name="res_model">kjr.funding</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

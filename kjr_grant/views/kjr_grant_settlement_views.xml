@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_kjr_grant_settlement_list" model="ir.ui.view">
+        <field name="name">kjr.grant.settlement.list</field>
+        <field name="model">kjr.grant.settlement</field>
+        <field name="arch" type="xml">
+            <list decoration-warning="repayment_amount &gt; 0">
+                <field name="name"/>
+                <field name="application_id"/>
+                <field name="partner_id"/>
+                <field name="actual_tn_count" string="TN (ist)"/>
+                <field name="actual_cost_total" string="Kosten (ist, €)"/>
+                <field name="grant_recalculated" string="Neuer Zuschuss (€)"/>
+                <field name="repayment_amount" string="Rückforderung (€)"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kjr_grant_settlement_form" model="ir.ui.view">
+        <field name="name">kjr.grant.settlement.form</field>
+        <field name="model">kjr.grant.settlement</field>
+        <field name="arch" type="xml">
+            <form string="Abrechnung / Verwendungsnachweis">
+                <header>
+                    <button name="action_print_verwendungsnachweis" string="Verwendungsnachweis drucken"
+                            type="object" icon="fa-print"/>
+                    <button name="action_create_repayment_move" string="Rückforderung buchen"
+                            type="object" class="btn-warning" icon="fa-exclamation-triangle"
+                            invisible="repayment_amount == 0 or repayment_move_id"
+                            groups="kjr_grant.group_kjr_reviewer"
+                            confirm="Rückforderung über den angezeigten Betrag buchen?"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,submitted,reviewed,closed"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-danger" role="alert" invisible="repayment_amount == 0">
+                        <strong>Rückforderung:</strong>
+                        <field name="repayment_amount"/> € sind zurückzufordern.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="application_id" options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <field name="state"/>
+                            <field name="date_submitted"/>
+                        </group>
+                    </group>
+                    <group string="Tatsächliche Werte">
+                        <group string="Ausgaben">
+                            <field name="actual_tn_count"/>
+                            <field name="actual_cost_accommodation"/>
+                            <field name="actual_cost_transport"/>
+                            <field name="actual_cost_referees"/>
+                            <field name="actual_cost_materials"/>
+                            <field name="actual_cost_other"/>
+                            <field name="actual_cost_total" readonly="1"/>
+                        </group>
+                        <group string="Einnahmen">
+                            <field name="actual_income_total"/>
+                            <field name="actual_deficit" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Ergebnis">
+                        <group>
+                            <field name="grant_recalculated" readonly="1"/>
+                            <field name="repayment_amount"   readonly="1"/>
+                        </group>
+                        <group string="Verzugszinsen (§ 247 BGB + 5 PP)">
+                            <field name="repayment_due_date"/>
+                            <field name="interest_rate"/>
+                            <field name="interest_reference_date"/>
+                            <field name="interest_days" readonly="1"/>
+                            <field name="interest_amount" readonly="1"/>
+                            <field name="total_reclaim" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Verwendungsnachweis">
+                        <field name="settlement_note" nolabel="1"
+                               placeholder="Kurze Beschreibung der tatsächlichen Durchführung..."/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kjr_grant_settlement" model="ir.actions.act_window">
+        <field name="name">Abrechnungen</field>
+        <field name="res_model">kjr.grant.settlement</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

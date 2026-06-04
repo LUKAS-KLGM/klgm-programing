@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="menu_kjr_verleih" model="website.menu">
+        <field name="name">Verleih</field>
+        <field name="url">/kjr/verleih</field>
+        <field name="parent_id" ref="website.main_menu"/>
+        <field name="sequence">63</field>
+        <field name="website_id" ref="website.default_website"/>
+    </record>
+
+    <template id="website_rental_catalog" name="KJR Verleih">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-4 mb-5">
+                <h1 class="mb-2">Materialverleih</h1>
+                <p class="text-muted mb-4">Material für eure Jugendarbeit – Mitgliedsverbände zu vergünstigten Tarifen.</p>
+                <t t-foreach="items_by_category" t-as="cat">
+                    <h4 class="mt-4"><t t-esc="category_labels.get(cat, cat)"/></h4>
+                    <div class="row">
+                        <t t-foreach="items_by_category[cat]" t-as="item">
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card h-100 kjr-rental-card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">
+                                            <i t-if="item.icon" t-attf-class="fa #{item.icon} me-2 text-primary"/>
+                                            <t t-esc="item.name"/>
+                                        </h5>
+                                        <p class="card-text text-muted small"><t t-esc="item.description"/></p>
+                                        <div class="small">
+                                            Standard: <strong><t t-esc="'%.2f €' % item.price_per_day"/></strong>/Tag ·
+                                            Mitglied: <strong><t t-esc="'%.2f €' % item.price_member_per_day"/></strong>/Tag
+                                        </div>
+                                        <div class="small text-muted">Kaution: <t t-esc="'%.2f €' % item.deposit"/></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </t>
+                <a href="/kjr/verleih/anfrage" class="btn btn-primary btn-lg mt-3">
+                    <i class="fa fa-paper-plane me-1"/>Verleih anfragen
+                </a>
+            </div>
+        </t>
+    </template>
+
+    <template id="website_rental_request" name="KJR Verleih Anfrage">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-4 mb-5">
+                <h1 class="mb-3">Verleihanfrage</h1>
+                <t t-if="errors">
+                    <div class="alert alert-danger"><ul class="mb-0">
+                        <t t-foreach="errors.values()" t-as="err"><li><t t-esc="err"/></li></t>
+                    </ul></div>
+                </t>
+                <form method="post" action="/kjr/verleih/anfrage">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">Von *</label>
+                            <input type="date" name="date_from" class="form-control" t-att-value="values.get('date_from','')" required="required"/>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">Bis *</label>
+                            <input type="date" name="date_to" class="form-control" t-att-value="values.get('date_to','')" required="required"/>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">E-Mail</label>
+                            <input type="email" name="contact_email" class="form-control" t-att-value="values.get('contact_email','')"/>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Telefon</label>
+                            <input type="tel" name="contact_phone" class="form-control" t-att-value="values.get('contact_phone','')"/>
+                        </div>
+                    </div>
+                    <h5 class="mt-2">Artikel</h5>
+                    <table class="table">
+                        <thead><tr><th>Artikel</th><th>Standard/Tag</th><th>Mitglied/Tag</th><th style="width:120px">Menge</th></tr></thead>
+                        <tbody>
+                            <t t-foreach="items" t-as="item">
+                                <tr>
+                                    <td><i t-if="item.icon" t-attf-class="fa #{item.icon} me-1"/><t t-esc="item.name"/></td>
+                                    <td><t t-esc="'%.2f €' % item.price_per_day"/></td>
+                                    <td><t t-esc="'%.2f €' % item.price_member_per_day"/></td>
+                                    <td><input type="number" min="0" t-attf-name="item_#{item.id}" class="form-control form-control-sm" value="0"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                    <div class="mb-3">
+                        <label class="form-label">Anmerkungen</label>
+                        <textarea name="note" class="form-control" rows="2" t-esc="values.get('note','')"/>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg"><i class="fa fa-paper-plane me-1"/>Anfrage senden</button>
+                    <a href="/kjr/verleih" class="btn btn-outline-secondary btn-lg">Abbrechen</a>
+                </form>
+            </div>
+        </t>
+    </template>
+
+    <template id="portal_my_home_kjr_rental" name="Portal: Ausleihen"
+              inherit_id="portal.portal_my_home" customize_show="True" priority="42">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Meine Ausleihen</t>
+                <t t-set="url" t-value="'/my/ausleihen'"/>
+                <t t-set="placeholder_count" t-value="'kjr_rental_count'"/>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="portal_my_rentals" name="Meine Ausleihen">
+        <t t-call="portal.portal_layout">
+            <t t-if="not orders"><div class="alert alert-info mt-3">Noch keine Ausleihen vorhanden.</div></t>
+            <t t-if="orders">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead><tr><th>Nummer</th><th>Von</th><th>Bis</th><th>Gebühr</th><th>Status</th></tr></thead>
+                        <tbody>
+                            <t t-foreach="orders" t-as="o">
+                                <tr>
+                                    <td><a t-att-href="o.access_url"><t t-esc="o.name"/></a></td>
+                                    <td><span t-field="o.date_from" t-options='{"widget":"date"}'/></td>
+                                    <td><span t-field="o.date_to" t-options='{"widget":"date"}'/></td>
+                                    <td><t t-esc="'%.2f €' % o.amount_total"/></td>
+                                    <td><span class="badge text-bg-secondary"><t t-esc="dict(o._fields['state'].selection).get(o.state)"/></span></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+                <div t-if="pager" class="o_portal_pager text-center"><t t-call="portal.pager"/></div>
+            </t>
+        </t>
+    </template>
+
+    <template id="portal_rental_detail" name="Ausleih-Detail">
+        <t t-call="portal.portal_layout">
+            <div class="card mt-3">
+                <div class="card-header bg-primary text-white"><h4 class="mb-0">Ausleihe <t t-esc="order.name"/></h4></div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-4">Zeitraum</dt><dd class="col-8"><span t-field="order.date_from" t-options='{"widget":"date"}'/> – <span t-field="order.date_to" t-options='{"widget":"date"}'/> (<t t-esc="order.rental_days"/> Tage)</dd>
+                        <dt class="col-4">Gebühr</dt><dd class="col-8"><t t-esc="'%.2f €' % order.amount_total"/></dd>
+                        <dt class="col-4">Kaution</dt><dd class="col-8"><t t-esc="'%.2f €' % order.deposit_total"/></dd>
+                        <dt class="col-4">Status</dt><dd class="col-8"><span class="badge text-bg-secondary"><t t-esc="dict(order._fields['state'].selection).get(order.state)"/></span></dd>
+                    </dl>
+                    <table class="table table-sm mt-3">
+                        <thead><tr><th>Artikel</th><th>Menge</th><th>Tagespreis</th><th>Summe</th></tr></thead>
+                        <tbody>
+                            <t t-foreach="order.line_ids" t-as="line">
+                                <tr>
+                                    <td><t t-esc="line.item_id.name"/></td>
+                                    <td><t t-esc="line.quantity"/></td>
+                                    <td><t t-esc="'%.2f €' % line.price_per_day"/></td>
+                                    <td><t t-esc="'%.2f €' % line.subtotal"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                    <a href="/my/ausleihen" class="btn btn-outline-secondary btn-sm"><i class="fa fa-arrow-left me-1"/>Zur Übersicht</a>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>

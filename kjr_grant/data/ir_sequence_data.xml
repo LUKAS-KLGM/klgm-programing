@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="seq_kjr_grant_application" model="ir.sequence">
+            <field name="name">KJR Zuschussantrag</field>
+            <field name="code">kjr.grant.application</field>
+            <field name="prefix">ANT/%(year)s/</field>
+            <field name="padding">4</field>
+            <field name="number_increment">1</field>
+            <field name="number_next">1</field>
+            <field name="use_date_range">True</field>
+        </record>
+
+        <record id="seq_kjr_grant_settlement" model="ir.sequence">
+            <field name="name">KJR Abrechnung</field>
+            <field name="code">kjr.grant.settlement</field>
+            <field name="prefix">ABR/%(year)s/</field>
+            <field name="padding">4</field>
+            <field name="number_increment">1</field>
+            <field name="number_next">1</field>
+            <field name="use_date_range">True</field>
+        </record>
+
+    </data>
+</odoo>

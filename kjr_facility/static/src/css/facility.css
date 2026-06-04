@@ -1,0 +1,6 @@
+/* KJR Einrichtungen – Website-Styling (Navy/Orange CI) */
+.kjr-facility-card { transition: transform .15s ease, box-shadow .15s ease; }
+.kjr-facility-card:hover { transform: translateY(-4px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.12) !important; }
+.kjr-facility-card .card-title { color: #1B3A6B; }
+.kjr-facility-card .btn-primary { background-color: #1B3A6B; border-color: #1B3A6B; }
+.kjr-facility-card .btn-primary:hover { background-color: #E8952E; border-color: #E8952E; }

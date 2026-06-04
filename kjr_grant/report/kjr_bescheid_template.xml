@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="kjr_bescheid_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+
+                        <!-- Briefkopf -->
+                        <div class="row mb-4">
+                            <div class="col-8">
+                                <h3 class="text-primary">Kreisjugendring Oberallgäu</h3>
+                                <p class="mb-0">Oberallgäuer Platz 2</p>
+                                <p class="mb-0">87527 Sonthofen</p>
+                                <p class="mb-0">Tel.: 08321 / 612-1111</p>
+                                <p>E-Mail: kreisjugendring@lra-oa.bayern.de</p>
+                            </div>
+                            <div class="col-4 text-end">
+                                <p class="mb-0 text-muted">
+                                    Sonthofen, den
+                                    <span t-field="o.date_approved"
+                                          t-options='{"format":"dd.MM.yyyy"}'/>
+                                </p>
+                                <p class="text-muted">
+                                    Az.:
+                                    <span t-if="o.reference_number"
+                                          t-field="o.reference_number"/>
+                                    <span t-else=""><t t-esc="o.name"/></span>
+                                </p>
+                            </div>
+                        </div>
+                        <hr/>
+
+                        <!-- Empfänger -->
+                        <div class="mb-4">
+                            <p class="mb-0 fw-bold"><t t-esc="o.partner_id.name"/></p>
+                            <t t-if="o.partner_id.street">
+                                <p class="mb-0"><t t-esc="o.partner_id.street"/></p>
+                            </t>
+                            <t t-if="o.partner_id.zip or o.partner_id.city">
+                                <p class="mb-0">
+                                    <t t-esc="o.partner_id.zip"/>
+                                    <t t-esc="o.partner_id.city"/>
+                                </p>
+                            </t>
+                        </div>
+
+                        <!-- Betreff -->
+                        <h4 class="text-center mb-4">
+                            Zuschussbescheid — <t t-esc="o.name"/>
+                        </h4>
+
+                        <!-- Maßnahmendetails -->
+                        <p>
+                            Für die Maßnahme: <strong><t t-esc="o.measure_name"/></strong><br/>
+                            Zeitraum:
+                            <span t-field="o.measure_start" t-options='{"format":"dd.MM.yyyy"}'/> bis
+                            <span t-field="o.measure_end"   t-options='{"format":"dd.MM.yyyy"}'/>,
+                            <t t-esc="o.measure_days"/> Tage
+                            <t t-if="o.measure_location">, Ort: <t t-esc="o.measure_location"/></t>
+                        </p>
+                        <p>
+                            Teilnehmer: <t t-esc="o.tn_count"/>
+                            (zzgl. <t t-esc="o.tn_leader_count"/> Jugendleiter,
+                            davon <t t-esc="o.tn_leader_juleica"/> mit Juleica)
+                        </p>
+
+                        <!-- Bewilligter Betrag -->
+                        <div class="alert alert-primary text-center my-4">
+                            <h4 class="mb-0">
+                                Bewilligter Zuschuss:
+                                <strong><t t-esc="'%.2f €' % o.grant_approved"/></strong>
+                            </h4>
+                            <small>Förderart: <t t-esc="o.grant_type_id.name"/></small>
+                        </div>
+
+                        <!-- Kostenübersicht -->
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Position</th>
+                                    <th class="text-end">Betrag (€)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Förderfähige Gesamtkosten</td>
+                                    <td class="text-end"><t t-esc="'%.2f' % o.cost_total"/></td>
+                                </tr>
+                                <tr>
+                                    <td>Sonstige Einnahmen (ohne KJR-Zuschuss)</td>
+                                    <td class="text-end"><t t-esc="'%.2f' % o.income_total"/></td>
+                                </tr>
+                                <tr class="fw-bold">
+                                    <td>Fehlbetrag</td>
+                                    <td class="text-end"><t t-esc="'%.2f' % o.deficit"/></td>
+                                </tr>
+                                <tr class="table-success fw-bold">
+                                    <td>Bewilligter KJR-Zuschuss</td>
+                                    <td class="text-end"><t t-esc="'%.2f' % o.grant_approved"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Rechtsgrundlage -->
+                        <h6 class="mt-4">Rechtsgrundlage</h6>
+                        <p>
+                            Dieser Zuschuss wird gewährt auf Grundlage der
+                            <em>Zuschussrichtlinien des Kreisjugendrings Oberallgäu</em>,
+                            gültig ab 01.12.2022 (aktuelle Fassung 2026), aus Steuermitteln
+                            des Landkreises Oberallgäu.
+                        </p>
+
+                        <!-- Auflagen -->
+                        <h6>Auflagen</h6>
+                        <ol>
+                            <li>Die Mittel sind entsprechend der Zweckbindung wirtschaftlich zu verwenden.</li>
+                            <li>Belege sind <strong>5 Jahre</strong> aufzubewahren. Der KJR behält sich eine Prüfung vor.</li>
+                            <li>Etwaige zu viel erhaltene Beträge sind ohne Aufforderung unverzüglich zurückzuzahlen.</li>
+                            <li>Mit der Antragstellung wurde eine Verwendungsprüfung anerkannt.</li>
+                        </ol>
+
+                        <!-- Unterschrift -->
+                        <div class="row mt-5">
+                            <div class="col-6">
+                                <p>Sonthofen, den
+                                    <span t-field="o.date_approved"
+                                          t-options='{"format":"dd.MM.yyyy"}'/>
+                                </p>
+                                <div style="border-top:1px solid #000; width:200px; margin-top:40px; padding-top:4px;">
+                                    <small>Kreisjugendring Oberallgäu</small>
+                                </div>
+                            </div>
+                            <div class="col-6 text-end">
+                                <p class="text-muted small">
+                                    Kreisjugendring Oberallgäu · K.d.ö.R.<br/>
+                                    Oberallgäuer Platz 2 · 87527 Sonthofen<br/>
+                                    08321/612-1111 · kreisjugendring@lra-oa.bayern.de
+                                </p>
+                            </div>
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

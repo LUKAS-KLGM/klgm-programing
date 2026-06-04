@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_kjr_ehrenamt" model="ir.actions.report">
+        <field name="name">Ehrenamtsnachweis</field>
+        <field name="model">res.partner</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">kjr_grant.kjr_ehrenamt_template</field>
+        <field name="report_file">kjr_grant.kjr_ehrenamt_template</field>
+        <field name="print_report_name">'Ehrenamtsnachweis_%s' % object.name.replace(' ', '_')</field>
+        <field name="binding_model_id" ref="base.model_res_partner"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="kjr_ehrenamt_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div class="row mb-4">
+                            <div class="col-8">
+                                <h2 class="text-primary">Kreisjugendring Oberallgäu</h2>
+                                <p>Oberallgäuer Platz 2 · 87527 Sonthofen</p>
+                            </div>
+                        </div>
+                        <hr/>
+
+                        <h3 class="text-center mb-4">Bescheinigung über ehrenamtliche Tätigkeit</h3>
+
+                        <p class="mt-4">Hiermit wird bescheinigt, dass</p>
+
+                        <div class="text-center my-4">
+                            <h4><t t-esc="o.name"/></h4>
+                            <t t-if="o.street">
+                                <p class="mb-0"><t t-esc="o.street"/></p>
+                            </t>
+                            <t t-if="o.zip or o.city">
+                                <p><t t-esc="o.zip"/> <t t-esc="o.city"/></p>
+                            </t>
+                        </div>
+
+                        <t t-set="parent" t-value="o.parent_id"/>
+                        <p>
+                            <t t-if="parent">
+                                im Rahmen der Jugendarbeit bei
+                                <strong><t t-esc="parent.name"/></strong>
+                            </t>
+                            ehrenamtlich tätig ist/war.
+                        </p>
+
+                        <p>
+                            Die ehrenamtliche Tätigkeit umfasst insbesondere:
+                        </p>
+                        <ul>
+                            <li>Planung und Durchführung von Freizeitmaßnahmen für Kinder und Jugendliche</li>
+                            <li>Betreuung und Begleitung von Gruppenaktivitäten</li>
+                            <li>Teilnahme an Aus- und Fortbildungsmaßnahmen für Jugendleiter/innen</li>
+                            <li>Mitwirkung in der Verbandsarbeit und Gremienarbeit</li>
+                        </ul>
+
+                        <p class="mt-4">
+                            Diese Bescheinigung wird auf Wunsch für die Vorlage bei Behörden,
+                            Arbeitgebern oder Bildungseinrichtungen ausgestellt.
+                        </p>
+
+                        <div class="row mt-5">
+                            <div class="col-6">
+                                <p>Sonthofen, den <t t-esc="context_timestamp(datetime.datetime.now()).strftime('%d.%m.%Y')"/></p>
+                                <div style="border-top:1px solid #000; width:200px; margin-top:50px; padding-top:4px;">
+                                    <small>Kreisjugendring Oberallgäu</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

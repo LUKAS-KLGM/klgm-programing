@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_booking_contract" model="ir.actions.report">
+        <field name="name">Buchungsvertrag</field>
+        <field name="model">kjr.facility.booking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">kjr_facility.booking_contract_template</field>
+        <field name="report_file">kjr_facility.booking_contract_template</field>
+        <field name="print_report_name">'Buchungsvertrag_%s' % (object.name or '').replace('/', '-')</field>
+        <field name="binding_model_id" ref="model_kjr_facility_booking"/>
+        <field name="binding_type">report</field>
+        <field name="group_ids" eval="[(4, ref('kjr_facility.group_kjr_facility_user'))]"/>
+    </record>
+
+    <template id="booking_contract_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div class="row mb-3">
+                            <div class="col-8">
+                                <h3 class="text-primary">Kreisjugendring Oberallgäu</h3>
+                                <p class="mb-0"><t t-esc="o.facility_id.name"/></p>
+                            </div>
+                            <div class="col-4 text-end">
+                                <p class="mb-0 text-muted">Buchung <t t-esc="o.name"/></p>
+                            </div>
+                        </div>
+                        <hr/>
+                        <h4 class="text-center mb-4">Buchungsvertrag</h4>
+                        <p>
+                            Zwischen dem Kreisjugendring Oberallgäu und
+                            <strong><t t-esc="o.partner_id.name"/></strong>
+                            <t t-if="o.group_name"> (<t t-esc="o.group_name"/>)</t>
+                            wird folgende Buchung vereinbart:
+                        </p>
+                        <table class="table table-sm table-bordered">
+                            <tr><td>Einrichtung</td><td><t t-esc="o.facility_id.name"/></td></tr>
+                            <tr>
+                                <td>Zeitraum</td>
+                                <td>
+                                    <span t-field="o.check_in" t-options='{"format":"dd.MM.yyyy"}'/> bis
+                                    <span t-field="o.check_out" t-options='{"format":"dd.MM.yyyy"}'/>
+                                    (<t t-esc="o.nights"/> Nächte)
+                                </td>
+                            </tr>
+                            <tr><td>Teilnehmer / Betreuer</td><td><t t-esc="o.participant_count"/> / <t t-esc="o.leader_count"/></td></tr>
+                            <tr><td>Tarif</td><td><t t-esc="o.tariff_id.name or '—'"/></td></tr>
+                            <tr><td>Verpflegung</td><td><t t-esc="dict(o._fields['meal_option'].selection).get(o.meal_option)"/></td></tr>
+                        </table>
+
+                        <table class="table table-sm table-bordered">
+                            <tr><td>Unterkunft</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_accommodation"/></td></tr>
+                            <tr><td>Verpflegung</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_meals"/></td></tr>
+                            <tr><td>Ausstattung</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_equipment"/></td></tr>
+                            <tr><td>Netto</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_untaxed"/></td></tr>
+                            <tr><td>USt</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_tax"/></td></tr>
+                            <tr class="fw-bold table-light"><td>Gesamt (brutto)</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_total"/></td></tr>
+                            <tr><td>Anzahlung (<t t-esc="'%.0f' % o.deposit_pct"/> %)</td><td class="text-end"><t t-esc="'%.2f €' % o.deposit_amount"/></td></tr>
+                        </table>
+
+                        <t t-if="o.note">
+                            <p><strong>Hinweise:</strong> <t t-esc="o.note"/></p>
+                        </t>
+
+                        <div class="row mt-5">
+                            <div class="col-6">
+                                <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px;">
+                                    <small>Mieter / Gruppe (Datum, Unterschrift)</small>
+                                </div>
+                            </div>
+                            <div class="col-6 text-end">
+                                <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px; margin-left:auto;">
+                                    <small>Kreisjugendring Oberallgäu</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

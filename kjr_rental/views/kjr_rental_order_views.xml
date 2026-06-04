@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_kjr_rental_order_search" model="ir.ui.view">
+        <field name="name">kjr.rental.order.search</field>
+        <field name="model">kjr.rental.order</field>
+        <field name="arch" type="xml">
+            <search string="Ausleihen">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <filter string="Offen" name="open" domain="[('state','in',('draft','reserved','issued'))]"/>
+                <filter string="Aktuell ausgegeben" name="issued" domain="[('state','=','issued')]"/>
+                <separator/>
+                <filter string="Status" name="group_state" context="{'group_by':'state'}"/>
+                <filter string="Entleiher" name="group_partner" context="{'group_by':'partner_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_kjr_rental_order_list" model="ir.ui.view">
+        <field name="name">kjr.rental.order.list</field>
+        <field name="model">kjr.rental.order</field>
+        <field name="arch" type="xml">
+            <list string="Ausleihen"
+                  decoration-muted="state == 'cancelled'"
+                  decoration-info="state == 'draft'"
+                  decoration-success="state == 'returned'">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="amount_total" widget="monetary"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'returned'"
+                       decoration-danger="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kjr_rental_order_form" model="ir.ui.view">
+        <field name="name">kjr.rental.order.form</field>
+        <field name="model">kjr.rental.order</field>
+        <field name="arch" type="xml">
+            <form string="Ausleihe">
+                <header>
+                    <button name="action_reserve" string="Reservieren" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_issue" string="Ausgeben" type="object" class="btn-primary" invisible="state != 'reserved'"/>
+                    <button name="action_return" string="Rücknahme" type="object" invisible="state != 'issued'"/>
+                    <button name="action_create_invoice" string="Rechnung" type="object" invisible="state not in ('issued','returned') or invoice_id"/>
+                    <button name="action_print_contract" string="Vertrag drucken" type="object" icon="fa-print"/>
+                    <button name="action_cancel" string="Stornieren" type="object" invisible="state in ('returned','cancelled')" confirm="Ausleihe stornieren?"/>
+                    <button name="action_reset_draft" string="Zurück auf Anfrage" type="object" groups="kjr_rental.group_kjr_rental_manager" invisible="state in ('draft','returned','cancelled')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,reserved,issued,returned"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_view_invoice" class="oe_stat_button" icon="fa-pencil-square-o" invisible="not invoice_id">
+                            <div class="o_field_widget o_stat_info"><span class="o_stat_text">Rechnung</span></div>
+                        </button>
+                    </div>
+                    <div class="oe_title"><label for="name"/><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group string="Entleiher">
+                            <field name="partner_id" readonly="state not in ('draft','reserved')"/>
+                            <field name="is_member" readonly="state not in ('draft','reserved')"/>
+                            <field name="contact_email"/>
+                            <field name="contact_phone"/>
+                        </group>
+                        <group string="Zeitraum">
+                            <field name="date_from" readonly="state in ('returned','cancelled')"/>
+                            <field name="date_to" readonly="state in ('returned','cancelled')"/>
+                            <field name="rental_days"/>
+                        </group>
+                    </group>
+                    <field name="line_ids" readonly="state in ('returned','cancelled')">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="item_id"/>
+                            <field name="quantity"/>
+                            <field name="price_per_day"/>
+                            <field name="deposit_unit"/>
+                            <field name="subtotal"/>
+                            <field name="deposit_subtotal"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                    <group class="oe_subtotal_footer">
+                        <field name="amount_total"/>
+                        <field name="deposit_total"/>
+                        <field name="deposit_paid"/>
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+                    <field name="note" placeholder="Anmerkungen..."/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kjr_rental_order" model="ir.actions.act_window">
+        <field name="name">Ausleihen</field>
+        <field name="res_model">kjr.rental.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_kjr_rental_order_search"/>
+        <field name="context">{'search_default_open': 1}</field>
+    </record>
+
+</odoo>

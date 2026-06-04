@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Freie Registrierung aktivieren -->
+        <record id="auth_signup_uninvited" model="ir.config_parameter">
+            <field name="key">auth_signup.allow_uninvited</field>
+            <field name="value">True</field>
+        </record>
+    </data>
+</odoo>

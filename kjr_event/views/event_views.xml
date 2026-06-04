@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Veranstaltung: KJR-Reiter -->
+    <record id="view_event_form_kjr" model="ir.ui.view">
+        <field name="name">event.event.form.kjr</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_form"/>
+        <field name="arch" type="xml">
+            <notebook position="inside">
+                <page string="KJR" name="kjr">
+                    <group>
+                        <group string="KJR-Einordnung">
+                            <field name="is_kjr"/>
+                            <field name="kjr_event_type" invisible="not is_kjr"/>
+                            <field name="is_juleica_course" invisible="1"/>
+                        </group>
+                        <group string="Teilnahme" invisible="not is_kjr">
+                            <field name="kjr_min_age"/>
+                            <field name="kjr_max_age"/>
+                            <field name="requires_parental_consent"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-info" role="alert" invisible="not requires_parental_consent">
+                        Für die Anmeldung Minderjähriger sollte die Einwilligung der Erziehungsberechtigten
+                        erfasst werden – auf der Website am einfachsten über Veranstaltungs-Fragen
+                        (Kommunikation → Fragen) oder über die Anmelde-Detailfelder.
+                    </div>
+                </page>
+            </notebook>
+        </field>
+    </record>
+
+    <!-- Anmeldung: KJR-Felder -->
+    <record id="view_event_registration_form_kjr" model="ir.ui.view">
+        <field name="name">event.registration.form.kjr</field>
+        <field name="model">event.registration</field>
+        <field name="inherit_id" ref="event.view_event_registration_form"/>
+        <field name="arch" type="xml">
+            <sheet position="inside">
+                <div class="alert alert-warning" role="alert" invisible="not consent_missing">
+                    Einwilligung der Erziehungsberechtigten fehlt (minderjährige/r Teilnehmer/in).
+                </div>
+                <div class="alert alert-warning" role="alert" invisible="not age_out_of_range">
+                    Teilnehmer/in liegt außerhalb der vorgesehenen Altersgruppe der Veranstaltung.
+                </div>
+                <group string="KJR – Teilnehmer/in &amp; Einwilligung">
+                    <group>
+                        <field name="birthdate"/>
+                        <field name="kjr_age"/>
+                        <field name="is_minor"/>
+                    </group>
+                    <group>
+                        <field name="parental_consent"/>
+                        <field name="guardian_name" invisible="not is_minor"/>
+                        <field name="guardian_phone" invisible="not is_minor"/>
+                        <field name="emergency_contact"/>
+                    </group>
+                </group>
+                <group string="Juleica" invisible="not event_is_juleica"
+                       groups="event.group_event_user">
+                    <field name="event_is_juleica" invisible="1"/>
+                    <field name="juleica_issued"/>
+                    <field name="juleica_valid_until" invisible="not juleica_issued"/>
+                </group>
+            </sheet>
+        </field>
+    </record>
+
+    <!-- Filter: KJR-Veranstaltungen -->
+    <record id="view_event_search_kjr" model="ir.ui.view">
+        <field name="name">event.event.search.kjr</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_search"/>
+        <field name="arch" type="xml">
+            <search position="inside">
+                <filter string="KJR-Veranstaltungen" name="kjr" domain="[('is_kjr','=',True)]"/>
+            </search>
+        </field>
+    </record>
+
+</odoo>

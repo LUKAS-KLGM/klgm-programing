@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_partner_kjr_form_inherit" model="ir.ui.view">
+        <field name="name">res.partner.form.kjr.inherit</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <notebook position="inside">
+                <page string="KJR Verband" name="kjr_member">
+                    <div class="text-end mb-2">
+                        <button name="action_kjr_datenauskunft" type="object"
+                                string="DSGVO-Datenauskunft" class="btn-secondary"
+                                icon="fa-file-text-o" groups="kjr_grant.group_kjr_reviewer"/>
+                    </div>
+                    <group>
+                        <group string="Mitgliedschaft">
+                            <field name="is_kjr_member"/>
+                            <field name="kjr_member_type"     invisible="not is_kjr_member"/>
+                            <field name="kjr_member_number"   invisible="not is_kjr_member"/>
+                            <field name="kjr_active_since"    invisible="not is_kjr_member"/>
+                        </group>
+                        <group string="Zuschüsse">
+                            <field name="kjr_grant_count"           readonly="1"/>
+                            <field name="kjr_grant_total_approved"  readonly="1"/>
+                        </group>
+                    </group>
+                    <group invisible="not is_kjr_member">
+                        <group string="Vertretungsrecht (Vollversammlung)">
+                            <field name="kjr_vr_right"/>
+                            <field name="kjr_vr_votes" invisible="not kjr_vr_right"/>
+                            <field name="kjr_vr_delegate_count" readonly="1" invisible="not kjr_vr_right"/>
+                        </group>
+                    </group>
+                    <field name="kjr_vr_delegate_ids" invisible="not kjr_vr_right or not is_kjr_member"
+                           string="Vertreter/innen in der Vollversammlung">
+                        <list>
+                            <field name="name"/>
+                            <field name="email"/>
+                            <field name="phone"/>
+                            <field name="function" string="Funktion"/>
+                        </list>
+                    </field>
+                    <field name="kjr_grant_ids" readonly="1" invisible="not is_kjr_member">
+                        <list>
+                            <field name="name"/>
+                            <field name="grant_type_id"/>
+                            <field name="measure_name"/>
+                            <field name="measure_start"/>
+                            <field name="state" widget="badge"/>
+                            <field name="grant_approved"/>
+                        </list>
+                    </field>
+                    <field name="kjr_juleica_ids" invisible="is_company"
+                           string="Juleica-Karten" readonly="1">
+                        <list>
+                            <field name="card_number"/>
+                            <field name="issue_date"/>
+                            <field name="expiry_date"/>
+                            <field name="eh_ok" string="EH ok"/>
+                            <field name="state" widget="badge"/>
+                        </list>
+                    </field>
+                </page>
+            </notebook>
+        </field>
+    </record>
+
+    <record id="action_kjr_member_partners" model="ir.actions.act_window">
+        <field name="name">Mitgliedsverbände</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('is_kjr_member', '=', True), ('is_company', '=', True)]</field>
+        <field name="context">{'default_is_kjr_member': True, 'default_is_company': True}</field>
+    </record>
+
+</odoo>

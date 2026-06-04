@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_kjr_booking_search" model="ir.ui.view">
+        <field name="name">kjr.facility.booking.search</field>
+        <field name="model">kjr.facility.booking</field>
+        <field name="arch" type="xml">
+            <search string="Buchungen">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="facility_id"/>
+                <filter string="Anfragen" name="draft" domain="[('state','=','draft')]"/>
+                <filter string="Bestätigt" name="confirmed" domain="[('state','in',('confirmed','deposit','checked_in'))]"/>
+                <filter string="Berechnet" name="invoiced" domain="[('state','=','invoiced')]"/>
+                <filter string="Aktuell/Zukünftig" name="upcoming" domain="[('check_out','&gt;=',context_today())]"/>
+                <separator/>
+                <filter string="Einrichtung" name="group_facility" context="{'group_by':'facility_id'}"/>
+                <filter string="Status" name="group_state" context="{'group_by':'state'}"/>
+                <filter string="Anreise" name="group_checkin" context="{'group_by':'check_in'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_kjr_booking_list" model="ir.ui.view">
+        <field name="name">kjr.facility.booking.list</field>
+        <field name="model">kjr.facility.booking</field>
+        <field name="arch" type="xml">
+            <list string="Buchungen"
+                  decoration-muted="state == 'cancelled'"
+                  decoration-success="state in ('invoiced','done')"
+                  decoration-info="state == 'draft'">
+                <field name="name"/>
+                <field name="facility_id"/>
+                <field name="partner_id"/>
+                <field name="group_name" optional="show"/>
+                <field name="check_in"/>
+                <field name="check_out"/>
+                <field name="nights" optional="hide"/>
+                <field name="participant_count" string="TN"/>
+                <field name="amount_total" widget="monetary"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state in ('invoiced','done')"
+                       decoration-danger="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kjr_booking_calendar" model="ir.ui.view">
+        <field name="name">kjr.facility.booking.calendar</field>
+        <field name="model">kjr.facility.booking</field>
+        <field name="arch" type="xml">
+            <calendar string="Belegung" date_start="check_in" date_stop="check_out"
+                      color="facility_id" mode="month">
+                <field name="facility_id" filters="1"/>
+                <field name="partner_id"/>
+                <field name="participant_count"/>
+            </calendar>
+        </field>
+    </record>
+
+    <record id="view_kjr_booking_form" model="ir.ui.view">
+        <field name="name">kjr.facility.booking.form</field>
+        <field name="model">kjr.facility.booking</field>
+        <field name="arch" type="xml">
+            <form string="Einrichtungsbuchung">
+                <header>
+                    <button name="action_confirm" string="Bestätigen" type="object"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_request_deposit" string="Anzahlung anfordern" type="object"
+                            invisible="state != 'confirmed'"/>
+                    <button name="action_check_in" string="Anreise" type="object"
+                            invisible="state not in ('confirmed','deposit')"/>
+                    <button name="action_create_invoice" string="Rechnung erstellen" type="object"
+                            class="btn-primary" invisible="state not in ('checked_in',) or invoice_id"/>
+                    <button name="action_done" string="Abschließen" type="object"
+                            invisible="state not in ('checked_in','invoiced')"/>
+                    <button name="action_print_contract" string="Vertrag drucken" type="object" icon="fa-print"/>
+                    <button name="action_cancel" string="Stornieren" type="object"
+                            invisible="state in ('done','cancelled')"
+                            confirm="Diese Buchung wirklich stornieren?"/>
+                    <button name="action_reset_draft" string="Auf Anfrage zurück" type="object"
+                            groups="kjr_facility.group_kjr_facility_manager"
+                            invisible="state in ('draft','invoiced','done','cancelled')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,confirmed,deposit,checked_in,invoiced,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_view_invoice" class="oe_stat_button"
+                                icon="fa-pencil-square-o" invisible="not invoice_id">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Rechnung</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Gruppe">
+                            <field name="partner_id" readonly="state not in ('draft','confirmed')"/>
+                            <field name="group_name"/>
+                            <field name="contact_email"/>
+                            <field name="contact_phone"/>
+                        </group>
+                        <group string="Einrichtung &amp; Zeitraum">
+                            <field name="facility_id" readonly="state not in ('draft','confirmed')"/>
+                            <field name="check_in" readonly="state in ('invoiced','done','cancelled')"/>
+                            <field name="check_out" readonly="state in ('invoiced','done','cancelled')"/>
+                            <field name="nights"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Belegung &amp; Leistungen" name="main">
+                            <group>
+                                <group string="Belegung">
+                                    <field name="participant_count"/>
+                                    <field name="leader_count"/>
+                                    <field name="supervision_ok"/>
+                                    <field name="room_ids" widget="many2many_tags"
+                                           domain="[('facility_id','=',facility_id)]"/>
+                                    <field name="bed_count"/>
+                                </group>
+                                <group string="Leistungen">
+                                    <field name="tariff_id"/>
+                                    <field name="meal_option"/>
+                                    <field name="equipment_ids" widget="many2many_tags"
+                                           domain="[('facility_id','=',facility_id)]"/>
+                                    <field name="is_grant_funded"/>
+                                    <field name="grant_reference" invisible="not is_grant_funded"/>
+                                </group>
+                            </group>
+                            <field name="equipment_notes" placeholder="Anmerkungen zur Ausstattung..."/>
+                        </page>
+                        <page string="Beträge" name="amounts">
+                            <group>
+                                <group>
+                                    <field name="amount_accommodation"/>
+                                    <field name="amount_meals"/>
+                                    <field name="amount_equipment"/>
+                                </group>
+                                <group>
+                                    <field name="amount_untaxed"/>
+                                    <field name="amount_tax"/>
+                                    <field name="amount_total"/>
+                                    <field name="deposit_pct"/>
+                                    <field name="deposit_amount"/>
+                                    <field name="deposit_paid"/>
+                                </group>
+                            </group>
+                            <field name="currency_id" invisible="1"/>
+                        </page>
+                        <page string="Notizen" name="notes">
+                            <field name="note" placeholder="Anmerkungen (für Gruppe sichtbar im Portal)..."/>
+                            <separator string="Intern"/>
+                            <field name="internal_note" placeholder="Interne Notiz..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kjr_booking" model="ir.actions.act_window">
+        <field name="name">Buchungen</field>
+        <field name="res_model">kjr.facility.booking</field>
+        <field name="view_mode">list,calendar,form</field>
+        <field name="search_view_id" ref="view_kjr_booking_search"/>
+        <field name="context">{'search_default_upcoming': 1}</field>
+    </record>
+
+</odoo>

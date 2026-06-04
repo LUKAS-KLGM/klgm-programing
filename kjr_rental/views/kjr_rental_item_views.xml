@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_kjr_rental_item_list" model="ir.ui.view">
+        <field name="name">kjr.rental.item.list</field>
+        <field name="model">kjr.rental.item</field>
+        <field name="arch" type="xml">
+            <list string="Verleihartikel">
+                <field name="name"/>
+                <field name="category"/>
+                <field name="location"/>
+                <field name="quantity_total"/>
+                <field name="price_per_day"/>
+                <field name="price_member_per_day"/>
+                <field name="deposit"/>
+                <field name="website_published"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kjr_rental_item_form" model="ir.ui.view">
+        <field name="name">kjr.rental.item.form</field>
+        <field name="model">kjr.rental.item</field>
+        <field name="arch" type="xml">
+            <form string="Verleihartikel">
+                <sheet>
+                    <field name="image_1920" widget="image" class="oe_avatar"/>
+                    <div class="oe_title"><label for="name"/><h1><field name="name"/></h1></div>
+                    <group>
+                        <group string="Einordnung">
+                            <field name="code"/>
+                            <field name="category"/>
+                            <field name="location"/>
+                            <field name="quantity_total"/>
+                            <field name="icon"/>
+                            <field name="website_published"/>
+                        </group>
+                        <group string="Tarife &amp; Kaution">
+                            <field name="price_per_day"/>
+                            <field name="has_member_price"/>
+                            <field name="price_member_per_day" invisible="not has_member_price"/>
+                            <field name="deposit"/>
+                        </group>
+                    </group>
+                    <field name="description" placeholder="Beschreibung..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_kjr_rental_item_kanban" model="ir.ui.view">
+        <field name="name">kjr.rental.item.kanban</field>
+        <field name="model">kjr.rental.item</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="category">
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex">
+                            <i t-if="record.icon.raw_value" t-attf-class="fa #{record.icon.raw_value} fa-2x me-2 text-primary"/>
+                            <div>
+                                <strong><field name="name"/></strong>
+                                <div class="text-muted"><field name="location"/> · <field name="quantity_total"/> Stk.</div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="action_kjr_rental_item" model="ir.actions.act_window">
+        <field name="name">Verleihartikel</field>
+        <field name="res_model">kjr.rental.item</field>
+        <field name="view_mode">kanban,list,form</field>
+    </record>
+
+</odoo>

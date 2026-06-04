@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_participation" model="ir.actions.report">
+        <field name="name">Teilnahmebescheinigung</field>
+        <field name="model">event.registration</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">kjr_event.participation_certificate_template</field>
+        <field name="report_file">kjr_event.participation_certificate_template</field>
+        <field name="print_report_name">'Teilnahmebescheinigung_%s' % (object.name or '').replace(' ', '_')</field>
+        <field name="binding_model_id" ref="event.model_event_registration"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="participation_certificate_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h3 class="text-primary">Kreisjugendring Oberallgäu</h3>
+                        <hr/>
+                        <h2 class="text-center my-4">
+                            <t t-if="o.event_id.kjr_event_type == 'juleica_course'">Schulungsnachweis</t>
+                            <t t-else="">Teilnahmebescheinigung</t>
+                        </h2>
+                        <p class="mt-4">Hiermit wird bescheinigt, dass</p>
+                        <div class="text-center my-4">
+                            <h4><t t-esc="o.name or (o.partner_id.name or '')"/></h4>
+                        </div>
+                        <p>
+                            an der Veranstaltung <strong><t t-esc="o.event_id.name"/></strong>
+                            <t t-if="o.event_id.date_begin">
+                                vom <span t-field="o.event_id.date_begin" t-options='{"format":"dd.MM.yyyy"}'/>
+                                bis <span t-field="o.event_id.date_end" t-options='{"format":"dd.MM.yyyy"}'/>
+                            </t>
+                            teilgenommen hat.
+                        </p>
+                        <t t-if="o.event_is_juleica and o.juleica_issued">
+                            <div class="alert alert-success mt-3">
+                                Die Jugendleiter/innen-Card (Juleica) wurde ausgestellt
+                                <t t-if="o.juleica_valid_until">und ist gültig bis
+                                    <span t-field="o.juleica_valid_until" t-options='{"format":"dd.MM.yyyy"}'/></t>.
+                            </div>
+                        </t>
+                        <div class="row mt-5">
+                            <div class="col-6">
+                                <div style="border-top:1px solid #000; width:220px; margin-top:50px; padding-top:4px;">
+                                    <small>Kreisjugendring Oberallgäu</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

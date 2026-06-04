@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_kjr_jahresbericht" model="ir.actions.report">
+        <field name="name">Jahresbericht</field>
+        <field name="model">kjr.grant.budget</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">kjr_grant.kjr_jahresbericht_template</field>
+        <field name="report_file">kjr_grant.kjr_jahresbericht_template</field>
+        <field name="print_report_name">'Jahresbericht_KJR_%s' % object.year</field>
+        <field name="binding_model_id" ref="model_kjr_grant_budget"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="kjr_jahresbericht_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div class="row mb-4">
+                            <div class="col-8">
+                                <h2 class="text-primary">Kreisjugendring Oberallgäu</h2>
+                                <h3>Jahresbericht Zuschüsse <t t-esc="o.year"/></h3>
+                            </div>
+                            <div class="col-4 text-end">
+                                <p class="text-muted">
+                                    Oberallgäuer Platz 2, 87527 Sonthofen<br/>
+                                    Tel.: 08321 / 612-1111
+                                </p>
+                            </div>
+                        </div>
+                        <hr/>
+
+                        <!-- Budget-Übersicht -->
+                        <h4>Haushaltsmittel <t t-esc="o.year"/></h4>
+                        <table class="table table-sm table-bordered">
+                            <tr>
+                                <td>Budget gesamt</td>
+                                <td class="text-end fw-bold"><t t-esc="'%.2f €' % o.amount_total"/></td>
+                            </tr>
+                            <tr>
+                                <td>Bewilligte Zuschüsse</td>
+                                <td class="text-end"><t t-esc="'%.2f €' % o.amount_approved"/></td>
+                            </tr>
+                            <tr>
+                                <td>Ausgezahlt</td>
+                                <td class="text-end"><t t-esc="'%.2f €' % o.amount_paid"/></td>
+                            </tr>
+                            <tr class="table-info">
+                                <td>Verfügbar</td>
+                                <td class="text-end fw-bold"><t t-esc="'%.2f €' % o.amount_remaining"/></td>
+                            </tr>
+                            <tr>
+                                <td>Auslastung</td>
+                                <td class="text-end"><t t-esc="'%.1f %%' % o.usage_pct"/></td>
+                            </tr>
+                        </table>
+
+                        <!-- Aufschlüsselung nach Förderart -->
+                        <h4 class="mt-4">Bewilligte Zuschüsse nach Förderart</h4>
+                        <t t-set="grant_types" t-value="o.env['kjr.grant.type'].search([('active','=',True)])"/>
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Förderart</th>
+                                    <th class="text-end">Anträge</th>
+                                    <th class="text-end">Bewilligt (€)</th>
+                                    <th class="text-end">Ausgezahlt (€)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="grant_types" t-as="gt">
+                                    <t t-set="apps" t-value="o.env['kjr.grant.application'].search([
+                                        ('measure_year','=',o.year),
+                                        ('grant_type_id','=',gt.id),
+                                        ('state','in',('approved','paid')),
+                                    ])"/>
+                                    <t t-if="apps">
+                                        <tr>
+                                            <td><t t-esc="gt.name"/></td>
+                                            <td class="text-end"><t t-esc="len(apps)"/></td>
+                                            <td class="text-end"><t t-esc="'%.2f' % sum(a.grant_approved for a in apps)"/></td>
+                                            <td class="text-end"><t t-esc="'%.2f' % sum(a.grant_approved for a in apps if a.state == 'paid')"/></td>
+                                        </tr>
+                                    </t>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- Aufschlüsselung nach Verband -->
+                        <h4 class="mt-4">Bewilligte Zuschüsse nach Verband</h4>
+                        <t t-set="all_apps" t-value="o.env['kjr.grant.application'].search([
+                            ('measure_year','=',o.year),
+                            ('state','in',('approved','paid')),
+                        ])"/>
+                        <t t-set="partners" t-value="all_apps.mapped('partner_id')"/>
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Verband</th>
+                                    <th class="text-end">Anträge</th>
+                                    <th class="text-end">Bewilligt (€)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="partners" t-as="p">
+                                    <t t-set="p_apps" t-value="all_apps.filtered(lambda a: a.partner_id == p)"/>
+                                    <tr>
+                                        <td><t t-esc="p.name"/></td>
+                                        <td class="text-end"><t t-esc="len(p_apps)"/></td>
+                                        <td class="text-end"><t t-esc="'%.2f' % sum(a.grant_approved for a in p_apps)"/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <div class="mt-5 text-center text-muted small">
+                            <p>Erstellt am <t t-esc="context_timestamp(datetime.datetime.now()).strftime('%d.%m.%Y')"/> |
+                            Kreisjugendring Oberallgäu · K.d.ö.R. · Oberallgäuer Platz 2 · 87527 Sonthofen</p>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

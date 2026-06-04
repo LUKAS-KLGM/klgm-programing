@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_kjr_bescheid" model="ir.actions.report">
+        <field name="name">Bewilligungsbescheid</field>
+        <field name="model">kjr.grant.application</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">kjr_grant.kjr_bescheid_template</field>
+        <field name="report_file">kjr_grant.kjr_bescheid_template</field>
+        <field name="print_report_name">'Bescheid_%s' % object.name.replace('/', '-')</field>
+        <field name="binding_model_id" ref="model_kjr_grant_application"/>
+        <field name="binding_type">report</field>
+        <field name="group_ids" eval="[(4, ref('kjr_grant.group_kjr_reviewer'))]"/>
+    </record>
+
+</odoo>

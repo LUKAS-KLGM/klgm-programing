@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="mail_template_booking_confirmed" model="mail.template">
+            <field name="name">KJR Einrichtung: Buchung bestätigt</field>
+            <field name="model_id" ref="model_kjr_facility_booking"/>
+            <field name="subject">Buchungsbestätigung {{ object.name }} — {{ object.facility_id.name }}</field>
+            <field name="email_from">{{ (object.company_id.email or 'kreisjugendring@lra-oa.bayern.de') }}</field>
+            <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
+            <field name="body_html" type="html">
+<div style="margin:0;padding:0;">
+    <p>Hallo {{ object.partner_id.name }},</p>
+    <p>Ihre Buchung <strong>{{ object.name }}</strong> für <strong>{{ object.facility_id.name }}</strong> ist bestätigt.</p>
+    <table style="border-collapse:collapse;margin:10px 0;">
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Anreise:</strong></td><td>{{ object.check_in }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Abreise:</strong></td><td>{{ object.check_out }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Personen:</strong></td><td>{{ object.participant_count }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Gesamt (brutto):</strong></td><td>{{ '%.2f' % object.amount_total }} €</td></tr>
+    </table>
+    <p>Mit freundlichen Grüßen,<br/>Kreisjugendring Oberallgäu</p>
+</div>
+            </field>
+        </record>
+
+        <record id="mail_template_booking_deposit" model="mail.template">
+            <field name="name">KJR Einrichtung: Anzahlung</field>
+            <field name="model_id" ref="model_kjr_facility_booking"/>
+            <field name="subject">Anzahlung für Buchung {{ object.name }}</field>
+            <field name="email_from">{{ (object.company_id.email or 'kreisjugendring@lra-oa.bayern.de') }}</field>
+            <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
+            <field name="body_html" type="html">
+<div style="margin:0;padding:0;">
+    <p>Hallo {{ object.partner_id.name }},</p>
+    <p>für Ihre Buchung <strong>{{ object.name }}</strong> bitten wir um eine Anzahlung von
+    <strong>{{ '%.2f' % object.deposit_amount }} €</strong> ({{ '%.0f' % object.deposit_pct }} %).</p>
+    <p>Mit freundlichen Grüßen,<br/>Kreisjugendring Oberallgäu</p>
+</div>
+            </field>
+        </record>
+
+        <record id="mail_template_booking_cancelled" model="mail.template">
+            <field name="name">KJR Einrichtung: Buchung storniert</field>
+            <field name="model_id" ref="model_kjr_facility_booking"/>
+            <field name="subject">Stornierung Buchung {{ object.name }}</field>
+            <field name="email_from">{{ (object.company_id.email or 'kreisjugendring@lra-oa.bayern.de') }}</field>
+            <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
+            <field name="body_html" type="html">
+<div style="margin:0;padding:0;">
+    <p>Hallo {{ object.partner_id.name }},</p>
+    <p>Ihre Buchung <strong>{{ object.name }}</strong> für {{ object.facility_id.name }} wurde storniert.</p>
+    <p>Bei Rückfragen wenden Sie sich an die KJR-Geschäftsstelle.</p>
+    <p>Mit freundlichen Grüßen,<br/>Kreisjugendring Oberallgäu</p>
+</div>
+            </field>
+        </record>
+
+        <record id="mail_template_booking_reminder" model="mail.template">
+            <field name="name">KJR Einrichtung: Erinnerung Anreise</field>
+            <field name="model_id" ref="model_kjr_facility_booking"/>
+            <field name="subject">Erinnerung: Anreise {{ object.facility_id.name }} am {{ object.check_in }}</field>
+            <field name="email_from">{{ (object.company_id.email or 'kreisjugendring@lra-oa.bayern.de') }}</field>
+            <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
+            <field name="body_html" type="html">
+<div style="margin:0;padding:0;">
+    <p>Hallo {{ object.partner_id.name }},</p>
+    <p>in 14 Tagen ({{ object.check_in }}) beginnt Ihr Aufenthalt in <strong>{{ object.facility_id.name }}</strong>.</p>
+    <p>Wir freuen uns auf Ihre Gruppe!<br/>Kreisjugendring Oberallgäu</p>
+</div>
+            </field>
+        </record>
+
+    </data>
+</odoo>

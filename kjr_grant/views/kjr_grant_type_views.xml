@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_kjr_grant_type_list" model="ir.ui.view">
+        <field name="name">kjr.grant.type.list</field>
+        <field name="model">kjr.grant.type</field>
+        <field name="arch" type="xml">
+            <list string="Förderarten" editable="top" decoration-muted="not active">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="rate_per_tn_day" string="€/TN/Tag"/>
+                <field name="rate_per_tn_single" string="€/TN (einmalig)"/>
+                <field name="max_amount" string="Max. (€)"/>
+                <field name="max_per_year" string="Max./Jahr"/>
+                <field name="juleica_bonus"/>
+                <field name="active" widget="toggle_button"/>
+                <field name="application_count" string="Anträge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kjr_grant_type_form" model="ir.ui.view">
+        <field name="name">kjr.grant.type.form</field>
+        <field name="model">kjr.grant.type</field>
+        <field name="arch" type="xml">
+            <form string="Förderart">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="z. B. Freizeitmaßnahme eintägig"/></h1>
+                    </div>
+                    <group>
+                        <group string="Grunddaten">
+                            <field name="code"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                            <field name="allow_private_account"/>
+                        </group>
+                        <group string="Berechnungsparameter">
+                            <field name="rate_per_tn_day"/>
+                            <field name="rate_per_tn_single"/>
+                            <field name="max_amount"/>
+                            <field name="max_cofinancing_pct"/>
+                            <field name="max_per_year"/>
+                            <field name="juleica_bonus"/>
+                        </group>
+                    </group>
+                    <group string="Förderregeln &amp; Schwellenwerte (KJR-OA)">
+                        <group>
+                            <field name="leader_ratio"/>
+                            <field name="juleica_uplift_pct" invisible="not juleica_bonus"/>
+                            <field name="max_external_pct"/>
+                        </group>
+                        <group>
+                            <field name="min_age"/>
+                            <field name="max_age"/>
+                            <field name="min_days"/>
+                            <field name="max_days"/>
+                        </group>
+                    </group>
+                    <group string="Jugendleiterschulung — nur § 4.4" invisible="code != '4_4'">
+                        <group>
+                            <field name="jl_pct_no_juleica"/>
+                            <field name="jl_max_no_juleica"/>
+                        </group>
+                        <group>
+                            <field name="jl_pct_with_juleica"/>
+                            <field name="jl_max_with_juleica"/>
+                        </group>
+                    </group>
+                    <group string="Referenten- und Sachkosten — § 4.3 / § 4.6"
+                           invisible="code not in ['4_3', '4_6']">
+                        <group>
+                            <field name="referee_pct"/>
+                            <field name="referee_max"/>
+                        </group>
+                        <group>
+                            <field name="material_pct"/>
+                            <field name="material_max"/>
+                        </group>
+                    </group>
+                    <group string="Pflichtdokumente">
+                        <field name="requires_tn_list"/>
+                        <field name="requires_report"/>
+                        <field name="requires_receipt"/>
+                        <field name="requires_other_docs"
+                               placeholder="z. B. Kopie Juleica, Programm-Vereinbarung"/>
+                    </group>
+                    <group string="Buchhaltung">
+                        <field name="journal_id"/>
+                        <field name="expense_account_id"/>
+                        <field name="liability_account_id"/>
+                        <field name="interest_account_id"/>
+                        <field name="analytic_account_id"/>
+                    </group>
+                    <group string="Mindestanforderungen">
+                        <field name="min_duration_hours"/>
+                        <field name="min_participants"/>
+                    </group>
+                    <group string="Beschreibung für Antragsteller (Portal)">
+                        <field name="description" nolabel="1"
+                               placeholder="Diese Beschreibung erscheint im Online-Portal."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kjr_grant_type" model="ir.actions.act_window">
+        <field name="name">Förderarten</field>
+        <field name="res_model">kjr.grant.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

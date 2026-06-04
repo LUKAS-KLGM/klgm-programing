@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_kjr_facility_list" model="ir.ui.view">
+        <field name="name">kjr.facility.list</field>
+        <field name="model">kjr.facility</field>
+        <field name="arch" type="xml">
+            <list string="Einrichtungen">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="facility_type"/>
+                <field name="city"/>
+                <field name="capacity"/>
+                <field name="bed_total" string="Betten"/>
+                <field name="booking_count" string="Buchungen"/>
+                <field name="website_published"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kjr_facility_form" model="ir.ui.view">
+        <field name="name">kjr.facility.form</field>
+        <field name="model">kjr.facility</field>
+        <field name="arch" type="xml">
+            <form string="Einrichtung">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_view_bookings" class="oe_stat_button" icon="fa-calendar">
+                            <field name="booking_count" widget="statinfo" string="Buchungen"/>
+                        </button>
+                    </div>
+                    <field name="image_1920" widget="image" class="oe_avatar"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="z. B. Jugendhaus Diepolz"/></h1>
+                    </div>
+                    <group>
+                        <group string="Eckdaten">
+                            <field name="code"/>
+                            <field name="facility_type"/>
+                            <field name="capacity"/>
+                            <field name="bed_total"/>
+                            <field name="supervision_ratio"/>
+                        </group>
+                        <group string="Adresse &amp; Web">
+                            <field name="street"/>
+                            <field name="zip"/>
+                            <field name="city"/>
+                            <field name="responsible_user_id"/>
+                            <field name="website_published"/>
+                            <field name="color" widget="color_picker"/>
+                        </group>
+                    </group>
+                    <field name="description_short" placeholder="Kurzbeschreibung für die Liste/Website"/>
+                    <notebook>
+                        <page string="Räume / Betten" name="rooms">
+                            <field name="room_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="capacity"/>
+                                    <field name="housekeeping_state"/>
+                                    <field name="active"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Ausstattung" name="equipment">
+                            <field name="equipment_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="category"/>
+                                    <field name="quantity"/>
+                                    <field name="price_per_day"/>
+                                    <field name="icon"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Beschreibung" name="desc">
+                            <field name="description"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_kjr_facility_kanban" model="ir.ui.view">
+        <field name="name">kjr.facility.kanban</field>
+        <field name="model">kjr.facility</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <templates>
+                    <t t-name="card">
+                        <div class="o_kanban_image_fill_left" t-if="record.image_1920.raw_value">
+                            <field name="image_1920" widget="image" options="{'zoom': true}"/>
+                        </div>
+                        <div>
+                            <strong><field name="name"/></strong>
+                            <div class="text-muted"><field name="city"/></div>
+                            <div><i class="fa fa-bed me-1"/><field name="bed_total"/> Betten · max. <field name="capacity"/> Pers.</div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="action_kjr_facility" model="ir.actions.act_window">
+        <field name="name">Einrichtungen</field>
+        <field name="res_model">kjr.facility</field>
+        <field name="view_mode">kanban,list,form</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="cron_kjr_deadline_reminder" model="ir.cron">
+            <field name="name">KJR: Einreichfrist-Erinnerung</field>
+            <field name="model_id" ref="model_kjr_grant_application"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_deadline_reminder()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="cron_kjr_juleica_expiry" model="ir.cron">
+            <field name="name">KJR: Juleica-Ablauf-Erinnerung</field>
+            <field name="model_id" ref="model_kjr_juleica"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_juleica_expiry_reminder()</field>
+            <field name="interval_number">7</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="cron_kjr_participant_anonymize" model="ir.cron">
+            <field name="name">KJR: Teilnehmerdaten anonymisieren (DSGVO)</field>
+            <field name="model_id" ref="model_kjr_grant_participant"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_anonymize_expired()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">months</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Search -->
+    <record id="view_kjr_grant_application_search" model="ir.ui.view">
+        <field name="name">kjr.grant.application.search</field>
+        <field name="model">kjr.grant.application</field>
+        <field name="arch" type="xml">
+            <search string="Zuschussanträge">
+                <filter string="Entwurf"      name="draft"     domain="[('state','=','draft')]"/>
+                <filter string="Eingereicht"  name="submitted" domain="[('state','=','submitted')]"/>
+                <filter string="In Prüfung"   name="in_review" domain="[('state','=','in_review')]"/>
+                <filter string="Bewilligt"    name="approved"  domain="[('state','=','approved')]"/>
+                <filter string="Ausgezahlt"   name="paid"      domain="[('state','=','paid')]"/>
+                <filter string="Abgelehnt"    name="rejected"  domain="[('state','=','rejected')]"/>
+                <filter string="Dieses Jahr" name="this_year"
+                        domain="[('measure_year','=',context_today().year)]"/>
+                <filter string="Einreichfrist überschritten" name="overdue"
+                        domain="[('state','=','draft'),('submission_deadline','&lt;',context_today())]"/>
+                <filter string="Antragsteller" name="group_partner" context="{'group_by':'partner_id'}"/>
+                <filter string="Förderart"     name="group_type"    context="{'group_by':'grant_type_id'}"/>
+                <filter string="Status"        name="group_state"   context="{'group_by':'state'}"/>
+                <filter string="Jahr"          name="group_year"    context="{'group_by':'measure_year'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- List -->
+    <record id="view_kjr_grant_application_list" model="ir.ui.view">
+        <field name="name">kjr.grant.application.list</field>
+        <field name="model">kjr.grant.application</field>
+        <field name="arch" type="xml">
+            <list string="Zuschussanträge"
+                  decoration-info="state == 'draft'"
+                  decoration-primary="state == 'submitted'"
+                  decoration-warning="state == 'in_review'"
+                  decoration-success="state in ('approved','paid')"
+                  decoration-muted="state == 'rejected'">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="grant_type_id"/>
+                <field name="measure_name"/>
+                <field name="measure_start"/>
+                <field name="measure_end"/>
+                <field name="tn_count" string="TN"/>
+                <field name="grant_calculated" string="Berechnet (€)"/>
+                <field name="grant_approved" string="Bewilligt (€)"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-primary="state == 'submitted'"
+                       decoration-warning="state == 'in_review'"
+                       decoration-success="state in ('approved','paid')"
+                       decoration-danger="state == 'rejected'"/>
+                <field name="date_submitted"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Kanban -->
+    <record id="view_kjr_grant_application_kanban" model="ir.ui.view">
+        <field name="name">kjr.grant.application.kanban</field>
+        <field name="model">kjr.grant.application</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state">
+                <templates>
+                    <t t-name="card">
+                        <field name="name" bold="1"/>
+                        <field name="partner_id"/>
+                        <field name="measure_name"/>
+                        <div class="text-muted small">
+                            <field name="measure_start"/> – <field name="measure_end"/>
+                        </div>
+                        <field name="grant_type_id" widget="badge"/>
+                        <div class="mt-1 fw-bold">
+                            <t t-if="record.grant_approved.value">
+                                Bewilligt: <field name="grant_approved"/> €
+                            </t>
+                            <t t-else="">
+                                Berechnet: <field name="grant_calculated"/> €
+                            </t>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Form -->
+    <record id="view_kjr_grant_application_form" model="ir.ui.view">
+        <field name="name">kjr.grant.application.form</field>
+        <field name="model">kjr.grant.application</field>
+        <field name="arch" type="xml">
+            <form string="Zuschussantrag">
+                <header>
+                    <button name="action_submit" string="Einreichen" type="object"
+                            class="btn-primary" invisible="state != 'draft'"
+                            confirm="Antrag wirklich einreichen? Eine Vollständigkeitsprüfung wird durchgeführt."/>
+                    <button name="action_start_review" string="Zur Prüfung annehmen" type="object"
+                            invisible="state != 'submitted'"/>
+                    <button name="action_approve" string="Bewilligen" type="object"
+                            class="btn-success" groups="kjr_grant.group_kjr_reviewer"
+                            invisible="state not in ('submitted','in_review')"
+                            confirm="Antrag wirklich bewilligen?"/>
+                    <button name="action_reject" string="Ablehnen" type="object"
+                            class="btn-danger" groups="kjr_grant.group_kjr_reviewer"
+                            invisible="state not in ('submitted','in_review')"/>
+                    <button name="action_mark_paid" string="Als ausgezahlt markieren" type="object"
+                            groups="kjr_grant.group_kjr_reviewer" invisible="state != 'approved'"/>
+                    <button name="action_create_settlement" string="Abrechnung erstellen" type="object"
+                            groups="kjr_grant.group_kjr_reviewer"
+                            invisible="state not in ('approved','paid') or settlement_count &gt; 0"/>
+                    <button name="action_print_bescheid" string="Bescheid drucken"
+                            type="object" icon="fa-print"
+                            invisible="state not in ('approved','paid')"/>
+                    <button name="action_send_signature" string="Zur Unterschrift senden"
+                            type="object" icon="fa-pencil-square-o"
+                            class="btn-warning"
+                            invisible="state not in ('draft','submitted','approved')"/>
+                    <button name="action_reset_draft" string="Zurück auf Entwurf" type="object"
+                            groups="kjr_grant.group_kjr_manager"
+                            invisible="state in ('draft','paid')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,submitted,in_review,approved,paid"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_view_settlements"
+                                class="oe_stat_button" icon="fa-calculator"
+                                invisible="settlement_count == 0">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value"><field name="settlement_count"/></span>
+                                <span class="o_stat_text">Abrechnungen</span>
+                            </div>
+                        </button>
+                        <button type="object" name="action_view_move"
+                                class="oe_stat_button" icon="fa-book"
+                                invisible="not move_id"
+                                groups="kjr_grant.group_kjr_reviewer">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Buchung</span>
+                            </div>
+                        </button>
+                        <button type="object" name="action_view_payment"
+                                class="oe_stat_button" icon="fa-money"
+                                invisible="not payment_id"
+                                groups="kjr_grant.group_kjr_reviewer">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Zahlung</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+
+                    <group>
+                        <group string="Antragsteller">
+                            <field name="partner_id" readonly="state not in ('draft',)"
+                                   options="{'no_create': True, 'no_quick_create': True}"/>
+                            <field name="contact_person" readonly="state not in ('draft','submitted')"/>
+                            <field name="contact_email"  readonly="state not in ('draft','submitted')"/>
+                            <field name="contact_phone"  readonly="state not in ('draft','submitted')"/>
+                        </group>
+                        <group string="Förderart">
+                            <field name="grant_type_id" readonly="state not in ('draft',)"
+                                   options="{'no_create': True}"/>
+                            <field name="grant_type_code" invisible="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Maßnahme" name="measure">
+                            <group>
+                                <group string="Maßnahme">
+                                    <field name="measure_name"     readonly="state not in ('draft','submitted')"/>
+                                    <field name="measure_location" readonly="state not in ('draft','submitted')"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Beginn">
+                                    <field name="measure_start"      readonly="state not in ('draft','submitted')"/>
+                                    <field name="measure_start_time"  readonly="state not in ('draft','submitted')"
+                                           widget="float_time"/>
+                                </group>
+                                <group string="Ende">
+                                    <field name="measure_end"        readonly="state not in ('draft','submitted')"/>
+                                    <field name="measure_end_time"    readonly="state not in ('draft','submitted')"
+                                           widget="float_time"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group>
+                                    <field name="measure_days"/>
+                                    <field name="submission_deadline" readonly="1"/>
+                                </group>
+                                <group string="Teilnehmer">
+                                    <field name="tn_count"          readonly="state not in ('draft','submitted')"/>
+                                    <field name="tn_leader_count"   readonly="state not in ('draft','submitted')"
+                                           string="Anzahl Gruppenleitung"/>
+                                    <field name="tn_leader_juleica" readonly="state not in ('draft','submitted')"/>
+                                    <field name="tn_external_count" readonly="state not in ('draft','submitted')"/>
+                                    <field name="tn_external_pct"   readonly="1"/>
+                                </group>
+                            </group>
+                            <group string="Maßnahmenbericht">
+                                <field name="measure_report" nolabel="1"
+                                       placeholder="Charakter, Inhalt und zeitlicher Ablauf der Maßnahme..."
+                                       readonly="state not in ('draft','submitted')"/>
+                            </group>
+                        </page>
+
+                        <page string="Teilnehmerliste" name="participants">
+                            <field name="participant_ids"
+                                   readonly="state not in ('draft','submitted')">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="birthdate"/>
+                                    <field name="age" optional="show"/>
+                                    <field name="zip_code" optional="show"/>
+                                    <field name="city"/>
+                                    <field name="is_leader"/>
+                                    <field name="has_juleica"/>
+                                    <field name="note" optional="hide"/>
+                                </list>
+                            </field>
+                            <group>
+                                <group>
+                                    <field name="participant_count" string="Einträge in TN-Liste"/>
+                                    <field name="tn_count" string="Gemeldete TN-Anzahl"/>
+                                    <field name="participant_consent"
+                                           readonly="state not in ('draft','submitted')"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Bankverbindung" name="bank">
+                            <group>
+                                <group string="Überweisung des Zuschusses soll erfolgen auf:">
+                                    <field name="payment_iban"            readonly="state not in ('draft','submitted')"/>
+                                    <field name="payment_account_holder"  readonly="state not in ('draft','submitted')"/>
+                                    <field name="payment_bic"             readonly="state not in ('draft','submitted')"/>
+                                    <field name="payment_bank"            readonly="state not in ('draft','submitted')"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Kostenaufstellung" name="finance">
+                            <group>
+                                <group string="Einnahmen">
+                                    <field name="income_tn_fees"      readonly="state not in ('draft','submitted')"/>
+                                    <field name="income_municipality"  readonly="state not in ('draft','submitted')"/>
+                                    <field name="income_association"   readonly="state not in ('draft','submitted')"/>
+                                    <field name="income_bjr"           readonly="state not in ('draft','submitted')"/>
+                                    <field name="income_other"         readonly="state not in ('draft','submitted')"/>
+                                    <field name="income_total"         readonly="1"/>
+                                </group>
+                                <group string="Förderfähige Kosten">
+                                    <field name="cost_accommodation" readonly="state not in ('draft','submitted')"/>
+                                    <field name="cost_transport"     readonly="state not in ('draft','submitted')"/>
+                                    <field name="cost_referees"      readonly="state not in ('draft','submitted')"/>
+                                    <field name="cost_allowances"    readonly="state not in ('draft','submitted')"/>
+                                    <field name="cost_materials"     readonly="state not in ('draft','submitted')"/>
+                                    <field name="cost_jl_fees"       readonly="state not in ('draft','submitted')"
+                                           invisible="grant_type_code != '4_4'"/>
+                                    <field name="cost_other"         readonly="state not in ('draft','submitted')"/>
+                                    <field name="cost_total"         readonly="1"/>
+                                </group>
+                            </group>
+                            <group>
+                                <field name="deficit" readonly="1"/>
+                            </group>
+                        </page>
+
+                        <page string="Zuschuss" name="grant">
+                            <group>
+                                <group string="Berechnung">
+                                    <field name="grant_calculated" readonly="1"/>
+                                </group>
+                                <group string="Bewilligung" groups="kjr_grant.group_kjr_reviewer">
+                                    <field name="grant_approved"/>
+                                    <field name="grant_override_reason"
+                                           invisible="grant_approved == grant_calculated or grant_approved == 0"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Bearbeitungsvermerke" name="internal" groups="kjr_grant.group_kjr_reviewer">
+                            <group>
+                                <group string="Bearbeitungsinfos">
+                                    <field name="reference_number"/>
+                                    <field name="reviewed_by"/>
+                                    <field name="date_submitted" readonly="1"/>
+                                    <field name="date_approved"  readonly="1" string="Zuschuss genehmigt am"/>
+                                    <field name="date_paid"      readonly="1"/>
+                                </group>
+                                <group string="Prüfung &amp; Zahlung">
+                                    <field name="sachlich_richtig"/>
+                                    <field name="payment_ordered"/>
+                                    <field name="payment_ordered_by" invisible="not payment_ordered"/>
+                                    <field name="payment_ordered_date" invisible="not payment_ordered"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Ablehnung" invisible="state != 'rejected'">
+                                    <field name="rejection_reason"/>
+                                </group>
+                            </group>
+                            <group string="Interne Notizen">
+                                <field name="note_internal" nolabel="1"
+                                       placeholder="Interne Notizen — nicht für Antragsteller sichtbar..."/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Graph -->
+    <record id="view_kjr_grant_application_graph" model="ir.ui.view">
+        <field name="name">kjr.grant.application.graph</field>
+        <field name="model">kjr.grant.application</field>
+        <field name="arch" type="xml">
+            <graph string="Zuschüsse Statistik" type="bar">
+                <field name="grant_type_id"/>
+                <field name="grant_approved" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Pivot -->
+    <record id="view_kjr_grant_application_pivot" model="ir.ui.view">
+        <field name="name">kjr.grant.application.pivot</field>
+        <field name="model">kjr.grant.application</field>
+        <field name="arch" type="xml">
+            <pivot string="Zuschüsse Auswertung">
+                <field name="measure_year" type="col"/>
+                <field name="grant_type_id" type="row"/>
+                <field name="grant_approved" type="measure"/>
+                <field name="grant_calculated" type="measure"/>
+                <field name="cost_total" type="measure"/>
+                <field name="tn_count" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_kjr_grant_application" model="ir.actions.act_window">
+        <field name="name">Zuschussanträge</field>
+        <field name="res_model">kjr.grant.application</field>
+        <field name="view_mode">list,kanban,form,graph,pivot</field>
+        <field name="view_id" ref="view_kjr_grant_application_list"/>
+        <field name="search_view_id" ref="view_kjr_grant_application_search"/>
+        <field name="context">{'search_default_this_year': 1}</field>
+    </record>
+
+    <record id="action_kjr_grant_application_view_list" model="ir.actions.act_window.view">
+        <field name="sequence">1</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_kjr_grant_application_list"/>
+        <field name="act_window_id" ref="action_kjr_grant_application"/>
+    </record>
+    <record id="action_kjr_grant_application_view_kanban" model="ir.actions.act_window.view">
+        <field name="sequence">2</field>
+        <field name="view_mode">kanban</field>
+        <field name="view_id" ref="view_kjr_grant_application_kanban"/>
+        <field name="act_window_id" ref="action_kjr_grant_application"/>
+    </record>
+    <record id="action_kjr_grant_application_view_form" model="ir.actions.act_window.view">
+        <field name="sequence">3</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_kjr_grant_application_form"/>
+        <field name="act_window_id" ref="action_kjr_grant_application"/>
+    </record>
+
+    <!-- Statistik Actions -->
+    <record id="action_kjr_grant_statistics" model="ir.actions.act_window">
+        <field name="name">Zuschüsse nach Förderart</field>
+        <field name="res_model">kjr.grant.application</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="domain">[('state', 'in', ('approved', 'paid'))]</field>
+        <field name="context">{'search_default_this_year': 1}</field>
+    </record>
+
+    <record id="action_kjr_grant_pivot" model="ir.actions.act_window">
+        <field name="name">Auswertung Zuschüsse</field>
+        <field name="res_model">kjr.grant.application</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="domain">[('state', 'not in', ('draft', 'rejected'))]</field>
+    </record>
+
+    <!-- Dashboard: Offene Anträge -->
+    <record id="action_kjr_dashboard_open" model="ir.actions.act_window">
+        <field name="name">Offene Anträge</field>
+        <field name="res_model">kjr.grant.application</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[('state', 'in', ('submitted', 'in_review'))]</field>
+        <field name="context">{'search_default_group_type': 1}</field>
+    </record>
+
+    <!-- Dashboard: Bewilligte zur Auszahlung -->
+    <record id="action_kjr_dashboard_to_pay" model="ir.actions.act_window">
+        <field name="name">Zur Auszahlung</field>
+        <field name="res_model">kjr.grant.application</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'approved'), ('payment_ordered', '=', False)]</field>
+    </record>
+
+    <!-- Dashboard: Fristablauf -->
+    <record id="action_kjr_dashboard_overdue" model="ir.actions.act_window">
+        <field name="name">Frist überschritten (Entwürfe)</field>
+        <field name="res_model">kjr.grant.application</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'draft'), ('submission_deadline', '&lt;', (context_today()).strftime('%Y-%m-%d'))]</field>
+    </record>
+
+</odoo>

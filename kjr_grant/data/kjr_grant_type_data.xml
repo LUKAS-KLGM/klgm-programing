@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate="1": Fördersätze sind im Backend pflegbar und sollen bei Modul-Updates
+         nicht auf die Auslieferungswerte zurückgesetzt werden. -->
+    <data noupdate="1">
+
+        <record id="grant_type_4_1a" model="kjr.grant.type">
+            <field name="name">Freizeitmaßnahme eintägig (§ 4.1)</field>
+            <field name="code">4_1a</field>
+            <field name="sequence">10</field>
+            <field name="rate_per_tn_single">5.0</field>
+            <field name="max_amount">250.0</field>
+            <field name="max_per_year">4</field>
+            <field name="max_cofinancing_pct">50.0</field>
+            <field name="juleica_bonus">False</field>
+            <field name="requires_tn_list">True</field>
+            <field name="requires_report">True</field>
+            <field name="requires_receipt">True</field>
+            <field name="min_duration_hours">4.0</field>
+            <field name="description">Fahrten, Lager und Maßnahmen mit Freizeitcharakter. Min. 4 Stunden Programm. Zuschuss: 5 € pro Teilnehmer, max. 250 €. Max. 4 Maßnahmen/Kalenderjahr.</field>
+        </record>
+
+        <record id="grant_type_4_1b" model="kjr.grant.type">
+            <field name="name">Freizeitmaßnahme mehrtägig (§ 4.1)</field>
+            <field name="code">4_1b</field>
+            <field name="sequence">20</field>
+            <field name="rate_per_tn_day">8.0</field>
+            <field name="max_amount">600.0</field>
+            <field name="max_per_year">4</field>
+            <field name="max_cofinancing_pct">50.0</field>
+            <field name="juleica_bonus">True</field>
+            <field name="requires_tn_list">True</field>
+            <field name="requires_report">True</field>
+            <field name="requires_receipt">True</field>
+            <field name="min_duration_hours">4.0</field>
+            <field name="min_days">2</field>
+            <field name="description">Mehrtägige Fahrten und Lager. Min. eine Übernachtung. Zuschuss: 8 € pro TN/Tag, max. 600 €. Jugendleiter mit Juleica erhalten +50 % Bonus. Max. 4 Maßnahmen/Jahr.</field>
+        </record>
+
+        <record id="grant_type_4_2" model="kjr.grant.type">
+            <field name="name">Verbandsspezifische Maßnahme (§ 4.2)</field>
+            <field name="code">4_2</field>
+            <field name="sequence">30</field>
+            <field name="rate_per_tn_day">4.0</field>
+            <field name="max_amount">400.0</field>
+            <field name="max_per_year">3</field>
+            <field name="max_cofinancing_pct">50.0</field>
+            <field name="juleica_bonus">False</field>
+            <field name="requires_tn_list">True</field>
+            <field name="requires_report">True</field>
+            <field name="requires_receipt">True</field>
+            <field name="min_duration_hours">4.0</field>
+            <field name="description">Maßnahmen die dem Verbandszweck dienen (z. B. Probentage, Sportwochenenden). Zuschuss: 4 € pro TN/Tag, max. 400 €. Max. 3 Maßnahmen/Jahr.</field>
+        </record>
+
+        <record id="grant_type_4_3" model="kjr.grant.type">
+            <field name="name">Außerschulische Jugendbildung (§ 4.3)</field>
+            <field name="code">4_3</field>
+            <field name="sequence">40</field>
+            <field name="rate_per_tn_day">7.0</field>
+            <field name="max_amount">600.0</field>
+            <field name="max_per_year">3</field>
+            <field name="max_cofinancing_pct">50.0</field>
+            <field name="juleica_bonus">False</field>
+            <field name="referee_pct">75.0</field>
+            <field name="referee_max">200.0</field>
+            <field name="material_pct">75.0</field>
+            <field name="material_max">150.0</field>
+            <field name="requires_tn_list">True</field>
+            <field name="requires_report">True</field>
+            <field name="requires_receipt">True</field>
+            <field name="min_duration_hours">6.0</field>
+            <field name="description">Bildungsveranstaltungen (politisch, sozial, kulturell, ökologisch etc.). 7 € pro TN/Tag + Referentenkosten bis 75 % (max. 200 €) + Sachkosten bis 75 % (max. 150 €). Min. 6 h/Tag. Max. 600 €. Max. 3/Jahr.</field>
+        </record>
+
+        <record id="grant_type_4_4" model="kjr.grant.type">
+            <field name="name">Jugendleiterschulung (§ 4.4)</field>
+            <field name="code">4_4</field>
+            <field name="sequence">50</field>
+            <field name="max_amount">75.0</field>
+            <field name="max_per_year">0</field>
+            <field name="max_cofinancing_pct">75.0</field>
+            <field name="juleica_bonus">True</field>
+            <field name="jl_pct_no_juleica">50.0</field>
+            <field name="jl_max_no_juleica">50.0</field>
+            <field name="jl_pct_with_juleica">75.0</field>
+            <field name="jl_max_with_juleica">75.0</field>
+            <field name="allow_private_account">True</field>
+            <field name="requires_tn_list">False</field>
+            <field name="requires_report">False</field>
+            <field name="requires_receipt">False</field>
+            <field name="requires_other_docs">TN-Bestätigung des Verbandes + Kopie Juleica (falls vorhanden)</field>
+            <field name="description">50 % der Selbstkosten (max. 50 €), mit Juleica: 75 % (max. 75 €). Kein Jahreslimit. Auszahlung auf Privatkonto möglich.</field>
+        </record>
+
+        <record id="grant_type_4_5" model="kjr.grant.type">
+            <field name="name">Internationale Jugendarbeit (§ 4.5)</field>
+            <field name="code">4_5</field>
+            <field name="sequence">60</field>
+            <field name="rate_per_tn_day">8.0</field>
+            <field name="max_amount">700.0</field>
+            <field name="max_per_year">0</field>
+            <field name="max_cofinancing_pct">50.0</field>
+            <field name="juleica_bonus">False</field>
+            <field name="requires_tn_list">True</field>
+            <field name="requires_report">True</field>
+            <field name="requires_receipt">True</field>
+            <field name="requires_other_docs">Programm-Vereinbarung mit Partnergruppe</field>
+            <field name="min_participants">8</field>
+            <field name="min_days">3</field>
+            <field name="description">Jugendbegegnungen mit ausländischen Gruppen. Min. 3 Tage, min. 8 TN. 8 € pro TN/Tag, max. 700 €/Jahr.</field>
+        </record>
+
+        <record id="grant_type_4_6" model="kjr.grant.type">
+            <field name="name">Geräte und Materialien (§ 4.6)</field>
+            <field name="code">4_6</field>
+            <field name="sequence">70</field>
+            <field name="max_amount">300.0</field>
+            <field name="max_per_year">0</field>
+            <field name="max_cofinancing_pct">50.0</field>
+            <field name="material_pct">50.0</field>
+            <field name="material_max">300.0</field>
+            <field name="requires_tn_list">False</field>
+            <field name="requires_report">False</field>
+            <field name="requires_receipt">True</field>
+            <field name="requires_other_docs">Rechnungen/Nachweise für Anschaffungen</field>
+            <field name="description">50 % der förderfähigen Kosten, max. 300 €/Jahr. Nur für Gegenstände die ausschließlich für Jugendarbeit genutzt werden.</field>
+        </record>
+
+        <record id="grant_type_4_7" model="kjr.grant.type">
+            <field name="name">Gruppenstarthilfe (§ 4.7)</field>
+            <field name="code">4_7</field>
+            <field name="sequence">80</field>
+            <field name="max_amount">150.0</field>
+            <field name="max_per_year">0</field>
+            <field name="max_cofinancing_pct">100.0</field>
+            <field name="requires_tn_list">False</field>
+            <field name="requires_report">False</field>
+            <field name="requires_receipt">False</field>
+            <field name="requires_other_docs">Formular Neugründung (Beilage KJR OA)</field>
+            <field name="description">Einmalige Starthilfe von 150 € für Neugründungen in Orten ohne bestehende Gruppe dieses Verbandes.</field>
+        </record>
+
+        <record id="grant_type_4_8a" model="kjr.grant.type">
+            <field name="name">Großveranstaltung >100 TN (§ 4.8a)</field>
+            <field name="code">4_8a</field>
+            <field name="sequence">90</field>
+            <field name="rate_per_tn_single">2.0</field>
+            <field name="max_amount">400.0</field>
+            <field name="max_per_year">0</field>
+            <field name="max_cofinancing_pct">50.0</field>
+            <field name="min_participants">100</field>
+            <field name="requires_tn_list">True</field>
+            <field name="requires_report">True</field>
+            <field name="requires_receipt">True</field>
+            <field name="description">Tagesveranstaltungen mit mehr als 100 TN, pädagogisch begründbar, Landkreisebene. 2 € pro TN, max. 400 €/Jahr.</field>
+        </record>
+
+        <record id="grant_type_4_8b" model="kjr.grant.type">
+            <field name="name">Traditionelle Veranstaltung (§ 4.8b)</field>
+            <field name="code">4_8b</field>
+            <field name="sequence">100</field>
+            <field name="rate_per_tn_single">2.5</field>
+            <field name="max_amount">75.0</field>
+            <field name="max_per_year">2</field>
+            <field name="max_cofinancing_pct">50.0</field>
+            <field name="requires_tn_list">True</field>
+            <field name="requires_report">False</field>
+            <field name="requires_receipt">True</field>
+            <field name="description">Weihnachts-, Nikolaus-, Faschingsfeiern und ähnliche Traditionsveranstaltungen. 2,50 € pro TN, max. 75 €/Veranstaltung. Max. 2/Jahr.</field>
+        </record>
+
+        <record id="grant_type_4_8c" model="kjr.grant.type">
+            <field name="name">Schwerpunktprojekt (§ 4.8c)</field>
+            <field name="code">4_8c</field>
+            <field name="sequence">110</field>
+            <field name="max_amount">300.0</field>
+            <field name="max_per_year">0</field>
+            <field name="max_cofinancing_pct">50.0</field>
+            <field name="requires_tn_list">True</field>
+            <field name="requires_report">True</field>
+            <field name="requires_receipt">True</field>
+            <field name="description">Projekte zu Schwerpunktthemen wie Integration, Inklusion etc. Max. 300 €. Höhere Förderung in Absprache mit KJR möglich.</field>
+        </record>
+
+        <record id="grant_type_4_9" model="kjr.grant.type">
+            <field name="name">Delegiertenförderung (§ 4.9)</field>
+            <field name="code">4_9</field>
+            <field name="sequence">120</field>
+            <field name="max_amount">300.0</field>
+            <field name="max_per_year">0</field>
+            <field name="max_cofinancing_pct">100.0</field>
+            <field name="requires_tn_list">False</field>
+            <field name="requires_report">False</field>
+            <field name="requires_receipt">True</field>
+            <field name="requires_other_docs">Fahrtkostennachweise / Reisekostenabrechnung</field>
+            <field name="description">Erstattung der Fahrtkosten von Delegierten (Reisekosten nach Bayer. Reisekostengesetz). Es werden die unter "Fahrtkosten" erfassten Kosten erstattet. HINWEIS: Erstattungsquote (%) und Höchstbetrag sind anhand der gültigen KJR-OA-Richtlinie zu prüfen/anzupassen.</field>
+        </record>
+
+    </data>
+</odoo>

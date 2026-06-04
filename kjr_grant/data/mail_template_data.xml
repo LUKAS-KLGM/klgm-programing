@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="mail_template_grant_submitted" model="mail.template">
+            <field name="name">KJR: Antrag eingereicht</field>
+            <field name="model_id" ref="model_kjr_grant_application"/>
+            <field name="subject">Zuschussantrag {{ object.name }} eingereicht</field>
+            <field name="email_from">{{ (object.company_id.email or 'kreisjugendring@lra-oa.bayern.de') }}</field>
+            <field name="email_to">{{ object.contact_email }}</field>
+            <field name="body_html" type="html">
+<div style="margin:0;padding:0;">
+    <p>Sehr geehrte/r {{ object.contact_person or 'Antragsteller/in' }},</p>
+    <p>Ihr Zuschussantrag <strong>{{ object.name }}</strong> wurde erfolgreich eingereicht.</p>
+    <table style="border-collapse:collapse;margin:10px 0;">
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Maßnahme:</strong></td><td>{{ object.measure_name }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Zeitraum:</strong></td><td>{{ object.measure_start }} – {{ object.measure_end }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Förderart:</strong></td><td>{{ object.grant_type_id.name }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Berechneter Zuschuss:</strong></td><td>{{ '%.2f' % object.grant_calculated }} €</td></tr>
+    </table>
+    <p>Wir werden Ihren Antrag schnellstmöglich bearbeiten. Sie können den Status
+    jederzeit in Ihrem Portal einsehen.</p>
+    <p>Mit freundlichen Grüßen,<br/>Kreisjugendring Oberallgäu</p>
+</div>
+            </field>
+        </record>
+
+        <record id="mail_template_grant_approved" model="mail.template">
+            <field name="name">KJR: Antrag bewilligt</field>
+            <field name="model_id" ref="model_kjr_grant_application"/>
+            <field name="subject">Zuschussantrag {{ object.name }} bewilligt</field>
+            <field name="email_from">{{ (object.company_id.email or 'kreisjugendring@lra-oa.bayern.de') }}</field>
+            <field name="email_to">{{ object.contact_email }}</field>
+            <field name="body_html" type="html">
+<div style="margin:0;padding:0;">
+    <p>Sehr geehrte/r {{ object.contact_person or 'Antragsteller/in' }},</p>
+    <p>Ihr Zuschussantrag <strong>{{ object.name }}</strong> wurde <strong>bewilligt</strong>.</p>
+    <table style="border-collapse:collapse;margin:10px 0;">
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Maßnahme:</strong></td><td>{{ object.measure_name }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Bewilligter Zuschuss:</strong></td><td><strong>{{ '%.2f' % object.grant_approved }} €</strong></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Bewilligt am:</strong></td><td>{{ object.date_approved }}</td></tr>
+    </table>
+    <p>Der Bescheid ist Ihrem Antrag im Portal beigefügt. Die Auszahlung erfolgt
+    auf das angegebene Konto.</p>
+    <p>Belege sind 5 Jahre zum Zwecke der Nachprüfung aufzubewahren.</p>
+    <p>Mit freundlichen Grüßen,<br/>Kreisjugendring Oberallgäu</p>
+</div>
+            </field>
+        </record>
+
+        <record id="mail_template_grant_rejected" model="mail.template">
+            <field name="name">KJR: Antrag abgelehnt</field>
+            <field name="model_id" ref="model_kjr_grant_application"/>
+            <field name="subject">Zuschussantrag {{ object.name }} abgelehnt</field>
+            <field name="email_from">{{ (object.company_id.email or 'kreisjugendring@lra-oa.bayern.de') }}</field>
+            <field name="email_to">{{ object.contact_email }}</field>
+            <field name="body_html" type="html">
+<div style="margin:0;padding:0;">
+    <p>Sehr geehrte/r {{ object.contact_person or 'Antragsteller/in' }},</p>
+    <p>Ihr Zuschussantrag <strong>{{ object.name }}</strong> wurde leider <strong>abgelehnt</strong>.</p>
+    <table style="border-collapse:collapse;margin:10px 0;">
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Maßnahme:</strong></td><td>{{ object.measure_name }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Begründung:</strong></td><td>{{ object.rejection_reason or 'Keine Angabe' }}</td></tr>
+    </table>
+    <p>Bei Rückfragen wenden Sie sich bitte an die KJR-Geschäftsstelle
+    (Tel. 08321/612-1117).</p>
+    <p>Mit freundlichen Grüßen,<br/>Kreisjugendring Oberallgäu</p>
+</div>
+            </field>
+        </record>
+
+    </data>
+</odoo>

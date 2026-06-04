@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_kjr_facility_root" name="KJR Einrichtungen" sequence="98"
+              web_icon="kjr_facility,static/description/icon.png"/>
+
+    <menuitem id="menu_kjr_facility_bookings" name="Buchungen"
+              parent="menu_kjr_facility_root" action="action_kjr_booking" sequence="10"/>
+
+    <menuitem id="menu_kjr_facility_facilities" name="Einrichtungen"
+              parent="menu_kjr_facility_root" action="action_kjr_facility" sequence="20"/>
+
+    <menuitem id="menu_kjr_facility_config" name="Konfiguration"
+              parent="menu_kjr_facility_root" sequence="90"
+              groups="kjr_facility.group_kjr_facility_manager"/>
+    <menuitem id="menu_kjr_facility_tariffs" name="Tarife"
+              parent="menu_kjr_facility_config" action="action_kjr_facility_tariff" sequence="10"
+              groups="kjr_facility.group_kjr_facility_manager"/>
+
+</odoo>

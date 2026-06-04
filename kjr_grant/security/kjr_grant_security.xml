@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="privilege_kjr" model="res.groups.privilege">
+            <field name="name">KJR Zuschussverwaltung</field>
+        </record>
+
+        <!-- Gruppe: Antragsteller (Portal-User mit KJR-Verband) -->
+        <record id="group_kjr_applicant" model="res.groups">
+            <field name="name">Antragsteller</field>
+            <field name="privilege_id" ref="privilege_kjr"/>
+        </record>
+
+        <!-- Gruppe: Sachbearbeiter (KJR-Mitarbeiter) -->
+        <record id="group_kjr_reviewer" model="res.groups">
+            <field name="name">Sachbearbeiter</field>
+            <field name="privilege_id" ref="privilege_kjr"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+
+        <!-- Gruppe: Administrator (Förderarten ändern, alles sehen) -->
+        <record id="group_kjr_manager" model="res.groups">
+            <field name="name">Administrator</field>
+            <field name="privilege_id" ref="privilege_kjr"/>
+            <field name="implied_ids" eval="[(4, ref('group_kjr_reviewer'))]"/>
+        </record>
+
+        <!-- ── Record Rules: kjr.grant.application ───────────────────────── -->
+
+        <record id="rule_kjr_grant_applicant_own" model="ir.rule">
+            <field name="name">KJR: Antragsteller sieht nur eigene Anträge</field>
+            <field name="model_id" ref="model_kjr_grant_application"/>
+            <field name="groups" eval="[(4, ref('group_kjr_applicant'))]"/>
+            <field name="domain_force">[('partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_kjr_grant_portal_own" model="ir.rule">
+            <field name="name">KJR: Portal-User sieht nur eigene Anträge</field>
+            <field name="model_id" ref="model_kjr_grant_application"/>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+            <field name="domain_force">[('partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_kjr_grant_reviewer_all" model="ir.rule">
+            <field name="name">KJR: Sachbearbeiter sieht alle Anträge</field>
+            <field name="model_id" ref="model_kjr_grant_application"/>
+            <field name="groups" eval="[(4, ref('group_kjr_reviewer'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- ── Record Rules: kjr.grant.settlement ────────────────────────── -->
+
+        <record id="rule_kjr_settlement_applicant_own" model="ir.rule">
+            <field name="name">KJR: Antragsteller sieht nur eigene Abrechnungen</field>
+            <field name="model_id" ref="model_kjr_grant_settlement"/>
+            <field name="groups" eval="[(4, ref('group_kjr_applicant'))]"/>
+            <field name="domain_force">[('partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_kjr_settlement_portal_own" model="ir.rule">
+            <field name="name">KJR: Portal-User sieht nur eigene Abrechnungen</field>
+            <field name="model_id" ref="model_kjr_grant_settlement"/>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+            <field name="domain_force">[('partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_kjr_settlement_reviewer_all" model="ir.rule">
+            <field name="name">KJR: Sachbearbeiter sieht alle Abrechnungen</field>
+            <field name="model_id" ref="model_kjr_grant_settlement"/>
+            <field name="groups" eval="[(4, ref('group_kjr_reviewer'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- ── Record Rules: kjr.grant.participant (DSGVO: Daten teils Minderjähriger) ─ -->
+
+        <record id="rule_kjr_participant_applicant_own" model="ir.rule">
+            <field name="name">KJR: Antragsteller sieht nur eigene Teilnehmer</field>
+            <field name="model_id" ref="model_kjr_grant_participant"/>
+            <field name="groups" eval="[(4, ref('group_kjr_applicant'))]"/>
+            <field name="domain_force">[('application_id.partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="rule_kjr_participant_portal_own" model="ir.rule">
+            <field name="name">KJR: Portal-User sieht nur eigene Teilnehmer</field>
+            <field name="model_id" ref="model_kjr_grant_participant"/>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+            <field name="domain_force">[('application_id.partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_kjr_participant_reviewer_all" model="ir.rule">
+            <field name="name">KJR: Sachbearbeiter sieht alle Teilnehmer</field>
+            <field name="model_id" ref="model_kjr_grant_participant"/>
+            <field name="groups" eval="[(4, ref('group_kjr_reviewer'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

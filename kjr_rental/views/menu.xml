@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_kjr_rental_root" name="KJR Verleih" sequence="97"
+              web_icon="kjr_rental,static/description/icon.png"/>
+    <menuitem id="menu_kjr_rental_orders" name="Ausleihen"
+              parent="menu_kjr_rental_root" action="action_kjr_rental_order" sequence="10"/>
+    <menuitem id="menu_kjr_rental_items" name="Artikel"
+              parent="menu_kjr_rental_root" action="action_kjr_rental_item" sequence="20"/>
+</odoo>

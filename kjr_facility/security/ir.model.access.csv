@@ -1,0 +1,14 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_kjr_facility_user,kjr.facility user,model_kjr_facility,kjr_facility.group_kjr_facility_user,1,0,0,0
+access_kjr_facility_manager,kjr.facility manager,model_kjr_facility,kjr_facility.group_kjr_facility_manager,1,1,1,1
+access_kjr_facility_portal,kjr.facility portal,model_kjr_facility,base.group_portal,1,0,0,0
+access_kjr_facility_room_user,kjr.facility.room user,model_kjr_facility_room,kjr_facility.group_kjr_facility_user,1,1,1,0
+access_kjr_facility_room_manager,kjr.facility.room manager,model_kjr_facility_room,kjr_facility.group_kjr_facility_manager,1,1,1,1
+access_kjr_facility_equipment_user,kjr.facility.equipment user,model_kjr_facility_equipment,kjr_facility.group_kjr_facility_user,1,0,0,0
+access_kjr_facility_equipment_manager,kjr.facility.equipment manager,model_kjr_facility_equipment,kjr_facility.group_kjr_facility_manager,1,1,1,1
+access_kjr_facility_equipment_portal,kjr.facility.equipment portal,model_kjr_facility_equipment,base.group_portal,1,0,0,0
+access_kjr_facility_tariff_user,kjr.facility.tariff user,model_kjr_facility_tariff,kjr_facility.group_kjr_facility_user,1,0,0,0
+access_kjr_facility_tariff_manager,kjr.facility.tariff manager,model_kjr_facility_tariff,kjr_facility.group_kjr_facility_manager,1,1,1,1
+access_kjr_facility_booking_user,kjr.facility.booking user,model_kjr_facility_booking,kjr_facility.group_kjr_facility_user,1,1,1,0
+access_kjr_facility_booking_manager,kjr.facility.booking manager,model_kjr_facility_booking,kjr_facility.group_kjr_facility_manager,1,1,1,1
+access_kjr_facility_booking_portal,kjr.facility.booking portal,model_kjr_facility_booking,base.group_portal,1,0,0,0

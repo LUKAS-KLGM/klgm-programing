@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_kjr_facility_tariff_list" model="ir.ui.view">
+        <field name="name">kjr.facility.tariff.list</field>
+        <field name="model">kjr.facility.tariff</field>
+        <field name="arch" type="xml">
+            <list string="Tarife" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="tariff_type"/>
+                <field name="facility_id"/>
+                <field name="price_per_person_night"/>
+                <field name="meal_full"/>
+                <field name="tax_id"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kjr_facility_tariff_form" model="ir.ui.view">
+        <field name="name">kjr.facility.tariff.form</field>
+        <field name="model">kjr.facility.tariff</field>
+        <field name="arch" type="xml">
+            <form string="Tarif">
+                <sheet>
+                    <div class="oe_title"><label for="name"/><h1><field name="name"/></h1></div>
+                    <group>
+                        <group string="Zuordnung">
+                            <field name="tariff_type"/>
+                            <field name="facility_id"/>
+                            <field name="active"/>
+                            <field name="tax_id"/>
+                        </group>
+                        <group string="Preise">
+                            <field name="price_per_person_night"/>
+                            <field name="price_flat_per_night"/>
+                            <field name="meal_breakfast"/>
+                            <field name="meal_half"/>
+                            <field name="meal_full"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-warning" role="alert">
+                        Steuerlich final zu prüfen: § 4 Nr. 23 UStG (Befreiung) bzw. § 68 Nr. 8 AO
+                        (7 %, Zweckbetrieb) für Jugendgruppen, 19 % bei kommerzieller Nutzung.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kjr_facility_tariff" model="ir.actions.act_window">
+        <field name="name">Tarife</field>
+        <field name="res_model">kjr.facility.tariff</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

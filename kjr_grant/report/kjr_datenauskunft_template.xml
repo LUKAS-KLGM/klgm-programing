@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_report_kjr_datenauskunft" model="ir.actions.report">
+        <field name="name">KJR-Datenauskunft (DSGVO)</field>
+        <field name="model">res.partner</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">kjr_grant.kjr_datenauskunft_template</field>
+        <field name="report_file">kjr_grant.kjr_datenauskunft_template</field>
+        <field name="print_report_name">'KJR-Datenauskunft_%s' % (object.name or '').replace(' ', '_')</field>
+        <field name="binding_model_id" ref="base.model_res_partner"/>
+        <field name="binding_type">report</field>
+        <field name="group_ids" eval="[(4, ref('kjr_grant.group_kjr_reviewer'))]"/>
+    </record>
+
+    <template id="kjr_datenauskunft_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h3 class="text-primary">Kreisjugendring Oberallgäu</h3>
+                        <hr/>
+                        <h2 class="text-center my-4">Datenauskunft nach Art. 15 DSGVO</h2>
+                        <p>
+                            Auskunft über die beim Kreisjugendring Oberallgäu im Modul „Zuschussverwaltung"
+                            gespeicherten personenbezogenen Daten zu:
+                        </p>
+
+                        <h5 class="mt-3">Stammdaten</h5>
+                        <table class="table table-sm table-bordered">
+                            <tr><td style="width:30%">Name</td><td><t t-esc="o.name"/></td></tr>
+                            <tr><td>E-Mail</td><td><t t-esc="o.email or '—'"/></td></tr>
+                            <tr><td>Telefon</td><td><t t-esc="o.phone or '—'"/></td></tr>
+                            <tr><td>Adresse</td><td><t t-esc="o.street or ''"/> <t t-esc="o.zip or ''"/> <t t-esc="o.city or ''"/></td></tr>
+                            <t t-if="o.is_kjr_member">
+                                <tr><td>KJR-Mitgliedsverband</td><td>Ja (<t t-esc="o.kjr_member_number or '—'"/>)</td></tr>
+                            </t>
+                        </table>
+
+                        <t t-if="o.kjr_juleica_ids">
+                            <h5 class="mt-4">Juleica-Karten</h5>
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr><th>Kartennummer</th><th>Ausgestellt</th><th>Gültig bis</th><th>Status</th></tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="o.kjr_juleica_ids" t-as="jl">
+                                        <tr>
+                                            <td><t t-esc="jl.card_number or '—'"/></td>
+                                            <td><span t-field="jl.issue_date" t-options='{"format":"dd.MM.yyyy"}'/></td>
+                                            <td><span t-field="jl.expiry_date" t-options='{"format":"dd.MM.yyyy"}'/></td>
+                                            <td><t t-esc="dict(jl._fields['state'].selection).get(jl.state)"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </t>
+
+                        <t t-if="o.kjr_grant_ids">
+                            <h5 class="mt-4">Zuschussanträge (als Antragsteller-Organisation)</h5>
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr><th>Antrag</th><th>Maßnahme</th><th>Datum</th><th>Status</th><th class="text-end">Bewilligt (€)</th></tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="o.kjr_grant_ids" t-as="g">
+                                        <tr>
+                                            <td><t t-esc="g.name"/></td>
+                                            <td><t t-esc="g.measure_name"/></td>
+                                            <td><span t-field="g.measure_start" t-options='{"format":"dd.MM.yyyy"}'/></td>
+                                            <td><t t-esc="dict(g._fields['state'].selection).get(g.state)"/></td>
+                                            <td class="text-end"><t t-esc="'%.2f' % g.grant_approved"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </t>
+
+                        <t t-if="not o.kjr_juleica_ids and not o.kjr_grant_ids">
+                            <div class="alert alert-info">Es sind keine weiteren KJR-Bewegungsdaten zu dieser Person/Organisation gespeichert.</div>
+                        </t>
+
+                        <p class="small text-muted mt-4">
+                            Erstellt am <t t-esc="context_timestamp(datetime.datetime.now()).strftime('%d.%m.%Y')"/>.
+                            Hinweis: Teilnehmerlisten einzelner Maßnahmen werden als Freitext geführt und sind
+                            nicht personenscharf verknüpft; sie werden nach Ablauf der Aufbewahrungsfrist anonymisiert.
+                        </p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

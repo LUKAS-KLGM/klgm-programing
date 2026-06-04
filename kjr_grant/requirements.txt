@@ -1,0 +1,1 @@
+# Keine externen Pakete — Odoo 19 Standardbibliotheken ausreichend.
