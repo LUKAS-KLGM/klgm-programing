@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="executive_dashboard.KpiCard">
+        <div t-att-class="'ed-kpi-card ed-kpi-clickable ' + targetClass"
+             t-att-style="'background-color:' + cardColor">
+            <!-- Row 1: Title + Change % + Menu -->
+            <div class="ed-kpi-top">
+                <div class="ed-kpi-title" t-on-click="onClick">
+                    <t t-esc="props.kpi.name"/>
+                </div>
+                <span t-if="props.kpi.description" class="ed-kpi-help-wrap">
+                    <i class="fa fa-info-circle ed-kpi-help"/>
+                    <span class="ed-kpi-tooltip" t-esc="props.kpi.description"/>
+                </span>
+                <div t-if="props.kpi.show_comparison and props.kpi.change_pct !== 0"
+                     t-att-class="'ed-kpi-change-inline ' + changeClass">
+                    <i t-att-class="'fa ' + changeIcon"/>
+                    <span t-esc="changeText"/>
+                </div>
+                <div class="ed-kpi-menu-wrap">
+                    <button t-if="hasNotes" class="ed-kpi-note-badge" t-on-click.stop="toggleNotes"
+                            title="Notizen">
+                        <i class="fa fa-comment"/>
+                        <span t-esc="props.kpi.note_count"/>
+                    </button>
+                    <button class="ed-kpi-menu-btn" t-on-click.stop="toggleMenu">
+                        <i class="fa fa-ellipsis-v"/>
+                    </button>
+                    <div t-if="state.showMenu" class="ed-chart-menu">
+                        <button class="ed-menu-item" t-on-click.stop="openEditor">
+                            <i class="fa fa-pencil"/>
+                            Bearbeiten
+                        </button>
+                        <div class="ed-menu-divider"/>
+                        <div class="ed-menu-section">Darstellung</div>
+                        <t t-foreach="displayOptions" t-as="opt" t-key="opt.value">
+                            <button t-att-class="'ed-menu-item ' + (opt.value === 'scorecard' ? 'ed-menu-active' : '')"
+                                    t-on-click="() => this.setDisplayType(opt.value)">
+                                <i t-att-class="'fa ' + opt.icon"/>
+                                <t t-esc="opt.label"/>
+                            </button>
+                        </t>
+                        <div class="ed-menu-divider"/>
+                        <button class="ed-menu-item" t-on-click.stop="toggleNotes">
+                            <i class="fa fa-comment-o"/>
+                            Notizen
+                        </button>
+                        <t t-if="isActivityKpi">
+                            <div class="ed-menu-divider"/>
+                            <div class="ed-menu-section">Aktivitäten</div>
+                            <t t-foreach="activityStateOptions" t-as="opt" t-key="opt.value">
+                                <button t-att-class="'ed-menu-item ' + ((props.activityState || 'all') === opt.value ? 'ed-menu-active' : '')"
+                                        t-on-click="() => this.setActivityFilter(opt.value)">
+                                    <i t-att-class="'fa ' + opt.icon"/>
+                                    <t t-esc="opt.label"/>
+                                </button>
+                            </t>
+                        </t>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Big Value -->
+            <div class="ed-kpi-body" t-on-click="onClick">
+                <div class="ed-kpi-value">
+                    <span t-esc="props.kpi.display_value"/>
+                    <span class="ed-kpi-unit" t-if="props.kpi.unit" t-esc="props.kpi.unit"/>
+                </div>
+            </div>
+
+            <!-- Row 3: Target bar (if set) -->
+            <div t-if="hasTarget" class="ed-kpi-target">
+                <div class="ed-kpi-target-bar">
+                    <div t-att-class="'ed-kpi-target-fill ' + targetClass"
+                         t-att-style="'width:' + targetProgress + '%'"/>
+                </div>
+                <div class="ed-kpi-target-label">
+                    <span t-esc="targetProgress"/>% von Ziel
+                </div>
+            </div>
+
+            <!-- Row 4: Sparkline (full width at bottom) -->
+            <div class="ed-sparkline-wrap" t-on-click="onClick">
+                <canvas t-ref="sparkline" class="ed-sparkline"/>
+            </div>
+
+            <!-- Notes Panel -->
+            <div t-if="state.showNotes" class="ed-notes-panel" t-on-click.stop="">
+                <div class="ed-notes-header">
+                    <span>Notizen</span>
+                    <button class="ed-notes-close" t-on-click.stop="toggleNotes">
+                        <i class="fa fa-times"/>
+                    </button>
+                </div>
+                <div class="ed-notes-input">
+                    <input type="text" placeholder="Notiz hinzufügen..."
+                           t-att-value="state.noteText"
+                           t-on-input="onNoteInput"
+                           t-on-keydown="onNoteKeydown"/>
+                    <button t-on-click="submitNote" class="ed-notes-send">
+                        <i class="fa fa-paper-plane"/>
+                    </button>
+                </div>
+                <div t-if="state.notesLoading" class="ed-notes-loading">
+                    <div class="ed-spinner" style="width:16px;height:16px;"/>
+                </div>
+                <div class="ed-notes-list">
+                    <t t-foreach="state.notes" t-as="note" t-key="note.id">
+                        <div class="ed-note">
+                            <div class="ed-note-header">
+                                <span class="ed-note-user" t-esc="note.user"/>
+                                <span class="ed-note-date" t-esc="note.date"/>
+                                <button class="ed-note-delete" t-on-click="() => this.deleteNote(note.id)"
+                                        title="Löschen">
+                                    <i class="fa fa-trash-o"/>
+                                </button>
+                            </div>
+                            <div class="ed-note-text" t-esc="note.text"/>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Editor Modal -->
+        <div t-if="state.showEditor" class="ed-modal-overlay" t-on-click.self="closeEditor">
+            <div class="ed-modal ed-modal-editor" t-on-click.stop="">
+                <div class="ed-modal-header">
+                    <h3><i class="fa fa-pencil"/> KPI bearbeiten</h3>
+                    <button class="ed-modal-close" t-on-click="closeEditor">
+                        <i class="fa fa-times"/>
+                    </button>
+                </div>
+                <div class="ed-modal-body">
+                    <div class="ed-builder-form">
+                        <div class="ed-builder-row">
+                            <label>Name</label>
+                            <input type="text" t-att-value="state.editForm.name"
+                                   t-on-input="(ev) => this.state.editForm.name = ev.target.value"/>
+                        </div>
+                        <div class="ed-builder-row">
+                            <label>Beschreibung</label>
+                            <input type="text" t-att-value="state.editForm.description"
+                                   placeholder="Tooltip-Text für Info-Icon..."
+                                   t-on-input="(ev) => this.state.editForm.description = ev.target.value"/>
+                        </div>
+                        <div class="ed-builder-row ed-builder-row-2">
+                            <div>
+                                <label>Einheit</label>
+                                <input type="text" t-att-value="state.editForm.unit"
+                                       placeholder="EUR, %, Stk."
+                                       t-on-input="(ev) => this.state.editForm.unit = ev.target.value"/>
+                            </div>
+                            <div>
+                                <label>Hintergrundfarbe</label>
+                                <input type="color" t-att-value="state.editForm.color"
+                                       t-on-input="(ev) => this.state.editForm.color = ev.target.value"/>
+                            </div>
+                        </div>
+                        <div class="ed-builder-row ed-builder-row-2">
+                            <div>
+                                <label>Zielwert</label>
+                                <input type="number" t-att-value="state.editForm.target_value"
+                                       t-on-input="(ev) => this.state.editForm.target_value = ev.target.value"/>
+                            </div>
+                            <div>
+                                <label>Budget</label>
+                                <input type="number" t-att-value="state.editForm.budget_value"
+                                       t-on-input="(ev) => this.state.editForm.budget_value = ev.target.value"/>
+                            </div>
+                        </div>
+                        <div class="ed-builder-actions">
+                            <button class="ed-btn ed-btn-secondary" t-on-click="closeEditor">Abbrechen</button>
+                            <button class="ed-btn ed-btn-primary" t-on-click="submitEditor">
+                                <i class="fa fa-check"/> Speichern
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

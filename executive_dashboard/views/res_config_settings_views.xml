@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.executive.dashboard</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Controlling" string="Controlling" name="executive_dashboard">
+                    <block title="Kontostand" name="bank_settings">
+                        <setting string="Bankjournal" help="Welches Bankkonto soll als Kontostand im Dashboard angezeigt werden?">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="ed_bank_journal" string="Bankkonto" class="col-lg-3"/>
+                                    <field name="ed_bank_journal" class="col-lg-4"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                    <block title="AI Insights" name="ai_settings">
+                        <setting string="Intelligente Analysen" help="Aktiviere AI-gestützte Insights die deine KPIs automatisch analysieren und Handlungsempfehlungen geben">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="ed_ai_provider" string="Anbieter" class="col-lg-3"/>
+                                    <field name="ed_ai_provider" class="col-lg-4"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="ed_ai_api_key" string="API-Schlüssel" class="col-lg-3"/>
+                                    <field name="ed_ai_api_key" class="col-lg-4" password="True" groups="base.group_system"/>
+                                </div>
+                                <div class="row mt8">
+                                    <div class="col-lg-3"/>
+                                    <button name="action_test_ai_key" type="object"
+                                            string="Verbindung testen" class="btn-secondary"
+                                            icon="fa-plug"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

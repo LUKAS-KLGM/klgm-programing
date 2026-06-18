@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- Produktivität KPIs — CEO Dashboard                     -->
+    <!-- ══════════════════════════════════════════════════════ -->
+
+    <!-- ── Umsatz Pro Kopf ── -->
+    <!-- Formel: Umsatz (netto) / Mitarbeiter                   -->
+    <!-- Bewertung: >5% Steigerung = sehr gut,                  -->
+    <!--            3-5% = normal,                               -->
+    <!--            <3% = Geschäftsmodell kippt in 3 Jahren     -->
+    <record id="kpi_ceo_revenue_per_head" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_ceo"/>
+        <field name="name">Umsatz Pro Kopf</field>
+        <field name="description">Umsatz je Mitarbeiter — Steigerung &gt;5% sehr gut, 3-5% normal, &lt;3% kritisch (Geschäftsmodell kippt in 3 Jahren)</field>
+        <field name="sequence">75</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">formula</field>
+        <field name="formula">kpi('Umsatz (netto)') / kpi('Mitarbeiter') if kpi('Mitarbeiter') else 0</field>
+        <field name="unit">EUR</field>
+        <field name="color">#EFF6FF</field>
+        <field name="show_comparison">True</field>
+    </record>
+
+    <!-- ── Vertriebsstärke pro MA ── -->
+    <!-- Hidden KPI: Anzahl Lieferpositionen (erledigte Ausgangs-Moves) -->
+    <record id="kpi_ceo_delivery_lines_hidden" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_ceo"/>
+        <field name="name">_Lieferpositionen</field>
+        <field name="sequence">6</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">stock.move</field>
+        <field name="domain">[('picking_type_id.code', '=', 'outgoing'), ('state', '=', 'done')]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="date_field">date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- Formel: Anzahl Lieferpositionen / Anzahl Mitarbeiter -->
+    <record id="kpi_ceo_sales_strength" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_ceo"/>
+        <field name="name">Vertriebsstärke/MA</field>
+        <field name="description">Lieferpositionen je Mitarbeiter — misst die operative Vertriebsproduktivität</field>
+        <field name="sequence">76</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">formula</field>
+        <field name="formula">kpi('_Lieferpositionen') / kpi('Mitarbeiter') if kpi('Mitarbeiter') else 0</field>
+        <field name="unit">Pos.</field>
+        <field name="color">#F0FFF4</field>
+        <field name="show_comparison">True</field>
+    </record>
+
+</odoo>

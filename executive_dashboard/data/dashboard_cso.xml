@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- CSO — Sales Performance Dashboard                     -->
+    <!-- Misst Umsatz + Aktivitäten pro Vertriebsmitarbeiter  -->
+    <!-- ══════════════════════════════════════════════════════ -->
+
+    <record id="dashboard_cso" model="executive.dashboard">
+        <field name="name">CSO — Sales Performance</field>
+        <field name="role">cso</field>
+        <field name="sequence">15</field>
+        <field name="icon">fa-users</field>
+        <field name="default_period">last_30_days</field>
+    </record>
+
+    <!-- ── Umsatz-KPIs ── -->
+
+    <record id="kpi_cso_revenue" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Umsatz (netto)</field>
+        <field name="sequence">10</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent'])]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">sum</field>
+        <field name="unit">EUR</field>
+        <field name="color">#EFF6FF</field>
+        <field name="date_field">date</field>
+        <field name="action_xmlid">sale.action_order_report_all</field>
+    </record>
+
+    <record id="kpi_cso_orders" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Aufträge</field>
+        <field name="sequence">20</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent'])]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">count</field>
+        <field name="color">#EFF6FF</field>
+        <field name="date_field">date</field>
+    </record>
+
+    <record id="kpi_cso_aov" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">AOV</field>
+        <field name="description">Average Order Value — Durchschnittlicher Bestellwert (Umsatz / Aufträge)</field>
+        <field name="sequence">25</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">formula</field>
+        <field name="formula">kpi('Umsatz (netto)') / kpi('Aufträge') if kpi('Aufträge') else 0</field>
+        <field name="unit">EUR</field>
+        <field name="color">#F0FFF4</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_cso_pipeline" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Pipeline-Wert</field>
+        <field name="sequence">30</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">crm.lead</field>
+        <field name="domain">[('type', '=', 'opportunity')]</field>
+        <field name="measure_field">prorated_revenue</field>
+        <field name="aggregate">sum</field>
+        <field name="unit">EUR</field>
+        <field name="color">#FFF7ED</field>
+        <field name="date_field">create_date</field>
+        <field name="action_xmlid">crm.crm_lead_action_pipeline</field>
+    </record>
+
+    <!-- ── Aktivitäts-KPIs ── -->
+
+    <!-- Alle Aktivitäten (gesamt) -->
+    <record id="kpi_cso_activities_total" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Aktivitäten gesamt</field>
+        <field name="sequence">35</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">mail.activity</field>
+        <field name="domain">[]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="color">#EFF6FF</field>
+        <field name="date_field">date_deadline</field>
+    </record>
+
+    <!-- Anrufe (erledigte Call-Aktivitäten) -->
+    <record id="kpi_cso_calls" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Anrufe</field>
+        <field name="sequence">40</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">mail.activity</field>
+        <field name="domain">[('activity_type_id.category', '=', 'phonecall')]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="color">#FFF7ED</field>
+        <field name="date_field">date_deadline</field>
+    </record>
+
+    <!-- E-Mails gesendet -->
+    <record id="kpi_cso_emails" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">E-Mails</field>
+        <field name="sequence">45</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">mail.activity</field>
+        <field name="domain">[('activity_type_id.name', '=', 'Email')]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="color">#EFF6FF</field>
+        <field name="date_field">date_deadline</field>
+    </record>
+
+    <!-- Meetings -->
+    <record id="kpi_cso_meetings" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Meetings</field>
+        <field name="sequence">50</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">mail.activity</field>
+        <field name="domain">[('activity_type_id.category', '=', 'meeting')]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="color">#F0FFF4</field>
+        <field name="date_field">date_deadline</field>
+    </record>
+
+    <!-- Sales Cycle (Tage) -->
+    <record id="kpi_cso_sales_cycle" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Sales Cycle</field>
+        <field name="description">Durchschnittliche Tage vom Lead bis zum Abschluss (gewonnene Opportunities)</field>
+        <field name="sequence">52</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">crm.lead</field>
+        <field name="domain">[('type', '=', 'opportunity'), ('active', '=', False), ('probability', '=', 100)]</field>
+        <field name="measure_field">days_to_convert</field>
+        <field name="aggregate">avg</field>
+        <field name="unit">Tage</field>
+        <field name="color">#EFF6FF</field>
+        <field name="date_field">date_closed</field>
+        <field name="target_value">30</field>
+        <field name="target_warning">45</field>
+        <field name="target_critical">60</field>
+    </record>
+
+    <!-- Rabattquote % -->
+    <record id="kpi_cso_discount_rate" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Ø Rabatt</field>
+        <field name="description">Durchschnittlicher Rabatt in Prozent über alle Verkaufspositionen</field>
+        <field name="sequence">53</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent']), ('discount', '>', 0)]</field>
+        <field name="measure_field">discount</field>
+        <field name="aggregate">avg</field>
+        <field name="unit">%</field>
+        <field name="color">#FFF7ED</field>
+        <field name="date_field">date</field>
+        <field name="target_value">10</field>
+        <field name="target_warning">15</field>
+        <field name="target_critical">20</field>
+    </record>
+
+    <!-- Neue Leads -->
+    <record id="kpi_cso_new_leads" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Neue Leads</field>
+        <field name="sequence">55</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">crm.lead</field>
+        <field name="domain">[('type', '=', 'opportunity')]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="color">#FFF7ED</field>
+        <field name="date_field">create_date</field>
+    </record>
+
+    <!-- ── Umsatz-Charts ── -->
+
+    <!-- Umsatz pro Vertriebsmitarbeiter -->
+    <record id="kpi_cso_chart_revenue_user" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Umsatz pro Mitarbeiter</field>
+        <field name="sequence">100</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent']), ('user_id', '!=', False)]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">user_id</field>
+        <field name="unit">EUR</field>
+        <field name="width">full</field>
+        <field name="date_field">date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- Umsatz pro Vertriebsteam -->
+    <record id="kpi_cso_chart_revenue_team" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Umsatz nach Team</field>
+        <field name="sequence">110</field>
+        <field name="display_type">chart_doughnut</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent']), ('team_id', '!=', False)]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">team_id</field>
+        <field name="unit">EUR</field>
+        <field name="date_field">date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- Pipeline nach Mitarbeiter -->
+    <record id="kpi_cso_chart_pipeline_user" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Pipeline nach Mitarbeiter</field>
+        <field name="sequence">115</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">crm.lead</field>
+        <field name="domain">[('type', '=', 'opportunity'), ('user_id', '!=', False)]</field>
+        <field name="measure_field">prorated_revenue</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">user_id</field>
+        <field name="unit">EUR</field>
+        <field name="date_field">create_date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- ── Aktivitäts-Charts ── -->
+
+    <!-- Aktivitäten pro Mitarbeiter -->
+    <record id="kpi_cso_chart_activities_user" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Aktivitäten pro Mitarbeiter</field>
+        <field name="sequence">120</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">mail.activity</field>
+        <field name="domain">[('user_id', '!=', False)]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="group_by">user_id</field>
+        <field name="width">full</field>
+        <field name="date_field">date_deadline</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- Aktivitäten nach Typ (Anrufe, E-Mails, Meetings, To-Dos) -->
+    <record id="kpi_cso_chart_activities_type" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Aktivitäten nach Typ</field>
+        <field name="sequence">125</field>
+        <field name="display_type">chart_doughnut</field>
+        <field name="source_type">model</field>
+        <field name="model_name">mail.activity</field>
+        <field name="domain">[]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="group_by">activity_type_id</field>
+        <field name="date_field">date_deadline</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- Aktivitäten pro Monat (Trend) -->
+    <record id="kpi_cso_chart_activities_trend" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Aktivitäten pro Monat</field>
+        <field name="sequence">130</field>
+        <field name="display_type">chart_line</field>
+        <field name="source_type">model</field>
+        <field name="model_name">mail.activity</field>
+        <field name="domain">[]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="group_by">date_deadline:month</field>
+        <field name="width">full</field>
+        <field name="date_field">date_deadline</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- Leads nach Phase (Pipeline Health) -->
+    <record id="kpi_cso_chart_leads_stage" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Pipeline nach Phase</field>
+        <field name="sequence">135</field>
+        <field name="display_type">chart_pie</field>
+        <field name="source_type">model</field>
+        <field name="model_name">crm.lead</field>
+        <field name="domain">[('type', '=', 'opportunity'), ('probability', '&lt;', 100)]</field>
+        <field name="measure_field">prorated_revenue</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">stage_id</field>
+        <field name="date_field">create_date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- Aufträge pro Monat (Trend) -->
+    <record id="kpi_cso_chart_orders_trend" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Aufträge pro Monat</field>
+        <field name="sequence">140</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent'])]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">date:month</field>
+        <field name="unit">EUR</field>
+        <field name="width">full</field>
+        <field name="date_field">date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- Top Kunden -->
+    <record id="kpi_cso_chart_top_customers" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Top Kunden</field>
+        <field name="sequence">145</field>
+        <field name="display_type">chart_bar_h</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent'])]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">partner_id</field>
+        <field name="unit">EUR</field>
+        <field name="date_field">date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- ── Detaillierte Aktivitäts-Charts ── -->
+
+    <!-- Anrufe pro Mitarbeiter -->
+    <record id="kpi_cso_chart_calls_user" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Anrufe pro Mitarbeiter</field>
+        <field name="sequence">150</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">mail.activity</field>
+        <field name="domain">[('activity_type_id.category', '=', 'phonecall'), ('user_id', '!=', False)]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="group_by">user_id</field>
+        <field name="date_field">date_deadline</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- E-Mails pro Mitarbeiter -->
+    <record id="kpi_cso_chart_emails_user" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">E-Mails pro Mitarbeiter</field>
+        <field name="sequence">155</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">mail.activity</field>
+        <field name="domain">[('activity_type_id.name', '=', 'Email'), ('user_id', '!=', False)]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="group_by">user_id</field>
+        <field name="date_field">date_deadline</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- Meetings pro Mitarbeiter -->
+    <record id="kpi_cso_chart_meetings_user" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">Meetings pro Mitarbeiter</field>
+        <field name="sequence">160</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">mail.activity</field>
+        <field name="domain">[('activity_type_id.category', '=', 'meeting'), ('user_id', '!=', False)]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="group_by">user_id</field>
+        <field name="date_field">date_deadline</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- To-Dos pro Mitarbeiter -->
+    <record id="kpi_cso_chart_todos_user" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cso"/>
+        <field name="name">To-Dos pro Mitarbeiter</field>
+        <field name="sequence">165</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">mail.activity</field>
+        <field name="domain">[('activity_type_id.name', '=', 'To-Do'), ('user_id', '!=', False)]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="group_by">user_id</field>
+        <field name="date_field">date_deadline</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+</odoo>

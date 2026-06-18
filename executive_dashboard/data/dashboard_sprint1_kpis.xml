@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- Sprint 1: Advanced KPIs — Finanzen, Vertrieb, Ops, HR -->
+    <!-- ══════════════════════════════════════════════════════ -->
+
+    <!-- ── CEO: Neue KPIs ── -->
+
+    <!-- Win Rate: Won / (Won + Lost) — nur sinnvoll wenn Lost > 0 -->
+    <record id="kpi_ceo_winrate" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_ceo"/>
+        <field name="name">Win Rate</field>
+        <field name="description">Anzahl gewonnener Verkaufschancen im Zeitraum</field>
+        <field name="sequence">55</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">crm.lead</field>
+        <field name="domain">[('type', '=', 'opportunity'), ('won_status', '=', 'won')]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="unit">Won</field>
+        <field name="color">#F0FFF4</field>
+        <field name="date_field">create_date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- Umsatzwachstum % (vs. Vorperiode — built into scorecard comparison) -->
+    <!-- Already shown via change_pct on Umsatz scorecard -->
+
+    <!-- Repeat Customer Rate -->
+    <record id="kpi_ceo_chart_orders_trend" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_ceo"/>
+        <field name="name">Umsatz nach Vertriebskanal</field>
+        <field name="sequence">145</field>
+        <field name="display_type">chart_doughnut</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent']), ('team_id', '!=', False)]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">team_id</field>
+        <field name="date_field">date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- ── CFO: Neue KPIs ── -->
+
+    <!-- DSO: (Forderungen / Tagesumsatz) -->
+    <record id="kpi_cfo_dso_revenue" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cfo"/>
+        <field name="name">_Tagesumsatz</field>
+        <field name="sequence">5</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">account.invoice.report</field>
+        <field name="domain">[('move_type', 'in', ['out_invoice', 'out_refund']), ('state', '=', 'posted')]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">sum</field>
+        <field name="date_field">invoice_date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_cfo_dso" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cfo"/>
+        <field name="name">DSO (Tage)</field>
+        <field name="description">Days Sales Outstanding — Wie viele Tage brauchen Kunden im Schnitt zum Bezahlen</field>
+        <field name="sequence">45</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">formula</field>
+        <field name="formula">(kpi('Offene Forderungen') / kpi('_Tagesumsatz') * 30) if kpi('_Tagesumsatz') else 0</field>
+        <field name="unit">Tage</field>
+        <field name="color">#EFF6FF</field>
+        <field name="show_comparison">False</field>
+        <field name="target_value">45</field>
+        <field name="target_warning">60</field>
+        <field name="target_critical">90</field>
+    </record>
+
+    <!-- DPO: (Verbindlichkeiten / Tageseinkauf) -->
+    <record id="kpi_cfo_dpo_purchase" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cfo"/>
+        <field name="name">_Tageseinkauf</field>
+        <field name="sequence">6</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">account.move</field>
+        <field name="domain">[('move_type', 'in', ['in_invoice', 'in_refund']), ('state', '=', 'posted')]</field>
+        <field name="measure_field">amount_total_signed</field>
+        <field name="aggregate">sum</field>
+        <field name="date_field">invoice_date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_cfo_dpo" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cfo"/>
+        <field name="name">DPO (Tage)</field>
+        <field name="description">Days Payable Outstanding — Wie viele Tage braucht ihr im Schnitt zum Bezahlen eurer Lieferanten</field>
+        <field name="sequence">46</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">formula</field>
+        <field name="formula">abs(kpi('_AP_Open') / kpi('_Tageseinkauf') * 30) if kpi('_Tageseinkauf') else 0</field>
+        <field name="unit">Tage</field>
+        <field name="color">#FFF7ED</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- Hidden AP open for DPO formula -->
+    <record id="kpi_cfo_ap_open_hidden" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cfo"/>
+        <field name="name">_AP_Open</field>
+        <field name="sequence">7</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">account.move</field>
+        <field name="domain">[('move_type', 'in', ['in_invoice', 'in_refund']), ('state', '=', 'posted'), ('payment_state', 'in', ['not_paid', 'partial'])]</field>
+        <field name="measure_field">amount_residual_signed</field>
+        <field name="aggregate">sum</field>
+        <field name="apply_date_filter">False</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- Kontostand live (SQL: Saldo aus Buchhaltung, erstes Bankjournal) -->
+    <record id="kpi_cfo_balance" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cfo"/>
+        <field name="name">Kontostand</field>
+        <field name="description">Gebuchter Saldo des Standard-Bankjournals (Summe Soll minus Haben)</field>
+        <field name="sequence">47</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">sql</field>
+        <field name="sql_query">SELECT COALESCE(SUM(aml.balance), 0)
+FROM account_move_line aml
+JOIN account_move am ON am.id = aml.move_id
+JOIN account_journal aj ON aj.id = aml.journal_id
+WHERE aj.type = 'bank'
+  AND am.state = 'posted'
+  AND aj.id = (SELECT id FROM account_journal WHERE type = 'bank' ORDER BY sequence, id LIMIT 1)</field>
+        <field name="unit">EUR</field>
+        <field name="color">#F0FFF4</field>
+        <field name="show_comparison">False</field>
+        <field name="target_value">100000</field>
+        <field name="target_warning">50000</field>
+        <field name="target_critical">25000</field>
+    </record>
+
+    <!-- CFO: Forderungen nach Fälligkeitsmonat -->
+    <record id="kpi_cfo_chart_ar_aging" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cfo"/>
+        <field name="name">Forderungen nach Fälligkeit</field>
+        <field name="sequence">135</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">account.move</field>
+        <field name="domain">[('move_type', '=', 'out_invoice'), ('state', '=', 'posted'), ('payment_state', 'in', ['not_paid', 'partial'])]</field>
+        <field name="measure_field">amount_residual</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">invoice_date_due:month</field>
+        <field name="unit">EUR</field>
+        <field name="apply_date_filter">False</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- ── COO: Neue KPIs ── -->
+
+    <!-- Durchlaufzeit (Order to Delivery) -->
+    <record id="kpi_coo_leadtime" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">Lieferanten-Delay</field>
+        <field name="description">Durchschnittliche Lieferzeit der Lieferanten in Tagen</field>
+        <field name="sequence">35</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">purchase.report</field>
+        <field name="domain">[('state', 'in', ['purchase', 'done'])]</field>
+        <field name="measure_field">days_to_arrival</field>
+        <field name="aggregate">avg</field>
+        <field name="unit">Tage</field>
+        <field name="color">#FFF7ED</field>
+        <field name="date_field">date_order</field>
+    </record>
+
+    <!-- Lieferquote -->
+    <record id="kpi_coo_qty_ordered" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">_Stk bestellt</field>
+        <field name="sequence">4</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent'])]</field>
+        <field name="measure_field">product_uom_qty</field>
+        <field name="aggregate">sum</field>
+        <field name="date_field">date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_coo_qty_delivered" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">_Stk geliefert</field>
+        <field name="sequence">4</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent'])]</field>
+        <field name="measure_field">qty_delivered</field>
+        <field name="aggregate">sum</field>
+        <field name="date_field">date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_coo_fulfillment" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">Lieferquote</field>
+        <field name="description">Anteil gelieferter Menge an bestellter Menge in Prozent</field>
+        <field name="sequence">25</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">formula</field>
+        <field name="formula">kpi('_Stk geliefert') / kpi('_Stk bestellt') * 100 if kpi('_Stk bestellt') else 0</field>
+        <field name="unit">%</field>
+        <field name="color">#F0FFF4</field>
+        <field name="show_comparison">False</field>
+        <field name="target_value">95</field>
+        <field name="target_warning">85</field>
+        <field name="target_critical">70</field>
+    </record>
+
+    <!-- ── COO: Neue KPIs (Sprint 1 Completion) ── -->
+
+    <!-- Offene Lieferungen (Bestandswert, kein Datumsfilter) -->
+    <record id="kpi_coo_open_deliveries" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">Offene Lieferungen</field>
+        <field name="description">Ausgangslieferungen in Bearbeitung (zugewiesen, bestätigt, wartend)</field>
+        <field name="sequence">22</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">stock.picking</field>
+        <field name="domain">[('picking_type_code', '=', 'outgoing'), ('state', 'in', ['assigned', 'confirmed', 'waiting'])]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="color">#FFF7ED</field>
+        <field name="apply_date_filter">False</field>
+        <field name="show_comparison">False</field>
+        <field name="target_value">20</field>
+        <field name="target_warning">40</field>
+        <field name="target_critical">60</field>
+    </record>
+
+    <!-- Lagerbestand (Wert) -->
+    <record id="kpi_coo_stock_value" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">Lagerbestand</field>
+        <field name="description">Gesamtwert aller internen Lagerbestände</field>
+        <field name="sequence">32</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">stock.quant</field>
+        <field name="domain">[('location_id.usage', '=', 'internal')]</field>
+        <field name="measure_field">value</field>
+        <field name="aggregate">sum</field>
+        <field name="unit">EUR</field>
+        <field name="color">#EFF6FF</field>
+        <field name="apply_date_filter">False</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- Retourenquote % (Formel: _Retouren / Lieferungen × 100) -->
+    <record id="kpi_coo_returns_hidden" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">_Retouren</field>
+        <field name="sequence">3</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">stock.picking</field>
+        <field name="domain">[('picking_type_code', '=', 'incoming'), ('origin', 'ilike', 'Return')]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="date_field">date_done</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_coo_return_rate" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">Retourenquote</field>
+        <field name="description">Anteil der Retouren an den Gesamtlieferungen in Prozent</field>
+        <field name="sequence">36</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">formula</field>
+        <field name="formula">kpi('_Retouren') / kpi('Lieferungen') * 100 if kpi('Lieferungen') else 0</field>
+        <field name="unit">%</field>
+        <field name="color">#FFF7ED</field>
+        <field name="show_comparison">False</field>
+        <field name="target_value">5</field>
+        <field name="target_warning">8</field>
+        <field name="target_critical">12</field>
+    </record>
+
+    <!-- ── CTO: Neue KPIs ── -->
+
+    <!-- Abwesenheitsquote % -->
+    <record id="kpi_cto_absence_rate" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cto"/>
+        <field name="name">Abwesenheitsquote</field>
+        <field name="description">Abwesenheitstage / (Mitarbeiter × 20 Arbeitstage) in Prozent</field>
+        <field name="sequence">36</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">formula</field>
+        <field name="formula">kpi('Abwesenheitstage') / (kpi('Mitarbeiter') * 20) * 100 if kpi('Mitarbeiter') else 0</field>
+        <field name="unit">%</field>
+        <field name="color">#FFF7ED</field>
+        <field name="show_comparison">False</field>
+        <field name="target_value">5</field>
+        <field name="target_warning">8</field>
+        <field name="target_critical">12</field>
+    </record>
+
+    <!-- Abwesenheitstage -->
+    <record id="kpi_cto_leave_days" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cto"/>
+        <field name="name">Abwesenheitstage</field>
+        <field name="description">Genehmigte Abwesenheitstage (Urlaub, Krankheit, etc.) im Zeitraum</field>
+        <field name="sequence">35</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">hr.leave</field>
+        <field name="domain">[('state', '=', 'validate')]</field>
+        <field name="measure_field">number_of_days</field>
+        <field name="aggregate">sum</field>
+        <field name="unit">Tage</field>
+        <field name="color">#FFF7ED</field>
+        <field name="date_field">date_from</field>
+    </record>
+
+    <!-- Aufgaben nach Deadline Status -->
+    <record id="kpi_cto_chart_deadline" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cto"/>
+        <field name="name">Aufgaben pro Monat (Deadline)</field>
+        <field name="sequence">107</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">project.task</field>
+        <field name="domain">[('date_deadline', '!=', False)]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="group_by">date_deadline:month</field>
+        <field name="width">full</field>
+        <field name="date_field">date_deadline</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+</odoo>

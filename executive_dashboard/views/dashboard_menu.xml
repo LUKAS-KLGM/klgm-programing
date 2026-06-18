@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Root menu (nur Administratoren) -->
+    <menuitem id="menu_executive_dashboard_root"
+              name="Controlling"
+              web_icon="executive_dashboard,static/description/icon.svg"
+              sequence="1"
+              groups="base.group_system"/>
+
+    <!-- Client action: opens the dashboard UI -->
+    <record id="action_open_dashboards" model="ir.actions.client">
+        <field name="name">Dashboards</field>
+        <field name="tag">executive_dashboard</field>
+    </record>
+
+    <!-- Dashboard menu item (opens the OWL app) -->
+    <menuitem id="menu_executive_dashboards"
+              name="Dashboards"
+              parent="menu_executive_dashboard_root"
+              action="action_open_dashboards"
+              sequence="10"
+              groups="base.group_system"/>
+
+    <!-- Settings action (Bankjournal, AI Key) -->
+    <record id="action_executive_dashboard_settings" model="ir.actions.act_window">
+        <field name="name">Einstellungen</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+        <field name="context">{'module': 'executive_dashboard'}</field>
+    </record>
+
+    <menuitem id="menu_executive_dashboard_settings"
+              name="Einstellungen"
+              parent="menu_executive_dashboard_root"
+              action="action_executive_dashboard_settings"
+              sequence="90"
+              groups="base.group_system"/>
+
+    <!-- Dashboard configuration (advanced) -->
+    <menuitem id="menu_executive_dashboard_config"
+              name="Dashboard-Verwaltung"
+              parent="menu_executive_dashboard_root"
+              action="action_executive_dashboard"
+              sequence="95"
+              groups="base.group_system"/>
+
+</odoo>

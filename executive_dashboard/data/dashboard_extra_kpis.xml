@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- CEO: Additional Charts                     -->
+    <!-- ══════════════════════════════════════════ -->
+    <record id="kpi_ceo_chart_orders_month" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_ceo"/>
+        <field name="name">Aufträge pro Monat</field>
+        <field name="sequence">130</field>
+        <field name="display_type">chart_line</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent'])]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">count</field>
+        <field name="group_by">date:month</field>
+        <field name="date_field">date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_ceo_chart_leads_team" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_ceo"/>
+        <field name="name">Leads nach Vertriebsteam</field>
+        <field name="sequence">140</field>
+        <field name="display_type">chart_doughnut</field>
+        <field name="source_type">model</field>
+        <field name="model_name">crm.lead</field>
+        <field name="domain">[('type', '=', 'opportunity')]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="group_by">team_id</field>
+        <field name="date_field">create_date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- CEO: Wiederkaufrate (SQL KPI)              -->
+    <!-- ══════════════════════════════════════════ -->
+    <record id="kpi_ceo_repeat_rate" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_ceo"/>
+        <field name="name">Wiederkaufrate</field>
+        <field name="description">Anteil der Kunden mit mehr als einem Auftrag im Zeitraum</field>
+        <field name="sequence">78</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">sql</field>
+        <field name="sql_query">SELECT ROUND(
+  COUNT(*) FILTER (WHERE cnt > 1) * 100.0 / NULLIF(COUNT(*), 0), 1
+)
+FROM (
+  SELECT partner_id, COUNT(*) cnt
+  FROM sale_order
+  WHERE state NOT IN ('draft', 'cancel', 'sent')
+    AND date_order >= '{date_from}'
+    AND date_order &lt;= '{date_to}'
+  GROUP BY partner_id
+) sub</field>
+        <field name="unit">%</field>
+        <field name="color">#F0FFF4</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- CEO: Top Kunden Chart                      -->
+    <!-- ══════════════════════════════════════════ -->
+    <record id="kpi_ceo_chart_top_customers" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_ceo"/>
+        <field name="name">Top Kunden</field>
+        <field name="sequence">150</field>
+        <field name="display_type">chart_bar_h</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent'])]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">partner_id</field>
+        <field name="unit">EUR</field>
+        <field name="date_field">date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- CFO: Additional Charts                     -->
+    <!-- ══════════════════════════════════════════ -->
+    <record id="kpi_cfo_chart_ap_month" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cfo"/>
+        <field name="name">Eingangsrechnungen pro Monat</field>
+        <field name="sequence">120</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">account.move</field>
+        <field name="domain">[('move_type', 'in', ['in_invoice', 'in_refund']), ('state', '=', 'posted')]</field>
+        <field name="measure_field">amount_total_signed</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">invoice_date:month</field>
+        <field name="width">full</field>
+        <field name="date_field">invoice_date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_cfo_chart_margin_month" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cfo"/>
+        <field name="name">Marge pro Monat</field>
+        <field name="sequence">130</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">account.invoice.report</field>
+        <field name="domain">[('move_type', 'in', ['out_invoice', 'out_refund']), ('state', '=', 'posted')]</field>
+        <field name="measure_field">price_margin</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">invoice_date:month</field>
+        <field name="unit">EUR</field>
+        <field name="date_field">invoice_date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_cfo_chart_quarter" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cfo"/>
+        <field name="name">Fakturierung pro Quartal</field>
+        <field name="sequence">140</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">account.invoice.report</field>
+        <field name="domain">[('move_type', 'in', ['out_invoice', 'out_refund']), ('state', '=', 'posted')]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">invoice_date:quarter</field>
+        <field name="date_field">invoice_date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- COO: Additional Charts + KPIs             -->
+    <!-- ══════════════════════════════════════════ -->
+    <!-- Hidden Umsatz KPI for AOV formula -->
+    <record id="kpi_coo_revenue_hidden" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">_Umsatz</field>
+        <field name="sequence">5</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent'])]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">sum</field>
+        <field name="unit">EUR</field>
+        <field name="color">#EFF6FF</field>
+        <field name="date_field">date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_coo_aov" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">AOV</field>
+        <field name="sequence">15</field>
+        <field name="display_type">scorecard</field>
+        <field name="source_type">formula</field>
+        <field name="formula">kpi('_Umsatz') / kpi('Aufträge') if kpi('Aufträge') else 0</field>
+        <field name="unit">EUR</field>
+        <field name="color">#F0FFF4</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_coo_chart_orders" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">Auftragseingang pro Monat</field>
+        <field name="sequence">90</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent'])]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">date:month</field>
+        <field name="width">full</field>
+        <field name="unit">EUR</field>
+        <field name="date_field">date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_coo_chart_status" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">Lieferstatus</field>
+        <field name="sequence">110</field>
+        <field name="display_type">chart_pie</field>
+        <field name="source_type">model</field>
+        <field name="model_name">stock.picking</field>
+        <field name="domain">[('picking_type_code', '=', 'outgoing')]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="group_by">state</field>
+        <field name="date_field">scheduled_date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_coo_chart_purchase_month" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">Einkauf pro Monat</field>
+        <field name="sequence">120</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">purchase.report</field>
+        <field name="domain">[('state', 'in', ['purchase', 'done'])]</field>
+        <field name="measure_field">price_total</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">date_order:month</field>
+        <field name="unit">EUR</field>
+        <field name="date_field">date_order</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_coo_chart_category" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_coo"/>
+        <field name="name">Umsatz nach Produktkategorie</field>
+        <field name="sequence">130</field>
+        <field name="display_type">chart_doughnut</field>
+        <field name="source_type">model</field>
+        <field name="model_name">sale.report</field>
+        <field name="domain">[('state', 'not in', ['draft', 'cancel', 'sent'])]</field>
+        <field name="measure_field">price_subtotal</field>
+        <field name="aggregate">sum</field>
+        <field name="group_by">categ_id</field>
+        <field name="date_field">date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- CTO: Additional Charts                     -->
+    <!-- ══════════════════════════════════════════ -->
+    <record id="kpi_cto_chart_tasks_month" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cto"/>
+        <field name="name">Neue Aufgaben pro Monat</field>
+        <field name="sequence">105</field>
+        <field name="display_type">chart_bar</field>
+        <field name="source_type">model</field>
+        <field name="model_name">project.task</field>
+        <field name="domain">[]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="group_by">create_date:month</field>
+        <field name="width">full</field>
+        <field name="date_field">create_date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+    <record id="kpi_cto_chart_assignee" model="executive.dashboard.kpi">
+        <field name="dashboard_id" ref="dashboard_cto"/>
+        <field name="name">Aufgaben nach Verantwortlichem</field>
+        <field name="sequence">115</field>
+        <field name="display_type">chart_doughnut</field>
+        <field name="source_type">model</field>
+        <field name="model_name">project.task</field>
+        <field name="domain">[('user_ids', '!=', False)]</field>
+        <field name="measure_field">id</field>
+        <field name="aggregate">count</field>
+        <field name="group_by">user_ids</field>
+        <field name="date_field">create_date</field>
+        <field name="show_comparison">False</field>
+    </record>
+
+</odoo>

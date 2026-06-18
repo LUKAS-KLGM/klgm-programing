@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- Demo Partners                              -->
+    <!-- ══════════════════════════════════════════ -->
+    <record id="demo_partner_1" model="res.partner">
+        <field name="name">Müller Handwerk GmbH</field>
+        <field name="is_company">True</field>
+        <field name="city">München</field>
+        <field name="country_id" ref="base.de"/>
+    </record>
+    <record id="demo_partner_2" model="res.partner">
+        <field name="name">Schmidt Elektrotechnik AG</field>
+        <field name="is_company">True</field>
+        <field name="city">Hamburg</field>
+        <field name="country_id" ref="base.de"/>
+    </record>
+    <record id="demo_partner_3" model="res.partner">
+        <field name="name">Weber Industries SA</field>
+        <field name="is_company">True</field>
+        <field name="city">Zürich</field>
+        <field name="country_id" ref="base.ch"/>
+    </record>
+    <record id="demo_partner_4" model="res.partner">
+        <field name="name">Fischer Trading Ltd</field>
+        <field name="is_company">True</field>
+        <field name="city">London</field>
+        <field name="country_id" ref="base.uk"/>
+    </record>
+    <record id="demo_partner_5" model="res.partner">
+        <field name="name">Braun Haustechnik OHG</field>
+        <field name="is_company">True</field>
+        <field name="city">Stuttgart</field>
+        <field name="country_id" ref="base.de"/>
+    </record>
+
+    <!-- Demo Products -->
+    <record id="demo_product_1" model="product.product">
+        <field name="name">Wärmetauscher Pro 3000</field>
+        <field name="list_price">1250.00</field>
+        <field name="type">consu</field>
+    </record>
+    <record id="demo_product_2" model="product.product">
+        <field name="name">Hydraulik-Set Standard</field>
+        <field name="list_price">480.00</field>
+        <field name="type">consu</field>
+    </record>
+    <record id="demo_product_3" model="product.product">
+        <field name="name">Montage-Service (pauschal)</field>
+        <field name="list_price">350.00</field>
+        <field name="type">service</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- Demo Sale Orders (confirmed)               -->
+    <!-- ══════════════════════════════════════════ -->
+    <record id="demo_so_1" model="sale.order">
+        <field name="partner_id" ref="demo_partner_1"/>
+        <field name="date_order">2026-03-05</field>
+    </record>
+    <record id="demo_sol_1a" model="sale.order.line">
+        <field name="order_id" ref="demo_so_1"/>
+        <field name="product_id" ref="demo_product_1"/>
+        <field name="product_uom_qty">4</field>
+        <field name="price_unit">1250.00</field>
+    </record>
+    <record id="demo_sol_1b" model="sale.order.line">
+        <field name="order_id" ref="demo_so_1"/>
+        <field name="product_id" ref="demo_product_3"/>
+        <field name="product_uom_qty">4</field>
+        <field name="price_unit">350.00</field>
+    </record>
+
+    <record id="demo_so_2" model="sale.order">
+        <field name="partner_id" ref="demo_partner_2"/>
+        <field name="date_order">2026-03-10</field>
+    </record>
+    <record id="demo_sol_2a" model="sale.order.line">
+        <field name="order_id" ref="demo_so_2"/>
+        <field name="product_id" ref="demo_product_2"/>
+        <field name="product_uom_qty">10</field>
+        <field name="price_unit">480.00</field>
+    </record>
+
+    <record id="demo_so_3" model="sale.order">
+        <field name="partner_id" ref="demo_partner_3"/>
+        <field name="date_order">2026-03-15</field>
+    </record>
+    <record id="demo_sol_3a" model="sale.order.line">
+        <field name="order_id" ref="demo_so_3"/>
+        <field name="product_id" ref="demo_product_1"/>
+        <field name="product_uom_qty">2</field>
+        <field name="price_unit">1250.00</field>
+    </record>
+    <record id="demo_sol_3b" model="sale.order.line">
+        <field name="order_id" ref="demo_so_3"/>
+        <field name="product_id" ref="demo_product_2"/>
+        <field name="product_uom_qty">5</field>
+        <field name="price_unit">480.00</field>
+    </record>
+
+    <record id="demo_so_4" model="sale.order">
+        <field name="partner_id" ref="demo_partner_4"/>
+        <field name="date_order">2026-03-20</field>
+    </record>
+    <record id="demo_sol_4a" model="sale.order.line">
+        <field name="order_id" ref="demo_so_4"/>
+        <field name="product_id" ref="demo_product_1"/>
+        <field name="product_uom_qty">6</field>
+        <field name="price_unit">1250.00</field>
+    </record>
+
+    <record id="demo_so_5" model="sale.order">
+        <field name="partner_id" ref="demo_partner_5"/>
+        <field name="date_order">2026-03-25</field>
+    </record>
+    <record id="demo_sol_5a" model="sale.order.line">
+        <field name="order_id" ref="demo_so_5"/>
+        <field name="product_id" ref="demo_product_2"/>
+        <field name="product_uom_qty">8</field>
+        <field name="price_unit">480.00</field>
+    </record>
+    <record id="demo_sol_5b" model="sale.order.line">
+        <field name="order_id" ref="demo_so_5"/>
+        <field name="product_id" ref="demo_product_3"/>
+        <field name="product_uom_qty">3</field>
+        <field name="price_unit">350.00</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- Demo CRM Leads / Opportunities             -->
+    <!-- ══════════════════════════════════════════ -->
+    <record id="demo_lead_1" model="crm.lead">
+        <field name="name">Großprojekt Heizungsanlage</field>
+        <field name="partner_id" ref="demo_partner_1"/>
+        <field name="expected_revenue">25000</field>
+        <field name="probability">60</field>
+        <field name="type">opportunity</field>
+    </record>
+    <record id="demo_lead_2" model="crm.lead">
+        <field name="name">Nachrüstung Wärmetauscher</field>
+        <field name="partner_id" ref="demo_partner_2"/>
+        <field name="expected_revenue">8500</field>
+        <field name="probability">80</field>
+        <field name="type">opportunity</field>
+    </record>
+    <record id="demo_lead_3" model="crm.lead">
+        <field name="name">Export Schweiz — Hydraulik</field>
+        <field name="partner_id" ref="demo_partner_3"/>
+        <field name="expected_revenue">15000</field>
+        <field name="probability">40</field>
+        <field name="type">opportunity</field>
+    </record>
+    <record id="demo_lead_4" model="crm.lead">
+        <field name="name">UK Distributor Anfrage</field>
+        <field name="partner_id" ref="demo_partner_4"/>
+        <field name="expected_revenue">35000</field>
+        <field name="probability">20</field>
+        <field name="type">opportunity</field>
+    </record>
+    <record id="demo_lead_5" model="crm.lead">
+        <field name="name">Service-Vertrag Braun</field>
+        <field name="partner_id" ref="demo_partner_5"/>
+        <field name="expected_revenue">4800</field>
+        <field name="probability">90</field>
+        <field name="type">opportunity</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- Demo Project Tasks                         -->
+    <!-- ══════════════════════════════════════════ -->
+    <record id="demo_project" model="project.project">
+        <field name="name">Produktentwicklung 2026</field>
+    </record>
+    <record id="demo_task_1" model="project.task">
+        <field name="name">Prototyp Wärmetauscher v4</field>
+        <field name="project_id" ref="demo_project"/>
+        <field name="date_deadline">2026-04-30</field>
+    </record>
+    <record id="demo_task_2" model="project.task">
+        <field name="name">Lieferanten-Evaluation China</field>
+        <field name="project_id" ref="demo_project"/>
+        <field name="date_deadline">2026-05-15</field>
+    </record>
+    <record id="demo_task_3" model="project.task">
+        <field name="name">Shopify Theme Update</field>
+        <field name="project_id" ref="demo_project"/>
+        <field name="date_deadline">2026-04-10</field>
+    </record>
+    <record id="demo_task_4" model="project.task">
+        <field name="name">Amazon Listing Optimierung</field>
+        <field name="project_id" ref="demo_project"/>
+        <field name="date_deadline">2026-04-20</field>
+    </record>
+    <record id="demo_task_5" model="project.task">
+        <field name="name">QS-Prozess dokumentieren</field>
+        <field name="project_id" ref="demo_project"/>
+        <field name="date_deadline">2026-05-01</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- Demo HR Employees                          -->
+    <!-- ══════════════════════════════════════════ -->
+    <record id="demo_dept" model="hr.department">
+        <field name="name">Vertrieb</field>
+    </record>
+    <record id="demo_emp_1" model="hr.employee">
+        <field name="name">Max Mustermann</field>
+        <field name="department_id" ref="demo_dept"/>
+        <field name="job_title">Vertriebsleiter</field>
+    </record>
+    <record id="demo_emp_2" model="hr.employee">
+        <field name="name">Anna Schmidt</field>
+        <field name="department_id" ref="demo_dept"/>
+        <field name="job_title">Account Manager</field>
+    </record>
+    <record id="demo_emp_3" model="hr.employee">
+        <field name="name">Tom Weber</field>
+        <field name="job_title">Lagerleiter</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- Confirm Sale Orders via Server Action      -->
+    <!-- ══════════════════════════════════════════ -->
+    <function model="sale.order" name="action_confirm">
+        <value eval="[ref('demo_so_1')]"/>
+    </function>
+    <function model="sale.order" name="action_confirm">
+        <value eval="[ref('demo_so_2')]"/>
+    </function>
+    <function model="sale.order" name="action_confirm">
+        <value eval="[ref('demo_so_3')]"/>
+    </function>
+    <function model="sale.order" name="action_confirm">
+        <value eval="[ref('demo_so_4')]"/>
+    </function>
+    <function model="sale.order" name="action_confirm">
+        <value eval="[ref('demo_so_5')]"/>
+    </function>
+
+</odoo>

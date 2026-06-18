@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dashboard_user,executive.dashboard.user,model_executive_dashboard,base.group_user,1,0,0,0
+access_dashboard_admin,executive.dashboard.admin,model_executive_dashboard,base.group_system,1,1,1,1
+access_kpi_user,executive.dashboard.kpi.user,model_executive_dashboard_kpi,base.group_user,1,0,0,0
+access_kpi_admin,executive.dashboard.kpi.admin,model_executive_dashboard_kpi,base.group_system,1,1,1,1
+access_note_user,executive.dashboard.kpi.note.user,model_executive_dashboard_kpi_note,base.group_user,1,1,1,1
+access_note_admin,executive.dashboard.kpi.note.admin,model_executive_dashboard_kpi_note,base.group_system,1,1,1,1

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="executive_dashboard.DashboardChart">
+        <div t-att-class="'ed-chart-card ' + widthClass"
+             draggable="true"
+             t-on-dragstart="(ev) => props.onDragStart and props.onDragStart(ev)"
+             t-on-dragend="(ev) => props.onDragEnd and props.onDragEnd(ev)"
+             t-on-dragover="(ev) => props.onDragOver and props.onDragOver(ev)"
+             t-on-drop="(ev) => props.onDrop and props.onDrop(ev)">
+            <div class="ed-chart-header">
+                <span class="ed-chart-title">
+                    <t t-esc="props.kpi.name"/>
+                    <span t-if="props.kpi.description" class="ed-kpi-help-wrap">
+                        <i class="fa fa-info-circle ed-kpi-help"/>
+                        <span class="ed-kpi-tooltip" t-esc="props.kpi.description"/>
+                    </span>
+                </span>
+                <span class="ed-chart-unit" t-if="props.kpi.unit and !isGauge" t-esc="props.kpi.unit"/>
+                <div class="ed-chart-actions">
+                    <button class="ed-chart-menu-btn" t-on-click.stop="toggleMenu">
+                        <i class="fa fa-ellipsis-v"/>
+                    </button>
+                    <div t-if="state.showMenu" class="ed-chart-menu">
+                        <div class="ed-menu-section">Darstellung</div>
+                        <t t-foreach="displayOptions" t-as="opt" t-key="opt.value">
+                            <button t-att-class="'ed-menu-item ' + (props.kpi.display_type === opt.value ? 'ed-menu-active' : '')"
+                                    t-on-click="() => this.setDisplayType(opt.value)">
+                                <i t-att-class="'fa ' + opt.icon"/>
+                                <t t-esc="opt.label"/>
+                            </button>
+                        </t>
+                        <div class="ed-menu-divider"/>
+                        <div class="ed-menu-section">Breite</div>
+                        <t t-foreach="widthOptions" t-as="opt" t-key="opt.value">
+                            <button t-att-class="'ed-menu-item ' + (props.kpi.width === opt.value ? 'ed-menu-active' : '')"
+                                    t-on-click="() => this.setWidth(opt.value)">
+                                <i t-att-class="'fa ' + opt.icon"/>
+                                <t t-esc="opt.label"/>
+                            </button>
+                        </t>
+                        <div class="ed-menu-divider"/>
+                        <div class="ed-menu-section">Ziel &amp; Budget</div>
+                        <div class="ed-menu-input-row" t-on-click.stop="">
+                            <label>Ziel</label>
+                            <input type="number" t-att-value="props.kpi.target_value || ''"
+                                   placeholder="0" t-on-change="saveTarget"/>
+                        </div>
+                        <div class="ed-menu-input-row" t-on-click.stop="">
+                            <label>Budget</label>
+                            <input type="number" t-att-value="props.kpi.budget_value || ''"
+                                   placeholder="0" t-on-change="saveBudget"/>
+                        </div>
+                        <t t-if="isActivityKpi">
+                            <div class="ed-menu-divider"/>
+                            <div class="ed-menu-section">Aktivitäten</div>
+                            <t t-foreach="activityStateOptions" t-as="opt" t-key="opt.value">
+                                <button t-att-class="'ed-menu-item ' + ((props.activityState || 'all') === opt.value ? 'ed-menu-active' : '')"
+                                        t-on-click="() => this.setActivityFilter(opt.value)">
+                                    <i t-att-class="'fa ' + opt.icon"/>
+                                    <t t-esc="opt.label"/>
+                                </button>
+                            </t>
+                        </t>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gauge display -->
+            <t t-if="isGauge">
+                <div class="ed-gauge-wrap">
+                    <canvas t-ref="canvas"/>
+                </div>
+            </t>
+
+            <t t-elif="props.kpi.chart_data and props.kpi.chart_data.length">
+                <!-- Table display -->
+                <t t-if="isTable">
+                    <div class="ed-table-wrap">
+                        <table class="ed-table">
+                            <thead>
+                                <tr>
+                                    <th class="ed-table-sortable" t-on-click="() => this.sortTable('label')">
+                                        Label
+                                        <i t-if="state.sortField === 'label'" t-att-class="'fa fa-sort-' + (state.sortAsc ? 'up' : 'down')"/>
+                                    </th>
+                                    <th class="ed-table-num ed-table-sortable" t-on-click="() => this.sortTable('value')">
+                                        Wert
+                                        <i t-if="state.sortField === 'value'" t-att-class="'fa fa-sort-' + (state.sortAsc ? 'up' : 'down')"/>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="sortedTableData" t-as="row" t-key="row_index">
+                                    <tr>
+                                        <td t-esc="row.label"/>
+                                        <td class="ed-table-num" t-esc="fmtVal(row.value)"/>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+                <!-- Chart canvas -->
+                <t t-else="">
+                    <div class="ed-chart-canvas-wrap">
+                        <canvas t-ref="canvas"/>
+                    </div>
+                </t>
+            </t>
+            <t t-elif="!isGauge">
+                <div class="ed-chart-canvas-wrap">
+                    <div class="ed-chart-empty">
+                        <i class="fa fa-bar-chart"/>
+                        <span>Keine Daten</span>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>
