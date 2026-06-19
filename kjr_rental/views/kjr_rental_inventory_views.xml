@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_kjr_rental_inventory_list" model="ir.ui.view">
+        <field name="name">kjr.rental.inventory.list</field>
+        <field name="model">kjr.rental.inventory</field>
+        <field name="arch" type="xml">
+            <list string="Inventuren" decoration-success="state == 'done'">
+                <field name="name"/>
+                <field name="year"/>
+                <field name="date_done"/>
+                <field name="state" widget="badge" decoration-success="state == 'done'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kjr_rental_inventory_form" model="ir.ui.view">
+        <field name="name">kjr.rental.inventory.form</field>
+        <field name="model">kjr.rental.inventory</field>
+        <field name="arch" type="xml">
+            <form string="Inventur">
+                <header>
+                    <button name="action_open" string="Inventur eröffnen" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_done" string="Abschließen" type="object" class="btn-primary" confirm="Inventur abschließen und Ausschuss zurückschreiben?" invisible="state != 'draft'"/>
+                    <button name="action_reset_draft" string="Zurück auf Erfassung" type="object" groups="kjr_rental.group_kjr_rental_manager" invisible="state != 'done'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><label for="name"/><h1><field name="name"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="year"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="date_done"/>
+                        </group>
+                    </group>
+                    <field name="line_ids" readonly="state == 'done'">
+                        <list editable="bottom">
+                            <field name="item_id"/>
+                            <field name="qty_expected"/>
+                            <field name="qty_counted"/>
+                            <field name="qty_diff"/>
+                            <field name="condition"/>
+                            <field name="scrap"/>
+                            <field name="note"/>
+                        </list>
+                    </field>
+                    <field name="note" placeholder="Anmerkungen..."/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kjr_rental_inventory" model="ir.actions.act_window">
+        <field name="name">Inventuren</field>
+        <field name="res_model">kjr.rental.inventory</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

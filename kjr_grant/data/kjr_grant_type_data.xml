@@ -11,8 +11,11 @@
             <field name="rate_per_tn_single">5.0</field>
             <field name="max_amount">250.0</field>
             <field name="max_per_year">4</field>
+            <field name="year_limit_group">freizeit_4_1</field>
             <field name="max_cofinancing_pct">50.0</field>
             <field name="juleica_bonus">False</field>
+            <field name="min_age">5</field>
+            <field name="max_age">27</field>
             <field name="requires_tn_list">True</field>
             <field name="requires_report">True</field>
             <field name="requires_receipt">True</field>
@@ -27,8 +30,11 @@
             <field name="rate_per_tn_day">8.0</field>
             <field name="max_amount">600.0</field>
             <field name="max_per_year">4</field>
+            <field name="year_limit_group">freizeit_4_1</field>
             <field name="max_cofinancing_pct">50.0</field>
             <field name="juleica_bonus">True</field>
+            <field name="min_age">5</field>
+            <field name="max_age">27</field>
             <field name="requires_tn_list">True</field>
             <field name="requires_report">True</field>
             <field name="requires_receipt">True</field>
@@ -45,7 +51,9 @@
             <field name="max_amount">400.0</field>
             <field name="max_per_year">3</field>
             <field name="max_cofinancing_pct">50.0</field>
-            <field name="juleica_bonus">False</field>
+            <field name="juleica_bonus">True</field>
+            <field name="min_age">5</field>
+            <field name="max_age">27</field>
             <field name="requires_tn_list">True</field>
             <field name="requires_report">True</field>
             <field name="requires_receipt">True</field>
@@ -61,7 +69,9 @@
             <field name="max_amount">600.0</field>
             <field name="max_per_year">3</field>
             <field name="max_cofinancing_pct">50.0</field>
-            <field name="juleica_bonus">False</field>
+            <field name="juleica_bonus">True</field>
+            <field name="min_age">5</field>
+            <field name="max_age">27</field>
             <field name="referee_pct">75.0</field>
             <field name="referee_max">200.0</field>
             <field name="material_pct">75.0</field>
@@ -80,7 +90,7 @@
             <field name="max_amount">75.0</field>
             <field name="max_per_year">0</field>
             <field name="max_cofinancing_pct">75.0</field>
-            <field name="juleica_bonus">True</field>
+            <field name="juleica_bonus">False</field>
             <field name="jl_pct_no_juleica">50.0</field>
             <field name="jl_max_no_juleica">50.0</field>
             <field name="jl_pct_with_juleica">75.0</field>
@@ -101,7 +111,9 @@
             <field name="max_amount">700.0</field>
             <field name="max_per_year">0</field>
             <field name="max_cofinancing_pct">50.0</field>
-            <field name="juleica_bonus">False</field>
+            <field name="juleica_bonus">True</field>
+            <field name="min_age">5</field>
+            <field name="max_age">27</field>
             <field name="requires_tn_list">True</field>
             <field name="requires_report">True</field>
             <field name="requires_receipt">True</field>
@@ -149,7 +161,9 @@
             <field name="max_amount">400.0</field>
             <field name="max_per_year">0</field>
             <field name="max_cofinancing_pct">50.0</field>
-            <field name="min_participants">100</field>
+            <field name="min_age">5</field>
+            <field name="max_age">27</field>
+            <field name="min_participants">101</field>
             <field name="requires_tn_list">True</field>
             <field name="requires_report">True</field>
             <field name="requires_receipt">True</field>
@@ -164,6 +178,8 @@
             <field name="max_amount">75.0</field>
             <field name="max_per_year">2</field>
             <field name="max_cofinancing_pct">50.0</field>
+            <field name="min_age">5</field>
+            <field name="max_age">27</field>
             <field name="requires_tn_list">True</field>
             <field name="requires_report">False</field>
             <field name="requires_receipt">True</field>
@@ -177,6 +193,8 @@
             <field name="max_amount">300.0</field>
             <field name="max_per_year">0</field>
             <field name="max_cofinancing_pct">50.0</field>
+            <field name="min_age">5</field>
+            <field name="max_age">27</field>
             <field name="requires_tn_list">True</field>
             <field name="requires_report">True</field>
             <field name="requires_receipt">True</field>
@@ -187,14 +205,15 @@
             <field name="name">Delegiertenförderung (§ 4.9)</field>
             <field name="code">4_9</field>
             <field name="sequence">120</field>
-            <field name="max_amount">300.0</field>
+            <field name="max_amount">0.0</field>
             <field name="max_per_year">0</field>
             <field name="max_cofinancing_pct">100.0</field>
+            <field name="allow_private_account">True</field>
             <field name="requires_tn_list">False</field>
             <field name="requires_report">False</field>
             <field name="requires_receipt">True</field>
-            <field name="requires_other_docs">Fahrtkostennachweise / Reisekostenabrechnung</field>
-            <field name="description">Erstattung der Fahrtkosten von Delegierten (Reisekosten nach Bayer. Reisekostengesetz). Es werden die unter "Fahrtkosten" erfassten Kosten erstattet. HINWEIS: Erstattungsquote (%) und Höchstbetrag sind anhand der gültigen KJR-OA-Richtlinie zu prüfen/anzupassen.</field>
+            <field name="requires_other_docs">Antragsliste der Vollversammlung (Unterschrift) bzw. Fahrtkostennachweise</field>
+            <field name="description">Jeder stimmberechtigte Delegierte, der zur KJR-Vollversammlung anreist, erhält auf Antrag Fahrtkostenerstattung nach dem Bayerischen Reisekostengesetz (BayRKG): PKW = Wegstreckenentschädigung je km (Hin- und Rückfahrt) zzgl. Mitnahmeentschädigung je Mitfahrer/in; ÖPNV = belegte Fahrtkosten. Antrag durch Unterschrift auf der bei der Vollversammlung ausliegenden Antragsliste. Kein eigener Höchstbetrag (Höhe nach BayRKG). Auszahlung auf das Konto des/der Delegierten möglich.</field>
         </record>
 
     </data>

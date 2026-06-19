@@ -50,9 +50,18 @@
                             <field name="website_published"/>
                             <field name="color" widget="color_picker"/>
                         </group>
+                        <group string="Zeiten &amp; Rechnung">
+                            <field name="check_in_default_time" widget="float_time"/>
+                            <field name="check_out_default_time" widget="float_time"/>
+                            <field name="invoice_auto_post"/>
+                        </group>
                     </group>
                     <field name="description_short" placeholder="Kurzbeschreibung für die Liste/Website"/>
                     <notebook>
+                        <page string="Mail-Hinweis" name="mail_hint">
+                            <field name="mail_hint"
+                                   placeholder="Hinweistext für E-Mails an die Gruppe (Anfahrt, Schlüssel, Hausordnung)..."/>
+                        </page>
                         <page string="Räume / Betten" name="rooms">
                             <field name="room_ids">
                                 <list editable="bottom">

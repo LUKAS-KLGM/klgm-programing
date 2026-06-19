@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Website- und Portal-Controller für die Einrichtungsbuchung."""
+import base64
 import logging
 from datetime import date as date_cls
 
@@ -56,6 +57,14 @@ class KjrFacilityWebsite(http.Controller):
                 else:
                     if check_out <= check_in:
                         errors['check_out'] = _('Die Abreise muss nach der Anreise liegen.')
+            # BUG-a: Verfügbarkeit/Doppelbelegung VOR dem Anlegen prüfen.
+            if not errors and check_in and check_out:
+                conflict = request.env['kjr.facility.booking'].sudo()._find_overlapping(
+                    facility.id, check_in, check_out)
+                if conflict:
+                    errors['check_in'] = _(
+                        'Im gewählten Zeitraum ist %s bereits belegt. Bitte wählen Sie '
+                        'einen anderen Zeitraum.') % facility.name
             if errors:
                 return request.render('kjr_facility.website_facility_request', {
                     'facility': facility, 'page_name': 'kjr_facilities',
@@ -125,6 +134,39 @@ class KjrFacilityPortal(CustomerPortal):
             booking = self._document_check_access('kjr.facility.booking', booking_id)
         except (AccessError, MissingError):
             return request.redirect('/my')
+        # BUG-b: prüfen, ob ein Vertrags-/Reservierungs-PDF abgelegt ist (Download-Link).
+        has_contract = bool(request.env['ir.attachment'].sudo().search_count([
+            ('res_model', '=', 'kjr.facility.booking'),
+            ('res_id', '=', booking.id),
+            ('mimetype', '=', 'application/pdf'),
+        ]))
         return request.render('kjr_facility.portal_booking_detail', {
             'booking': booking, 'page_name': 'kjr_booking',
+            'has_contract': has_contract,
         })
+
+    @http.route('/my/einrichtungsbuchungen/<int:booking_id>/vertrag', type='http',
+                auth='user', website=True)
+    def portal_booking_contract(self, booking_id, **kw):
+        """BUG-b: Download des abgelegten Vertrags-/Reservierungs-PDF aus dem Portal."""
+        try:
+            booking = self._document_check_access('kjr.facility.booking', booking_id)
+        except (AccessError, MissingError):
+            return request.redirect('/my')
+        attachment = request.env['ir.attachment'].sudo().search([
+            ('res_model', '=', 'kjr.facility.booking'),
+            ('res_id', '=', booking.id),
+            ('mimetype', '=', 'application/pdf'),
+        ], order='create_date desc', limit=1)
+        if not attachment:
+            # Fallback: Vertrag on-the-fly aus dem Report rendern.
+            pdf_content, _dummy = request.env['ir.actions.report'].sudo()._render_qweb_pdf(
+                'kjr_facility.action_report_booking_contract', res_ids=[booking.id])
+            filename = 'Buchungsvertrag_%s.pdf' % (booking.name or '').replace('/', '-')
+        else:
+            pdf_content = base64.b64decode(attachment.datas)
+            filename = attachment.name
+        return request.make_response(pdf_content, headers=[
+            ('Content-Type', 'application/pdf'),
+            ('Content-Disposition', f'attachment; filename="{filename}"'),
+        ])

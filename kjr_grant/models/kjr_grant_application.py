@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Kernmodell für Zuschussanträge. Enthält vollständige Berechnungslogik
-für alle 11 Förderarten sowie den kompletten Statusworkflow.
+für alle 12 Förderarten (§ 4.1a–§ 4.9) sowie den kompletten Statusworkflow.
 """
 import base64
 import math
@@ -92,6 +92,28 @@ class KjrGrantApplication(models.Model):
              '(Art. 6 Abs. 1 / Art. 8 DSGVO).',
     )
 
+    # ── Delegiertenförderung § 4.9 (Fahrtkosten n. Bayer. Reisekostengesetz) ──
+    assembly_id = fields.Many2one(
+        'kjr.assembly', string='Vollversammlung', ondelete='set null',
+        help='Nur § 4.9: Vollversammlung, zu der der/die Delegierte angereist ist '
+             '(Grundlage der Fahrtkostenerstattung).',
+    )
+    delegate_transport_mode = fields.Selection([
+        ('car', 'PKW'),
+        ('public', 'Öffentliche Verkehrsmittel'),
+        ('other', 'Sonstiges'),
+    ], string='Verkehrsmittel', help='Nur § 4.9 Delegiertenförderung.')
+    delegate_km_one_way = fields.Float(
+        string='Gefahrene km (einfache Strecke)', digits=(8, 1), default=0.0,
+        help='Nur § 4.9: einfache Wegstrecke in km. Erstattet wird Hin- und Rückfahrt '
+             'nach dem Bayer. Reisekostengesetz (BayRKG).',
+    )
+    delegate_passenger_count = fields.Integer(
+        string='Mitfahrer/innen', default=0,
+        help='Nur § 4.9: Zahl der mitgenommenen weiteren Delegierten (Mitnahme-'
+             'entschädigung nach BayRKG).',
+    )
+
     # ── Bankverbindung ───────────────────────────────────────────────────────
     payment_account_holder = fields.Char(string='Kontoinhaber (exakt)')
     payment_iban = fields.Char(string='IBAN (Organisationskonto)', tracking=True)
@@ -141,11 +163,23 @@ class KjrGrantApplication(models.Model):
         string='Begründung Abweichung',
         help='Pflichtfeld wenn bewilligter Betrag vom berechneten abweicht.',
     )
+    budget_info = fields.Char(
+        string='Budget-Status', compute='_compute_budget_info',
+        help='Verbleibendes Jahresbudget der Förderart (Live-Anzeige für die Bewilligung).',
+    )
 
     # ── Bearbeitungsvermerke KJR OA ──────────────────────────────────────────
     date_submitted = fields.Date(string='Eingangsdatum', readonly=True, tracking=True)
     date_approved = fields.Date(string='Zuschuss genehmigt am', readonly=True, tracking=True)
     date_paid = fields.Date(string='Auszahlungsdatum', readonly=True, tracking=True)
+    payout_year = fields.Integer(
+        string='Auszahlungsjahr', compute='_compute_payout_schedule', store=True,
+        help='Haushaltsjahr der Auszahlung. Anträge bis zum Stichtag (KJR-OA: 15.11.) '
+             'gelangen im selben Jahr zur Auszahlung, ab 16.11. erst im Folgejahr.',
+    )
+    payout_schedule_info = fields.Char(
+        string='Auszahlungs-Hinweis', compute='_compute_payout_schedule', store=True,
+    )
     reference_number = fields.Char(string='KJR-Aktenzeichen', copy=False, tracking=True)
     reviewed_by = fields.Many2one('res.users', string='Bearbeitet von', tracking=True)
     sachlich_richtig = fields.Boolean(
@@ -175,11 +209,23 @@ class KjrGrantApplication(models.Model):
     # COMPUTED FIELDS
     # ══════════════════════════════════════════════════════════════════════════
 
-    @api.depends('measure_start', 'measure_end')
+    @api.depends('measure_start', 'measure_end', 'measure_start_time', 'measure_end_time')
     def _compute_measure_days(self):
+        """Förderfähige Maßnahmentage nach KJR-OA-Richtlinie.
+
+        Grundregel: Kalendertage inklusive (Ende − Beginn + 1).
+        An-/Abreise-Regel (Ziff. zu § 4.1/4.2/4.3): An- und Abreisetag gelten
+        zusammen als EIN Tag, wenn am Anreisetag nach 10:00 Uhr begonnen und am
+        Abreisetag vor 17:00 Uhr beendet wird. Greift nur bei mehrtägigen
+        Maßnahmen und wenn beide Uhrzeiten erfasst sind; der berechnete Wert ist
+        überschreibbar (Einzelfälle)."""
         for rec in self:
             if rec.measure_start and rec.measure_end:
-                rec.measure_days = max((rec.measure_end - rec.measure_start).days + 1, 1)
+                base = (rec.measure_end - rec.measure_start).days + 1
+                if (base >= 2 and rec.measure_start_time and rec.measure_end_time
+                        and rec.measure_start_time >= 10.0 and rec.measure_end_time <= 17.0):
+                    base -= 1
+                rec.measure_days = max(base, 1)
             else:
                 rec.measure_days = 1
 
@@ -203,6 +249,37 @@ class KjrGrantApplication(models.Model):
             except ValueError:
                 import calendar
                 rec.submission_deadline = date(year, month, calendar.monthrange(year, month)[1])
+
+    @api.depends('date_submitted')
+    def _compute_payout_schedule(self):
+        """Auszahlungs-Stichtag nach KJR-OA-Richtlinie (knüpft an den Antragseingang):
+        Anträge, die bis zum Stichtag (Default 15.11.) eingehen, gelangen im selben
+        Jahr (bis 31.12.) zur Auszahlung; ab dem Folgetag eingehende ab dem 1.1. des
+        Folgejahres. Stichtag über System-Parameter konfigurierbar (Vertrieb)."""
+        params = self.env['ir.config_parameter'].sudo()
+        try:
+            cutoff_day = int(params.get_param('kjr_grant.payout_cutoff_day', 15))
+            cutoff_month = int(params.get_param('kjr_grant.payout_cutoff_month', 11))
+        except (ValueError, TypeError):
+            cutoff_day, cutoff_month = 15, 11
+        for rec in self:
+            if not rec.date_submitted:
+                rec.payout_year = 0
+                rec.payout_schedule_info = ''
+                continue
+            d = rec.date_submitted
+            after_cutoff = (d.month, d.day) > (cutoff_month, cutoff_day)
+            rec.payout_year = d.year + 1 if after_cutoff else d.year
+            if after_cutoff:
+                rec.payout_schedule_info = _(
+                    'Eingang nach dem %(day)02d.%(month)02d. – Auszahlung ab 1.1.%(year)d '
+                    '(vierteljährlich).'
+                ) % {'day': cutoff_day, 'month': cutoff_month, 'year': rec.payout_year}
+            else:
+                rec.payout_schedule_info = _(
+                    'Eingang bis %(day)02d.%(month)02d. – Auszahlung bis 31.12.%(year)d '
+                    '(vierteljährlich).'
+                ) % {'day': cutoff_day, 'month': cutoff_month, 'year': rec.payout_year}
 
     @api.depends('tn_count', 'tn_external_count')
     def _compute_tn_external_pct(self):
@@ -245,14 +322,31 @@ class KjrGrantApplication(models.Model):
         'tn_count', 'tn_leader_count', 'tn_leader_juleica', 'measure_days',
         'cost_total', 'cost_referees', 'cost_materials', 'cost_transport',
         'cost_jl_fees', 'deficit',
+        'delegate_transport_mode', 'delegate_km_one_way', 'delegate_passenger_count',
     )
     def _compute_grant(self):
         for rec in self:
             rec.grant_calculated = rec._calculate_grant()
 
+    def _day_rate_grant(self, t, tn, days, leaders, leaders_juleica):
+        """Tagessatz-Berechnung (TN × Tage × Satz) inkl. anerkannter Jugendleiter.
+
+        Jugendleiter erhalten ebenfalls den Tagessatz; mit gültiger Juleica erhöht
+        er sich um den Juleica-Zuschlag (KJR-OA: +50 %, konfigurierbar). Diese Logik
+        gilt einheitlich für alle tagessatz-basierten Förderarten (§ 4.1b/4.2/4.3/4.5)."""
+        leaders_no_juleica = leaders - leaders_juleica
+        base = tn * days * t.rate_per_tn_day
+        if t.juleica_bonus:
+            uplift = 1.0 + (t.juleica_uplift_pct or 0.0) / 100.0
+            base += leaders_juleica * days * (t.rate_per_tn_day * uplift)
+            base += leaders_no_juleica * days * t.rate_per_tn_day
+        else:
+            base += leaders * days * t.rate_per_tn_day
+        return base
+
     def _calculate_grant(self):
         """
-        Zentrale Berechnungslogik für alle 11 Förderarten.
+        Zentrale Berechnungslogik für alle 12 Förderarten (§ 4.1a–§ 4.9).
 
         Globale Deckelungsregeln (lt. Richtlinien KJR OA):
           1. Höchstbetrag der Förderart (max_amount)
@@ -273,7 +367,6 @@ class KjrGrantApplication(models.Model):
         max_leaders = math.ceil(tn / ratio) if tn > 0 else 0
         leaders = min(self.tn_leader_count or 0, max_leaders)
         leaders_juleica = min(self.tn_leader_juleica or 0, leaders)
-        leaders_no_juleica = leaders - leaders_juleica
 
         calculated = 0.0
 
@@ -283,22 +376,15 @@ class KjrGrantApplication(models.Model):
 
         # ── §4.1b Freizeitmaßnahme mehrtägig ─────────────────────────────────
         elif t.code == '4_1b':
-            base_tn = tn * days * t.rate_per_tn_day
-            if t.juleica_bonus:
-                uplift = 1.0 + (t.juleica_uplift_pct or 0.0) / 100.0
-                cost_juleica = leaders_juleica * days * (t.rate_per_tn_day * uplift)
-                cost_no_juleica = leaders_no_juleica * days * t.rate_per_tn_day
-                calculated = base_tn + cost_juleica + cost_no_juleica
-            else:
-                calculated = base_tn + (leaders * days * t.rate_per_tn_day)
+            calculated = self._day_rate_grant(t, tn, days, leaders, leaders_juleica)
 
         # ── §4.2 Verbandsspezifische Maßnahme ────────────────────────────────
         elif t.code == '4_2':
-            calculated = tn * days * t.rate_per_tn_day
+            calculated = self._day_rate_grant(t, tn, days, leaders, leaders_juleica)
 
         # ── §4.3 Außerschulische Jugendbildung ────────────────────────────────
         elif t.code == '4_3':
-            base = tn * days * t.rate_per_tn_day
+            base = self._day_rate_grant(t, tn, days, leaders, leaders_juleica)
             referee_contrib = 0.0
             if t.referee_pct > 0 and self.cost_referees > 0:
                 referee_contrib = min(
@@ -329,7 +415,7 @@ class KjrGrantApplication(models.Model):
 
         # ── §4.5 Internationale Jugendarbeit ──────────────────────────────────
         elif t.code == '4_5':
-            calculated = tn * days * t.rate_per_tn_day
+            calculated = self._day_rate_grant(t, tn, days, leaders, leaders_juleica)
 
         # ── §4.6 Geräte & Materialien ─────────────────────────────────────────
         elif t.code == '4_6':
@@ -361,22 +447,61 @@ class KjrGrantApplication(models.Model):
 
         # ── §4.9 Delegiertenförderung (Fahrtkostenerstattung n. Bayer. RKG) ───
         elif t.code == '4_9':
-            # Erstattung der Delegierten-Fahrtkosten zur Förderquote (Standard 100 %),
-            # gedeckelt über die globalen Regeln (Höchstbetrag, Fehlbetrag).
-            if self.cost_transport > 0:
-                calculated = self.cost_transport * (t.max_cofinancing_pct / 100.0)
+            # Jeder stimmberechtigte Delegierte, der zur Vollversammlung anreist,
+            # erhält Fahrtkostenerstattung nach dem Bayer. Reisekostengesetz (BayRKG):
+            #   • PKW: Wegstreckenentschädigung je km × Hin- und Rückfahrt
+            #          (= 2 × einfache Strecke) + Mitnahmeentschädigung je Mitfahrer/km.
+            #   • ÖPNV/Sonstiges: Erstattung der belegten Fahrtkosten.
+            # Sätze über System-Parameter pflegbar (BayRKG, halbjährlich/jährlich anpassbar).
+            params = self.env['ir.config_parameter'].sudo()
+            try:
+                rate_km = float(params.get_param('kjr_grant.bayrkg_rate_per_km', 0.35))
+                rate_pax = float(params.get_param('kjr_grant.bayrkg_passenger_rate_per_km', 0.03))
+            except (ValueError, TypeError):
+                rate_km, rate_pax = 0.35, 0.03
+            if self.delegate_transport_mode == 'car' and self.delegate_km_one_way > 0:
+                round_trip = self.delegate_km_one_way * 2.0
+                calculated = round_trip * (rate_km + (self.delegate_passenger_count or 0) * rate_pax)
+            elif self.cost_transport > 0:
+                calculated = self.cost_transport
 
         # ── Globale Deckelungsregeln ──────────────────────────────────────────
+        # § 4.7 (Pauschale) und § 4.9 (BayRKG-Fahrtkostenerstattung) sind ihrer Natur
+        # nach von der 50%-Kofinanzierungs- und der Fehlbetragsdeckelung ausgenommen.
+        exempt = ('4_7', '4_9')
         if t.max_amount > 0:
             calculated = min(calculated, t.max_amount)
 
-        if t.code != '4_7' and self.cost_total > 0:
+        if t.code not in exempt and self.cost_total > 0:
             max_by_costs = self.cost_total * (t.max_cofinancing_pct / 100.0)
             calculated = min(calculated, max_by_costs)
 
-        calculated = min(calculated, self.deficit)
+        if t.code not in exempt:
+            calculated = min(calculated, self.deficit)
 
         return math.ceil(calculated) if calculated > 0 else 0.0
+
+    @api.depends('grant_type_id', 'measure_year', 'grant_approved', 'state')
+    def _compute_budget_info(self):
+        Budget = self.env['kjr.grant.budget']
+        for rec in self:
+            if not rec.grant_type_id or not rec.measure_year:
+                rec.budget_info = ''
+                continue
+            budget = Budget.search([
+                ('year', '=', rec.measure_year), ('grant_type_id', '=', rec.grant_type_id.id),
+            ], limit=1) or Budget.search([
+                ('year', '=', rec.measure_year), ('grant_type_id', '=', False),
+            ], limit=1)
+            if not budget or not budget.amount_total:
+                rec.budget_info = _('Kein Jahresbudget hinterlegt.')
+            else:
+                rec.budget_info = _(
+                    '%(rem).2f € von %(tot).2f € verbleibend (%(used).1f %% ausgeschöpft, %(year)d).'
+                ) % {
+                    'rem': budget.amount_remaining, 'tot': budget.amount_total,
+                    'used': budget.usage_pct, 'year': rec.measure_year,
+                }
 
     def _compute_attachment_count(self):
         data = self.env['ir.attachment']._read_group(
@@ -514,6 +639,7 @@ class KjrGrantApplication(models.Model):
                 ))
             rec.write({'state': 'approved', 'date_approved': fields.Date.today()})
             rec._create_grant_move()
+            rec._warn_budget_exceeded()
             rec._send_approval_notification()
             try:
                 template = self.env.ref('kjr_grant.mail_template_grant_approved')
@@ -542,12 +668,37 @@ class KjrGrantApplication(models.Model):
             except Exception:
                 pass
 
+    def action_order_payment(self):
+        """Bearbeitungsvermerk 'zur Zahlung angewiesen' setzen (KJR-OA-Antragsformular).
+        Zwischenschritt zwischen Bewilligung und Auszahlung; steuert das Dashboard
+        'Zur Auszahlung'."""
+        if not self.env.user.has_group('kjr_grant.group_kjr_reviewer'):
+            raise AccessError(_('Keine Berechtigung zur Zahlungsanweisung.'))
+        for rec in self:
+            if rec.state != 'approved':
+                raise UserError(_('Nur bewilligte Anträge können zur Zahlung angewiesen werden.'))
+            rec.write({
+                'payment_ordered': True,
+                'payment_ordered_by': self.env.user.id,
+                'payment_ordered_date': fields.Date.today(),
+            })
+            rec.message_post(
+                body=_('Zur Zahlung angewiesen am %s.') % fields.Date.today().strftime('%d.%m.%Y'),
+                subtype_xmlid='mail.mt_note',
+            )
+
     def action_mark_paid(self):
         if not self.env.user.has_group('kjr_grant.group_kjr_reviewer'):
             raise AccessError(_('Keine Berechtigung zur Auszahlungsmarkierung.'))
         for rec in self:
             if rec.state != 'approved':
                 raise UserError(_('Nur bewilligte Anträge können als ausgezahlt markiert werden.'))
+            if not rec.payment_ordered:
+                rec.write({
+                    'payment_ordered': True,
+                    'payment_ordered_by': self.env.user.id,
+                    'payment_ordered_date': fields.Date.today(),
+                })
             rec.write({'state': 'paid', 'date_paid': fields.Date.today()})
             rec._create_grant_payment()
 
@@ -672,6 +823,32 @@ class KjrGrantApplication(models.Model):
             body=_('Buchung erstellt: %s (%.2f €)') % (move.name, self.grant_approved),
             subtype_xmlid='mail.mt_note',
         )
+
+    def _warn_budget_exceeded(self):
+        """Nicht-blockierender Hinweis, wenn die Bewilligung das Jahresbudget der
+        Förderart überschreitet. Zuschüsse werden nur nach Finanzlage gewährt
+        (Ermessen, kein Rechtsanspruch) – daher Warnung statt harter Sperre."""
+        self.ensure_one()
+        year = self.measure_year or fields.Date.today().year
+        Budget = self.env['kjr.grant.budget']
+        budget = Budget.search([
+            ('year', '=', year), ('grant_type_id', '=', self.grant_type_id.id),
+        ], limit=1) or Budget.search([
+            ('year', '=', year), ('grant_type_id', '=', False),
+        ], limit=1)
+        if budget and budget.amount_total and budget.amount_remaining < 0:
+            self.message_post(
+                body=_(
+                    'Budget-Hinweis: Mit dieser Bewilligung ist das Jahresbudget %(y)d '
+                    'für "%(t)s" um %(over).2f € überschritten (Budget %(tot).2f €, '
+                    'bereits bewilligt %(appr).2f €). Bewilligung nur nach Finanzlage.'
+                ) % {
+                    'y': year, 't': budget.grant_type_id.name or _('Gesamt'),
+                    'over': -budget.amount_remaining, 'tot': budget.amount_total,
+                    'appr': budget.amount_approved,
+                },
+                subtype_xmlid='mail.mt_note',
+            )
 
     def _create_grant_payment(self):
         """Zahlung bei Auszahlung erstellen."""
@@ -810,7 +987,10 @@ class KjrGrantApplication(models.Model):
             errors.append(_('Beginn und Ende der Maßnahme fehlen.'))
         if self.measure_start and self.measure_end and self.measure_end < self.measure_start:
             errors.append(_('Ende liegt vor Beginn.'))
-        if self.tn_count <= 0:
+        # Förderarten ohne Maßnahmen-Teilnehmer: § 4.6 (Geräte), § 4.7 (Starthilfe),
+        # § 4.9 (Delegiertenfahrtkosten).
+        no_tn_codes = ('4_6', '4_7', '4_9')
+        if t.code not in no_tn_codes and self.tn_count <= 0:
             errors.append(_('Anzahl Teilnehmer muss > 0 sein.'))
         if self.participant_ids and not self.participant_consent:
             errors.append(_('Bitte bestätigen Sie, dass die Einwilligung der '
@@ -819,7 +999,16 @@ class KjrGrantApplication(models.Model):
         if t.min_participants and self.tn_count < t.min_participants:
             errors.append(_('Mindestens %d Teilnehmer erforderlich für "%s".')
                          % (t.min_participants, t.name))
-        if self.cost_total <= 0 and t.code != '4_7':
+        # § 4.9 braucht eine Vollversammlung (Grundlage der Erstattung lt. Antragsliste)
+        # und entweder gefahrene km (PKW) oder belegte Fahrtkosten.
+        if t.code == '4_9':
+            if not self.assembly_id:
+                errors.append(_('Bitte die Vollversammlung angeben, zu der die Delegierten '
+                               'angereist sind (Grundlage der Fahrtkostenerstattung § 4.9).'))
+            if self.delegate_km_one_way <= 0 and self.cost_transport <= 0:
+                errors.append(_('Bitte die gefahrenen Kilometer (einfache Strecke) oder die '
+                               'belegten Fahrtkosten der Delegierten angeben.'))
+        if self.cost_total <= 0 and t.code not in ('4_7', '4_9'):
             errors.append(_('Bitte Kosten angeben.'))
         if not t.allow_private_account and not self.payment_iban:
             errors.append(_('IBAN fehlt. Auszahlung nur auf Organisationskonto.'))
@@ -856,18 +1045,28 @@ class KjrGrantApplication(models.Model):
         if not t.max_per_year:
             return
         year = self.measure_start.year if self.measure_start else date.today().year
+        # Förderarten mit gemeinsamer Jahreslimit-Gruppe zählen zusammen
+        # (KJR-OA: § 4.1 eintägig und mehrtägig = max. 4 Freizeitmaßnahmen/Jahr gemeinsam).
+        if t.year_limit_group:
+            type_ids = self.env['kjr.grant.type'].search([
+                ('year_limit_group', '=', t.year_limit_group),
+            ]).ids
+            group_label = _('Förderart-Gruppe "%s"') % t.year_limit_group
+        else:
+            type_ids = [t.id]
+            group_label = _('"%s"') % t.name
         count = self.search_count([
             ('partner_id', '=', self.partner_id.id),
-            ('grant_type_id', '=', t.id),
+            ('grant_type_id', 'in', type_ids),
             ('state', 'not in', ['draft', 'rejected']),
             ('measure_year', '=', year),
             ('id', '!=', self.id),
         ])
         if count >= t.max_per_year:
             raise UserError(_(
-                'Das Jahreslimit von %(limit)d Anträgen für "%(type)s" in %(year)d '
+                'Das Jahreslimit von %(limit)d Anträgen für %(group)s in %(year)d '
                 'ist für "%(partner)s" bereits erreicht.',
-                limit=t.max_per_year, type=t.name,
+                limit=t.max_per_year, group=group_label,
                 year=year, partner=self.partner_id.name,
             ))
 
@@ -904,10 +1103,12 @@ class KjrGrantApplication(models.Model):
         if t.max_days and self.measure_days and self.measure_days > t.max_days:
             warnings.append(_('Die Maßnahme überschreitet die Höchstdauer von %d Tagen.') % t.max_days)
         # Alter (nur wenn Grenzen gesetzt und Geburtsdaten vorhanden).
+        # Jugendleiter sind von der Teilnehmer-Altersgrenze ausgenommen (KJR-OA: für
+        # Jugendleiter besteht keine Altersgrenze) und werden hier nicht gezählt.
         if (t.min_age or t.max_age) and self.participant_ids:
             out = 0
             for p in self.participant_ids:
-                if not p.birthdate:
+                if not p.birthdate or p.is_leader:
                     continue
                 if t.min_age and p.age < t.min_age:
                     out += 1
@@ -915,9 +1116,35 @@ class KjrGrantApplication(models.Model):
                     out += 1
             if out:
                 warnings.append(_(
-                    '%(n)d Teilnehmer liegen außerhalb des förderfähigen Altersbereichs '
-                    '(%(min)s–%(max)s Jahre).'
+                    '%(n)d Teilnehmer (ohne Jugendleiter) liegen außerhalb des förderfähigen '
+                    'Altersbereichs (%(min)s–%(max)s Jahre).'
                 ) % {'n': out, 'min': t.min_age or '–', 'max': t.max_age or '–'})
+        # Subsidiarität: anderweitige Zuschussmöglichkeiten sind auszuschöpfen und
+        # anzugeben; eine angemessene Eigenleistung wird vorausgesetzt (KJR-OA Grundsätze).
+        other_income = (self.income_municipality + self.income_association
+                        + self.income_bjr + self.income_other)
+        if t.code not in ('4_4', '4_7', '4_9') and self.cost_total >= 200 and other_income <= 0:
+            warnings.append(_(
+                'Subsidiarität: Es sind keine anderweitigen Zuschüsse (Gemeinde/Verband/BJR/'
+                'sonstige) angegeben. Andere Fördermöglichkeiten sind vorrangig auszuschöpfen '
+                'und im Antrag anzugeben.'
+            ))
+        # § 4.9: Delegierter-Verband sollte zur gewählten Vollversammlung gehören.
+        if t.code == '4_9' and self.assembly_id and self.partner_id:
+            a = self.assembly_id
+            if self.partner_id not in (a.invited_member_ids | a.attendee_ids):
+                warnings.append(_(
+                    'Der Verband "%s" ist für die gewählte Vollversammlung weder als '
+                    'eingeladen noch als anwesend erfasst – bitte die Delegierten-'
+                    'berechtigung prüfen.'
+                ) % self.partner_id.name)
+        # Hinweis auf nicht förderfähige Kosten (KJR-OA Ziff. 2 / 3.3).
+        if t.code not in ('4_7', '4_9') and self.cost_total > 0:
+            warnings.append(_(
+                'Bitte beachten: Nicht förderfähig sind u. a. Alkohol und Tabakwaren, '
+                'Personalkosten für Hauptamtliche, berufsqualifizierende Aus-/Fortbildungen, '
+                'touristische Unternehmen sowie reine Unterhaltungs-/Schulveranstaltungen.'
+            ))
         if warnings:
             items = markupsafe.Markup('').join(
                 markupsafe.Markup('<li>%s</li>') % w for w in warnings

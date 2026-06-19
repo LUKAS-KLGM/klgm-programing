@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate="1": Default-Werte; vom Administrator pflegbar, bei Updates nicht überschrieben. -->
+    <data noupdate="1">
+
+        <!-- Verzugszinsen: Basiszinssatz (§ 247 BGB) – halbjährlich pflegen (kann negativ sein) -->
+        <record id="param_base_interest_rate" model="ir.config_parameter">
+            <field name="key">kjr_grant.base_interest_rate</field>
+            <field name="value">0.0</field>
+        </record>
+        <!-- Zuschlag auf den Basiszinssatz: bayerisch + 3 Prozentpunkte
+             (ANBest-P Nr. 8.4 i. V. m. Art. 49a Abs. 3 BayVwVfG) -->
+        <record id="param_interest_surcharge" model="ir.config_parameter">
+            <field name="key">kjr_grant.default_interest_surcharge</field>
+            <field name="value">3.0</field>
+        </record>
+
+        <!-- DSGVO: Aufbewahrungsfrist Teilnehmerdaten in Jahren (KJR-OA: 5) -->
+        <record id="param_retention_years" model="ir.config_parameter">
+            <field name="key">kjr_grant.participant_retention_years</field>
+            <field name="value">5</field>
+        </record>
+
+        <!-- § 4.9 Delegiertenförderung: Sätze nach Bayer. Reisekostengesetz (BayRKG) -->
+        <record id="param_bayrkg_rate_per_km" model="ir.config_parameter">
+            <field name="key">kjr_grant.bayrkg_rate_per_km</field>
+            <field name="value">0.35</field>
+        </record>
+        <record id="param_bayrkg_passenger_rate" model="ir.config_parameter">
+            <field name="key">kjr_grant.bayrkg_passenger_rate_per_km</field>
+            <field name="value">0.03</field>
+        </record>
+
+        <!-- Auszahlungs-Stichtag (KJR-OA: 15.11.) – Anträge bis dahin im selben Jahr -->
+        <record id="param_payout_cutoff_day" model="ir.config_parameter">
+            <field name="key">kjr_grant.payout_cutoff_day</field>
+            <field name="value">15</field>
+        </record>
+        <record id="param_payout_cutoff_month" model="ir.config_parameter">
+            <field name="key">kjr_grant.payout_cutoff_month</field>
+            <field name="value">11</field>
+        </record>
+
+    </data>
+</odoo>

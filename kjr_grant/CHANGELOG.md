@@ -1,5 +1,68 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.6.0.0 (2026-06-19) — Richtlinien-Feinabgleich, § 4.9 BayRKG & Härtung
+
+Vollständiger Abgleich der Zuschussverwaltung gegen den verifizierten Wortlaut der
+KJR-OA-Zuschussrichtlinie (Fassung gültig ab 01.12.2022, als „2026" republiziert) und
+die einschlägigen BJR-Regeln. Statisch geprüft (py_compile, xmllint, Feld-/Methoden-
+Referenzcheck), Berechnungslogik numerisch gegen Richtlinien-Beispiele getestet, in einem
+3-fachen adversarialen Review (Odoo-19-Laufzeit / Richtlinien / Vollständigkeit) gehärtet.
+
+### Richtlinien-Korrektheit (Berechnung)
+- **§ 4.9 Delegiertenförderung** korrekt als **Fahrtkostenerstattung nach BayRKG** umgesetzt
+  (statt Platzhalter): PKW = Wegstreckenentschädigung je km (Hin- und Rückfahrt) + Mitnahme-
+  entschädigung je Mitfahrer; ÖPNV/Sonstiges = belegte Fahrtkosten. Sätze über System-Parameter
+  (`kjr_grant.bayrkg_rate_per_km` 0,35 €, `…_passenger_rate_per_km` 0,03 €). Kein eigener
+  Höchstbetrag (max_amount 0), Auszahlung auf Delegiertenkonto erlaubt, Verknüpfung zur
+  Vollversammlung (`assembly_id`) — bei Einreichung Pflicht; Hinweis, wenn der Verband dort
+  nicht erfasst ist.
+- **Juleica-Zuschlag (+50 %)** gilt jetzt einheitlich für **alle Tagessatz-Förderarten**
+  (§ 4.1b/4.2/4.3/4.5) über den gemeinsamen Helfer `_day_rate_grant` (zuvor nur § 4.1b).
+- **§ 4.7 (Pauschale)** und **§ 4.9 (BayRKG)** sind jetzt korrekt von Kofinanzierungs- **und**
+  Fehlbetragsdeckel ausgenommen (§ 4.7 wurde zuvor fälschlich auf das Defizit gedeckelt).
+- **Tageszählung** berücksichtigt die An-/Abreiseregel (nach 10:00 begonnen / vor 17:00 beendet
+  → An- und Abreisetag zählen als ein Tag) über die vorhandenen Uhrzeit-Felder.
+- **Auszahlungsstichtag 15.11.** (knüpft an den Antragseingang) als `payout_year`/
+  `payout_schedule_info` ergänzt (Stichtag konfigurierbar).
+- **Rückforderungszins** auf **Basiszinssatz + 3 Prozentpunkte** (bayer. ANBest-P Nr. 8.4 /
+  Art. 49a Abs. 3 BayVwVfG) korrigiert (zuvor +5 PP); Zuschlag konfigurierbar.
+- **Altersfenster** 5–27 in den Stammdaten gesetzt; Jugendleiter von der Altersprüfung
+  ausgenommen (keine Altersgrenze lt. Richtlinie).
+- **Kombiniertes Jahreslimit** § 4.1a + § 4.1b (max. 4 Freizeitmaßnahmen/Jahr gemeinsam) über
+  `year_limit_group`.
+- **§ 4.8a** verlangt jetzt korrekt **mehr als** 100 TN (min. 101); § 4.4 `juleica_bonus`
+  deaktiviert (dort wirkungslos, eigene 50/75 %-Logik).
+- **Verwendungsnachweis-Neuberechnung** nutzt jetzt die **echte förderartspezifische Logik**
+  auf Ist-Werten (In-Memory-Antrag) statt linearer Skalierung; gedeckelt auf den bewilligten Betrag.
+
+### Korrektheit & Bugfixes
+- Portal-Datei-Upload nahm `tn_list_file`/`other_file_2` nicht entgegen → ergänzt.
+- `payment_ordered`-Workflow: Button **„Zur Zahlung anweisen"** (setzt Vermerk + Benutzer + Datum).
+- **Abrechnung** und **Fördermittel-Akquise** haben jetzt vollständige Workflow-Buttons
+  (Eingang/Prüfung/Abschluss; setzt Eingangsdatum).
+- **Juleica**: Portal-/Antragsteller-Lesezugriff auf die **eigene** Karte (ACL + Record Rule);
+  Sachbearbeiter sehen alle (DSGVO-Mandantentrennung). No-Op in `_compute_expiry` bereinigt.
+- **Mail-Templates** fallen auf die Verbands-E-Mail zurück (kein stiller Fehlversand mehr).
+- **Vollversammlungs-Quorum** auf die **stimmberechtigten Mitglieder** gestützt (§ 33 BJR-Satzung)
+  inkl. quorumsunabhängiger Wiederholungssitzung (§ 33 Abs. 3).
+- Vollständige `@api.depends` für die §-4.9- und Settlement-Neuberechnung (keine veralteten Werte).
+
+### Neue Funktionen
+- Nicht-blockierende **Budget-Warnung** bei Bewilligung über dem Jahresbudget + Live-Anzeige
+  „verbleibendes Budget" am Antrag (Finanzlage-/Ermessensvorbehalt der Richtlinie).
+- Förderfähigkeits-Hinweise um **Subsidiarität** (anderweitige Zuschüsse ausschöpfen) und die
+  **Ausschlussliste** nicht förderfähiger Kosten (Alkohol/Tabak, Personalkosten Hauptamtliche,
+  berufsqualifizierende Fortbildungen, touristische Unternehmen) erweitert.
+- **Fristen-Erinnerungs-Cron** für Fördermittel-Antrags- und Verwendungsnachweis-Fristen.
+- System-Parameter-Defaults als Seed-Daten (`data/ir_config_parameter_data.xml`).
+
+### Hinweise
+- § 4.9 wird über das Backend erfasst (Antragsliste der Vollversammlung); das öffentliche
+  Portal-Antragsformular bildet weiterhin die maßnahmenbasierten Förderarten ab.
+- Basiszinssatz (`kjr_grant.base_interest_rate`) ist halbjährlich zu pflegen; BayRKG-Sätze und
+  Auszahlungsstichtag sind über System-Parameter konfigurierbar (Vertrieb an weitere Ringe).
+- Weiterhin offen: Laufzeit-/Abnahmetest auf einer Odoo-19-Staging-Instanz (lokal nicht möglich).
+
 ## 19.0.3.0.0 (2026-06-02) — Review, Härtung & Förderfest-Ausbau
 
 ### Behoben (kritisch/hoch)

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- E1: KJR-Felder in das Online-Anmeldeformular einfügen -->
+    <template id="registration_attendee_details_kjr"
+              inherit_id="website_event.registration_attendee_details"
+              name="KJR Anmeldedetails">
+        <xpath expr="//t[@name='attendee_loop']" position="inside">
+            <div class="row g-2 mt-2 o_kjr_attendee_fields">
+                <div class="col-md-4">
+                    <label t-attf-for="#{counter}-birthdate" class="form-label">Geburtsdatum</label>
+                    <input type="date" class="form-control"
+                           t-attf-name="#{counter}-birthdate"
+                           t-attf-id="#{counter}-birthdate"/>
+                </div>
+                <div class="col-md-4">
+                    <label t-attf-for="#{counter}-dietary_requirements" class="form-label">Ernährung</label>
+                    <select class="form-select"
+                            t-attf-name="#{counter}-dietary_requirements"
+                            t-attf-id="#{counter}-dietary_requirements">
+                        <option value="">-</option>
+                        <option value="none">Keine besonderen</option>
+                        <option value="vegetarian">Vegetarisch</option>
+                        <option value="vegan">Vegan</option>
+                        <option value="halal">Halal</option>
+                        <option value="kosher">Koscher</option>
+                        <option value="allergy">Allergie/Unverträglichkeit</option>
+                        <option value="other">Sonstiges</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label t-attf-for="#{counter}-dietary_note" class="form-label">Ernährung – Hinweis</label>
+                    <input type="text" class="form-control"
+                           t-attf-name="#{counter}-dietary_note"
+                           t-attf-id="#{counter}-dietary_note"
+                           placeholder="z. B. Nussallergie"/>
+                </div>
+                <div class="col-md-6">
+                    <label t-attf-for="#{counter}-guardian_name" class="form-label">Erziehungsberechtigte/r</label>
+                    <input type="text" class="form-control"
+                           t-attf-name="#{counter}-guardian_name"
+                           t-attf-id="#{counter}-guardian_name"/>
+                </div>
+                <div class="col-md-6">
+                    <label t-attf-for="#{counter}-guardian_phone" class="form-label">Telefon Erziehungsberechtigte/r</label>
+                    <input type="text" class="form-control"
+                           t-attf-name="#{counter}-guardian_phone"
+                           t-attf-id="#{counter}-guardian_phone"/>
+                </div>
+                <div class="col-md-6">
+                    <label t-attf-for="#{counter}-emergency_contact" class="form-label">Notfallkontakt</label>
+                    <input type="text" class="form-control"
+                           t-attf-name="#{counter}-emergency_contact"
+                           t-attf-id="#{counter}-emergency_contact"/>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" value="1"
+                               t-attf-name="#{counter}-parental_consent"
+                               t-attf-id="#{counter}-parental_consent"/>
+                        <label class="form-check-label" t-attf-for="#{counter}-parental_consent">
+                            Einwilligung der Erziehungsberechtigten liegt vor
+                        </label>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label t-attf-for="#{counter}-notes" class="form-label">Bemerkungen</label>
+                    <textarea class="form-control" rows="2"
+                              t-attf-name="#{counter}-notes"
+                              t-attf-id="#{counter}-notes"/>
+                </div>
+            </div>
+        </xpath>
+    </template>
+
+</odoo>

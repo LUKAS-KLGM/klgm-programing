@@ -7,7 +7,7 @@
             <field name="model_id" ref="model_kjr_grant_application"/>
             <field name="subject">Zuschussantrag {{ object.name }} eingereicht</field>
             <field name="email_from">{{ (object.company_id.email or 'kreisjugendring@lra-oa.bayern.de') }}</field>
-            <field name="email_to">{{ object.contact_email }}</field>
+            <field name="email_to">{{ (object.contact_email or object.partner_id.email or '') }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
     <p>Sehr geehrte/r {{ object.contact_person or 'Antragsteller/in' }},</p>
@@ -30,7 +30,7 @@
             <field name="model_id" ref="model_kjr_grant_application"/>
             <field name="subject">Zuschussantrag {{ object.name }} bewilligt</field>
             <field name="email_from">{{ (object.company_id.email or 'kreisjugendring@lra-oa.bayern.de') }}</field>
-            <field name="email_to">{{ object.contact_email }}</field>
+            <field name="email_to">{{ (object.contact_email or object.partner_id.email or '') }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
     <p>Sehr geehrte/r {{ object.contact_person or 'Antragsteller/in' }},</p>
@@ -53,7 +53,7 @@
             <field name="model_id" ref="model_kjr_grant_application"/>
             <field name="subject">Zuschussantrag {{ object.name }} abgelehnt</field>
             <field name="email_from">{{ (object.company_id.email or 'kreisjugendring@lra-oa.bayern.de') }}</field>
-            <field name="email_to">{{ object.contact_email }}</field>
+            <field name="email_to">{{ (object.contact_email or object.partner_id.email or '') }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
     <p>Sehr geehrte/r {{ object.contact_person or 'Antragsteller/in' }},</p>

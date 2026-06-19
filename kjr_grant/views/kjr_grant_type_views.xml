@@ -43,6 +43,7 @@
                             <field name="max_amount"/>
                             <field name="max_cofinancing_pct"/>
                             <field name="max_per_year"/>
+                            <field name="year_limit_group"/>
                             <field name="juleica_bonus"/>
                         </group>
                     </group>

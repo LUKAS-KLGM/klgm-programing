@@ -55,15 +55,18 @@ class KjrGrantSettlement(models.Model):
         string='Rückforderungsbetrag (€)', compute='_compute_repayment',
         store=True, digits=(10, 2),
     )
-    # ── Verzugszinsen (§ 247 BGB Basiszinssatz + 5 Prozentpunkte) ────────────
+    # ── Verzugszinsen (§ 247 BGB Basiszinssatz + 3 Prozentpunkte, bayerisch) ──
     repayment_due_date = fields.Date(
         string='Rückzahlung fällig bis',
         help='Ab Fälligkeit werden Verzugszinsen berechnet.')
     interest_rate = fields.Float(
         string='Zinssatz p. a. (%)', digits=(5, 2),
         default=lambda self: self._default_interest_rate(),
-        help='Basiszinssatz (§ 247 BGB) + 5 Prozentpunkte. Basiszinssatz über '
-             'System-Parameter "kjr_grant.base_interest_rate" pflegen.')
+        help='Basiszinssatz (§ 247 BGB) + 3 Prozentpunkte gem. bayerischer ANBest-P '
+             'Nr. 8.4 i. V. m. Art. 49a Abs. 3 BayVwVfG. Basiszinssatz über System-'
+             'Parameter "kjr_grant.base_interest_rate", Zuschlag über '
+             '"kjr_grant.default_interest_surcharge" (Default 3) pflegen. '
+             'Pro Bescheid überschreibbar.')
     interest_reference_date = fields.Date(
         string='Zinsen berechnet bis', default=fields.Date.context_today,
         help='Stichtag, bis zu dem die Verzugszinsen berechnet werden.')
@@ -94,22 +97,50 @@ class KjrGrantSettlement(models.Model):
             rec.actual_cost_total = total
             rec.actual_deficit = max(total - rec.actual_income_total, 0.0)
 
-    @api.depends('actual_tn_count', 'actual_deficit', 'application_id',
+    @api.depends('actual_tn_count', 'actual_cost_accommodation', 'actual_cost_transport',
+                 'actual_cost_referees', 'actual_cost_materials', 'actual_cost_other',
+                 'actual_income_total', 'application_id',
                  'application_id.grant_calculated', 'application_id.grant_approved',
-                 'application_id.tn_count')
+                 'application_id.tn_count', 'application_id.grant_type_id',
+                 'application_id.measure_days', 'application_id.tn_leader_count',
+                 'application_id.tn_leader_juleica', 'application_id.delegate_transport_mode',
+                 'application_id.delegate_km_one_way', 'application_id.delegate_passenger_count')
     def _compute_recalculated(self):
+        """Neuberechnung des Zuschusses auf Ist-Basis – mit der GLEICHEN
+        förderartspezifischen Logik wie im Antrag (Tagessätze, Juleica-Zuschlag,
+        Referenten-/Sachkostendeckel, Pauschalen, BayRKG, Deckelungen). Dazu wird ein
+        flüchtiger In-Memory-Antrag mit den Ist-Werten gerechnet. Der neu berechnete
+        Zuschuss kann den ursprünglich bewilligten Betrag nicht übersteigen
+        (Verwendungsnachweis löst keine Nachzahlung aus)."""
         for rec in self:
             app = rec.application_id
-            # Basis ist der bewilligte Betrag (Fallback: berechneter, falls noch nicht bewilligt),
-            # damit Rückforderung konsistent auf den tatsächlich zugesagten Zuschuss bezogen ist.
             base_grant = (app.grant_approved or app.grant_calculated) if app else 0.0
             if not app or not base_grant:
                 rec.grant_recalculated = 0.0
                 continue
-            ratio = min(rec.actual_tn_count / app.tn_count, 1.0) if app.tn_count > 0 else 1.0
-            base = base_grant * ratio
-            base = min(base, rec.actual_deficit)
-            rec.grant_recalculated = math.ceil(base) if base > 0 else 0.0
+            sim = self.env['kjr.grant.application'].new({
+                'grant_type_id': app.grant_type_id.id,
+                'measure_start': app.measure_start,
+                'measure_end': app.measure_end,
+                'measure_start_time': app.measure_start_time,
+                'measure_end_time': app.measure_end_time,
+                'measure_days': app.measure_days,
+                'tn_count': rec.actual_tn_count,
+                'tn_leader_count': min(app.tn_leader_count, rec.actual_tn_count) if rec.actual_tn_count else app.tn_leader_count,
+                'tn_leader_juleica': app.tn_leader_juleica,
+                'cost_accommodation': rec.actual_cost_accommodation,
+                'cost_transport': rec.actual_cost_transport,
+                'cost_referees': rec.actual_cost_referees,
+                'cost_materials': rec.actual_cost_materials,
+                'cost_other': rec.actual_cost_other,
+                'income_tn_fees': rec.actual_income_total,
+                'delegate_transport_mode': app.delegate_transport_mode,
+                'delegate_km_one_way': app.delegate_km_one_way,
+                'delegate_passenger_count': app.delegate_passenger_count,
+            })
+            recalculated = sim._calculate_grant()
+            recalculated = min(recalculated, base_grant)
+            rec.grant_recalculated = math.ceil(recalculated) if recalculated > 0 else 0.0
 
     @api.depends('grant_recalculated', 'application_id.grant_approved')
     def _compute_repayment(self):
@@ -118,9 +149,13 @@ class KjrGrantSettlement(models.Model):
             rec.repayment_amount = max(approved - rec.grant_recalculated, 0.0)
 
     def _default_interest_rate(self):
-        base = float(self.env['ir.config_parameter'].sudo().get_param(
-            'kjr_grant.base_interest_rate', 0.0))
-        return base + 5.0
+        params = self.env['ir.config_parameter'].sudo()
+        try:
+            base = float(params.get_param('kjr_grant.base_interest_rate', 0.0))
+            surcharge = float(params.get_param('kjr_grant.default_interest_surcharge', 3.0))
+        except (ValueError, TypeError):
+            base, surcharge = 0.0, 3.0
+        return base + surcharge
 
     @api.depends('repayment_amount', 'interest_rate', 'repayment_due_date', 'interest_reference_date')
     def _compute_interest(self):
@@ -138,6 +173,32 @@ class KjrGrantSettlement(models.Model):
             rec.total_reclaim = rec.repayment_amount + rec.interest_amount
 
     repayment_move_id = fields.Many2one('account.move', string='Rückforderungs-Buchung', readonly=True, copy=False)
+
+    def action_submit(self):
+        for rec in self:
+            if rec.state != 'draft':
+                raise UserError(_('Nur Entwürfe können eingereicht werden.'))
+            rec.write({'state': 'submitted', 'date_submitted': fields.Date.today()})
+            rec.message_post(
+                body=_('Verwendungsnachweis am %s eingereicht.') % fields.Date.today().strftime('%d.%m.%Y'),
+                subtype_xmlid='mail.mt_note',
+            )
+
+    def action_review(self):
+        for rec in self:
+            if rec.state not in ('draft', 'submitted'):
+                raise UserError(_('Nur eingereichte Abrechnungen können geprüft werden.'))
+            rec.write({'state': 'reviewed'})
+
+    def action_close(self):
+        for rec in self:
+            if rec.state == 'closed':
+                continue
+            rec.write({'state': 'closed'})
+
+    def action_reset_draft(self):
+        for rec in self:
+            rec.write({'state': 'draft'})
 
     def action_print_verwendungsnachweis(self):
         self.ensure_one()

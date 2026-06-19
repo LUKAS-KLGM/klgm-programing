@@ -26,6 +26,20 @@
                         erfasst werden – auf der Website am einfachsten über Veranstaltungs-Fragen
                         (Kommunikation → Fragen) oder über die Anmelde-Detailfelder.
                     </div>
+                    <group>
+                        <group string="Zahlung" invisible="not is_kjr">
+                            <field name="payment_required"/>
+                            <field name="training_product_id"
+                                   invisible="not payment_required"/>
+                        </group>
+                        <group string="Altersgruppe" invisible="not is_kjr">
+                            <field name="kjr_enforce_age_range"/>
+                        </group>
+                    </group>
+                    <group string="Kooperationspartner (Portal-Zugriff)" invisible="not is_kjr">
+                        <field name="cooperation_partner_id"/>
+                        <field name="cooperation_user_ids" widget="many2many_tags"/>
+                    </group>
                 </page>
             </notebook>
         </field>
@@ -37,6 +51,13 @@
         <field name="model">event.registration</field>
         <field name="inherit_id" ref="event.view_event_registration_form"/>
         <field name="arch" type="xml">
+            <header position="inside">
+                <button name="action_send_certificate" type="object" string="Bescheinigung senden"
+                        class="btn-secondary" groups="event.group_event_user"/>
+                <button name="action_create_training_invoice" type="object" string="Rechnung erstellen"
+                        class="btn-secondary" groups="event.group_event_user"
+                        invisible="not event_payment_required"/>
+            </header>
             <sheet position="inside">
                 <div class="alert alert-warning" role="alert" invisible="not consent_missing">
                     Einwilligung der Erziehungsberechtigten fehlt (minderjährige/r Teilnehmer/in).
@@ -55,6 +76,28 @@
                         <field name="guardian_name" invisible="not is_minor"/>
                         <field name="guardian_phone" invisible="not is_minor"/>
                         <field name="emergency_contact"/>
+                    </group>
+                </group>
+                <group string="KJR – Ernährung &amp; Bemerkungen">
+                    <group>
+                        <field name="dietary_requirements"/>
+                        <field name="dietary_note"
+                               invisible="dietary_requirements not in ('allergy','other')"/>
+                    </group>
+                    <group>
+                        <field name="notes"/>
+                    </group>
+                </group>
+                <group string="KJR – Zahlung" invisible="not event_payment_required">
+                    <field name="event_payment_required" invisible="1"/>
+                    <field name="kjr_currency_id" invisible="1"/>
+                    <group>
+                        <field name="kjr_payment_state"/>
+                        <field name="payment_date"/>
+                    </group>
+                    <group>
+                        <field name="amount_due"/>
+                        <field name="amount_paid"/>
                     </group>
                 </group>
                 <group string="Juleica" invisible="not event_is_juleica"
@@ -78,5 +121,79 @@
             </search>
         </field>
     </record>
+
+    <!-- E3/E5: Eigene Backend-Listenansicht der KJR-Anmeldungen -->
+    <record id="view_kjr_registration_list" model="ir.ui.view">
+        <field name="name">event.registration.list.kjr</field>
+        <field name="model">event.registration</field>
+        <field name="arch" type="xml">
+            <list string="KJR-Teilnehmer/innen">
+                <field name="name"/>
+                <field name="event_id"/>
+                <field name="kjr_age" string="Alter"/>
+                <field name="has_birthdate" column_invisible="1"/>
+                <field name="dietary_requirements"/>
+                <field name="dietary_note" optional="hide"/>
+                <field name="notes" optional="hide"/>
+                <field name="parental_consent" string="Einwilligung"/>
+                <field name="consent_missing" optional="show"/>
+                <field name="age_out_of_range" optional="hide"/>
+                <field name="kjr_payment_state" string="Zahlung"/>
+                <field name="amount_due" optional="hide"/>
+                <field name="amount_paid" optional="hide"/>
+                <field name="kjr_currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kjr_registration_search" model="ir.ui.view">
+        <field name="name">event.registration.search.kjr</field>
+        <field name="model">event.registration</field>
+        <field name="arch" type="xml">
+            <search string="KJR-Teilnehmer/innen">
+                <field name="name"/>
+                <field name="event_id"/>
+                <filter string="Einwilligung fehlt" name="consent_missing"
+                        domain="[('consent_missing','=',True)]"/>
+                <filter string="Außerhalb Altersgruppe" name="age_out"
+                        domain="[('age_out_of_range','=',True)]"/>
+                <separator/>
+                <filter string="Zahlung offen" name="pay_open"
+                        domain="[('kjr_payment_state','=','open')]"/>
+                <filter string="Teilbezahlt" name="pay_partial"
+                        domain="[('kjr_payment_state','=','partial')]"/>
+                <filter string="Bezahlt" name="pay_paid"
+                        domain="[('kjr_payment_state','=','paid')]"/>
+                <group expand="0" string="Gruppieren nach">
+                    <filter string="Veranstaltung" name="group_event"
+                            context="{'group_by': 'event_id'}"/>
+                    <filter string="Zahlungsstatus" name="group_payment"
+                            context="{'group_by': 'kjr_payment_state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_kjr_registration" model="ir.actions.act_window">
+        <field name="name">KJR-Teilnehmer/innen</field>
+        <field name="res_model">event.registration</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_kjr_registration_search"/>
+        <field name="context">{'search_default_group_event': 1}</field>
+        <field name="domain">[('event_id.is_kjr','=',True)]</field>
+    </record>
+
+    <record id="action_kjr_registration_list_only" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_kjr_registration_list"/>
+        <field name="act_window_id" ref="action_kjr_registration"/>
+    </record>
+
+    <menuitem id="menu_kjr_registration"
+              name="KJR-Teilnehmer/innen"
+              parent="event.menu_event_event"
+              action="action_kjr_registration"
+              sequence="20"/>
 
 </odoo>

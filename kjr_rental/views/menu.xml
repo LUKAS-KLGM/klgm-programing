@@ -6,4 +6,6 @@
               parent="menu_kjr_rental_root" action="action_kjr_rental_order" sequence="10"/>
     <menuitem id="menu_kjr_rental_items" name="Artikel"
               parent="menu_kjr_rental_root" action="action_kjr_rental_item" sequence="20"/>
+    <menuitem id="menu_kjr_rental_inventory" name="Inventur"
+              parent="menu_kjr_rental_root" action="action_kjr_rental_inventory" sequence="30"/>
 </odoo>

@@ -2,6 +2,75 @@
 <odoo>
     <data noupdate="1">
 
+        <!-- F3: Reservierungsbestätigung (klar benannt, vorgemerkt – nicht verbindlich) -->
+        <record id="mail_template_booking_reserved" model="mail.template">
+            <field name="name">KJR Einrichtung: Reservierungsbestätigung</field>
+            <field name="model_id" ref="model_kjr_facility_booking"/>
+            <field name="subject">Reservierungsbestätigung {{ object.name }} — {{ object.facility_id.name }}</field>
+            <field name="email_from">{{ (object.company_id.email or 'kreisjugendring@lra-oa.bayern.de') }}</field>
+            <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
+            <field name="body_html" type="html">
+<div style="margin:0;padding:0;">
+    <p>Hallo {{ object.partner_id.name }},</p>
+    <p>wir haben für Sie <strong>{{ object.facility_id.name }}</strong> im genannten Zeitraum
+    <strong>vorgemerkt (reserviert)</strong>. Diese Reservierung ist noch nicht verbindlich.</p>
+    <table style="border-collapse:collapse;margin:10px 0;">
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Reservierungsnr.:</strong></td><td>{{ object.name }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Anreise:</strong></td><td>{{ object.check_in }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Abreise:</strong></td><td>{{ object.check_out }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Personen:</strong></td><td>{{ object.participant_count }}</td></tr>
+        <tr t-if="object.reservation_expiry"><td style="padding:4px 12px 4px 0;"><strong>Gültig bis:</strong></td><td>{{ object.reservation_expiry }}</td></tr>
+    </table>
+    <p>Bitte bestätigen Sie die Buchung verbindlich, damit wir Ihnen den Vertrag zusenden können.</p>
+    <div t-if="object.facility_id.mail_hint"><t t-out="object.facility_id.mail_hint"/></div>
+    <p>Mit freundlichen Grüßen,<br/>Kreisjugendring Oberallgäu</p>
+</div>
+            </field>
+        </record>
+
+        <!-- F2: Vertrag (mit PDF-Anhang) automatisch beim Buchen versenden -->
+        <record id="mail_template_booking_contract" model="mail.template">
+            <field name="name">KJR Einrichtung: Buchungsvertrag</field>
+            <field name="model_id" ref="model_kjr_facility_booking"/>
+            <field name="subject">Buchungsvertrag {{ object.name }} — {{ object.facility_id.name }}</field>
+            <field name="email_from">{{ (object.company_id.email or 'kreisjugendring@lra-oa.bayern.de') }}</field>
+            <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
+            <field name="report_template_ids" eval="[(6, 0, [ref('kjr_facility.action_report_booking_contract')])]"/>
+            <field name="body_html" type="html">
+<div style="margin:0;padding:0;">
+    <p>Hallo {{ object.partner_id.name }},</p>
+    <p>vielen Dank für Ihre verbindliche Buchung von <strong>{{ object.facility_id.name }}</strong>.
+    Im Anhang finden Sie den <strong>Buchungsvertrag</strong> ({{ object.name }}). Bitte senden Sie ihn
+    unterschrieben an uns zurück.</p>
+    <table style="border-collapse:collapse;margin:10px 0;">
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Anreise:</strong></td><td>{{ object.check_in }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Abreise:</strong></td><td>{{ object.check_out }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Gesamt (brutto):</strong></td><td>{{ '%.2f' % object.amount_total }} €</td></tr>
+    </table>
+    <div t-if="object.facility_id.mail_hint"><t t-out="object.facility_id.mail_hint"/></div>
+    <p>Mit freundlichen Grüßen,<br/>Kreisjugendring Oberallgäu</p>
+</div>
+            </field>
+        </record>
+
+        <!-- F5: Mahnung, wenn der Vertrag nicht unterschrieben zurückkam -->
+        <record id="mail_template_contract_followup" model="mail.template">
+            <field name="name">KJR Einrichtung: Erinnerung Vertrag</field>
+            <field name="model_id" ref="model_kjr_facility_booking"/>
+            <field name="subject">Erinnerung: Vertrag {{ object.name }} bitte unterschrieben zurücksenden</field>
+            <field name="email_from">{{ (object.company_id.email or 'kreisjugendring@lra-oa.bayern.de') }}</field>
+            <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
+            <field name="body_html" type="html">
+<div style="margin:0;padding:0;">
+    <p>Hallo {{ object.partner_id.name }},</p>
+    <p>wir haben Ihren Buchungsvertrag <strong>{{ object.name }}</strong> für {{ object.facility_id.name }}
+    bislang noch nicht unterschrieben zurückerhalten. Bitte senden Sie ihn uns baldmöglichst zu, damit
+    Ihre Buchung gesichert bleibt.</p>
+    <p>Mit freundlichen Grüßen,<br/>Kreisjugendring Oberallgäu</p>
+</div>
+            </field>
+        </record>
+
         <record id="mail_template_booking_confirmed" model="mail.template">
             <field name="name">KJR Einrichtung: Buchung bestätigt</field>
             <field name="model_id" ref="model_kjr_facility_booking"/>
@@ -11,13 +80,14 @@
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
     <p>Hallo {{ object.partner_id.name }},</p>
-    <p>Ihre Buchung <strong>{{ object.name }}</strong> für <strong>{{ object.facility_id.name }}</strong> ist bestätigt.</p>
+    <p>Ihre Buchung <strong>{{ object.name }}</strong> für <strong>{{ object.facility_id.name }}</strong> ist gebucht.</p>
     <table style="border-collapse:collapse;margin:10px 0;">
         <tr><td style="padding:4px 12px 4px 0;"><strong>Anreise:</strong></td><td>{{ object.check_in }}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;"><strong>Abreise:</strong></td><td>{{ object.check_out }}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;"><strong>Personen:</strong></td><td>{{ object.participant_count }}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;"><strong>Gesamt (brutto):</strong></td><td>{{ '%.2f' % object.amount_total }} €</td></tr>
     </table>
+    <div t-if="object.facility_id.mail_hint"><t t-out="object.facility_id.mail_hint"/></div>
     <p>Mit freundlichen Grüßen,<br/>Kreisjugendring Oberallgäu</p>
 </div>
             </field>

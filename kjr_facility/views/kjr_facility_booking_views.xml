@@ -10,8 +10,10 @@
                 <field name="partner_id"/>
                 <field name="facility_id"/>
                 <filter string="Anfragen" name="draft" domain="[('state','=','draft')]"/>
-                <filter string="Bestätigt" name="confirmed" domain="[('state','in',('confirmed','deposit','checked_in'))]"/>
+                <filter string="Reserviert (vorgemerkt)" name="reserved" domain="[('state','=','reserved')]"/>
+                <filter string="Gebucht" name="confirmed" domain="[('state','in',('confirmed','deposit','checked_in'))]"/>
                 <filter string="Berechnet" name="invoiced" domain="[('state','=','invoiced')]"/>
+                <filter string="Offen (Zahlung)" name="payment_open" domain="[('payment_status','in',('not_paid','partial'))]"/>
                 <filter string="Aktuell/Zukünftig" name="upcoming" domain="[('check_out','&gt;=',context_today())]"/>
                 <separator/>
                 <filter string="Einrichtung" name="group_facility" context="{'group_by':'facility_id'}"/>
@@ -28,6 +30,7 @@
             <list string="Buchungen"
                   decoration-muted="state == 'cancelled'"
                   decoration-success="state in ('invoiced','done')"
+                  decoration-warning="state == 'reserved'"
                   decoration-info="state == 'draft'">
                 <field name="name"/>
                 <field name="facility_id"/>
@@ -39,8 +42,12 @@
                 <field name="participant_count" string="TN"/>
                 <field name="amount_total" widget="monetary"/>
                 <field name="currency_id" column_invisible="1"/>
+                <field name="payment_status" widget="badge" optional="show"
+                       decoration-warning="payment_status in ('not_paid','partial')"
+                       decoration-success="payment_status == 'paid'"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
+                       decoration-warning="state == 'reserved'"
                        decoration-success="state in ('invoiced','done')"
                        decoration-danger="state == 'cancelled'"/>
             </list>
@@ -52,10 +59,12 @@
         <field name="model">kjr.facility.booking</field>
         <field name="arch" type="xml">
             <calendar string="Belegung" date_start="check_in" date_stop="check_out"
-                      color="facility_id" mode="month">
+                      color="calendar_color" mode="month">
+                <field name="calendar_color"/>
                 <field name="facility_id" filters="1"/>
                 <field name="partner_id"/>
                 <field name="participant_count"/>
+                <field name="state"/>
             </calendar>
         </field>
     </record>
@@ -66,8 +75,10 @@
         <field name="arch" type="xml">
             <form string="Einrichtungsbuchung">
                 <header>
-                    <button name="action_confirm" string="Bestätigen" type="object"
-                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_reserve" string="Reservieren (vormerken)" type="object"
+                            invisible="state != 'draft'"/>
+                    <button name="action_confirm" string="Verbindlich buchen" type="object"
+                            class="btn-primary" invisible="state not in ('draft','reserved')"/>
                     <button name="action_request_deposit" string="Anzahlung anfordern" type="object"
                             invisible="state != 'confirmed'"/>
                     <button name="action_check_in" string="Anreise" type="object"
@@ -84,7 +95,7 @@
                             groups="kjr_facility.group_kjr_facility_manager"
                             invisible="state in ('draft','invoiced','done','cancelled')"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirmed,deposit,checked_in,invoiced,done"/>
+                           statusbar_visible="draft,reserved,confirmed,deposit,checked_in,invoiced,done"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -101,16 +112,25 @@
                     </div>
                     <group>
                         <group string="Gruppe">
-                            <field name="partner_id" readonly="state not in ('draft','confirmed')"/>
+                            <field name="partner_id" readonly="state not in ('draft','reserved','confirmed')"/>
                             <field name="group_name"/>
                             <field name="contact_email"/>
                             <field name="contact_phone"/>
                         </group>
                         <group string="Einrichtung &amp; Zeitraum">
-                            <field name="facility_id" readonly="state not in ('draft','confirmed')"/>
+                            <field name="facility_id" readonly="state not in ('draft','reserved','confirmed')"/>
                             <field name="check_in" readonly="state in ('invoiced','done','cancelled')"/>
+                            <field name="arrival_time" widget="float_time"/>
                             <field name="check_out" readonly="state in ('invoiced','done','cancelled')"/>
+                            <field name="departure_time" widget="float_time"/>
                             <field name="nights"/>
+                            <field name="is_booked"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Reservierung" invisible="state == 'draft'">
+                            <field name="reservation_date" readonly="1"/>
+                            <field name="reservation_expiry"/>
                         </group>
                     </group>
                     <notebook>
@@ -148,7 +168,15 @@
                                     <field name="amount_total"/>
                                     <field name="deposit_pct"/>
                                     <field name="deposit_amount"/>
+                                    <field name="deposit_due_date"/>
                                     <field name="deposit_paid"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Zahlung &amp; Vertrag">
+                                    <field name="payment_status"/>
+                                    <field name="contract_sent_date" readonly="1"/>
+                                    <field name="contract_signed"/>
                                 </group>
                             </group>
                             <field name="currency_id" invisible="1"/>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- B-cross: eigener Nummernkreis 'V' (Verkaufsjournal). Odoo leitet die
+             Belegnummern-Sequenz aus dem Journal-Code ab (V/JJJJ/00001), was dem
+             gewünschten Schema V/%(range_year)s/ entspricht. Wird in
+             action_create_invoice als journal_id gesetzt, sofern vorhanden. -->
+        <record id="journal_kjr_facility_sale" model="account.journal">
+            <field name="name">KJR Einrichtungs-Verkauf</field>
+            <field name="code">V</field>
+            <field name="type">sale</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+    </data>
+</odoo>

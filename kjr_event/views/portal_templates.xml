@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- E4: Übersicht der zugeordneten KJR-Veranstaltungen -->
+    <template id="portal_kjr_events" name="KJR Kooperationspartner – Veranstaltungen">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <div class="o_portal_my_doc_table">
+                <h3 class="mb-3">Meine KJR-Veranstaltungen</h3>
+                <t t-if="not events">
+                    <div class="alert alert-info" role="alert">
+                        Ihnen sind aktuell keine Veranstaltungen zugeordnet.
+                    </div>
+                </t>
+                <t t-if="events">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Veranstaltung</th>
+                                <th>Beginn</th>
+                                <th>Ende</th>
+                                <th class="text-end">Teilnehmer/innen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="events" t-as="event">
+                                <td>
+                                    <a t-attf-href="/my/kjr-events/#{event.id}/teilnehmer">
+                                        <t t-esc="event.name"/>
+                                    </a>
+                                </td>
+                                <td>
+                                    <span t-field="event.date_begin"
+                                          t-options='{"format": "dd.MM.yyyy"}'/>
+                                </td>
+                                <td>
+                                    <span t-field="event.date_end"
+                                          t-options='{"format": "dd.MM.yyyy"}'/>
+                                </td>
+                                <td class="text-end">
+                                    <t t-esc="event.seats_taken"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </t>
+            </div>
+        </t>
+    </template>
+
+    <!-- E4: Teilnehmerliste einer Veranstaltung -->
+    <template id="portal_kjr_event_attendees" name="KJR Kooperationspartner – Teilnehmer/innen">
+        <t t-call="portal.portal_layout">
+            <div class="o_portal_my_doc_table">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="mb-0">
+                        Teilnehmer/innen – <t t-esc="event.name"/>
+                    </h3>
+                    <a href="/my/kjr-events" class="btn btn-sm btn-secondary">Zurück</a>
+                </div>
+                <t t-if="not registrations">
+                    <div class="alert alert-info" role="alert">
+                        Für diese Veranstaltung liegen noch keine Anmeldungen vor.
+                    </div>
+                </t>
+                <t t-if="registrations">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Alter</th>
+                                <th>Ernährung</th>
+                                <th>Bemerkung</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="registrations" t-as="reg">
+                                <td><t t-esc="reg.name or (reg.partner_id.name or '')"/></td>
+                                <td>
+                                    <t t-if="reg.has_birthdate"><t t-esc="reg.kjr_age"/></t>
+                                </td>
+                                <td>
+                                    <t t-esc="dict(reg._fields['dietary_requirements'].selection).get(reg.dietary_requirements, '')"/>
+                                    <t t-if="reg.dietary_note"> (<t t-esc="reg.dietary_note"/>)</t>
+                                </td>
+                                <td><t t-esc="reg.notes or ''"/></td>
+                                <td><span t-field="reg.state"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </t>
+            </div>
+        </t>
+    </template>
+
+</odoo>

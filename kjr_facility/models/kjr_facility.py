@@ -31,6 +31,20 @@ class KjrFacility(models.Model):
     zip = fields.Char(string='PLZ')
     city = fields.Char(string='Ort')
     responsible_user_id = fields.Many2one('res.users', string='Verantwortlich', tracking=True)
+    # F7: Standard-Uhrzeiten als Stammdaten (Default für neue Buchungen).
+    check_in_default_time = fields.Float(
+        string='Standard-Anreisezeit', help='Default-Anreisezeit (HH:MM) für neue Buchungen.')
+    check_out_default_time = fields.Float(
+        string='Standard-Abreisezeit', help='Default-Abreisezeit (HH:MM) für neue Buchungen.')
+    # F8: Frei konfigurierbarer Hinweis-Text für die Mail-Templates.
+    mail_hint = fields.Html(
+        string='Mail-Hinweis',
+        help='Optionaler Hinweistext, der in den E-Mails an die Gruppe ausgegeben wird '
+             '(z. B. Anfahrt, Schlüsselübergabe, Hausordnung).')
+    # B-cross: optionaler Auto-Post-Schalter für erzeugte Rechnungen.
+    invoice_auto_post = fields.Boolean(
+        string='Rechnung automatisch buchen',
+        help='Wenn aktiv, wird die aus einer Buchung erzeugte Rechnung direkt gebucht (validiert).')
     room_ids = fields.One2many('kjr.facility.room', 'facility_id', string='Räume')
     equipment_ids = fields.One2many('kjr.facility.equipment', 'facility_id', string='Ausstattung')
     bed_total = fields.Integer(string='Betten gesamt', compute='_compute_bed_total')

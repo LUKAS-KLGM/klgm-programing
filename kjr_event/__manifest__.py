@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Ferienprogramm & Schulungen',
-    'version': '19.0.1.0.0',
+    'version': '19.0.2.0.0',
     'category': 'Custom/KJR',
     'summary': 'Erweiterung der Odoo-Veranstaltungen für KJR-Ferienprogramm und Schulungen '
                '(Juleica, Rettungsschwimmer): Altersgruppen, Einwilligung Minderjähriger, '
@@ -9,10 +9,21 @@
     'author': 'Lukas Klauser / LM Consulting UG',
     'website': 'https://lm-consulting.de',
     'license': 'OPL-1',
-    'depends': ['event', 'website_event'],
+    'depends': [
+        'event',
+        'website_event',
+        'event_sale',
+        'website_event_sale',
+        'account',
+    ],
     'data': [
-        'views/event_views.xml',
+        'security/kjr_event_security.xml',
+        'security/ir.model.access.csv',
         'report/kjr_event_report.xml',
+        'data/mail_templates.xml',
+        'views/event_views.xml',
+        'views/website_event_templates.xml',
+        'views/portal_templates.xml',
     ],
     'installable': True,
     'application': False,

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Einrichtungsbuchung mit Workflow, Preis-/Steuerberechnung und Rechnungsstellung."""
+import base64
 import logging
 from datetime import timedelta
 
@@ -25,19 +26,31 @@ class KjrFacilityBooking(models.Model):
     )
     state = fields.Selection([
         ('draft', 'Anfrage'),
-        ('confirmed', 'Bestätigt'),
+        ('reserved', 'Reserviert (vorgemerkt)'),
+        ('confirmed', 'Gebucht'),
         ('deposit', 'Anzahlung'),
         ('checked_in', 'Angereist'),
         ('invoiced', 'Berechnet'),
         ('done', 'Abgeschlossen'),
         ('cancelled', 'Storniert'),
     ], string='Status', default='draft', required=True, tracking=True, index=True)
+    # F1: Reservierung (vorgemerkt) klar von verbindlicher Buchung (gebucht) trennen.
+    reservation_date = fields.Date(string='Reserviert am', tracking=True)
+    reservation_expiry = fields.Date(
+        string='Reservierung gültig bis', tracking=True,
+        help='Ablaufdatum der Vormerkung. Nach Ablauf erfolgt ein Hinweis per Cron.')
+    is_booked = fields.Boolean(
+        string='Verbindlich gebucht', compute='_compute_is_booked', store=True,
+        help='Wahr, sobald die Buchung verbindlich (gebucht) oder weiter fortgeschritten ist.')
 
     facility_id = fields.Many2one(
         'kjr.facility', string='Einrichtung', required=True,
         ondelete='restrict', tracking=True,
     )
     color = fields.Integer(related='facility_id.color', store=True)
+    # F1: Kalenderfarbe — reservierte (vorgemerkte) Buchungen heller/neutral darstellen.
+    calendar_color = fields.Integer(
+        string='Kalenderfarbe (Status)', compute='_compute_calendar_color', store=True)
     partner_id = fields.Many2one(
         'res.partner', string='Gruppe / Mieter', required=True,
         ondelete='restrict', tracking=True,
@@ -91,8 +104,34 @@ class KjrFacilityBooking(models.Model):
     deposit_pct = fields.Float(string='Anzahlung (%)', default=20.0)
     deposit_amount = fields.Monetary(string='Anzahlungsbetrag', compute='_compute_deposit', store=True)
     deposit_paid = fields.Boolean(string='Anzahlung erhalten', tracking=True)
+    # F5: Anzahlungs-Fälligkeit für den Overdue-Cron.
+    deposit_due_date = fields.Date(string='Anzahlung fällig bis', tracking=True)
+
+    # F5: Vertrags-Nachverfolgung (gesendet / unterschrieben).
+    contract_sent_date = fields.Date(string='Vertrag gesendet am', readonly=True, copy=False, tracking=True)
+    contract_signed = fields.Boolean(string='Vertrag unterschrieben', tracking=True)
+
+    # F5: Persistente Versand-Flags — verhindern, dass die Erinnerungs-/Mahn-Mails
+    # bei jedem Cron-Lauf erneut versendet werden (Activity-Dedup allein reicht nicht,
+    # da erledigte Activities aus activity_ids verschwinden, die Bedingung aber bleibt).
+    reminder_sent = fields.Boolean(string='Anreise-Erinnerung versendet', default=False, copy=False)
+    contract_followup_sent = fields.Boolean(string='Vertrags-Mahnung versendet', default=False, copy=False)
+    deposit_reminder_sent = fields.Boolean(string='Anzahlungs-Mahnung versendet', default=False, copy=False)
+
+    # F7: An-/Abreisezeiten je Buchung (Default aus Einrichtungs-Stammdaten).
+    arrival_time = fields.Float(string='Anreisezeit', help='Uhrzeit der Anreise (HH:MM).')
+    departure_time = fields.Float(string='Abreisezeit', help='Uhrzeit der Abreise (HH:MM).')
 
     invoice_id = fields.Many2one('account.move', string='Rechnung', readonly=True, copy=False)
+    # B-cross: Zahlungsstatus aus der Rechnung gespiegelt (für Form/Liste/Portal).
+    payment_status = fields.Selection([
+        ('none', 'Keine Rechnung'),
+        ('not_paid', 'Offen'),
+        ('in_payment', 'In Zahlung'),
+        ('partial', 'Teilweise bezahlt'),
+        ('paid', 'Bezahlt'),
+        ('reversed', 'Storniert'),
+    ], string='Zahlungsstatus', compute='_compute_payment_status', store=True)
     note = fields.Text(string='Anmerkungen')
     internal_note = fields.Text(
         string='Interne Notiz', groups='kjr_facility.group_kjr_facility_user',
@@ -172,6 +211,39 @@ class KjrFacilityBooking(models.Model):
         for rec in self:
             rec.deposit_amount = rec.amount_total * (rec.deposit_pct or 0.0) / 100.0
 
+    @api.depends('state')
+    def _compute_is_booked(self):
+        booked_states = ('confirmed', 'deposit', 'checked_in', 'invoiced', 'done')
+        for rec in self:
+            rec.is_booked = rec.state in booked_states
+
+    @api.depends('state', 'facility_id.color')
+    def _compute_calendar_color(self):
+        # Reservierte (vorgemerkte) Buchungen erhalten eine neutrale, "hellere"
+        # Farbe (Index 8 = hellgrau), gebuchte die Einrichtungsfarbe.
+        for rec in self:
+            if rec.state == 'reserved':
+                rec.calendar_color = 8
+            else:
+                rec.calendar_color = rec.facility_id.color or 0
+
+    @api.depends('invoice_id', 'invoice_id.payment_state')
+    def _compute_payment_status(self):
+        # Mapping account.move.payment_state -> eigenes, sprechendes Feld.
+        mapping = {
+            'not_paid': 'not_paid',
+            'in_payment': 'in_payment',
+            'paid': 'paid',
+            'partial': 'partial',
+            'reversed': 'reversed',
+            'invoicing_legacy': 'not_paid',
+        }
+        for rec in self:
+            if not rec.invoice_id:
+                rec.payment_status = 'none'
+            else:
+                rec.payment_status = mapping.get(rec.invoice_id.payment_state, 'not_paid')
+
     def _compute_access_url(self):
         super()._compute_access_url()
         for rec in self:
@@ -226,6 +298,25 @@ class KjrFacilityBooking(models.Model):
                     other=conflicting.name,
                 ))
 
+    @api.model
+    def _find_overlapping(self, facility_id, check_in, check_out, room_ids=None, exclude_id=None):
+        """BUG-a: Liefert kollidierende, nicht stornierte Buchungen im Zeitraum.
+
+        Wird sowohl im Backend als auch von der Website-Anfrage genutzt, um vor dem
+        Anlegen eine Doppelbelegung zu erkennen. Ohne Räume wird auf Einrichtungsebene
+        geprüft (relevant z. B. für Zeltplatz/Häuser ohne Raumauswahl)."""
+        domain = [
+            ('state', '!=', 'cancelled'),
+            ('facility_id', '=', facility_id),
+            ('check_in', '<', check_out),
+            ('check_out', '>', check_in),
+        ]
+        if exclude_id:
+            domain.append(('id', '!=', exclude_id))
+        if room_ids:
+            domain.append(('room_ids', 'in', list(room_ids)))
+        return self.search(domain)
+
     # ══════════════════════════════════════════════════════════════════════════
     # ORM
     # ══════════════════════════════════════════════════════════════════════════
@@ -235,7 +326,33 @@ class KjrFacilityBooking(models.Model):
         for vals in vals_list:
             if not vals.get('name') or vals.get('name') == _('Neu'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('kjr.facility.booking') or _('Neu')
+            # F7: Default-Uhrzeiten aus den Einrichtungs-Stammdaten übernehmen.
+            if vals.get('facility_id'):
+                facility = self.env['kjr.facility'].browse(vals['facility_id'])
+                if 'arrival_time' not in vals and facility.check_in_default_time:
+                    vals['arrival_time'] = facility.check_in_default_time
+                if 'departure_time' not in vals and facility.check_out_default_time:
+                    vals['departure_time'] = facility.check_out_default_time
         return super().create(vals_list)
+
+    def write(self, vals):
+        # F5: Versand-Flags zurücksetzen, sobald die auslösende Bedingung aufgelöst ist
+        # (Vertrag unterschrieben / Anzahlung erhalten) — erlaubt erneute Erinnerung,
+        # falls die Bedingung später wieder eintritt.
+        if vals.get('contract_signed'):
+            vals.setdefault('contract_followup_sent', False)
+        if vals.get('deposit_paid'):
+            vals.setdefault('deposit_reminder_sent', False)
+        return super().write(vals)
+
+    @api.onchange('facility_id')
+    def _onchange_facility_default_times(self):
+        # F7: Bei Auswahl der Einrichtung Default-Uhrzeiten im Formular vorbelegen.
+        if self.facility_id:
+            if not self.arrival_time and self.facility_id.check_in_default_time:
+                self.arrival_time = self.facility_id.check_in_default_time
+            if not self.departure_time and self.facility_id.check_out_default_time:
+                self.departure_time = self.facility_id.check_out_default_time
 
     # ══════════════════════════════════════════════════════════════════════════
     # WORKFLOW
@@ -247,11 +364,63 @@ class KjrFacilityBooking(models.Model):
         except Exception as e:  # noqa: BLE001 - Mailversand darf den Workflow nicht blockieren
             _logger.warning('Mailversand %s für %s fehlgeschlagen: %s', xmlid, self.name, e)
 
-    def action_confirm(self):
+    def _store_document(self, report_xmlid, name):
+        """F3: Rendert den PDF-Report und legt ihn deterministisch benannt als
+        ir.attachment am Datensatz ab. Vorhandener Anhang gleichen Namens wird ersetzt,
+        damit keine Dubletten entstehen (idempotent)."""
+        self.ensure_one()
+        try:
+            pdf_content, _dummy = self.env['ir.actions.report']._render_qweb_pdf(
+                report_xmlid, res_ids=[self.id])
+            Attachment = self.env['ir.attachment']
+            existing = Attachment.search([
+                ('res_model', '=', self._name),
+                ('res_id', '=', self.id),
+                ('name', '=', name),
+            ])
+            if existing:
+                existing.unlink()
+            return Attachment.create({
+                'name': name,
+                'type': 'binary',
+                'datas': base64.b64encode(pdf_content),
+                'res_model': self._name,
+                'res_id': self.id,
+                'mimetype': 'application/pdf',
+            })
+        except Exception as e:  # noqa: BLE001 - Ablage darf den Workflow nicht blockieren
+            _logger.warning('PDF-Ablage %s für %s fehlgeschlagen: %s', report_xmlid, self.name, e)
+            return self.env['ir.attachment']
+
+    def action_reserve(self):
+        """F1: Anfrage -> Reserviert (vorgemerkt)."""
         for rec in self:
             if rec.state != 'draft':
-                raise UserError(_('Nur Anfragen können bestätigt werden.'))
+                raise UserError(_('Nur Anfragen können reserviert (vorgemerkt) werden.'))
+            rec.state = 'reserved'
+            rec.reservation_date = fields.Date.today()
+            if not rec.reservation_expiry:
+                rec.reservation_expiry = fields.Date.today() + timedelta(days=14)
+            rec._send_template('kjr_facility.mail_template_booking_reserved')
+            rec._store_document(
+                'kjr_facility.action_report_booking_contract',
+                _('Reservierungsbestaetigung_%s.pdf') % (rec.name or '').replace('/', '-'),
+            )
+
+    def action_confirm(self):
+        for rec in self:
+            if rec.state not in ('draft', 'reserved'):
+                raise UserError(_('Nur Anfragen oder Reservierungen können gebucht werden.'))
             rec.state = 'confirmed'
+            # F2: Vertrag automatisch zuschicken (mail.template mit PDF-Anhang).
+            rec._send_template('kjr_facility.mail_template_booking_contract')
+            rec.contract_sent_date = fields.Date.today()
+            # F3: Vertrags-PDF deterministisch am Datensatz ablegen.
+            rec._store_document(
+                'kjr_facility.action_report_booking_contract',
+                _('Buchungsvertrag_%s.pdf') % (rec.name or '').replace('/', '-'),
+            )
+            # Bestehende Buchungsbestätigung weiterhin senden.
             rec._send_template('kjr_facility.mail_template_booking_confirmed')
 
     def action_request_deposit(self):
@@ -269,6 +438,10 @@ class KjrFacilityBooking(models.Model):
 
     def action_create_invoice(self):
         self.ensure_one()
+        if self.state in ('draft', 'reserved', 'cancelled'):
+            raise UserError(_(
+                'Eine Rechnung kann erst ab der verbindlichen Buchung (Status „Gebucht") '
+                'und nicht für stornierte Buchungen erstellt werden.'))
         if self.invoice_id:
             return self.action_view_invoice()
         if not self.partner_id:
@@ -297,13 +470,28 @@ class KjrFacilityBooking(models.Model):
                 'name': _('Zusatzausstattung'),
                 'quantity': 1.0, 'price_unit': self.amount_equipment, 'tax_ids': tax_cmd,
             }))
-        move = self.env['account.move'].create({
+        move_vals = {
             'move_type': 'out_invoice',
             'partner_id': self.partner_id.id,
             'company_id': self.company_id.id,
             'invoice_origin': self.name,
             'invoice_line_ids': lines,
-        })
+        }
+        # B-cross: eigenen Nummernkreis 'V' (Verkaufsjournal) verwenden, falls vorhanden.
+        journal = self.env['account.journal'].search([
+            ('type', '=', 'sale'),
+            ('code', '=', 'V'),
+            ('company_id', '=', self.company_id.id),
+        ], limit=1)
+        if journal:
+            move_vals['journal_id'] = journal.id
+        move = self.env['account.move'].create(move_vals)
+        # Optionaler Auto-Post-Schalter (Stammdaten an der Einrichtung).
+        if self.facility_id.invoice_auto_post:
+            try:
+                move.action_post()
+            except Exception as e:  # noqa: BLE001 - Posten darf den Workflow nicht hart abbrechen
+                _logger.warning('Auto-Buchen der Rechnung %s fehlgeschlagen: %s', move.name, e)
         self.invoice_id = move.id
         self.state = 'invoiced'
         self.message_post(
@@ -367,24 +555,133 @@ class KjrFacilityBooking(models.Model):
     # CRON
     # ══════════════════════════════════════════════════════════════════════════
 
+    def _has_open_activity(self, summary):
+        """Dedup-Helfer: prüft, ob bereits eine offene Activity mit gleichem Summary
+        an diesem Datensatz hängt (verhindert Cron-Dubletten)."""
+        self.ensure_one()
+        return bool(self.activity_ids.filtered(lambda a: a.summary == summary))
+
     @api.model
     def _cron_booking_reminder(self):
-        """Erinnerung 14 Tage vor Anreise an aktive Buchungen."""
-        target = fields.Date.today() + timedelta(days=14)
+        """Erinnerung ~14 Tage vor Anreise an aktive Buchungen.
+
+        F5: Datums-RANGE statt '==' (robust bei Cron-Aussetzern) plus Dedup über
+        die Activity-Existenz, damit nicht mehrfach erinnert wird."""
+        today = fields.Date.today()
+        window_start = today + timedelta(days=13)
+        window_end = today + timedelta(days=15)
         bookings = self.search([
             ('state', 'in', ('confirmed', 'deposit', 'checked_in')),
-            ('check_in', '=', target),
+            ('reminder_sent', '=', False),
+            ('check_in', '>=', window_start),
+            ('check_in', '<=', window_end),
         ])
+        count = 0
         for bk in bookings:
+            summary = _('Anreise in ca. 14 Tagen: %s') % bk.name
+            if not bk._has_open_activity(summary):
+                bk.activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    date_deadline=bk.check_in,
+                    summary=summary,
+                    note=_('Die Gruppe "%(grp)s" reist am %(d)s in %(fac)s an.') % {
+                        'grp': bk.group_name or bk.partner_id.display_name,
+                        'd': bk.check_in.strftime('%d.%m.%Y'),
+                        'fac': bk.facility_id.name,
+                    },
+                )
+            bk._send_template('kjr_facility.mail_template_booking_reminder')
+            bk.reminder_sent = True
+            count += 1
+        _logger.info('Einrichtungs-Erinnerung: %d Buchungen', count)
+
+    @api.model
+    def _cron_contract_followup(self):
+        """F5: Vertrag gesendet, aber nicht unterschrieben und älter als X Tage
+        -> Activity + Mahn-Mail (idempotent über Dedup)."""
+        followup_days = 10
+        cutoff = fields.Date.today() - timedelta(days=followup_days)
+        bookings = self.search([
+            ('state', 'in', ('confirmed', 'deposit', 'checked_in')),
+            ('contract_signed', '=', False),
+            ('contract_followup_sent', '=', False),
+            ('contract_sent_date', '!=', False),
+            ('contract_sent_date', '<=', cutoff),
+        ])
+        count = 0
+        for bk in bookings:
+            summary = _('Vertrag offen (unterschrieben?): %s') % bk.name
+            if not bk._has_open_activity(summary):
+                bk.activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    date_deadline=fields.Date.today(),
+                    summary=summary,
+                    note=_('Der am %(d)s gesendete Vertrag für "%(grp)s" ist noch nicht als '
+                           'unterschrieben markiert.') % {
+                        'd': bk.contract_sent_date.strftime('%d.%m.%Y'),
+                        'grp': bk.group_name or bk.partner_id.display_name,
+                    },
+                )
+            bk._send_template('kjr_facility.mail_template_contract_followup')
+            bk.contract_followup_sent = True
+            count += 1
+        _logger.info('Vertrags-Nachfass: %d Buchungen', count)
+
+    @api.model
+    def _cron_deposit_overdue(self):
+        """F5: Anzahlung überfällig (deposit_due_date < heute & nicht bezahlt)."""
+        today = fields.Date.today()
+        bookings = self.search([
+            ('state', 'in', ('confirmed', 'deposit', 'checked_in')),
+            ('deposit_paid', '=', False),
+            ('deposit_reminder_sent', '=', False),
+            ('deposit_due_date', '!=', False),
+            ('deposit_due_date', '<', today),
+        ])
+        count = 0
+        for bk in bookings:
+            summary = _('Anzahlung überfällig: %s') % bk.name
+            if not bk._has_open_activity(summary):
+                bk.activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    date_deadline=today,
+                    summary=summary,
+                    note=_('Die Anzahlung (%(amt).2f €) für "%(grp)s" war am %(d)s fällig und '
+                           'ist noch nicht als erhalten markiert.') % {
+                        'amt': bk.deposit_amount,
+                        'grp': bk.group_name or bk.partner_id.display_name,
+                        'd': bk.deposit_due_date.strftime('%d.%m.%Y'),
+                    },
+                )
+            bk._send_template('kjr_facility.mail_template_booking_deposit')
+            bk.deposit_reminder_sent = True
+            count += 1
+        _logger.info('Anzahlung überfällig: %d Buchungen', count)
+
+    @api.model
+    def _cron_reservation_expiry(self):
+        """F5: Reservierung abgelaufen (reservation_expiry < heute, state=reserved)
+        -> Activity/Hinweis (idempotent)."""
+        today = fields.Date.today()
+        bookings = self.search([
+            ('state', '=', 'reserved'),
+            ('reservation_expiry', '!=', False),
+            ('reservation_expiry', '<', today),
+        ])
+        count = 0
+        for bk in bookings:
+            summary = _('Reservierung abgelaufen: %s') % bk.name
+            if bk._has_open_activity(summary):
+                continue
             bk.activity_schedule(
                 'mail.mail_activity_data_todo',
-                date_deadline=bk.check_in,
-                summary=_('Anreise in 14 Tagen: %s') % bk.name,
-                note=_('Die Gruppe "%(grp)s" reist am %(d)s in %(fac)s an.') % {
+                date_deadline=today,
+                summary=summary,
+                note=_('Die Vormerkung für "%(grp)s" ist seit %(d)s abgelaufen. Bitte '
+                       'verbindlich buchen oder stornieren.') % {
                     'grp': bk.group_name or bk.partner_id.display_name,
-                    'd': bk.check_in.strftime('%d.%m.%Y'),
-                    'fac': bk.facility_id.name,
+                    'd': bk.reservation_expiry.strftime('%d.%m.%Y'),
                 },
             )
-            bk._send_template('kjr_facility.mail_template_booking_reminder')
-        _logger.info('Einrichtungs-Erinnerung: %d Buchungen', len(bookings))
+            count += 1
+        _logger.info('Reservierung abgelaufen: %d Buchungen', count)

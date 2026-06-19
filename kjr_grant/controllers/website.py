@@ -167,6 +167,9 @@ class KjrWebsiteController(http.Controller):
                 'income_other':            _f('income_other'),
                 'measure_report':          post.get('measure_report', '').strip(),
                 'participant_consent':     bool(post.get('participant_consent')),
+                'delegate_transport_mode': post.get('delegate_transport_mode') or False,
+                'delegate_km_one_way':     _f('delegate_km_one_way'),
+                'delegate_passenger_count': _i('delegate_passenger_count'),
             }
             application = request.env['kjr.grant.application'].sudo().create(app_vals)
             self._handle_participants(application, post)
@@ -212,6 +215,7 @@ class KjrWebsiteController(http.Controller):
 
     def _handle_file_uploads(self, application):
         FIELD_LABELS = {
+            'tn_list_file': 'Teilnehmerliste',
             'report_file': 'Maßnahmenbericht',
             'receipt_file': 'Belegliste',
             'other_file_1': 'Weitere Unterlagen',

@@ -34,9 +34,21 @@ class KjrAssembly(models.Model):
     )
     note = fields.Text(string='Anmerkungen')
     invited_count = fields.Integer(string='Eingeladen', compute='_compute_invited_count')
+    is_repeat_session = fields.Boolean(
+        string='Wiederholte (außerordentliche) Sitzung',
+        help='§ 33 Abs. 3 BJR-Satzung: Eine wegen Beschlussunfähigkeit erneut '
+             'einberufene Sitzung ist ohne Rücksicht auf die Zahl der Anwesenden '
+             'beschlussfähig.',
+    )
+    eligible_member_count = fields.Integer(
+        string='Stimmberechtigte Mitglieder', compute='_compute_eligible_members',
+        help='Anzahl der Verbände mit Vertretungsrecht in der Vollversammlung.',
+    )
     quorum_reached = fields.Boolean(
         string='Beschlussfähig', compute='_compute_quorum',
-        help='Beschlussfähig, wenn mehr als die Hälfte der eingeladenen Verbände anwesend ist.',
+        help='Beschlussfähig, wenn mehr als die Hälfte der stimmberechtigten Mitglieder '
+             'anwesend ist (§ 33 BJR-Satzung). Wiederholte Sitzungen sind stets '
+             'beschlussfähig.',
     )
 
     @api.depends('attendee_ids')
@@ -54,11 +66,33 @@ class KjrAssembly(models.Model):
         for rec in self:
             rec.invited_count = len(rec.invited_member_ids)
 
-    @api.depends('attendee_ids', 'invited_member_ids')
-    def _compute_quorum(self):
+    def _compute_eligible_members(self):
+        count = self.env['res.partner'].search_count([
+            ('is_kjr_member', '=', True),
+            ('kjr_vr_right', '=', True),
+            ('is_company', '=', True),
+        ])
         for rec in self:
-            invited = len(rec.invited_member_ids)
-            rec.quorum_reached = bool(invited) and (len(rec.attendee_ids) * 2 > invited)
+            rec.eligible_member_count = count
+
+    @api.depends('attendee_ids', 'invited_member_ids', 'is_repeat_session')
+    def _compute_quorum(self):
+        eligible = self.env['res.partner'].search_count([
+            ('is_kjr_member', '=', True),
+            ('kjr_vr_right', '=', True),
+            ('is_company', '=', True),
+        ])
+        for rec in self:
+            attending = len(rec.attendee_ids)
+            # § 33 Abs. 3: wiederholte Sitzung ist quorum-unabhängig beschlussfähig.
+            if rec.is_repeat_session:
+                rec.quorum_reached = attending > 0
+            elif eligible:
+                rec.quorum_reached = attending * 2 > eligible
+            else:
+                # Fallback auf die Eingeladenen, falls (noch) keine Stimmberechtigten gepflegt sind.
+                invited = len(rec.invited_member_ids)
+                rec.quorum_reached = bool(invited) and (attending * 2 > invited)
 
     def action_invite(self):
         """Alle KJR-Mitglieder mit VR einladen."""

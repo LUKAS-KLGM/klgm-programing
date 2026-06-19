@@ -24,6 +24,17 @@
         <field name="arch" type="xml">
             <form string="Abrechnung / Verwendungsnachweis">
                 <header>
+                    <button name="action_submit" string="Einreichen" type="object"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_review" string="Als geprüft markieren" type="object"
+                            groups="kjr_grant.group_kjr_reviewer"
+                            invisible="state not in ('draft','submitted')"/>
+                    <button name="action_close" string="Abschließen" type="object"
+                            groups="kjr_grant.group_kjr_reviewer"
+                            invisible="state not in ('submitted','reviewed')"/>
+                    <button name="action_reset_draft" string="Zurück auf Entwurf" type="object"
+                            groups="kjr_grant.group_kjr_manager"
+                            invisible="state == 'draft'"/>
                     <button name="action_print_verwendungsnachweis" string="Verwendungsnachweis drucken"
                             type="object" icon="fa-print"/>
                     <button name="action_create_repayment_move" string="Rückforderung buchen"
@@ -69,7 +80,7 @@
                             <field name="grant_recalculated" readonly="1"/>
                             <field name="repayment_amount"   readonly="1"/>
                         </group>
-                        <group string="Verzugszinsen (§ 247 BGB + 5 PP)">
+                        <group string="Verzugszinsen (§ 247 BGB + 3 PP, bayer. ANBest-P)">
                             <field name="repayment_due_date"/>
                             <field name="interest_rate"/>
                             <field name="interest_reference_date"/>

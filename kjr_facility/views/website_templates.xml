@@ -229,7 +229,14 @@
                                 <dt class="col-4">Verpflegung</dt><dd class="col-8"><t t-esc="dict(booking._fields['meal_option'].selection).get(booking.meal_option)"/></dd>
                                 <dt class="col-4">Gesamt (brutto)</dt><dd class="col-8"><t t-esc="'%.2f €' % booking.amount_total"/></dd>
                                 <dt class="col-4">Status</dt><dd class="col-8"><span class="badge text-bg-secondary"><t t-esc="dict(booking._fields['state'].selection).get(booking.state)"/></span></dd>
+                                <dt class="col-4">Zahlung</dt><dd class="col-8"><span class="badge text-bg-secondary"><t t-esc="dict(booking._fields['payment_status'].selection).get(booking.payment_status)"/></span></dd>
                             </dl>
+                            <!-- BUG-b: Download-Link für Vertrags-/Reservierungs-PDF -->
+                            <div class="mt-3" t-if="booking.state not in ('draft', 'cancelled')">
+                                <a t-attf-href="/my/einrichtungsbuchungen/#{booking.id}/vertrag"
+                                   class="btn btn-outline-primary btn-sm">
+                                    <i class="fa fa-file-pdf-o me-1"/>Vertrag / Bestätigung (PDF)</a>
+                            </div>
                         </div>
                     </div>
                     <div class="mt-3">
