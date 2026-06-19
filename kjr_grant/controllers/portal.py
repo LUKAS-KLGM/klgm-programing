@@ -97,7 +97,8 @@ class KjrPortalController(CustomerPortal):
             return request.redirect('/my')
         if application.state in ('draft', 'submitted'):
             attachment_ids = []
-            for field_name in ['report_file', 'receipt_file', 'other_file_1']:
+            for field_name in ['tn_list_file', 'report_file', 'receipt_file',
+                               'other_file_1', 'other_file_2']:
                 for file_obj in request.httprequest.files.getlist(field_name):
                     if not file_obj or not file_obj.filename:
                         continue

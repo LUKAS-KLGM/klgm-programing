@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Verleihartikel mit Bestand, Lager und Tarifen."""
+from datetime import date as date_cls
+
 from odoo import api, fields, models, _
 
 
@@ -39,6 +41,37 @@ class KjrRentalItem(models.Model):
     website_published = fields.Boolean(string='Auf Website', default=True)
     icon = fields.Char(string='FontAwesome-Icon', help='z. B. fa-bus')
 
+    # --- R3: Abschreibung (lineare Eigenberechnung, KEIN Enterprise account_asset) ---
+    purchase_value = fields.Float(string='Anschaffungswert (€)', digits=(10, 2))
+    purchase_date = fields.Date(string='Anschaffungsdatum')
+    useful_life_years = fields.Integer(string='Nutzungsdauer (Jahre)')
+    salvage_value = fields.Float(string='Restwert (€)', digits=(10, 2))
+    # today()-abhängig => NICHT store=True (siehe Odoo-19-Regeln)
+    book_value = fields.Float(
+        string='Buchwert heute (€)', digits=(10, 2),
+        compute='_compute_book_value', store=False,
+    )
+
+    @api.depends('purchase_value', 'purchase_date', 'useful_life_years', 'salvage_value')
+    def _compute_book_value(self):
+        today = date_cls.today()
+        for rec in self:
+            base = rec.purchase_value or 0.0
+            salvage = rec.salvage_value or 0.0
+            if not rec.purchase_date or not rec.useful_life_years or base <= 0:
+                rec.book_value = base
+                continue
+            elapsed_days = (today - rec.purchase_date).days
+            if elapsed_days < 0:
+                rec.book_value = base
+                continue
+            elapsed_years = elapsed_days / 365.25
+            depreciable = base - salvage
+            annual = depreciable / rec.useful_life_years if rec.useful_life_years else 0.0
+            value = base - annual * elapsed_years
+            # nie unter Restwert
+            rec.book_value = max(value, salvage)
+
     def price_for(self, is_member):
         """Tagespreis je nach Mitgliedsstatus. Ein konfigurierter Mitgliedstarif gilt
         auch bei 0 € (gratis), sofern 'Eigener Mitgliedstarif' aktiv ist."""
@@ -47,14 +80,27 @@ class KjrRentalItem(models.Model):
             return self.price_member_per_day
         return self.price_per_day
 
-    def quantity_available(self, date_from, date_to, exclude_order=None):
-        """Im Zeitraum verfügbare Menge (Bestand minus überlappende Reservierungen/Ausgaben)."""
+    def quantity_available(self, date_from, date_to, exclude_order=None, include_draft=None):
+        """Im Zeitraum verfügbare Menge (Bestand minus überlappende Reservierungen/Ausgaben).
+
+        include_draft: Wenn True, werden auch Anfragen (state='draft') als Soft-Reserve
+        mitgezählt, um das Verfügbarkeits-Race bei gleichzeitigen Warenkorb-Bestellungen
+        zu entschärfen. Standard wird aus dem Systemparameter
+        'kjr_rental.reserve_draft' gelesen (konfigurierbar).
+        """
         self.ensure_one()
         if not (date_from and date_to):
             return self.quantity_total
+        if include_draft is None:
+            param = self.env['ir.config_parameter'].sudo().get_param(
+                'kjr_rental.reserve_draft', default='False')
+            include_draft = str(param).lower() in ('1', 'true', 'yes')
+        states = ['reserved', 'issued']
+        if include_draft:
+            states.append('draft')
         line_domain = [
             ('item_id', '=', self.id),
-            ('order_id.state', 'in', ('reserved', 'issued')),
+            ('order_id.state', 'in', states),
             ('order_id.date_from', '<=', date_to),
             ('order_id.date_to', '>=', date_from),
         ]

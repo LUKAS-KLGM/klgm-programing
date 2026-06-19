@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- E7: Anmeldebestätigung -->
+    <record id="mail_template_registration_confirm" model="mail.template">
+        <field name="name">KJR: Anmeldebestätigung</field>
+        <field name="model_id" ref="event.model_event_registration"/>
+        <field name="subject">Anmeldebestätigung: {{ object.event_id.name }}</field>
+        <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
+        <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
+        <field name="body_html" type="html">
+            <div style="margin:0px;padding:0px;font-size:13px;">
+                <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
+                <p>vielen Dank für die Anmeldung zur Veranstaltung
+                    <strong><t t-out="object.event_id.name or ''"/></strong>.</p>
+                <p t-if="object.event_id.date_begin">Beginn:
+                    <t t-out="format_datetime(object.event_id.date_begin, dt_format='dd.MM.yyyy HH:mm')"/></p>
+                <p t-if="object.event_payment_required">Diese Veranstaltung ist zahlungspflichtig.
+                    Eine Rechnung bzw. Zahlungsinformation erhalten Sie separat.</p>
+                <p>Mit freundlichen Grüßen<br/>Kreisjugendring Oberallgäu</p>
+            </div>
+        </field>
+        <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+    <!-- E7: Einwilligungs-Erinnerung -->
+    <record id="mail_template_consent_reminder" model="mail.template">
+        <field name="name">KJR: Einwilligungs-Erinnerung</field>
+        <field name="model_id" ref="event.model_event_registration"/>
+        <field name="subject">Erinnerung: Einwilligung erforderlich – {{ object.event_id.name }}</field>
+        <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
+        <field name="email_to">{{ (object.email or object.partner_id.email or '') }}</field>
+        <field name="body_html" type="html">
+            <div style="margin:0px;padding:0px;font-size:13px;">
+                <p>Hallo,</p>
+                <p>für die Teilnahme von
+                    <strong><t t-out="object.name or ''"/></strong>
+                    an der Veranstaltung <strong><t t-out="object.event_id.name or ''"/></strong>
+                    liegt uns die Einwilligung der Erziehungsberechtigten noch nicht vor.</p>
+                <p>Bitte reichen Sie diese rechtzeitig vor Beginn nach.</p>
+                <p>Mit freundlichen Grüßen<br/>Kreisjugendring Oberallgäu</p>
+            </div>
+        </field>
+        <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+    <!-- E7: Packliste -->
+    <record id="mail_template_packing_list" model="mail.template">
+        <field name="name">KJR: Packliste</field>
+        <field name="model_id" ref="event.model_event_registration"/>
+        <field name="subject">Packliste: {{ object.event_id.name }}</field>
+        <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
+        <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
+        <field name="body_html" type="html">
+            <div style="margin:0px;padding:0px;font-size:13px;">
+                <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
+                <p>bald geht es los mit <strong><t t-out="object.event_id.name or ''"/></strong>.</p>
+                <p>Bitte denken Sie an: wetterfeste Kleidung, feste Schuhe, Verpflegung,
+                    persönliche Medikamente und die unterschriebene Einwilligung.</p>
+                <p>Mit freundlichen Grüßen<br/>Kreisjugendring Oberallgäu</p>
+            </div>
+        </field>
+        <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+    <!-- E7: Absage -->
+    <record id="mail_template_cancellation" model="mail.template">
+        <field name="name">KJR: Absage</field>
+        <field name="model_id" ref="event.model_event_registration"/>
+        <field name="subject">Absage: {{ object.event_id.name }}</field>
+        <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
+        <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
+        <field name="body_html" type="html">
+            <div style="margin:0px;padding:0px;font-size:13px;">
+                <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
+                <p>leider müssen wir die Veranstaltung
+                    <strong><t t-out="object.event_id.name or ''"/></strong> absagen
+                    bzw. Ihre Anmeldung kann nicht berücksichtigt werden.</p>
+                <p>Bei Rückfragen stehen wir gerne zur Verfügung.</p>
+                <p>Mit freundlichen Grüßen<br/>Kreisjugendring Oberallgäu</p>
+            </div>
+        </field>
+        <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+    <!-- E10: Teilnahmebescheinigung / Schulungsnachweis mit PDF-Anhang -->
+    <record id="mail_template_certificate" model="mail.template">
+        <field name="name">KJR: Teilnahmebescheinigung / Nachweis</field>
+        <field name="model_id" ref="event.model_event_registration"/>
+        <field name="subject">Ihre Bescheinigung: {{ object.event_id.name }}</field>
+        <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
+        <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
+        <field name="report_template_ids" eval="[(6, 0, [ref('kjr_event.action_report_participation')])]"/>
+        <field name="body_html" type="html">
+            <div style="margin:0px;padding:0px;font-size:13px;">
+                <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
+                <p>im Anhang finden Sie Ihre Bescheinigung zur Veranstaltung
+                    <strong><t t-out="object.event_id.name or ''"/></strong>.</p>
+                <p t-if="object.event_is_juleica and object.juleica_issued">
+                    Die Juleica wurde ausgestellt<t t-if="object.juleica_valid_until">
+                    und ist gültig bis
+                    <t t-out="format_date(object.juleica_valid_until, date_format='dd.MM.yyyy')"/></t>.</p>
+                <p>Mit freundlichen Grüßen<br/>Kreisjugendring Oberallgäu</p>
+            </div>
+        </field>
+        <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
+        <field name="auto_delete" eval="False"/>
+    </record>
+
+    <!-- E7/E10: Serienmail-Server-Action (Bescheinigung) im Kontextmenü -->
+    <record id="action_server_send_certificate" model="ir.actions.server">
+        <field name="name">KJR: Bescheinigung senden</field>
+        <field name="model_id" ref="event.model_event_registration"/>
+        <field name="binding_model_id" ref="event.model_event_registration"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">records.action_send_certificate()</field>
+    </record>
+
+</odoo>

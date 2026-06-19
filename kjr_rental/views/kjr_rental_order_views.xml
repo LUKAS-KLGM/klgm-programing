@@ -11,8 +11,15 @@
                 <filter string="Offen" name="open" domain="[('state','in',('draft','reserved','issued'))]"/>
                 <filter string="Aktuell ausgegeben" name="issued" domain="[('state','=','issued')]"/>
                 <separator/>
+                <filter string="Rechnung unbezahlt" name="unpaid" domain="[('invoice_payment_state','in',('not_paid','partial'))]"/>
+                <filter string="Rechnung bezahlt" name="paid" domain="[('invoice_payment_state','in',('paid','in_payment'))]"/>
+                <filter string="Kaution offen" name="deposit_open" domain="[('deposit_total','&gt;',0),('deposit_state','=','none')]"/>
+                <filter string="Kaution erhalten" name="deposit_received" domain="[('deposit_state','=','received')]"/>
+                <separator/>
                 <filter string="Status" name="group_state" context="{'group_by':'state'}"/>
                 <filter string="Entleiher" name="group_partner" context="{'group_by':'partner_id'}"/>
+                <filter string="Zahlungsstatus" name="group_payment" context="{'group_by':'invoice_payment_state'}"/>
+                <filter string="Kautionsstatus" name="group_deposit" context="{'group_by':'deposit_state'}"/>
             </search>
         </field>
     </record>
@@ -31,6 +38,14 @@
                 <field name="date_to"/>
                 <field name="amount_total" widget="monetary"/>
                 <field name="currency_id" column_invisible="1"/>
+                <field name="deposit_state" widget="badge" optional="show"
+                       decoration-info="deposit_state == 'received'"
+                       decoration-success="deposit_state == 'refunded'"
+                       decoration-warning="deposit_state == 'withheld'"/>
+                <field name="invoice_payment_state" widget="badge" optional="show"
+                       decoration-success="invoice_payment_state in ('paid','in_payment')"
+                       decoration-warning="invoice_payment_state == 'partial'"
+                       decoration-danger="invoice_payment_state == 'not_paid'"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
                        decoration-success="state == 'returned'"
@@ -49,6 +64,9 @@
                     <button name="action_issue" string="Ausgeben" type="object" class="btn-primary" invisible="state != 'reserved'"/>
                     <button name="action_return" string="Rücknahme" type="object" invisible="state != 'issued'"/>
                     <button name="action_create_invoice" string="Rechnung" type="object" invisible="state not in ('issued','returned') or invoice_id"/>
+                    <button name="action_register_deposit" string="Kaution erhalten" type="object" invisible="deposit_total &lt;= 0 or deposit_state != 'none' or state in ('draft','cancelled')"/>
+                    <button name="action_refund_deposit" string="Kaution erstatten" type="object" invisible="deposit_state != 'received'"/>
+                    <button name="action_withhold_deposit" string="Kaution einbehalten" type="object" confirm="Kaution einbehalten?" invisible="deposit_state != 'received'"/>
                     <button name="action_print_contract" string="Vertrag drucken" type="object" icon="fa-print"/>
                     <button name="action_cancel" string="Stornieren" type="object" invisible="state in ('returned','cancelled')" confirm="Ausleihe stornieren?"/>
                     <button name="action_reset_draft" string="Zurück auf Anfrage" type="object" groups="kjr_rental.group_kjr_rental_manager" invisible="state in ('draft','returned','cancelled')"/>
@@ -79,6 +97,7 @@
                             <field name="sequence" widget="handle"/>
                             <field name="item_id"/>
                             <field name="quantity"/>
+                            <field name="available_in_period"/>
                             <field name="price_per_day"/>
                             <field name="deposit_unit"/>
                             <field name="subtotal"/>
@@ -86,6 +105,20 @@
                             <field name="currency_id" column_invisible="1"/>
                         </list>
                     </field>
+                    <group>
+                        <group string="Kaution">
+                            <field name="deposit_state"/>
+                            <field name="deposit_received_date" invisible="deposit_state == 'none'"/>
+                            <field name="deposit_refund_date" invisible="deposit_state not in ('refunded','withheld')"/>
+                        </group>
+                        <group string="Rechnung">
+                            <field name="invoice_payment_state" widget="badge"
+                                   decoration-success="invoice_payment_state in ('paid','in_payment')"
+                                   decoration-warning="invoice_payment_state == 'partial'"
+                                   decoration-danger="invoice_payment_state == 'not_paid'"
+                                   invisible="not invoice_id"/>
+                        </group>
+                    </group>
                     <group class="oe_subtotal_footer">
                         <field name="amount_total"/>
                         <field name="deposit_total"/>

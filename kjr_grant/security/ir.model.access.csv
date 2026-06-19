@@ -21,6 +21,8 @@ access_kjr_grant_budget_manager,kjr.grant.budget manager,model_kjr_grant_budget,
 access_kjr_grant_budget_reviewer,kjr.grant.budget reviewer,model_kjr_grant_budget,kjr_grant.group_kjr_reviewer,1,0,0,0
 access_kjr_juleica_manager,kjr.juleica manager,model_kjr_juleica,kjr_grant.group_kjr_manager,1,1,1,1
 access_kjr_juleica_reviewer,kjr.juleica reviewer,model_kjr_juleica,kjr_grant.group_kjr_reviewer,1,1,1,0
+access_kjr_juleica_applicant,kjr.juleica applicant,model_kjr_juleica,kjr_grant.group_kjr_applicant,1,0,0,0
+access_kjr_juleica_portal,kjr.juleica portal,model_kjr_juleica,base.group_portal,1,0,0,0
 access_kjr_assembly_manager,kjr.assembly manager,model_kjr_assembly,kjr_grant.group_kjr_manager,1,1,1,1
 access_kjr_assembly_reviewer,kjr.assembly reviewer,model_kjr_assembly,kjr_grant.group_kjr_reviewer,1,1,0,0
 access_kjr_assembly_decision_manager,kjr.assembly.decision manager,model_kjr_assembly_decision,kjr_grant.group_kjr_manager,1,1,1,1

@@ -21,6 +21,18 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="action_submit" string="Eingereicht" type="object"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_approve" string="Bewilligt" type="object"
+                            class="btn-success" invisible="state != 'submitted'"/>
+                    <button name="action_reject" string="Abgelehnt" type="object"
+                            invisible="state != 'submitted'"/>
+                    <button name="action_start" string="Laufend" type="object"
+                            invisible="state != 'approved'"/>
+                    <button name="action_close" string="Abschließen" type="object"
+                            invisible="state not in ('approved','running')"/>
+                    <button name="action_reset_draft" string="Zurück auf Entwurf" type="object"
+                            invisible="state == 'draft'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,running,closed"/>
                 </header>
                 <sheet>

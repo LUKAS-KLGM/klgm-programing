@@ -13,6 +13,7 @@
                 <field name="price_per_day"/>
                 <field name="price_member_per_day"/>
                 <field name="deposit"/>
+                <field name="book_value"/>
                 <field name="website_published"/>
             </list>
         </field>
@@ -40,6 +41,17 @@
                             <field name="has_member_price"/>
                             <field name="price_member_per_day" invisible="not has_member_price"/>
                             <field name="deposit"/>
+                        </group>
+                    </group>
+                    <group string="Abschreibung (lineare Eigenberechnung)">
+                        <group>
+                            <field name="purchase_value"/>
+                            <field name="purchase_date"/>
+                        </group>
+                        <group>
+                            <field name="useful_life_years"/>
+                            <field name="salvage_value"/>
+                            <field name="book_value"/>
                         </group>
                     </group>
                     <field name="description" placeholder="Beschreibung..."/>

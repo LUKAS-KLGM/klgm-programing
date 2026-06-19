@@ -1,6 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
+        <!-- Service-Produkte für Rechnungszeilen (Steuer-/Kontenfindung) -->
+        <record id="product_rental_fee" model="product.product">
+            <field name="name">Verleihgebühr</field>
+            <field name="type">service</field>
+            <field name="list_price">0.0</field>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="False"/>
+        </record>
+        <record id="product_rental_deposit" model="product.product">
+            <field name="name">Kaution</field>
+            <field name="type">service</field>
+            <field name="list_price">0.0</field>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="False"/>
+        </record>
+
+        <!-- Konfigurierbare Schalter (Systemparameter) -->
+        <record id="param_reserve_draft" model="ir.config_parameter">
+            <field name="key">kjr_rental.reserve_draft</field>
+            <field name="value">False</field>
+        </record>
+        <record id="param_auto_invoice_on_return" model="ir.config_parameter">
+            <field name="key">kjr_rental.auto_invoice_on_return</field>
+            <field name="value">False</field>
+        </record>
+
         <record id="item_bus" model="kjr.rental.item">
             <field name="name">9-Sitzer Bus</field><field name="category">vehicle</field>
             <field name="location">sonthofen</field><field name="quantity_total">1</field>

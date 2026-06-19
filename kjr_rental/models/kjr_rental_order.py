@@ -42,6 +42,20 @@ class KjrRentalOrder(models.Model):
     deposit_total = fields.Monetary(string='Kaution gesamt', compute='_compute_amounts', store=True)
     deposit_paid = fields.Boolean(string='Kaution erhalten', tracking=True)
     invoice_id = fields.Many2one('account.move', string='Rechnung', readonly=True, copy=False)
+    # B-cross-2: Zahlungsstatus der Rechnung gespiegelt (store für Filter/Gruppierung)
+    invoice_payment_state = fields.Selection(
+        related='invoice_id.payment_state', string='Zahlungsstatus',
+        store=True, tracking=True,
+    )
+    # B-cross-3: Kaution als eigener Lebenszyklus
+    deposit_state = fields.Selection([
+        ('none', 'Keine / offen'),
+        ('received', 'Erhalten'),
+        ('refunded', 'Erstattet'),
+        ('withheld', 'Einbehalten'),
+    ], string='Kautionsstatus', default='none', required=True, tracking=True)
+    deposit_received_date = fields.Date(string='Kaution erhalten am', tracking=True)
+    deposit_refund_date = fields.Date(string='Kaution erstattet/einbehalten am', tracking=True)
     note = fields.Text(string='Anmerkungen')
 
     @api.depends('date_from', 'date_to')
@@ -118,10 +132,24 @@ class KjrRentalOrder(models.Model):
             rec.state = 'issued'
 
     def action_return(self):
+        # B-cross-1: optionaler Auto-Rechnungs-Schalter via Systemparameter
+        auto_invoice = str(self.env['ir.config_parameter'].sudo().get_param(
+            'kjr_rental.auto_invoice_on_return', default='False')).lower() in ('1', 'true', 'yes')
         for rec in self:
             if rec.state != 'issued':
                 raise UserError(_('Nur ausgegebene Ausleihen können zurückgenommen werden.'))
             rec.state = 'returned'
+            if auto_invoice and not rec.invoice_id and rec.amount_total > 0:
+                # Auto-Rechnung darf die Rückgabe nicht blockieren: schlägt das Buchen fehl
+                # (z. B. fehlende Kontenfindung), bleibt die Rechnung als Entwurf bestehen
+                # und die Rücknahme ist trotzdem abgeschlossen.
+                try:
+                    rec._create_invoice(post=True)
+                except Exception as exc:  # noqa: BLE001 - bewusst breit, Rückgabe schützen
+                    rec.message_post(
+                        body=_('Automatische Rechnung konnte nicht gebucht werden (%s). '
+                               'Bitte die Rechnung manuell erstellen/buchen.') % exc,
+                        subtype_xmlid='mail.mt_note')
 
     def action_cancel(self):
         for rec in self:
@@ -135,27 +163,54 @@ class KjrRentalOrder(models.Model):
                 raise UserError(_('Zurückgegebene Ausleihen können nicht zurückgesetzt werden.'))
             rec.state = 'draft'
 
-    def action_create_invoice(self):
+    def _get_fee_product(self):
+        """Service-Produkt 'Verleihgebühr' (für korrekte Steuer-/Kontenfindung)."""
+        return self.env.ref('kjr_rental.product_rental_fee', raise_if_not_found=False)
+
+    def _create_invoice(self, post=False):
+        """B-cross-1/BUG: Rechnung mit Service-Produkt je Position erstellen.
+
+        Jede Position bekommt das Service-Produkt 'Verleihgebühr'; quantity*price_unit
+        ergibt den Positionsbetrag, sodass Steuer- und Kontenfindung über das Produkt
+        greifen (statt einer Zeile ohne product_id/Steuer).
+        """
         self.ensure_one()
         if self.invoice_id:
-            return self.action_view_invoice()
+            return self.invoice_id
         if self.amount_total <= 0:
             raise UserError(_('Keine berechenbare Gebühr vorhanden.'))
-        lines = [(0, 0, {
-            'name': _('%(item)s (%(q)d × %(d)d Tage)') % {
-                'item': line.item_id.name, 'q': line.quantity, 'd': self.rental_days},
-            'quantity': 1.0,
-            'price_unit': line.subtotal,
-        }) for line in self.line_ids if line.subtotal]
+        fee_product = self._get_fee_product()
+        line_vals = []
+        for line in self.line_ids:
+            if not line.subtotal:
+                continue
+            vals = {
+                'name': _('%(item)s (%(q)d × %(d)d Tage)') % {
+                    'item': line.item_id.name, 'q': line.quantity, 'd': self.rental_days},
+                'quantity': float(line.quantity) * float(self.rental_days or 1),
+                'price_unit': line.price_per_day,
+            }
+            if fee_product:
+                vals['product_id'] = fee_product.id
+            line_vals.append((0, 0, vals))
         move = self.env['account.move'].create({
             'move_type': 'out_invoice',
             'partner_id': self.partner_id.id,
             'company_id': self.company_id.id,
             'invoice_origin': self.name,
-            'invoice_line_ids': lines,
+            'invoice_line_ids': line_vals,
         })
         self.invoice_id = move.id
+        if post:
+            move.action_post()
         self.message_post(body=_('Rechnung zur Ausleihe %s erstellt.') % self.name, subtype_xmlid='mail.mt_note')
+        return move
+
+    def action_create_invoice(self):
+        self.ensure_one()
+        if self.invoice_id:
+            return self.action_view_invoice()
+        self._create_invoice(post=False)
         return self.action_view_invoice()
 
     def action_view_invoice(self):
@@ -166,6 +221,44 @@ class KjrRentalOrder(models.Model):
             'type': 'ir.actions.act_window', 'res_model': 'account.move',
             'res_id': self.invoice_id.id, 'view_mode': 'form', 'name': _('Rechnung'),
         }
+
+    def action_register_deposit(self):
+        """B-cross-3: Kaution als erhalten verbuchen."""
+        for rec in self:
+            if rec.deposit_total <= 0:
+                raise UserError(_('Für diese Ausleihe ist keine Kaution vorgesehen.'))
+            if rec.deposit_state != 'none':
+                raise UserError(_('Die Kaution ist bereits erfasst (Status: %s).') % rec.deposit_state)
+            rec.deposit_state = 'received'
+            rec.deposit_paid = True
+            rec.deposit_received_date = fields.Date.context_today(rec)
+            rec.message_post(
+                body=_('Kaution (%.2f) als erhalten verbucht.') % rec.deposit_total,
+                subtype_xmlid='mail.mt_note')
+
+    def action_refund_deposit(self):
+        """B-cross-3: Kaution erstatten (Standard) – Einbehalt erfolgt manuell über das Feld."""
+        for rec in self:
+            if rec.deposit_state != 'received':
+                raise UserError(_('Es ist keine erhaltene Kaution vorhanden, die erstattet werden kann.'))
+            rec.deposit_state = 'refunded'
+            rec.deposit_paid = False
+            rec.deposit_refund_date = fields.Date.context_today(rec)
+            rec.message_post(
+                body=_('Kaution (%.2f) erstattet.') % rec.deposit_total,
+                subtype_xmlid='mail.mt_note')
+
+    def action_withhold_deposit(self):
+        """B-cross-3: Kaution einbehalten (z. B. bei Schaden)."""
+        for rec in self:
+            if rec.deposit_state != 'received':
+                raise UserError(_('Es ist keine erhaltene Kaution vorhanden, die einbehalten werden kann.'))
+            rec.deposit_state = 'withheld'
+            rec.deposit_paid = False
+            rec.deposit_refund_date = fields.Date.context_today(rec)
+            rec.message_post(
+                body=_('Kaution (%.2f) einbehalten.') % rec.deposit_total,
+                subtype_xmlid='mail.mt_note')
 
     def action_print_contract(self):
         self.ensure_one()
@@ -189,6 +282,18 @@ class KjrRentalOrderLine(models.Model):
     currency_id = fields.Many2one(related='order_id.currency_id')
     subtotal = fields.Monetary(string='Zwischensumme', compute='_compute_subtotal', store=True)
     deposit_subtotal = fields.Monetary(string='Kaution', compute='_compute_subtotal', store=True)
+    # R2: Live-Verfügbarkeit im Zeitraum (today/Reservierungs-abhängig => NICHT store)
+    available_in_period = fields.Integer(
+        string='Verfügbar im Zeitraum', compute='_compute_available_in_period', store=False)
+
+    @api.depends('item_id', 'order_id.date_from', 'order_id.date_to')
+    def _compute_available_in_period(self):
+        for rec in self:
+            if rec.item_id and rec.order_id.date_from and rec.order_id.date_to:
+                rec.available_in_period = rec.item_id.quantity_available(
+                    rec.order_id.date_from, rec.order_id.date_to, exclude_order=rec.order_id)
+            else:
+                rec.available_in_period = 0
 
     @api.depends('item_id', 'order_id.is_member')
     def _compute_price(self):

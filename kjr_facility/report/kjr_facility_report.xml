@@ -40,8 +40,11 @@
                             <tr>
                                 <td>Zeitraum</td>
                                 <td>
-                                    <span t-field="o.check_in" t-options='{"format":"dd.MM.yyyy"}'/> bis
+                                    <span t-field="o.check_in" t-options='{"format":"dd.MM.yyyy"}'/>
+                                    <t t-if="o.arrival_time"> (Anreise ab <span t-field="o.arrival_time" t-options='{"widget":"float_time"}'/>)</t>
+                                    bis
                                     <span t-field="o.check_out" t-options='{"format":"dd.MM.yyyy"}'/>
+                                    <t t-if="o.departure_time"> (Abreise bis <span t-field="o.departure_time" t-options='{"widget":"float_time"}'/>)</t>
                                     (<t t-esc="o.nights"/> Nächte)
                                 </td>
                             </tr>

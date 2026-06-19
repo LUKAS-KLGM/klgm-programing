@@ -60,8 +60,10 @@ class KjrJuleica(models.Model):
         for rec in self:
             if rec.issue_date:
                 rec.expiry_date = rec.issue_date + relativedelta(years=rec.validity_years or 3)
-            else:
-                rec.expiry_date = rec.expiry_date  # manuell gesetzten Wert beibehalten
+            elif not rec.expiry_date:
+                # Kein Ausstellungsdatum und (noch) kein manuell gesetztes Datum.
+                rec.expiry_date = False
+            # sonst: manuell gesetzten Wert unverändert lassen.
 
     @api.depends('expiry_date')
     def _compute_state(self):

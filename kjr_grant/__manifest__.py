@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR App',
-    'version': '19.0.5.0.0',
+    'version': '19.0.6.0.0',
     'category': 'Custom/KJR',
     'summary': 'Zuschussverwaltung, Juleica, Vollversammlung, Fördermittel-Akquise und Verwendungsnachweis für Kreisjugendringe (Odoo 19)',
     'author': 'Lukas Klauser / LM Consulting UG',
@@ -15,6 +15,7 @@
         'security/kjr_grant_security.xml',
         'security/ir.model.access.csv',
         'data/ir_sequence_data.xml',
+        'data/ir_config_parameter_data.xml',
         'data/kjr_grant_type_data.xml',
         'data/auth_signup_data.xml',
         'data/website_menu_data.xml',

@@ -131,5 +131,29 @@
             <field name="perm_unlink" eval="True"/>
         </record>
 
+        <!-- ── Record Rules: kjr.juleica (DSGVO: personenbezogene Daten) ──────── -->
+
+        <record id="rule_kjr_juleica_own" model="ir.rule">
+            <field name="name">KJR: Inhaber/Antragsteller sieht nur die eigene Juleica</field>
+            <field name="model_id" ref="model_kjr_juleica"/>
+            <field name="groups" eval="[(4, ref('group_kjr_applicant')), (4, ref('base.group_portal'))]"/>
+            <field name="domain_force">[('partner_id', '=', user.partner_id.id)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_kjr_juleica_reviewer_all" model="ir.rule">
+            <field name="name">KJR: Sachbearbeiter sieht alle Juleica-Karten</field>
+            <field name="model_id" ref="model_kjr_juleica"/>
+            <field name="groups" eval="[(4, ref('group_kjr_reviewer'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
     </data>
 </odoo>

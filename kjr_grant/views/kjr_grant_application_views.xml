@@ -104,6 +104,9 @@
                     <button name="action_reject" string="Ablehnen" type="object"
                             class="btn-danger" groups="kjr_grant.group_kjr_reviewer"
                             invisible="state not in ('submitted','in_review')"/>
+                    <button name="action_order_payment" string="Zur Zahlung anweisen" type="object"
+                            groups="kjr_grant.group_kjr_reviewer"
+                            invisible="state != 'approved' or payment_ordered"/>
                     <button name="action_mark_paid" string="Als ausgezahlt markieren" type="object"
                             groups="kjr_grant.group_kjr_reviewer" invisible="state != 'approved'"/>
                     <button name="action_create_settlement" string="Abrechnung erstellen" type="object"
@@ -203,6 +206,24 @@
                                     <field name="tn_external_pct"   readonly="1"/>
                                 </group>
                             </group>
+                            <group string="Delegiertenförderung (§ 4.9 – Fahrtkosten n. BayRKG)"
+                                   invisible="grant_type_code != '4_9'">
+                                <field name="assembly_id" readonly="state not in ('draft','submitted')"
+                                       options="{'no_create': True}"/>
+                                <field name="delegate_transport_mode"
+                                       readonly="state not in ('draft','submitted')"/>
+                                <field name="delegate_km_one_way"
+                                       readonly="state not in ('draft','submitted')"
+                                       invisible="delegate_transport_mode != 'car'"/>
+                                <field name="delegate_passenger_count"
+                                       readonly="state not in ('draft','submitted')"
+                                       invisible="delegate_transport_mode != 'car'"/>
+                                <div class="text-muted" colspan="2">
+                                    PKW: Wegstreckenentschädigung nach BayRKG (Hin- und Rückfahrt) zzgl.
+                                    Mitnahmeentschädigung. ÖPNV/Sonstiges: belegte Fahrtkosten unter
+                                    „Kostenaufstellung → Fahrtkosten" erfassen.
+                                </div>
+                            </group>
                             <group string="Maßnahmenbericht">
                                 <field name="measure_report" nolabel="1"
                                        placeholder="Charakter, Inhalt und zeitlicher Ablauf der Maßnahme..."
@@ -277,11 +298,16 @@
                             <group>
                                 <group string="Berechnung">
                                     <field name="grant_calculated" readonly="1"/>
+                                    <field name="payout_year" readonly="1"
+                                           invisible="not payout_year"/>
+                                    <field name="payout_schedule_info" readonly="1"
+                                           invisible="not payout_schedule_info"/>
                                 </group>
                                 <group string="Bewilligung" groups="kjr_grant.group_kjr_reviewer">
                                     <field name="grant_approved"/>
                                     <field name="grant_override_reason"
                                            invisible="grant_approved == grant_calculated or grant_approved == 0"/>
+                                    <field name="budget_info" readonly="1"/>
                                 </group>
                             </group>
                         </page>

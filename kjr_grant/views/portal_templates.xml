@@ -583,6 +583,42 @@
                         </div>
                     </div>
 
+                    <!-- 4b. Delegiertenförderung § 4.9 (nur bei Bedarf ausfüllen) -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">Nur bei Delegiertenförderung (§ 4.9 – Fahrtkosten n. BayRKG)</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small">
+                                Nur ausfüllen, wenn oben „Delegiertenförderung (§ 4.9)" gewählt wurde. PKW: einfache
+                                Strecke und Mitfahrer/innen angeben (Erstattung Hin- und Rückfahrt nach BayRKG).
+                                Bei öffentlichen Verkehrsmitteln die belegten Fahrtkosten unter „Kostenaufstellung →
+                                Fahrtkosten" eintragen.
+                            </p>
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label">Verkehrsmittel</label>
+                                    <select name="delegate_transport_mode" class="form-select">
+                                        <option value="">—</option>
+                                        <option value="car"    t-att-selected="values.get('delegate_transport_mode') == 'car'">PKW</option>
+                                        <option value="public" t-att-selected="values.get('delegate_transport_mode') == 'public'">Öffentliche Verkehrsmittel</option>
+                                        <option value="other"  t-att-selected="values.get('delegate_transport_mode') == 'other'">Sonstiges</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label">Gefahrene km (einfache Strecke)</label>
+                                    <input type="number" step="0.1" min="0" name="delegate_km_one_way"
+                                           class="form-control" t-att-value="values.get('delegate_km_one_way','')"/>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label">Mitfahrer/innen</label>
+                                    <input type="number" min="0" name="delegate_passenger_count"
+                                           class="form-control" t-att-value="values.get('delegate_passenger_count','')"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 5. Kostenaufstellung -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white">

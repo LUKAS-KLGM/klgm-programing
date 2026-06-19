@@ -8,3 +8,7 @@ access_kjr_rental_order_portal,kjr.rental.order portal,model_kjr_rental_order,ba
 access_kjr_rental_line_user,kjr.rental.order.line user,model_kjr_rental_order_line,kjr_rental.group_kjr_rental_user,1,1,1,1
 access_kjr_rental_line_manager,kjr.rental.order.line manager,model_kjr_rental_order_line,kjr_rental.group_kjr_rental_manager,1,1,1,1
 access_kjr_rental_line_portal,kjr.rental.order.line portal,model_kjr_rental_order_line,base.group_portal,1,0,0,0
+access_kjr_rental_inventory_user,kjr.rental.inventory user,model_kjr_rental_inventory,kjr_rental.group_kjr_rental_user,1,1,1,0
+access_kjr_rental_inventory_manager,kjr.rental.inventory manager,model_kjr_rental_inventory,kjr_rental.group_kjr_rental_manager,1,1,1,1
+access_kjr_rental_inventory_line_user,kjr.rental.inventory.line user,model_kjr_rental_inventory_line,kjr_rental.group_kjr_rental_user,1,1,1,1
+access_kjr_rental_inventory_line_manager,kjr.rental.inventory.line manager,model_kjr_rental_inventory_line,kjr_rental.group_kjr_rental_manager,1,1,1,1

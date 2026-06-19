@@ -47,7 +47,9 @@ class KjrGrantType(models.Model):
     )
     juleica_bonus = fields.Boolean(
         string='Juleica-Bonus aktiv', default=False,
-        help='Jugendleiter mit Juleica erhalten +50% auf den Tagessatz.',
+        help='Jugendleiter mit gültiger Juleica erhalten den Juleica-Zuschlag '
+             '(KJR-OA: +50 %) auf ihren Tagessatz. Greift bei allen tagessatz-'
+             'basierten Förderarten (§ 4.1b, 4.2, 4.3, 4.5).',
     )
     max_amount = fields.Float(
         string='Höchstfördersumme (€)', digits=(8, 2), required=True, default=0.0,
@@ -55,6 +57,13 @@ class KjrGrantType(models.Model):
     max_per_year = fields.Integer(
         string='Max. Anträge/Kalenderjahr', default=0,
         help='0 = unbegrenzt.',
+    )
+    year_limit_group = fields.Char(
+        string='Jahreslimit-Gruppe',
+        help='Förderarten mit derselben Gruppe teilen sich das Jahreslimit '
+             '(max. Anträge/Kalenderjahr). KJR-OA: § 4.1 eintägig und mehrtägig '
+             'zählen gemeinsam (max. 4 Freizeitmaßnahmen/Jahr). Leer = das Limit '
+             'gilt nur für diese Förderart allein.',
     )
     max_cofinancing_pct = fields.Float(
         string='Max. Förderquote (%)', digits=(5, 1), default=50.0,
