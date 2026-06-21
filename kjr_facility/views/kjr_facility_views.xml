@@ -108,7 +108,7 @@
                         <div>
                             <strong><field name="name"/></strong>
                             <div class="text-muted"><field name="city"/></div>
-                            <div><i class="fa fa-bed me-1"/><field name="bed_total"/> Betten · max. <field name="capacity"/> Pers.</div>
+                            <div><i class="fa fa-bed me-1" title="Betten"/><field name="bed_total"/> Betten · max. <field name="capacity"/> Pers.</div>
                         </div>
                     </t>
                 </templates>
