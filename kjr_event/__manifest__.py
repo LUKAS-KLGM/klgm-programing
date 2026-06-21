@@ -20,7 +20,9 @@
         'security/kjr_event_security.xml',
         'security/ir.model.access.csv',
         'report/kjr_event_report.xml',
-        'data/mail_templates.xml',
+        # Seed-/Mail-Daten für den ersten Staging-Build deaktiviert (Build hatte
+        # geskippt). Nach erfolgreicher Installation wieder aktivieren.
+        # 'data/mail_templates.xml',
         'views/event_views.xml',
         'views/website_event_templates.xml',
         'views/portal_templates.xml',
