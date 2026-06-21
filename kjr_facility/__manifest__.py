@@ -14,12 +14,12 @@
         'security/ir.model.access.csv',
         # Seed-/Stammdaten für den ersten Staging-Build deaktiviert (Build hatte
         # geskippt). Nach erfolgreicher Installation einzeln wieder aktivieren.
-        # 'data/ir_sequence_data.xml',
-        # 'data/account_journal_data.xml',
-        # 'data/kjr_facility_data.xml',
+        'data/ir_sequence_data.xml',
+        'data/account_journal_data.xml',
+        'data/kjr_facility_data.xml',
         'report/kjr_facility_report.xml',
-        # 'data/mail_template_data.xml',
-        # 'data/ir_cron_data.xml',
+        'data/mail_template_data.xml',
+        'data/ir_cron_data.xml',
         'views/kjr_facility_views.xml',
         'views/kjr_facility_tariff_views.xml',
         'views/kjr_facility_booking_views.xml',

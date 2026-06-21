@@ -26,7 +26,7 @@ class KjrAssembly(models.Model):
     )
     attendee_count = fields.Integer(string='Anwesend', compute='_compute_attendee_count')
     decision_ids = fields.One2many('kjr.assembly.decision', 'assembly_id', string='Beschlüsse')
-    decision_count = fields.Integer(string='Beschlüsse', compute='_compute_decision_count')
+    decision_count = fields.Integer(string='Anzahl Beschlüsse', compute='_compute_decision_count')
     invited_member_ids = fields.Many2many(
         'res.partner', 'kjr_assembly_invited_rel',
         string='Eingeladene Verbände',

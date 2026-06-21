@@ -203,7 +203,7 @@ class KjrGrantApplication(models.Model):
     participant_ids = fields.One2many('kjr.grant.participant', 'application_id', string='Teilnehmerliste')
     participant_count = fields.Integer(string='TN-Liste Einträge', compute='_compute_participant_count')
     settlement_id = fields.One2many('kjr.grant.settlement', 'application_id', string='Abrechnungen')
-    settlement_count = fields.Integer(string='Abrechnungen', compute='_compute_settlement_count')
+    settlement_count = fields.Integer(string='Anzahl Abrechnungen', compute='_compute_settlement_count')
 
     # ══════════════════════════════════════════════════════════════════════════
     # COMPUTED FIELDS
