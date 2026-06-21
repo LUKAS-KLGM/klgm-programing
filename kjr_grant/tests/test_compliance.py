@@ -13,7 +13,7 @@ manuell nachzurechnen. Erwartungswerte sind in den Docstrings hergeleitet.
 """
 from odoo.tests.common import TransactionCase
 from odoo.tests import tagged
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 @tagged('post_install', '-at_install')
@@ -231,3 +231,37 @@ class TestKjrGrantCompliance(TransactionCase):
         })
         self.assertEqual(str(card.expiry_date), '2023-01-01')
         self.assertEqual(card.state, 'expired')
+
+    # ══ Ehrenamtsstunden-Erfassung (Nachweis-Grundlage) ══════════════════════
+    def _log(self, **kw):
+        vals = {'partner_id': self.person.id, 'date': '2026-03-01',
+                'hours': 4.0, 'category': 'freizeit'}
+        vals.update(kw)
+        return self.env['kjr.volunteer.log'].create(vals)
+
+    def test_volunteer_hours_aggregation(self):
+        """Summe, Anzahl und Zeitraum der erfassten Ehrenamtsstunden je Person."""
+        self._log(date='2026-02-01', hours=4.0, category='freizeit')
+        self._log(date='2026-03-15', hours=2.0, category='freizeit')
+        self._log(date='2026-04-10', hours=3.0, category='schulung')
+        self.assertEqual(self.person.volunteer_hours_total, 9.0)
+        self.assertEqual(self.person.volunteer_log_count, 3)
+        self.assertEqual(str(self.person.volunteer_first_date), '2026-02-01')
+        self.assertEqual(str(self.person.volunteer_last_date), '2026-04-10')
+
+    def test_volunteer_category_breakdown(self):
+        """Kategorie-Aufschlüsselung für den Nachweis: nur Kategorien mit Stunden,
+        in Reihenfolge der Auswahlliste (freizeit vor schulung)."""
+        self._log(hours=4.0, category='freizeit')
+        self._log(hours=2.0, category='freizeit')
+        self._log(hours=3.0, category='schulung')
+        summary = self.person._volunteer_hours_by_category()
+        self.assertEqual([(s['label'], s['hours']) for s in summary], [
+            ('Freizeitmaßnahmen (Planung & Durchführung)', 6.0),
+            ('Aus- & Fortbildung', 3.0),
+        ])
+
+    def test_volunteer_hours_must_be_positive(self):
+        """0 oder negative Stunden sind unzulässig."""
+        with self.assertRaises(ValidationError):
+            self._log(hours=0.0)

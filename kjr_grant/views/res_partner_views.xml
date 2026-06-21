@@ -61,6 +61,27 @@
                             <field name="state" widget="badge"/>
                         </list>
                     </field>
+                    <separator string="Ehrenamtsstunden" invisible="is_company"/>
+                    <group invisible="is_company">
+                        <group>
+                            <field name="volunteer_hours_total" readonly="1"/>
+                            <field name="volunteer_log_count" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="volunteer_first_date" readonly="1"/>
+                            <field name="volunteer_last_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="volunteer_log_ids" invisible="is_company"
+                           context="{'default_partner_id': id, 'default_organization_id': parent_id}">
+                        <list editable="bottom">
+                            <field name="date"/>
+                            <field name="category"/>
+                            <field name="description"/>
+                            <field name="application_id" optional="hide"/>
+                            <field name="hours" sum="Summe"/>
+                        </list>
+                    </field>
                 </page>
             </notebook>
         </field>

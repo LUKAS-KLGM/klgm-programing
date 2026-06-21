@@ -37,6 +37,11 @@
     <menuitem id="menu_kjr_juleica_cards" name="Juleica-Karten"
               parent="menu_kjr_juleica" action="action_kjr_juleica" sequence="10"/>
 
+    <menuitem id="menu_kjr_volunteer" name="Ehrenamt"
+              parent="menu_kjr_root" sequence="14"/>
+    <menuitem id="menu_kjr_volunteer_logs" name="Ehrenamtsstunden"
+              parent="menu_kjr_volunteer" action="action_kjr_volunteer_log" sequence="10"/>
+
     <menuitem id="menu_kjr_assembly_root" name="Vollversammlung"
               parent="menu_kjr_root" sequence="22"/>
     <menuitem id="menu_kjr_assembly_list" name="Versammlungen"

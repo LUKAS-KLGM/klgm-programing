@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Erweiterung res.partner für KJR-Mitgliedsverbände."""
-from odoo import api, fields, models
+from odoo import api, fields, models, _
 
 
 class ResPartner(models.Model):
@@ -54,6 +54,23 @@ class ResPartner(models.Model):
         string='Bewilligte Zuschüsse gesamt (€)',
         compute='_compute_kjr_grant_count', digits=(10, 2),
     )
+    # ── Ehrenamtsstunden ─────────────────────────────────────────────────────
+    volunteer_log_ids = fields.One2many(
+        'kjr.volunteer.log', 'partner_id', string='Ehrenamtsstunden',
+    )
+    volunteer_hours_total = fields.Float(
+        string='Ehrenamtsstunden gesamt', compute='_compute_volunteer_hours',
+        store=True, digits=(8, 2),
+    )
+    volunteer_log_count = fields.Integer(
+        string='Anzahl Stundeneinträge', compute='_compute_volunteer_hours', store=True,
+    )
+    volunteer_first_date = fields.Date(
+        string='Ehrenamt seit', compute='_compute_volunteer_hours', store=True,
+    )
+    volunteer_last_date = fields.Date(
+        string='Letzter Ehrenamtseintrag', compute='_compute_volunteer_hours', store=True,
+    )
 
     @api.depends('kjr_vr_delegate_ids')
     def _compute_delegate_count(self):
@@ -68,6 +85,41 @@ class ResPartner(models.Model):
             rec.kjr_grant_total_approved = sum(
                 g.grant_approved for g in grants if g.state in ('approved', 'paid')
             )
+
+    @api.depends('volunteer_log_ids', 'volunteer_log_ids.hours', 'volunteer_log_ids.date')
+    def _compute_volunteer_hours(self):
+        for rec in self:
+            logs = rec.volunteer_log_ids
+            rec.volunteer_hours_total = sum(logs.mapped('hours'))
+            rec.volunteer_log_count = len(logs)
+            dates = [d for d in logs.mapped('date') if d]
+            rec.volunteer_first_date = min(dates) if dates else False
+            rec.volunteer_last_date = max(dates) if dates else False
+
+    def _volunteer_hours_by_category(self):
+        """Stunden je Tätigkeitskategorie (für den Ehrenamtsnachweis).
+        Liefert nur Kategorien mit Stunden > 0, in der Reihenfolge der Auswahl."""
+        self.ensure_one()
+        selection = self.env['kjr.volunteer.log']._fields['category'].selection
+        totals = {}
+        for log in self.volunteer_log_ids:
+            totals[log.category] = totals.get(log.category, 0.0) + log.hours
+        return [
+            {'label': label, 'hours': totals[key]}
+            for key, label in selection if totals.get(key)
+        ]
+
+    def action_kjr_volunteer_logs(self):
+        """Ehrenamtsstunden dieser Person öffnen/erfassen."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Ehrenamtsstunden'),
+            'res_model': 'kjr.volunteer.log',
+            'view_mode': 'list,form',
+            'domain': [('partner_id', '=', self.id)],
+            'context': {'default_partner_id': self.id},
+        }
 
     def action_kjr_datenauskunft(self):
         """DSGVO Art. 15: Datenauskunft über die zu dieser Person/Organisation

@@ -29,3 +29,6 @@ access_kjr_assembly_decision_manager,kjr.assembly.decision manager,model_kjr_ass
 access_kjr_assembly_decision_reviewer,kjr.assembly.decision reviewer,model_kjr_assembly_decision,kjr_grant.group_kjr_reviewer,1,1,1,0
 access_kjr_funding_manager,kjr.funding manager,model_kjr_funding,kjr_grant.group_kjr_manager,1,1,1,1
 access_kjr_funding_reviewer,kjr.funding reviewer,model_kjr_funding,kjr_grant.group_kjr_reviewer,1,1,0,0
+access_kjr_volunteer_log_manager,kjr.volunteer.log manager,model_kjr_volunteer_log,kjr_grant.group_kjr_manager,1,1,1,1
+access_kjr_volunteer_log_reviewer,kjr.volunteer.log reviewer,model_kjr_volunteer_log,kjr_grant.group_kjr_reviewer,1,1,1,0
+access_kjr_volunteer_log_applicant,kjr.volunteer.log applicant,model_kjr_volunteer_log,kjr_grant.group_kjr_applicant,1,0,0,0

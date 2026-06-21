@@ -7,5 +7,6 @@ from . import kjr_grant_participant
 from . import kjr_juleica
 from . import kjr_assembly
 from . import kjr_funding
+from . import kjr_volunteer_log
 from . import res_partner
 from . import res_company
