@@ -890,7 +890,8 @@ class KjrGrantApplication(models.Model):
             'amount': self.grant_approved,
             'journal_id': pay_journal.id,
             'date': self.date_paid or fields.Date.today(),
-            'ref': f'Zuschuss {self.name} — {self.measure_name}',
+            # Odoo 19: account.payment nutzt 'memo' (nicht mehr 'ref').
+            'memo': f'Zuschuss {self.name} — {self.measure_name}',
         })
         self.payment_id = payment.id
         self.message_post(
