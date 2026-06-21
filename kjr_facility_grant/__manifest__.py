@@ -15,6 +15,7 @@
     'data': [
         'views/kjr_facility_grant_views.xml',
     ],
+    'images': ['static/description/icon.png'],
     'installable': True,
     'application': False,
     'auto_install': True,

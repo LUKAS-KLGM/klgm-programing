@@ -16,6 +16,7 @@
         'views/kjr_youth_facility_views.xml',
         'views/menu.xml',
     ],
+    'images': ['static/description/icon.png'],
     'installable': True,
     'application': True,
     'auto_install': False,
