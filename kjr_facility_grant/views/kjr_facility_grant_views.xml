@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Einrichtungsbuchung: Antrag erstellen / verknüpfen / öffnen -->
+    <record id="view_kjr_booking_form_grant_bridge" model="ir.ui.view">
+        <field name="name">kjr.facility.booking.form.grant.bridge</field>
+        <field name="model">kjr.facility.booking</field>
+        <field name="inherit_id" ref="kjr_facility.view_kjr_booking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_create_grant_application" type="object"
+                        string="Zuschussantrag erstellen" class="btn-secondary"
+                        invisible="grant_application_id"
+                        groups="kjr_facility.group_kjr_facility_user"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_grant_application" type="object"
+                        class="oe_stat_button" icon="fa-eur"
+                        invisible="not grant_application_id">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Zuschuss-</span>
+                        <span class="o_stat_text">antrag</span>
+                    </div>
+                </button>
+            </xpath>
+            <xpath expr="//field[@name='grant_reference']" position="after">
+                <field name="grant_application_id"
+                       invisible="not is_grant_funded"
+                       options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Zuschussantrag: verknüpfte Einrichtungsbuchungen anzeigen -->
+    <record id="view_kjr_grant_application_form_facility_bridge" model="ir.ui.view">
+        <field name="name">kjr.grant.application.form.facility.bridge</field>
+        <field name="model">kjr.grant.application</field>
+        <field name="inherit_id" ref="kjr_grant.view_kjr_grant_application_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_facility_bookings" type="object"
+                        class="oe_stat_button" icon="fa-building"
+                        invisible="facility_booking_count == 0">
+                    <field name="facility_booking_count" widget="statinfo" string="Buchungen"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
