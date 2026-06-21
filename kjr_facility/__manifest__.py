@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Einrichtungsbuchung',
-    'version': '19.0.2.0.0',
+    'version': '19.0.2.1.0',
     'category': 'Custom/KJR',
     'summary': 'Belegungs- und Buchungsverwaltung für KJR-Einrichtungen (Jugendhaus Diepolz, '
                'Zeltplatz NiSo): Tarife, Verpflegung, Doppelbelegungsprüfung, Rechnung, Website & Portal',
