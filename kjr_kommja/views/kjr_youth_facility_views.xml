@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_kjr_youth_facility_list" model="ir.ui.view">
+        <field name="name">kjr.youth.facility.list</field>
+        <field name="model">kjr.youth.facility</field>
+        <field name="arch" type="xml">
+            <list string="Jugendeinrichtungen">
+                <field name="name"/>
+                <field name="facility_type"/>
+                <field name="municipality"/>
+                <field name="city" optional="show"/>
+                <field name="operator_id" optional="show"/>
+                <field name="age_range" optional="hide"/>
+                <field name="phone" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kjr_youth_facility_form" model="ir.ui.view">
+        <field name="name">kjr.youth.facility.form</field>
+        <field name="model">kjr.youth.facility</field>
+        <field name="arch" type="xml">
+            <form string="Jugendeinrichtung">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="z. B. Jugendzentrum Oberstdorf"/></h1>
+                    </div>
+                    <group>
+                        <group string="Einordnung">
+                            <field name="code"/>
+                            <field name="facility_type"/>
+                            <field name="operator_id"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                        <group string="Zielgruppe &amp; Kapazität">
+                            <label for="age_min" string="Altersgruppe"/>
+                            <div class="o_row">
+                                <field name="age_min" class="oe_inline"/>
+                                <span class="mx-1">bis</span>
+                                <field name="age_max" class="oe_inline"/>
+                                <span class="mx-1">Jahre</span>
+                            </div>
+                            <field name="capacity"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Anschrift">
+                            <field name="street"/>
+                            <field name="zip"/>
+                            <field name="city"/>
+                            <field name="municipality"/>
+                        </group>
+                        <group string="Kontakt">
+                            <field name="contact_person"/>
+                            <field name="phone" widget="phone"/>
+                            <field name="email" widget="email"/>
+                            <field name="website" widget="url"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Öffnungszeiten &amp; Angebot" name="offer">
+                            <group>
+                                <field name="opening_hours" placeholder="z. B. Mo–Fr 15–20 Uhr"/>
+                                <field name="offerings" placeholder="Schwerpunkte, offene Angebote, Projekte..."/>
+                            </group>
+                        </page>
+                        <page string="Notizen" name="notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_kjr_youth_facility_kanban" model="ir.ui.view">
+        <field name="name">kjr.youth.facility.kanban</field>
+        <field name="model">kjr.youth.facility</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="facility_type">
+                <field name="facility_type"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_details">
+                            <strong><field name="name"/></strong>
+                            <div class="text-muted">
+                                <field name="city"/>
+                                <t t-if="record.municipality.value"> · <field name="municipality"/></t>
+                            </div>
+                            <div t-if="record.age_range.value" class="o_kanban_tags_section">
+                                <span class="badge text-bg-secondary"><field name="age_range"/></span>
+                            </div>
+                            <div t-if="record.operator_id.value" class="text-muted mt-1">
+                                <field name="operator_id"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_kjr_youth_facility_search" model="ir.ui.view">
+        <field name="name">kjr.youth.facility.search</field>
+        <field name="model">kjr.youth.facility</field>
+        <field name="arch" type="xml">
+            <search string="Jugendeinrichtungen">
+                <field name="name"/>
+                <field name="municipality"/>
+                <field name="city"/>
+                <field name="operator_id"/>
+                <separator/>
+                <filter name="filter_mobile" string="Mobile Angebote"
+                        domain="[('facility_type', '=', 'mobil')]"/>
+                <separator/>
+                <filter name="group_type" string="Art" context="{'group_by': 'facility_type'}"/>
+                <filter name="group_municipality" string="Kommune" context="{'group_by': 'municipality'}"/>
+                <filter name="group_operator" string="Träger" context="{'group_by': 'operator_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_kjr_youth_facility" model="ir.actions.act_window">
+        <field name="name">Jugendeinrichtungen</field>
+        <field name="res_model">kjr.youth.facility</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_kjr_youth_facility_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Erste Jugendeinrichtung erfassen</p>
+            <p>Verzeichnis der offenen Jugendeinrichtungen im Landkreis (Kommunale Jugendarbeit).</p>
+        </field>
+    </record>
+
+</odoo>

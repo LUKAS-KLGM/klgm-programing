@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_kjr_kommja_root" name="KommJA" sequence="98"/>
+    <menuitem id="menu_kjr_kommja_facilities" name="Jugendeinrichtungen"
+              parent="menu_kjr_kommja_root" action="action_kjr_youth_facility" sequence="10"/>
+
+</odoo>
