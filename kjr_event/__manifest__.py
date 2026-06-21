@@ -9,11 +9,12 @@
     'author': 'Lukas Klauser / LM Consulting UG',
     'website': 'https://lm-consulting.de',
     'license': 'OPL-1',
+    # event_sale/website_event_sale (Sales-App) sind OPTIONAL: das Modul soll auch auf
+    # Instanzen ohne installierte Sales-App laden. Die Schulungsrechnung läuft direkt über
+    # 'account'; die optionale sale.order-Anbindung wird im Code defensiv geprüft.
     'depends': [
         'event',
         'website_event',
-        'event_sale',
-        'website_event_sale',
         'account',
     ],
     'data': [

@@ -136,9 +136,11 @@ class EventRegistration(models.Model):
                 # in Report/Mail, wenn die Ausstellung wieder zurückgenommen wird).
                 rec.juleica_valid_until = False
 
-    @api.depends('event_id.payment_required',
-                 'amount_due', 'amount_paid', 'sale_order_id.amount_total',
-                 'sale_order_id.invoice_ids.payment_state', 'sale_order_id.state')
+    # Hinweis: sale_order_id (aus event_sale) wird im Rumpf optional/defensiv gelesen,
+    # steht aber NICHT in @api.depends, damit das Modul auch OHNE installiertes event_sale
+    # lädt (sonst Registry-Fehler "Invalid field 'sale_order_id'"). Mit event_sale wird der
+    # Status über amount_due/amount_paid mitgeführt.
+    @api.depends('event_id.payment_required', 'amount_due', 'amount_paid')
     def _compute_kjr_payment_state(self):
         for rec in self:
             # Wenn der Status bereits manuell gesetzt wurde (z. B. erstattet), nicht überschreiben.
