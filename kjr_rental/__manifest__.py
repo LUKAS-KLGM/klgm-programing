@@ -5,8 +5,8 @@
     'category': 'Custom/KJR',
     'summary': 'Verleih von Material (Fahrzeuge, Zelte, Technik, Sport, Küche, Spielgeräte) mit '
                'Bestand, Verfügbarkeitsprüfung, Mitgliedertarif, Kaution, Website-Anfrage & Vertrag',
-    'author': 'Lukas Klauser / LM Consulting UG',
-    'website': 'https://lm-consulting.de',
+    'author': 'KLGM UG (haftungsbeschränkt)',
+    'website': 'https://www.klgm-consulting.de',
     'license': 'OPL-1',
     'depends': ['base', 'mail', 'portal', 'website', 'account'],
     'data': [

@@ -6,8 +6,8 @@
     'summary': 'Erweiterung der Odoo-Veranstaltungen für KJR-Ferienprogramm und Schulungen '
                '(Juleica, Rettungsschwimmer): Altersgruppen, Einwilligung Minderjähriger, '
                'Notfallkontakt, Teilnahmebescheinigung',
-    'author': 'Lukas Klauser / LM Consulting UG',
-    'website': 'https://lm-consulting.de',
+    'author': 'KLGM UG (haftungsbeschränkt)',
+    'website': 'https://www.klgm-consulting.de',
     'license': 'OPL-1',
     # event_sale/website_event_sale (Sales-App) sind OPTIONAL: das Modul soll auch auf
     # Instanzen ohne installierte Sales-App laden. Die Schulungsrechnung läuft direkt über

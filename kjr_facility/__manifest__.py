@@ -5,8 +5,8 @@
     'category': 'Custom/KJR',
     'summary': 'Belegungs- und Buchungsverwaltung für KJR-Einrichtungen (Jugendhaus Diepolz, '
                'Zeltplatz NiSo): Tarife, Verpflegung, Doppelbelegungsprüfung, Rechnung, Website & Portal',
-    'author': 'Lukas Klauser / LM Consulting UG',
-    'website': 'https://lm-consulting.de',
+    'author': 'KLGM UG (haftungsbeschränkt)',
+    'website': 'https://www.klgm-consulting.de',
     'license': 'OPL-1',
     'depends': ['base', 'mail', 'portal', 'website', 'account'],
     'data': [

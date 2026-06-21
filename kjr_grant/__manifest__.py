@@ -4,8 +4,8 @@
     'version': '19.0.6.0.0',
     'category': 'Custom/KJR',
     'summary': 'Zuschussverwaltung, Juleica, Vollversammlung, Fördermittel-Akquise und Verwendungsnachweis für Kreisjugendringe (Odoo 19)',
-    'author': 'Lukas Klauser / LM Consulting UG',
-    'website': 'https://lm-consulting.de',
+    'author': 'KLGM UG (haftungsbeschränkt)',
+    'website': 'https://www.klgm-consulting.de',
     'license': 'OPL-1',
     # Hinweis: Einrichtungsbuchung (Diepolz/NiSo), Materialverleih, Ferienprogramm/Schulungen
     # und Newsletter sind als eigenständige Folge-Module geplant (Roadmap) und bringen ihre
