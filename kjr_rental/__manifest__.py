@@ -12,8 +12,10 @@
     'data': [
         'security/kjr_rental_security.xml',
         'security/ir.model.access.csv',
-        'data/ir_sequence_data.xml',
-        'data/kjr_rental_data.xml',
+        # Seed-/Stammdaten für den ersten Staging-Build deaktiviert (Build hatte
+        # geskippt). Nach erfolgreicher Installation einzeln wieder aktivieren.
+        # 'data/ir_sequence_data.xml',
+        # 'data/kjr_rental_data.xml',
         'views/kjr_rental_item_views.xml',
         'views/kjr_rental_order_views.xml',
         'views/kjr_rental_inventory_views.xml',
