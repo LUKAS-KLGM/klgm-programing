@@ -19,6 +19,7 @@
                 <t t-call="web.external_layout">
                     <div class="page">
                         <h3 class="text-primary">Kreisjugendring Oberallgäu — Materialverleih</h3>
+                        <p class="mb-0 small text-muted">Körperschaft des öffentlichen Rechts</p>
                         <hr/>
                         <h4 class="text-center mb-4">Verleihvertrag <t t-esc="o.name"/></h4>
                         <p>

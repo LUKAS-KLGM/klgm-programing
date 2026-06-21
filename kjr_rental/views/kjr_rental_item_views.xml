@@ -67,8 +67,9 @@
             <kanban default_group_by="category">
                 <templates>
                     <t t-name="card">
+                        <field name="icon" invisible="1"/>
                         <div class="d-flex">
-                            <i t-if="record.icon.raw_value" t-attf-class="fa #{record.icon.raw_value} fa-2x me-2 text-primary"/>
+                            <i t-if="record.icon.value" t-attf-class="fa #{record.icon.value} fa-2x me-2 text-primary"/>
                             <div>
                                 <strong><field name="name"/></strong>
                                 <div class="text-muted"><field name="location"/> · <field name="quantity_total"/> Stk.</div>

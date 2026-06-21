@@ -116,7 +116,7 @@
 
                         <div class="mt-5 text-center text-muted small">
                             <p>Erstellt am <t t-esc="context_timestamp(datetime.datetime.now()).strftime('%d.%m.%Y')"/> |
-                            Kreisjugendring Oberallgäu · K.d.ö.R. · Oberallgäuer Platz 2 · 87527 Sonthofen</p>
+                            Kreisjugendring Oberallgäu · Körperschaft des öffentlichen Rechts · Oberallgäuer Platz 2 · 87527 Sonthofen</p>
                         </div>
                     </div>
                 </t>

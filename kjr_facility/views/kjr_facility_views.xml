@@ -102,7 +102,7 @@
             <kanban>
                 <templates>
                     <t t-name="card">
-                        <div class="o_kanban_image_fill_left" t-if="record.image_1920.raw_value">
+                        <div class="o_kanban_image_fill_left" t-if="record.image_1920.value">
                             <field name="image_1920" widget="image" options="{'zoom': true}"/>
                         </div>
                         <div>
