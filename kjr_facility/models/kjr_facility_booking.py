@@ -96,7 +96,7 @@ class KjrFacilityBooking(models.Model):
     # ── Beträge ──────────────────────────────────────────────────────────────
     currency_id = fields.Many2one(related='company_id.currency_id')
     amount_accommodation = fields.Monetary(string='Unterkunft', compute='_compute_amounts', store=True)
-    amount_meals = fields.Monetary(string='Verpflegung', compute='_compute_amounts', store=True)
+    amount_meals = fields.Monetary(string='Verpflegung (Betrag)', compute='_compute_amounts', store=True)
     amount_equipment = fields.Monetary(string='Ausstattung', compute='_compute_amounts', store=True)
     amount_untaxed = fields.Monetary(string='Netto', compute='_compute_amounts', store=True)
     amount_tax = fields.Monetary(string='USt', compute='_compute_amounts', store=True)

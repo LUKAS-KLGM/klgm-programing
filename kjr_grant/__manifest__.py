@@ -20,13 +20,13 @@
         # Seed-/Stammdaten für den ersten Staging-Build deaktiviert (Build hatte
         # geskippt). Nach erfolgreicher Installation einzeln wieder aktivieren und
         # die Daten ggf. per UI/Import nachpflegen.
-        # 'data/ir_sequence_data.xml',
-        # 'data/ir_config_parameter_data.xml',
-        # 'data/kjr_grant_type_data.xml',
-        # 'data/auth_signup_data.xml',
-        # 'data/website_menu_data.xml',
-        # 'data/mail_template_data.xml',
-        # 'data/ir_cron_data.xml',
+        'data/ir_sequence_data.xml',
+        'data/ir_config_parameter_data.xml',
+        'data/kjr_grant_type_data.xml',
+        'data/auth_signup_data.xml',
+        'data/website_menu_data.xml',
+        'data/mail_template_data.xml',
+        'data/ir_cron_data.xml',
         'views/kjr_grant_type_views.xml',
         'views/kjr_grant_application_views.xml',
         'views/kjr_grant_settlement_views.xml',

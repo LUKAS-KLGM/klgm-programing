@@ -164,12 +164,11 @@
                         domain="[('kjr_payment_state','=','partial')]"/>
                 <filter string="Bezahlt" name="pay_paid"
                         domain="[('kjr_payment_state','=','paid')]"/>
-                <group expand="0" string="Gruppieren nach">
-                    <filter string="Veranstaltung" name="group_event"
-                            context="{'group_by': 'event_id'}"/>
-                    <filter string="Zahlungsstatus" name="group_payment"
-                            context="{'group_by': 'kjr_payment_state'}"/>
-                </group>
+                <separator/>
+                <filter string="Veranstaltung" name="group_event"
+                        context="{'group_by': 'event_id'}"/>
+                <filter string="Zahlungsstatus" name="group_payment"
+                        context="{'group_by': 'kjr_payment_state'}"/>
             </search>
         </field>
     </record>

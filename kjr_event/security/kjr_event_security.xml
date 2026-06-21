@@ -4,7 +4,8 @@
     <!-- E4: Gruppe für Kooperationspartner (Portal) -->
     <record id="group_kjr_cooperation_partner" model="res.groups">
         <field name="name">KJR Kooperationspartner</field>
-        <field name="category_id" ref="base.module_category_hidden"/>
+        <!-- Odoo 19: res.groups hat kein category_id mehr (privilege_id/res.groups.privilege).
+             Für diese versteckte Portal-Gruppe ist keine Kategorie/Privilege nötig. -->
         <field name="implied_ids" eval="[(4, ref('base.group_portal'))]"/>
         <field name="comment">Externe Kooperationspartner mit Lesezugriff auf die Teilnehmerlisten der ihnen zugeordneten KJR-Veranstaltungen.</field>
     </record>
