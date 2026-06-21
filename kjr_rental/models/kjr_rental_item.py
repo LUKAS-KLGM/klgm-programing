@@ -5,28 +5,50 @@ from datetime import date as date_cls
 from odoo import api, fields, models, _
 
 
+class KjrRentalCategory(models.Model):
+    """Frei pflegbare Verleih-Kategorien (statt hartkodierter Auswahl) — damit die App
+    an beliebige Jugendringe verkaufbar ist und jeder seine eigenen Kategorien anlegen kann."""
+    _name = 'kjr.rental.category'
+    _description = 'Verleih-Kategorie'
+    _order = 'sequence, name'
+
+    name = fields.Char(string='Bezeichnung', required=True, translate=True)
+    sequence = fields.Integer(default=10)
+    active = fields.Boolean(default=True)
+    icon = fields.Char(string='FontAwesome-Icon', help='z. B. fa-bus, fa-music')
+    item_count = fields.Integer(string='Artikel', compute='_compute_item_count')
+
+    def _compute_item_count(self):
+        data = self.env['kjr.rental.item']._read_group(
+            [('category_id', 'in', self.ids)], groupby=['category_id'], aggregates=['__count'])
+        mapped = {c.id: n for c, n in data}
+        for rec in self:
+            rec.item_count = mapped.get(rec.id, 0)
+
+
+class KjrRentalLocation(models.Model):
+    """Frei pflegbare Lagerorte (statt hartkodierter Auswahl)."""
+    _name = 'kjr.rental.location'
+    _description = 'Verleih-Lager'
+    _order = 'sequence, name'
+
+    name = fields.Char(string='Bezeichnung', required=True)
+    sequence = fields.Integer(default=10)
+    active = fields.Boolean(default=True)
+
+
 class KjrRentalItem(models.Model):
     _name = 'kjr.rental.item'
     _description = 'Verleihartikel'
-    _order = 'category, name'
+    _order = 'category_id, name'
 
     name = fields.Char(string='Bezeichnung', required=True)
     code = fields.Char(string='Inventarnummer', copy=False)
     active = fields.Boolean(default=True)
-    category = fields.Selection([
-        ('vehicle', 'Fahrzeuge / Bus'),
-        ('tent', 'Zelte'),
-        ('tech', 'Technik'),
-        ('sport', 'Sport'),
-        ('kitchen', 'Küche'),
-        ('games', 'Spielgeräte'),
-        ('other', 'Sonstiges'),
-    ], string='Kategorie', required=True, default='other')
-    location = fields.Selection([
-        ('sonthofen', 'Lager Sonthofen'),
-        ('immenstadt', 'Lager Immenstadt'),
-        ('oberstdorf', 'Lager Oberstdorf'),
-    ], string='Lager', default='sonthofen')
+    category_id = fields.Many2one(
+        'kjr.rental.category', string='Kategorie', required=True, ondelete='restrict')
+    location_id = fields.Many2one(
+        'kjr.rental.location', string='Lager', ondelete='set null')
     quantity_total = fields.Integer(string='Bestand gesamt', default=1)
     price_per_day = fields.Float(string='Tagespreis Standard (€)', digits=(8, 2))
     has_member_price = fields.Boolean(

@@ -43,13 +43,12 @@ class KjrRentalWebsite(http.Controller):
     @http.route('/kjr/verleih', type='http', auth='public', website=True, sitemap=True)
     def rental_catalog(self, **kw):
         items = request.env['kjr.rental.item'].sudo().search([('website_published', '=', True)])
-        categories = dict(request.env['kjr.rental.item']._fields['category'].selection)
         by_cat = {}
         for item in items:
-            by_cat.setdefault(item.category, request.env['kjr.rental.item'].sudo())
-            by_cat[item.category] |= item
+            by_cat.setdefault(item.category_id, request.env['kjr.rental.item'].sudo())
+            by_cat[item.category_id] |= item
         return request.render('kjr_rental.website_rental_catalog', {
-            'items_by_category': by_cat, 'category_labels': categories, 'page_name': 'kjr_rental',
+            'items_by_category': by_cat, 'page_name': 'kjr_rental',
             'cart_count': self._cart_count(),
             'is_public_user': request.env.user._is_public(),
         })

@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
+        <!-- White-Label: frei pflegbare Stammdaten (Kategorien/Lager) -->
+        <record id="cat_vehicle" model="kjr.rental.category"><field name="name">Fahrzeuge / Bus</field><field name="sequence">10</field><field name="icon">fa-bus</field></record>
+        <record id="cat_tent" model="kjr.rental.category"><field name="name">Zelte</field><field name="sequence">20</field><field name="icon">fa-home</field></record>
+        <record id="cat_tech" model="kjr.rental.category"><field name="name">Technik</field><field name="sequence">30</field><field name="icon">fa-volume-up</field></record>
+        <record id="cat_sport" model="kjr.rental.category"><field name="name">Sport</field><field name="sequence">40</field><field name="icon">fa-futbol-o</field></record>
+        <record id="cat_kitchen" model="kjr.rental.category"><field name="name">Küche</field><field name="sequence">50</field><field name="icon">fa-cutlery</field></record>
+        <record id="cat_games" model="kjr.rental.category"><field name="name">Spielgeräte</field><field name="sequence">60</field><field name="icon">fa-puzzle-piece</field></record>
+        <record id="cat_other" model="kjr.rental.category"><field name="name">Sonstiges</field><field name="sequence">99</field></record>
+        <record id="loc_sonthofen" model="kjr.rental.location"><field name="name">Lager Sonthofen</field><field name="sequence">10</field></record>
+        <record id="loc_immenstadt" model="kjr.rental.location"><field name="name">Lager Immenstadt</field><field name="sequence">20</field></record>
+        <record id="loc_oberstdorf" model="kjr.rental.location"><field name="name">Lager Oberstdorf</field><field name="sequence">30</field></record>
+
         <!-- Service-Produkte für Rechnungszeilen (Steuer-/Kontenfindung) -->
         <record id="product_rental_fee" model="product.product">
             <field name="name">Verleihgebühr</field>
@@ -28,38 +40,38 @@
         </record>
 
         <record id="item_bus" model="kjr.rental.item">
-            <field name="name">9-Sitzer Bus</field><field name="category">vehicle</field>
-            <field name="location">sonthofen</field><field name="quantity_total">1</field>
+            <field name="name">9-Sitzer Bus</field><field name="category_id" ref="cat_vehicle"/>
+            <field name="location_id" ref="loc_sonthofen"/><field name="quantity_total">1</field>
             <field name="price_per_day">60.0</field><field name="price_member_per_day">40.0</field>
             <field name="deposit">300.0</field><field name="icon">fa-bus</field>
         </record>
         <record id="item_tent" model="kjr.rental.item">
-            <field name="name">Gruppenzelt (10 Pers.)</field><field name="category">tent</field>
-            <field name="location">sonthofen</field><field name="quantity_total">4</field>
+            <field name="name">Gruppenzelt (10 Pers.)</field><field name="category_id" ref="cat_tent"/>
+            <field name="location_id" ref="loc_sonthofen"/><field name="quantity_total">4</field>
             <field name="price_per_day">15.0</field><field name="price_member_per_day">8.0</field>
             <field name="deposit">50.0</field><field name="icon">fa-home</field>
         </record>
         <record id="item_pa" model="kjr.rental.item">
-            <field name="name">PA-Anlage</field><field name="category">tech</field>
-            <field name="location">immenstadt</field><field name="quantity_total">2</field>
+            <field name="name">PA-Anlage</field><field name="category_id" ref="cat_tech"/>
+            <field name="location_id" ref="loc_immenstadt"/><field name="quantity_total">2</field>
             <field name="price_per_day">25.0</field><field name="price_member_per_day">15.0</field>
             <field name="deposit">100.0</field><field name="icon">fa-volume-up</field>
         </record>
         <record id="item_balls" model="kjr.rental.item">
-            <field name="name">Sportgeräte-Set</field><field name="category">sport</field>
-            <field name="location">oberstdorf</field><field name="quantity_total">6</field>
+            <field name="name">Sportgeräte-Set</field><field name="category_id" ref="cat_sport"/>
+            <field name="location_id" ref="loc_oberstdorf"/><field name="quantity_total">6</field>
             <field name="price_per_day">5.0</field><field name="price_member_per_day">2.0</field>
             <field name="deposit">20.0</field><field name="icon">fa-futbol-o</field>
         </record>
         <record id="item_kitchen" model="kjr.rental.item">
-            <field name="name">Feldküche</field><field name="category">kitchen</field>
-            <field name="location">sonthofen</field><field name="quantity_total">2</field>
+            <field name="name">Feldküche</field><field name="category_id" ref="cat_kitchen"/>
+            <field name="location_id" ref="loc_sonthofen"/><field name="quantity_total">2</field>
             <field name="price_per_day">20.0</field><field name="price_member_per_day">12.0</field>
             <field name="deposit">80.0</field><field name="icon">fa-cutlery</field>
         </record>
         <record id="item_games" model="kjr.rental.item">
-            <field name="name">Großspielgeräte (Kubb, Twister XXL)</field><field name="category">games</field>
-            <field name="location">immenstadt</field><field name="quantity_total">5</field>
+            <field name="name">Großspielgeräte (Kubb, Twister XXL)</field><field name="category_id" ref="cat_games"/>
+            <field name="location_id" ref="loc_immenstadt"/><field name="quantity_total">5</field>
             <field name="price_per_day">8.0</field><field name="price_member_per_day">4.0</field>
             <field name="deposit">30.0</field><field name="icon">fa-puzzle-piece</field>
         </record>

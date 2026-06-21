@@ -8,4 +8,11 @@
               parent="menu_kjr_rental_root" action="action_kjr_rental_item" sequence="20"/>
     <menuitem id="menu_kjr_rental_inventory" name="Inventur"
               parent="menu_kjr_rental_root" action="action_kjr_rental_inventory" sequence="30"/>
+    <menuitem id="menu_kjr_rental_config" name="Konfiguration"
+              parent="menu_kjr_rental_root" sequence="90"
+              groups="kjr_rental.group_kjr_rental_manager"/>
+    <menuitem id="menu_kjr_rental_categories" name="Kategorien"
+              parent="menu_kjr_rental_config" action="action_kjr_rental_category" sequence="10"/>
+    <menuitem id="menu_kjr_rental_locations" name="Lager"
+              parent="menu_kjr_rental_config" action="action_kjr_rental_location" sequence="20"/>
 </odoo>

@@ -27,7 +27,7 @@
                     </div>
                 </t>
                 <t t-foreach="items_by_category" t-as="cat">
-                    <h4 class="mt-4"><t t-esc="category_labels.get(cat, cat)"/></h4>
+                    <h4 class="mt-4"><i t-if="cat.icon" t-attf-class="fa #{cat.icon} me-2"/><t t-esc="cat.name or 'Sonstiges'"/></h4>
                     <div class="row">
                         <t t-foreach="items_by_category[cat]" t-as="item">
                             <div class="col-md-6 col-lg-4 mb-3">

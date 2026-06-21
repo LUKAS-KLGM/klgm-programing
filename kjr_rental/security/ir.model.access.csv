@@ -12,3 +12,8 @@ access_kjr_rental_inventory_user,kjr.rental.inventory user,model_kjr_rental_inve
 access_kjr_rental_inventory_manager,kjr.rental.inventory manager,model_kjr_rental_inventory,kjr_rental.group_kjr_rental_manager,1,1,1,1
 access_kjr_rental_inventory_line_user,kjr.rental.inventory.line user,model_kjr_rental_inventory_line,kjr_rental.group_kjr_rental_user,1,1,1,1
 access_kjr_rental_inventory_line_manager,kjr.rental.inventory.line manager,model_kjr_rental_inventory_line,kjr_rental.group_kjr_rental_manager,1,1,1,1
+access_kjr_rental_category_user,kjr.rental.category user,model_kjr_rental_category,kjr_rental.group_kjr_rental_user,1,0,0,0
+access_kjr_rental_category_manager,kjr.rental.category manager,model_kjr_rental_category,kjr_rental.group_kjr_rental_manager,1,1,1,1
+access_kjr_rental_category_portal,kjr.rental.category portal,model_kjr_rental_category,base.group_portal,1,0,0,0
+access_kjr_rental_location_user,kjr.rental.location user,model_kjr_rental_location,kjr_rental.group_kjr_rental_user,1,0,0,0
+access_kjr_rental_location_manager,kjr.rental.location manager,model_kjr_rental_location,kjr_rental.group_kjr_rental_manager,1,1,1,1
