@@ -10,7 +10,10 @@
     # Hinweis: Einrichtungsbuchung (Diepolz/NiSo), Materialverleih, Ferienprogramm/Schulungen
     # und Newsletter sind als eigenständige Folge-Module geplant (Roadmap) und bringen ihre
     # Abhängigkeiten (sale_renting, event, mass_mailing) selbst mit. Dieses Modul bleibt schlank.
-    'depends': ['base', 'mail', 'portal', 'website', 'sign', 'account'],
+    # 'sign' (Enterprise) ist optional: fehlt es im Build, wird das Modul sonst
+    # übersprungen ("Unmet dependencies"). Die digitale Unterschrift degradiert
+    # sauber (PDF wird angehängt), siehe action_send_signature.
+    'depends': ['base', 'mail', 'portal', 'website', 'account'],
     'data': [
         'security/kjr_grant_security.xml',
         'security/ir.model.access.csv',

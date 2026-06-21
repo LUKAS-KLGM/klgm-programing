@@ -731,11 +731,28 @@ class KjrGrantApplication(models.Model):
             attachment_ids=[attachment.id],
             subtype_xmlid='mail.mt_note',
         )
-        # Sign Template aus Attachment erstellen via Upload-Action
+        # Die digitale Unterschrift nutzt die optionale Enterprise-App "sign".
+        # Ist sie installiert, öffnen wir den Sign-Upload; sonst bleibt das PDF
+        # am Antrag angehängt (kein harter Abhängigkeits-/Crash-Zwang).
+        sign_installed = bool(self.env['ir.module.module'].sudo().search([
+            ('name', '=', 'sign'), ('state', '=', 'installed'),
+        ], limit=1))
+        if sign_installed:
+            return {
+                'type': 'ir.actions.act_url',
+                'url': f'/sign/new-from-attachment/{attachment.id}',
+                'target': 'self',
+            }
         return {
-            'type': 'ir.actions.act_url',
-            'url': f'/sign/new-from-attachment/{attachment.id}',
-            'target': 'self',
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('PDF erstellt'),
+                'message': _('Das Antrags-PDF wurde angehängt. Die App „Sign" ist nicht '
+                             'installiert – bitte das Dokument manuell zur Unterschrift versenden.'),
+                'type': 'warning',
+                'sticky': False,
+            },
         }
 
     def action_view_settlements(self):
