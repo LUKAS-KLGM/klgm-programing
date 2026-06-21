@@ -216,5 +216,26 @@
             <field name="description">Jeder stimmberechtigte Delegierte, der zur KJR-Vollversammlung anreist, erhält auf Antrag Fahrtkostenerstattung nach dem Bayerischen Reisekostengesetz (BayRKG): PKW = Wegstreckenentschädigung je km (Hin- und Rückfahrt) zzgl. Mitnahmeentschädigung je Mitfahrer/in; ÖPNV = belegte Fahrtkosten. Antrag durch Unterschrift auf der bei der Vollversammlung ausliegenden Antragsliste. Kein eigener Höchstbetrag (Höhe nach BayRKG). Auszahlung auf das Konto des/der Delegierten möglich.</field>
         </record>
 
+        <!-- Investitionszuschuss (Landkreis-Programm). KEIN Teil der KJR-OA-§4-
+             Zuschussrichtlinie, sondern ein generischer, konfigurierbarer Antragstyp
+             für Investitionsförderungen Dritter (z. B. Landkreis). Die hier gesetzten
+             Werte sind PLATZHALTER und vor Go-live gegen das jeweils gültige
+             Förderprogramm zu bestätigen (Förderquote + Höchstbetrag). -->
+        <record id="grant_type_invest" model="kjr.grant.type">
+            <field name="name">Investitionszuschuss (Landkreis – konfigurierbar)</field>
+            <field name="code">invest</field>
+            <field name="sequence">200</field>
+            <field name="max_cofinancing_pct">30.0</field>
+            <field name="max_amount">0.0</field>
+            <field name="max_per_year">0</field>
+            <field name="min_age">0</field>
+            <field name="max_age">0</field>
+            <field name="requires_tn_list">False</field>
+            <field name="requires_report">True</field>
+            <field name="requires_receipt">True</field>
+            <field name="requires_other_docs">Kostenvoranschläge/Rechnungen der Investition, Bewilligung des Förderprogramms</field>
+            <field name="description">Generischer Investitionszuschuss für Anschaffungen/Baumaßnahmen nach einem externen Förderprogramm (z. B. Landkreis). Berechnung: konfigurierbarer Anteil der nachgewiesenen Investitionskosten (Förderquote), gedeckelt auf den Höchstbetrag (0 = ohne Deckel). PLATZHALTER-Werte – Förderquote und Höchstbetrag vor Nutzung an das gültige Programm anpassen.</field>
+        </record>
+
     </data>
 </odoo>

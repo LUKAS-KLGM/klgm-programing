@@ -445,6 +445,17 @@ class KjrGrantApplication(models.Model):
                     t.max_amount,
                 )
 
+        # ── Investitionszuschuss (Landkreis-Programm, konfigurierbar) ─────────
+        elif t.code == 'invest':
+            # Generischer Investitionszuschuss: konfigurierbarer Anteil der
+            # (Investitions-)Kosten, gedeckelt auf den Höchstbetrag. Die konkreten
+            # Sätze (Förderquote / Höchstbetrag) des jeweiligen Landkreis-Programms
+            # werden in der Förderart gepflegt – kein hartkodierter Wert. Anders als
+            # die laufenden Maßnahmen ist ein Investitionszuschuss nicht an einen
+            # Fehlbetrag gebunden (daher unten von der Fehlbetragsdeckelung ausgenommen).
+            if self.cost_total > 0:
+                calculated = self.cost_total * (t.max_cofinancing_pct / 100.0)
+
         # ── §4.9 Delegiertenförderung (Fahrtkostenerstattung n. Bayer. RKG) ───
         elif t.code == '4_9':
             # Jeder stimmberechtigte Delegierte, der zur Vollversammlung anreist,
@@ -466,9 +477,10 @@ class KjrGrantApplication(models.Model):
                 calculated = self.cost_transport
 
         # ── Globale Deckelungsregeln ──────────────────────────────────────────
-        # § 4.7 (Pauschale) und § 4.9 (BayRKG-Fahrtkostenerstattung) sind ihrer Natur
-        # nach von der 50%-Kofinanzierungs- und der Fehlbetragsdeckelung ausgenommen.
-        exempt = ('4_7', '4_9')
+        # § 4.7 (Pauschale), § 4.9 (BayRKG-Fahrtkostenerstattung) und der
+        # Investitionszuschuss sind ihrer Natur nach von der 50%-Kofinanzierungs-
+        # (im Zweig bereits angewandt) und der Fehlbetragsdeckelung ausgenommen.
+        exempt = ('4_7', '4_9', 'invest')
         if t.max_amount > 0:
             calculated = min(calculated, t.max_amount)
 
@@ -1006,8 +1018,8 @@ class KjrGrantApplication(models.Model):
         if self.measure_start and self.measure_end and self.measure_end < self.measure_start:
             errors.append(_('Ende liegt vor Beginn.'))
         # Förderarten ohne Maßnahmen-Teilnehmer: § 4.6 (Geräte), § 4.7 (Starthilfe),
-        # § 4.9 (Delegiertenfahrtkosten).
-        no_tn_codes = ('4_6', '4_7', '4_9')
+        # § 4.9 (Delegiertenfahrtkosten), Investitionszuschuss.
+        no_tn_codes = ('4_6', '4_7', '4_9', 'invest')
         if t.code not in no_tn_codes and self.tn_count <= 0:
             errors.append(_('Anzahl Teilnehmer muss > 0 sein.'))
         if self.participant_ids and not self.participant_consent:

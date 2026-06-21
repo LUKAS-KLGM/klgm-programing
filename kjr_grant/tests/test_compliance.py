@@ -116,6 +116,28 @@ class TestKjrGrantCompliance(TransactionCase):
                         delegate_passenger_count=2)
         self.assertEqual(app.grant_calculated, 82.0)
 
+    # ══ Investitionszuschuss (generisch, konfigurierbar) ═════════════════════
+    def test_invest_pct_of_costs(self):
+        """Konfigurierbarer Anteil der Investitionskosten (Seed-Förderquote 30 %):
+        10.000 € × 30 % = 3.000 €, ungedeckelt (max_amount 0)."""
+        app = self._app('kjr_grant.grant_type_invest', cost_materials=10000.0)
+        self.assertEqual(app.grant_calculated, 3000.0)
+
+    def test_invest_exempt_from_deficit(self):
+        """Ein Investitionszuschuss ist nicht fehlbetragsgebunden: trotz hoher
+        Einnahmen (Fehlbetrag nur 500 €) werden volle 30 % (3.000 €) gewährt."""
+        app = self._app('kjr_grant.grant_type_invest',
+                        cost_materials=10000.0, income_other=9500.0)
+        self.assertEqual(app.grant_calculated, 3000.0)
+
+    def test_invest_capped_by_max_amount(self):
+        """Mit konfiguriertem Höchstbetrag wird gedeckelt: 30 % von 10.000 = 3.000,
+        gedeckelt auf 2.000 €."""
+        itype = self.env.ref('kjr_grant.grant_type_invest')
+        itype.max_amount = 2000.0
+        app = self._app('kjr_grant.grant_type_invest', cost_materials=10000.0)
+        self.assertEqual(app.grant_calculated, 2000.0)
+
     # ══ Maßnahmentage: An-/Abreise-Regel (10-Uhr-/17-Uhr-Zählung) ════════════
     def test_measure_days_arrival_departure_rule(self):
         """3 Kalendertage, aber Anreise ab 10:00 und Abreise bis 17:00 →

@@ -28,7 +28,12 @@ class KjrGrantType(models.Model):
         ('4_8b', '§ 4.8b Traditionelle Veranstaltung'),
         ('4_8c', '§ 4.8c Schwerpunktprojekt'),
         ('4_9',  '§ 4.9  Delegiertenförderung (Fahrtkosten)'),
-    ], string='Code', required=True)
+        ('invest', 'Investitionszuschuss (Landkreis-Programm, konfigurierbar)'),
+    ], string='Code', required=True,
+        help='Berechnungslogik je Förderart. „Investitionszuschuss" ist ein '
+             'generischer, prozentbasierter Typ (Anteil der Investitionskosten, '
+             'gedeckelt) – die konkreten Sätze des jeweiligen Landkreis-Programms '
+             'werden über Förderquote/Höchstbetrag gepflegt.')
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     description = fields.Text(
