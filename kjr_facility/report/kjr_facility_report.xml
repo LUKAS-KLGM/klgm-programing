@@ -20,8 +20,7 @@
                     <div class="page">
                         <div class="row mb-3">
                             <div class="col-8">
-                                <h3 class="text-primary">Kreisjugendring Oberallgäu</h3>
-                                <p class="mb-0 small text-muted">Körperschaft des öffentlichen Rechts</p>
+                                <h3 class="text-primary"><span t-field="o.company_id.name"/></h3>
                                 <p class="mb-0"><t t-esc="o.facility_id.name"/></p>
                             </div>
                             <div class="col-4 text-end">
@@ -31,7 +30,7 @@
                         <hr/>
                         <h4 class="text-center mb-4">Buchungsvertrag</h4>
                         <p>
-                            Zwischen dem Kreisjugendring Oberallgäu, Körperschaft des öffentlichen Rechts, und
+                            Zwischen dem <span t-field="o.company_id.name"/> und
                             <strong><t t-esc="o.partner_id.name"/></strong>
                             <t t-if="o.group_name"> (<t t-esc="o.group_name"/>)</t>
                             wird folgende Buchung vereinbart:
@@ -76,7 +75,7 @@
                             </div>
                             <div class="col-6 text-end">
                                 <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px; margin-left:auto;">
-                                    <small>Kreisjugendring Oberallgäu</small>
+                                    <small><span t-field="o.company_id.name"/></small>
                                 </div>
                             </div>
                         </div>

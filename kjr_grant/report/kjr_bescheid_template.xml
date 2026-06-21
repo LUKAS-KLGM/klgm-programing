@@ -9,16 +9,16 @@
                         <!-- Briefkopf -->
                         <div class="row mb-4">
                             <div class="col-8">
-                                <h3 class="text-primary">Kreisjugendring Oberallgäu</h3>
-                                <p class="mb-0 small text-muted">Körperschaft des öffentlichen Rechts</p>
-                                <p class="mb-0">Oberallgäuer Platz 2</p>
-                                <p class="mb-0">87527 Sonthofen</p>
-                                <p class="mb-0">Tel.: 08321 / 612-1111</p>
-                                <p>E-Mail: kreisjugendring@lra-oa.bayern.de</p>
+                                <h3 class="text-primary"><span t-field="o.company_id.name"/></h3>
+                                <p class="mb-0 small text-muted" t-if="o.company_id.kjr_legal_form"><span t-field="o.company_id.kjr_legal_form"/></p>
+                                <p class="mb-0" t-if="o.company_id.street"><span t-field="o.company_id.street"/></p>
+                                <p class="mb-0"><span t-field="o.company_id.zip"/> <span t-field="o.company_id.city"/></p>
+                                <p class="mb-0" t-if="o.company_id.phone">Tel.: <span t-field="o.company_id.phone"/></p>
+                                <p t-if="o.company_id.email">E-Mail: <span t-field="o.company_id.email"/></p>
                             </div>
                             <div class="col-4 text-end">
                                 <p class="mb-0 text-muted">
-                                    Sonthofen, den
+                                    <span t-field="o.company_id.city"/>, den
                                     <span t-field="o.date_approved"
                                           t-options='{"format":"dd.MM.yyyy"}'/>
                                 </p>
@@ -107,9 +107,8 @@
                         <h6 class="mt-4">Rechtsgrundlage</h6>
                         <p>
                             Dieser Zuschuss wird gewährt auf Grundlage der
-                            <em>Zuschussrichtlinien des Kreisjugendrings Oberallgäu</em>,
-                            gültig ab 01.12.2022 (aktuelle Fassung 2026), aus Steuermitteln
-                            des Landkreises Oberallgäu.
+                            <em>Zuschussrichtlinien des <span t-field="o.company_id.name"/></em>
+                            aus öffentlichen Mitteln.
                         </p>
 
                         <!-- Auflagen -->
@@ -124,19 +123,19 @@
                         <!-- Unterschrift -->
                         <div class="row mt-5">
                             <div class="col-6">
-                                <p>Sonthofen, den
+                                <p><span t-field="o.company_id.city"/>, den
                                     <span t-field="o.date_approved"
                                           t-options='{"format":"dd.MM.yyyy"}'/>
                                 </p>
                                 <div style="border-top:1px solid #000; width:200px; margin-top:40px; padding-top:4px;">
-                                    <small>Kreisjugendring Oberallgäu</small>
+                                    <small><span t-field="o.company_id.name"/></small>
                                 </div>
                             </div>
                             <div class="col-6 text-end">
                                 <p class="text-muted small">
-                                    Kreisjugendring Oberallgäu · Körperschaft des öffentlichen Rechts<br/>
-                                    Oberallgäuer Platz 2 · 87527 Sonthofen<br/>
-                                    08321/612-1111 · kreisjugendring@lra-oa.bayern.de
+                                    <span t-field="o.company_id.name"/><t t-if="o.company_id.kjr_legal_form"> · <span t-field="o.company_id.kjr_legal_form"/></t><br/>
+                                    <span t-field="o.company_id.street"/> · <span t-field="o.company_id.zip"/> <span t-field="o.company_id.city"/><br/>
+                                    <span t-field="o.company_id.phone"/> · <span t-field="o.company_id.email"/>
                                 </p>
                             </div>
                         </div>

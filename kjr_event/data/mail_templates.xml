@@ -17,7 +17,7 @@
                     <t t-out="format_datetime(object.event_id.date_begin, dt_format='dd.MM.yyyy HH:mm')"/></p>
                 <p t-if="object.event_payment_required">Diese Veranstaltung ist zahlungspflichtig.
                     Eine Rechnung bzw. Zahlungsinformation erhalten Sie separat.</p>
-                <p>Mit freundlichen Grüßen<br/>Kreisjugendring Oberallgäu</p>
+                <p>Mit freundlichen Grüßen<br/>{{ object.event_id.company_id.name }}</p>
             </div>
         </field>
         <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
@@ -39,7 +39,7 @@
                     an der Veranstaltung <strong><t t-out="object.event_id.name or ''"/></strong>
                     liegt uns die Einwilligung der Erziehungsberechtigten noch nicht vor.</p>
                 <p>Bitte reichen Sie diese rechtzeitig vor Beginn nach.</p>
-                <p>Mit freundlichen Grüßen<br/>Kreisjugendring Oberallgäu</p>
+                <p>Mit freundlichen Grüßen<br/>{{ object.event_id.company_id.name }}</p>
             </div>
         </field>
         <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
@@ -59,7 +59,7 @@
                 <p>bald geht es los mit <strong><t t-out="object.event_id.name or ''"/></strong>.</p>
                 <p>Bitte denken Sie an: wetterfeste Kleidung, feste Schuhe, Verpflegung,
                     persönliche Medikamente und die unterschriebene Einwilligung.</p>
-                <p>Mit freundlichen Grüßen<br/>Kreisjugendring Oberallgäu</p>
+                <p>Mit freundlichen Grüßen<br/>{{ object.event_id.company_id.name }}</p>
             </div>
         </field>
         <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
@@ -80,7 +80,7 @@
                     <strong><t t-out="object.event_id.name or ''"/></strong> absagen
                     bzw. Ihre Anmeldung kann nicht berücksichtigt werden.</p>
                 <p>Bei Rückfragen stehen wir gerne zur Verfügung.</p>
-                <p>Mit freundlichen Grüßen<br/>Kreisjugendring Oberallgäu</p>
+                <p>Mit freundlichen Grüßen<br/>{{ object.event_id.company_id.name }}</p>
             </div>
         </field>
         <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
@@ -104,7 +104,7 @@
                     Die Juleica wurde ausgestellt<t t-if="object.juleica_valid_until">
                     und ist gültig bis
                     <t t-out="format_date(object.juleica_valid_until, date_format='dd.MM.yyyy')"/></t>.</p>
-                <p>Mit freundlichen Grüßen<br/>Kreisjugendring Oberallgäu</p>
+                <p>Mit freundlichen Grüßen<br/>{{ object.event_id.company_id.name }}</p>
             </div>
         </field>
         <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>

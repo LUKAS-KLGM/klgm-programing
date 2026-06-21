@@ -256,7 +256,7 @@
                     <div class="col-lg-8 text-center">
                         <h1 class="mb-3">Zuschussantrag stellen</h1>
                         <p class="lead text-muted mb-4">
-                            Digitaler Zuschussantrag beim Kreisjugendring Oberallgäu.
+                            Digitaler Zuschussantrag bei <t t-out="res_company.name"/>.
                             Melden Sie sich an oder registrieren Sie sich, um einen Antrag zu stellen.
                         </p>
                     </div>
@@ -304,8 +304,8 @@
                         </div>
                         <div class="text-center text-muted small">
                             Bei Fragen wenden Sie sich an:<br/>
-                            Barbora Berlinger, Tel. 08321/612-1117,
-                            <a href="mailto:kreisjugendring@lra-oa.bayern.de">kreisjugendring@lra-oa.bayern.de</a>
+                            <t t-if="res_company.phone">Tel. <t t-out="res_company.phone"/></t>
+                            <t t-if="res_company.email"> · <a t-attf-href="mailto:{{ res_company.email }}"><t t-out="res_company.email"/></a></t>
                         </div>
                     </div>
                 </div>
@@ -325,7 +325,7 @@
                 </nav>
                 <h1 class="mb-2">Zuschussantrag stellen</h1>
                 <p class="text-muted mb-4">
-                    Antrag beim Kreisjugendring Oberallgäu. Felder mit * sind Pflichtfelder.
+                    Antrag bei <t t-out="res_company.name"/>. Felder mit * sind Pflichtfelder.
                 </p>
 
                 <t t-if="errors">

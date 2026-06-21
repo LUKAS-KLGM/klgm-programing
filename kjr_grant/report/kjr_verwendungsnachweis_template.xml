@@ -21,8 +21,8 @@
                     <div class="page">
                         <div class="row mb-3">
                             <div class="col-8">
-                                <h3 class="text-primary">Kreisjugendring Oberallgäu</h3>
-                                <p class="mb-0">Oberallgäuer Platz 2 · 87527 Sonthofen</p>
+                                <h3 class="text-primary"><span t-field="o.env.company.name"/></h3>
+                                <p class="mb-0"><span t-field="o.env.company.street"/> · <span t-field="o.env.company.zip"/> <span t-field="o.env.company.city"/></p>
                             </div>
                             <div class="col-4 text-end">
                                 <p class="mb-0 text-muted">Abrechnung <t t-esc="o.name"/></p>
@@ -112,7 +112,7 @@
                             </div>
                             <div class="col-6 text-end">
                                 <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px; margin-left:auto;">
-                                    <small>Kreisjugendring Oberallgäu (sachlich richtig)</small>
+                                    <small><span t-field="o.env.company.name"/> (sachlich richtig)</small>
                                 </div>
                             </div>
                         </div>

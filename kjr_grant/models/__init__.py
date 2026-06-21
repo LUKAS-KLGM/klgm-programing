@@ -8,3 +8,4 @@ from . import kjr_juleica
 from . import kjr_assembly
 from . import kjr_funding
 from . import res_partner
+from . import res_company

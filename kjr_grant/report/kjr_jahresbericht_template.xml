@@ -19,13 +19,13 @@
                     <div class="page">
                         <div class="row mb-4">
                             <div class="col-8">
-                                <h2 class="text-primary">Kreisjugendring Oberallgäu</h2>
+                                <h2 class="text-primary"><span t-field="o.env.company.name"/></h2>
                                 <h3>Jahresbericht Zuschüsse <t t-esc="o.year"/></h3>
                             </div>
                             <div class="col-4 text-end">
                                 <p class="text-muted">
-                                    Oberallgäuer Platz 2, 87527 Sonthofen<br/>
-                                    Tel.: 08321 / 612-1111
+                                    <span t-field="o.env.company.street"/>, <span t-field="o.env.company.zip"/> <span t-field="o.env.company.city"/><br/>
+                                    <t t-if="o.env.company.phone">Tel.: <span t-field="o.env.company.phone"/></t>
                                 </p>
                             </div>
                         </div>
@@ -52,7 +52,7 @@
                             </tr>
                             <tr>
                                 <td>Auslastung</td>
-                                <td class="text-end"><t t-esc="'%.1f %%' % o.usage_pct"/></td>
+                                <td class="text-end"><t t-out="round(o.usage_pct, 1)"/> %</td>
                             </tr>
                         </table>
 
@@ -116,7 +116,7 @@
 
                         <div class="mt-5 text-center text-muted small">
                             <p>Erstellt am <t t-esc="context_timestamp(datetime.datetime.now()).strftime('%d.%m.%Y')"/> |
-                            Kreisjugendring Oberallgäu · Körperschaft des öffentlichen Rechts · Oberallgäuer Platz 2 · 87527 Sonthofen</p>
+                            <span t-field="o.env.company.name"/><t t-if="o.env.company.kjr_legal_form"> · <span t-field="o.env.company.kjr_legal_form"/></t> · <span t-field="o.env.company.street"/> · <span t-field="o.env.company.zip"/> <span t-field="o.env.company.city"/></p>
                         </div>
                     </div>
                 </t>
