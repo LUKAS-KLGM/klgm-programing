@@ -1,6 +1,6 @@
 {
     "name": "Controlling",
-    "version": "19.0.6.3.0",
+    "version": "19.0.6.4.0",
     "category": "Productivity",
     "summary": "Konfigurierbare Executive Dashboards mit KPIs, Charts, AI Insights und Branchen-Templates",
     "description": """
