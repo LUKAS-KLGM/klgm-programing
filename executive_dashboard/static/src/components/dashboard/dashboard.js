@@ -5,6 +5,7 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { loadJS } from "@web/core/assets";
 import { rpc } from "@web/core/network/rpc";
+import { _t } from "@web/core/l10n/translation";
 import { KpiCard } from "../kpi_card/kpi_card";
 import { DashboardChart } from "../dashboard_chart/dashboard_chart";
 
@@ -13,6 +14,7 @@ export class ExecutiveDashboard extends Component {
     static components = { KpiCard, DashboardChart };
 
     setup() {
+        this._t = _t;
         this.action = useService("action");
         this.refreshTimer = null;
         this.contentRef = useRef("content");
@@ -213,9 +215,9 @@ export class ExecutiveDashboard extends Component {
 
     get comparisonOptions() {
         return [
-            { value: "previous_period", label: "Vorperiode" },
-            { value: "previous_year", label: "Vorjahr" },
-            { value: "budget", label: "Budget" },
+            { value: "previous_period", label: _t("Previous Period") },
+            { value: "previous_year", label: _t("Previous Year") },
+            { value: "budget", label: _t("Budget") },
         ];
     }
 
@@ -303,15 +305,15 @@ export class ExecutiveDashboard extends Component {
     async submitCreator() {
         const name = this.state.creatorName.trim();
         if (!name && !this.state.selectedKpiIds.size) {
-            this.state.creatorError = "Bitte Name eingeben und mindestens einen KPI auswählen.";
+            this.state.creatorError = _t("Please enter a name and select at least one KPI.");
             return;
         }
         if (!name) {
-            this.state.creatorError = "Bitte einen Dashboard-Namen eingeben.";
+            this.state.creatorError = _t("Please enter a dashboard name.");
             return;
         }
         if (!this.state.selectedKpiIds.size) {
-            this.state.creatorError = "Bitte mindestens einen KPI auswählen.";
+            this.state.creatorError = _t("Please select at least one KPI.");
             return;
         }
         this.state.creatorError = "";
@@ -328,14 +330,14 @@ export class ExecutiveDashboard extends Component {
 
     get creatorIconOptions() {
         return [
-            { value: "fa-tachometer", label: "Dashboard" },
-            { value: "fa-building", label: "Unternehmen" },
-            { value: "fa-money", label: "Finanzen" },
-            { value: "fa-cogs", label: "Operations" },
-            { value: "fa-code", label: "Technik" },
-            { value: "fa-line-chart", label: "Vertrieb" },
-            { value: "fa-users", label: "Team" },
-            { value: "fa-shopping-cart", label: "E-Commerce" },
+            { value: "fa-tachometer", label: _t("Dashboard") },
+            { value: "fa-building", label: _t("Company") },
+            { value: "fa-money", label: _t("Finance") },
+            { value: "fa-cogs", label: _t("Operations") },
+            { value: "fa-code", label: _t("Technology") },
+            { value: "fa-line-chart", label: _t("Sales") },
+            { value: "fa-users", label: _t("Team") },
+            { value: "fa-shopping-cart", label: _t("E-Commerce") },
         ];
     }
 
@@ -459,7 +461,7 @@ export class ExecutiveDashboard extends Component {
         const data = this.state.dashboardData;
         if (!data) return;
 
-        const rows = [["KPI", "Wert", "Vorperiode", "Veränderung %", "Einheit"]];
+        const rows = [[_t("KPI"), _t("Value"), _t("Previous Period"), _t("Change %"), _t("Unit")]];
         for (const kpi of data.kpis) {
             if (kpi.display_type === "scorecard") {
                 rows.push([kpi.name, kpi.value, kpi.previous || "", kpi.change_pct || "", kpi.unit || ""]);
@@ -469,7 +471,7 @@ export class ExecutiveDashboard extends Component {
             if (kpi.display_type.startsWith("chart_") && kpi.chart_data) {
                 rows.push([]);
                 rows.push([kpi.name]);
-                rows.push(["Label", "Wert"]);
+                rows.push([_t("Label"), _t("Value")]);
                 for (const d of kpi.chart_data) {
                     rows.push([d.label, d.value]);
                 }
@@ -510,15 +512,15 @@ export class ExecutiveDashboard extends Component {
 
     get periodOptions() {
         return [
-            { value: "last_7_days", label: "7 Tage" },
-            { value: "last_30_days", label: "30 Tage" },
-            { value: "last_90_days", label: "90 Tage" },
-            { value: "this_month", label: "Dieser Monat" },
-            { value: "this_quarter", label: "Dieses Quartal" },
-            { value: "this_year", label: "Dieses Jahr" },
-            { value: "last_year", label: "Letztes Jahr" },
-            { value: "all_time", label: "Jemals" },
-            { value: "custom", label: "Benutzerdefiniert..." },
+            { value: "last_7_days", label: _t("7 Days") },
+            { value: "last_30_days", label: _t("30 Days") },
+            { value: "last_90_days", label: _t("90 Days") },
+            { value: "this_month", label: _t("This Month") },
+            { value: "this_quarter", label: _t("This Quarter") },
+            { value: "this_year", label: _t("This Year") },
+            { value: "last_year", label: _t("Last Year") },
+            { value: "all_time", label: _t("All Time") },
+            { value: "custom", label: _t("Custom...") },
         ];
     }
 
@@ -555,24 +557,24 @@ export class ExecutiveDashboard extends Component {
 
     get displayTypeOptions() {
         return [
-            { value: "scorecard", label: "Scorecard" },
-            { value: "chart_bar", label: "Balken" },
-            { value: "chart_bar_h", label: "Balken (H)" },
-            { value: "chart_line", label: "Linie" },
-            { value: "chart_pie", label: "Torte" },
-            { value: "chart_doughnut", label: "Ring" },
-            { value: "chart_gauge", label: "Gauge" },
-            { value: "chart_table", label: "Tabelle" },
+            { value: "scorecard", label: _t("Scorecard") },
+            { value: "chart_bar", label: _t("Bar") },
+            { value: "chart_bar_h", label: _t("Bar (H)") },
+            { value: "chart_line", label: _t("Line") },
+            { value: "chart_pie", label: _t("Pie") },
+            { value: "chart_doughnut", label: _t("Donut") },
+            { value: "chart_gauge", label: _t("Gauge") },
+            { value: "chart_table", label: _t("Table") },
         ];
     }
 
     get aggregateOptions() {
         return [
-            { value: "sum", label: "Summe" },
-            { value: "avg", label: "Durchschnitt" },
-            { value: "count", label: "Anzahl" },
-            { value: "min", label: "Minimum" },
-            { value: "max", label: "Maximum" },
+            { value: "sum", label: _t("Sum") },
+            { value: "avg", label: _t("Average") },
+            { value: "count", label: _t("Count") },
+            { value: "min", label: _t("Minimum") },
+            { value: "max", label: _t("Maximum") },
         ];
     }
 }

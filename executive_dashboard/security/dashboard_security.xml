@@ -16,27 +16,12 @@
         <field name="groups" eval="[(4, ref('base.group_user'))]"/>
     </record>
 
-    <!-- Notes: Jeder darf lesen, nur eigene schreiben/löschen -->
+    <!-- Notes: Jeder darf lesen, nur eigene löschen (im Controller geprüft) -->
     <record id="rule_note_all_users" model="ir.rule">
-        <field name="name">Dashboard KPI Note: Read all</field>
+        <field name="name">Dashboard KPI Note: All users</field>
         <field name="model_id" ref="model_executive_dashboard_kpi_note"/>
         <field name="domain_force">[(1, '=', 1)]</field>
         <field name="groups" eval="[(4, ref('base.group_user'))]"/>
-        <field name="perm_read" eval="True"/>
-        <field name="perm_write" eval="False"/>
-        <field name="perm_create" eval="False"/>
-        <field name="perm_unlink" eval="False"/>
-    </record>
-
-    <record id="rule_kpi_note_own" model="ir.rule">
-        <field name="name">KPI Note: Own records only</field>
-        <field name="model_id" ref="model_executive_dashboard_kpi_note"/>
-        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
-        <field name="domain_force">[('user_id', '=', user.id)]</field>
-        <field name="perm_read" eval="False"/>
-        <field name="perm_write" eval="True"/>
-        <field name="perm_create" eval="False"/>
-        <field name="perm_unlink" eval="True"/>
     </record>
 
 </odoo>

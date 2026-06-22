@@ -13,8 +13,7 @@ class ResConfigSettings(models.TransientModel):
 
     ed_ai_api_key = fields.Char(
         string='AI API Key',
-        config_parameter='executive_dashboard.ai_api_key',
-        groups='base.group_system')
+        config_parameter='executive_dashboard.ai_api_key')
 
     # ── Kontostand ──
     ed_bank_journal = fields.Selection(

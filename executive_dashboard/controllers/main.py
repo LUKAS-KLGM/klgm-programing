@@ -1,23 +1,21 @@
 import logging
 
 from odoo import http
-from odoo.exceptions import AccessError
 from odoo.http import request
-from odoo.tools.safe_eval import safe_eval
 
 _logger = logging.getLogger(__name__)
 
 
 class ExecutiveDashboardController(http.Controller):
 
-    @http.route('/executive_dashboard/data', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/data', type='json', auth='user')
     def get_dashboard_data(self, dashboard_id, period='last_30_days', activity_state='all'):
         dashboard = request.env['executive.dashboard'].browse(dashboard_id)
         if not dashboard.exists():
             return {'error': 'Dashboard nicht gefunden'}
         return dashboard._get_dashboard_data(period, activity_state=activity_state)
 
-    @http.route('/executive_dashboard/list', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/list', type='json', auth='user')
     def get_dashboards(self):
         dashboards = request.env['executive.dashboard'].search([])
         return [{
@@ -30,7 +28,7 @@ class ExecutiveDashboardController(http.Controller):
             'comparison_mode': d.comparison_mode or 'previous_period',
         } for d in dashboards]
 
-    @http.route('/executive_dashboard/update_kpi', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/update_kpi', type='json', auth='user')
     def update_kpi(self, kpi_id, values):
         kpi = request.env['executive.dashboard.kpi'].browse(kpi_id)
         if not kpi.exists():
@@ -39,15 +37,10 @@ class ExecutiveDashboardController(http.Controller):
                    'name', 'description', 'unit', 'color', 'journal_id'}
         safe_vals = {k: v for k, v in values.items() if k in allowed}
         if safe_vals:
-            try:
-                kpi.check_access_rights('write')
-                kpi.check_access_rule('write')
-            except AccessError:
-                return {'error': 'Keine Berechtigung'}
             kpi.sudo().write(safe_vals)
         return {'ok': True}
 
-    @http.route('/executive_dashboard/drilldown', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/drilldown', type='json', auth='user')
     def drilldown(self, kpi_id, period='last_30_days'):
         """Return a dynamic action to view the underlying records of a KPI."""
         kpi = request.env['executive.dashboard.kpi'].browse(kpi_id)
@@ -58,7 +51,7 @@ class ExecutiveDashboardController(http.Controller):
             return kpi.action_xmlid
         # For model-based KPIs, build a dynamic action
         if kpi.source_type == 'model' and kpi.model_name:
-            domain = safe_eval(kpi.domain or '[]')
+            domain = eval(kpi.domain or '[]')
             if kpi.apply_date_filter and kpi.date_field:
                 date_from, date_to = kpi._get_date_range(period)
                 domain += [
@@ -77,7 +70,7 @@ class ExecutiveDashboardController(http.Controller):
 
     # ── Drag & Drop: Sequence Update ──
 
-    @http.route('/executive_dashboard/update_sequence', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/update_sequence', type='json', auth='user')
     def update_sequence(self, kpi_ids):
         """kpi_ids: list of {id, sequence}"""
         KPI = request.env['executive.dashboard.kpi'].sudo()
@@ -89,7 +82,7 @@ class ExecutiveDashboardController(http.Controller):
 
     # ── Notes ──
 
-    @http.route('/executive_dashboard/notes/get', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/notes/get', type='json', auth='user')
     def get_notes(self, kpi_id):
         notes = request.env['executive.dashboard.kpi.note'].search(
             [('kpi_id', '=', kpi_id)], order='create_date desc', limit=50)
@@ -100,7 +93,7 @@ class ExecutiveDashboardController(http.Controller):
             'date': n.create_date.strftime('%d.%m.%Y %H:%M') if n.create_date else '',
         } for n in notes]
 
-    @http.route('/executive_dashboard/notes/create', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/notes/create', type='json', auth='user')
     def create_note(self, kpi_id, text):
         note = request.env['executive.dashboard.kpi.note'].create({
             'kpi_id': kpi_id,
@@ -113,7 +106,7 @@ class ExecutiveDashboardController(http.Controller):
             'date': note.create_date.strftime('%d.%m.%Y %H:%M') if note.create_date else '',
         }
 
-    @http.route('/executive_dashboard/notes/delete', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/notes/delete', type='json', auth='user')
     def delete_note(self, note_id):
         note = request.env['executive.dashboard.kpi.note'].browse(note_id)
         if note.exists() and note.user_id.id == request.env.uid:
@@ -122,18 +115,18 @@ class ExecutiveDashboardController(http.Controller):
 
     # ── AI Insights ──
 
-    @http.route('/executive_dashboard/has_ai_key', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/has_ai_key', type='json', auth='user')
     def has_ai_key(self):
         return request.env['executive.dashboard'].has_ai_key()
 
-    @http.route('/executive_dashboard/module_status', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/module_status', type='json', auth='user')
     def module_status(self):
         """Check optional module availability."""
         return {
             'activity_history': 'activity.summary' in request.env,
         }
 
-    @http.route('/executive_dashboard/ai_insights', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/ai_insights', type='json', auth='user')
     def get_ai_insights(self, dashboard_id, period='last_30_days'):
         dashboard = request.env['executive.dashboard'].browse(dashboard_id)
         if not dashboard.exists():
@@ -143,7 +136,7 @@ class ExecutiveDashboardController(http.Controller):
             'ai': [],
         }
 
-    @http.route('/executive_dashboard/ai_insights_real', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/ai_insights_real', type='json', auth='user')
     def get_real_ai_insights(self, dashboard_id, period='last_30_days'):
         dashboard = request.env['executive.dashboard'].browse(dashboard_id)
         if not dashboard.exists():
@@ -152,7 +145,7 @@ class ExecutiveDashboardController(http.Controller):
 
     # ── Templates ──
 
-    @http.route('/executive_dashboard/templates', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/templates', type='json', auth='user')
     def get_templates(self):
         templates = request.env['executive.dashboard']._get_templates()
         return [{
@@ -163,13 +156,13 @@ class ExecutiveDashboardController(http.Controller):
             'kpi_count': len(t.get('kpis', [])),
         } for t in templates]
 
-    @http.route('/executive_dashboard/create_from_template', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/create_from_template', type='json', auth='user')
     def create_from_template(self, template_key):
         return request.env['executive.dashboard'].create_from_template(template_key)
 
     # ── KPI Builder ──
 
-    @http.route('/executive_dashboard/builder/models', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/builder/models', type='json', auth='user')
     def get_available_models(self):
         """Return models suitable for KPI creation."""
         useful_models = [
@@ -197,7 +190,7 @@ class ExecutiveDashboardController(http.Controller):
                 pass
         return result
 
-    @http.route('/executive_dashboard/builder/fields', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/builder/fields', type='json', auth='user')
     def get_model_fields(self, model_name):
         """Return numeric fields for a given model."""
         try:
@@ -217,7 +210,7 @@ class ExecutiveDashboardController(http.Controller):
                 })
         return result
 
-    @http.route('/executive_dashboard/builder/date_fields', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/builder/date_fields', type='json', auth='user')
     def get_date_fields(self, model_name):
         """Return date/datetime fields for a given model."""
         try:
@@ -236,7 +229,7 @@ class ExecutiveDashboardController(http.Controller):
                 })
         return result
 
-    @http.route('/executive_dashboard/builder/create', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/builder/create', type='json', auth='user')
     def create_custom_kpi(self, dashboard_id, values):
         """Create a KPI from the builder dialog."""
         dashboard = request.env['executive.dashboard'].browse(dashboard_id)
@@ -262,7 +255,7 @@ class ExecutiveDashboardController(http.Controller):
 
     # ── Dashboard Creator ──
 
-    @http.route('/executive_dashboard/all_kpis', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/all_kpis', type='json', auth='user')
     def get_all_kpis(self):
         """Return all KPIs across all dashboards as a catalog."""
         kpis = request.env['executive.dashboard.kpi'].sudo().search(
@@ -284,7 +277,7 @@ class ExecutiveDashboardController(http.Controller):
             })
         return result
 
-    @http.route('/executive_dashboard/create_dashboard', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/create_dashboard', type='json', auth='user')
     def create_dashboard(self, name, icon, kpi_ids):
         """Create a new dashboard by copying selected KPIs."""
         Dashboard = request.env['executive.dashboard'].sudo()
@@ -351,14 +344,9 @@ class ExecutiveDashboardController(http.Controller):
 
     # ── Comparison Mode ──
 
-    @http.route('/executive_dashboard/set_comparison', type='jsonrpc', auth='user')
+    @http.route('/executive_dashboard/set_comparison', type='json', auth='user')
     def set_comparison_mode(self, dashboard_id, mode):
         dashboard = request.env['executive.dashboard'].browse(dashboard_id)
         if dashboard.exists():
-            try:
-                dashboard.check_access_rights('write')
-                dashboard.check_access_rule('write')
-            except AccessError:
-                return {'error': 'Keine Berechtigung'}
             dashboard.sudo().write({'comparison_mode': mode})
         return {'ok': True}

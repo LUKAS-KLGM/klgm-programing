@@ -1,10 +1,7 @@
-import ast
 import logging
 from datetime import date, timedelta
 
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
-from odoo.tools.safe_eval import safe_eval
 
 _logger = logging.getLogger(__name__)
 
@@ -92,15 +89,6 @@ class DashboardKPI(models.Model):
 
     # Notes (v6)
     note_ids = fields.One2many('executive.dashboard.kpi.note', 'kpi_id', string='Notizen')
-
-    @api.constrains('domain')
-    def _check_domain(self):
-        for rec in self:
-            if rec.domain:
-                try:
-                    ast.literal_eval(rec.domain)
-                except (ValueError, SyntaxError):
-                    raise ValidationError(_('Ungültige Domain: %s') % rec.domain)
 
     # ═══════════════════════════════════════════
     # Date Ranges
@@ -208,7 +196,7 @@ class DashboardKPI(models.Model):
             _logger.warning("Model %s not found for KPI %s", effective_model, self.name)
             return {'value': 0, 'previous': 0, 'chart_data': [], 'sparkline': []}
 
-        base_domain = safe_eval(self.domain or '[]')
+        base_domain = eval(self.domain or '[]')
 
         # Map domain fields if using activity.summary
         if effective_model == 'activity.summary':
@@ -251,8 +239,8 @@ class DashboardKPI(models.Model):
         if self.aggregate == 'count':
             value = Model.search_count(current_domain)
         else:
-            results = Model.formatted_read_group(current_domain, [], [f'{self.measure_field}:{self.aggregate}'])
-            value = (results[0].get(f'{self.measure_field}:{self.aggregate}', 0) or 0) if results else 0
+            results = Model.read_group(current_domain, [self.measure_field], [], limit=1)
+            value = (results[0].get(self.measure_field, 0) or 0) if results else 0
 
         # Previous period (depending on comparison mode)
         # Skip comparison for all_time — no meaningful previous period
@@ -286,8 +274,8 @@ class DashboardKPI(models.Model):
                 if self.aggregate == 'count':
                     previous = Model.search_count(prev_domain)
                 else:
-                    results = Model.formatted_read_group(prev_domain, [], [f'{self.measure_field}:{self.aggregate}'])
-                    previous = (results[0].get(f'{self.measure_field}:{self.aggregate}', 0) or 0) if results else 0
+                    results = Model.read_group(prev_domain, [self.measure_field], [], limit=1)
+                    previous = (results[0].get(self.measure_field, 0) or 0) if results else 0
 
         # Chart data (grouped) — limit 10 for top charts, sort by value desc for bar/pie
         chart_data = []
@@ -300,9 +288,8 @@ class DashboardKPI(models.Model):
                     chart_group = chart_group.replace(':month', ':quarter')
                 order = chart_group if is_time_group else f'{self.measure_field} desc'
                 time_limit = 60 if period == 'all_time' else 30
-                agg_key = f'{self.measure_field}:{self.aggregate}'
-                group_results = Model.formatted_read_group(
-                    current_domain, [chart_group], [agg_key],
+                group_results = Model.read_group(
+                    current_domain, [self.measure_field], [chart_group],
                     orderby=order, limit=10 if not is_time_group else time_limit,
                 )
                 for r in group_results:
@@ -311,8 +298,8 @@ class DashboardKPI(models.Model):
                         label = label[1] if len(label) > 1 else label[0]
                     elif label is False:
                         label = 'Sonstige'
-                    val = r.get(agg_key, 0) or 0
-                    count = r.get('__count', 0)
+                    val = r.get(self.measure_field, 0) or 0
+                    count = r.get(f'{chart_group}_count', r.get('__count', 0))
                     chart_data.append({
                         'label': str(label),
                         'value': val if self.aggregate != 'count' else count,
@@ -345,14 +332,13 @@ class DashboardKPI(models.Model):
                 elif self.apply_date_filter and effective_date_field:
                     delta = (date_to - date_from).days
                     spark_group = effective_date_field + (':week' if delta > 14 else ':day')
-                    spark_agg_key = f'{self.measure_field}:{self.aggregate}'
-                    spark_results = Model.formatted_read_group(
-                        current_domain, [spark_group], [spark_agg_key],
+                    spark_results = Model.read_group(
+                        current_domain, [self.measure_field], [spark_group],
                         orderby=spark_group, limit=30,
                     )
                     for r in spark_results:
-                        val = r.get(spark_agg_key, 0) or 0
-                        count = r.get('__count', 0)
+                        val = r.get(self.measure_field, 0) or 0
+                        count = r.get(f'{spark_group}_count', r.get('__count', 0))
                         sparkline.append(val if self.aggregate != 'count' else count)
                     sparkline = sparkline[-14:]
             except Exception:
@@ -489,7 +475,7 @@ class DashboardKPI(models.Model):
                 return kpi_cache.get(name, 0)
 
             try:
-                result['value'] = safe_eval(self.formula, {'kpi': kpi})
+                result['value'] = eval(self.formula, {'kpi': kpi, '__builtins__': {}})
             except Exception as e:
                 _logger.warning("KPI formula error for %s: %s", self.name, e)
                 result['value'] = 0

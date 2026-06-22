@@ -2,6 +2,7 @@
 
 import { Component, useState, useRef, onMounted, onPatched, onWillUnmount } from "@odoo/owl";
 import { rpc } from "@web/core/network/rpc";
+import { _t } from "@web/core/l10n/translation";
 
 const DARK_COLORS = {
     "#EFF6FF": "#1e2a3d", "#eff6ff": "#1e2a3d",
@@ -22,6 +23,7 @@ export class KpiCard extends Component {
     };
 
     setup() {
+        this._t = _t;
         this.state = useState({
             showMenu: false,
             showNotes: false,
@@ -119,7 +121,7 @@ export class KpiCard extends Component {
         return `${pct > 0 ? "+" : ""}${pct}%`;
     }
     get comparisonLabel() {
-        return this.props.kpi.comparison_label || "vs. Vorperiode";
+        return this.props.kpi.comparison_label || _t("vs. Previous Period");
     }
     get hasTarget() { return this.props.kpi.target_value > 0; }
     get targetClass() {
@@ -139,13 +141,13 @@ export class KpiCard extends Component {
 
     get displayOptions() {
         return [
-            { value: "scorecard", label: "Scorecard", icon: "fa-tachometer" },
-            { value: "chart_bar", label: "Balken", icon: "fa-bar-chart" },
-            { value: "chart_line", label: "Linie", icon: "fa-line-chart" },
-            { value: "chart_pie", label: "Torte", icon: "fa-pie-chart" },
-            { value: "chart_doughnut", label: "Ring", icon: "fa-circle-o" },
-            { value: "chart_gauge", label: "Gauge", icon: "fa-dashboard" },
-            { value: "chart_table", label: "Tabelle", icon: "fa-table" },
+            { value: "scorecard", label: _t("Scorecard"), icon: "fa-tachometer" },
+            { value: "chart_bar", label: _t("Bar"), icon: "fa-bar-chart" },
+            { value: "chart_line", label: _t("Line"), icon: "fa-line-chart" },
+            { value: "chart_pie", label: _t("Pie"), icon: "fa-pie-chart" },
+            { value: "chart_doughnut", label: _t("Donut"), icon: "fa-circle-o" },
+            { value: "chart_gauge", label: _t("Gauge"), icon: "fa-dashboard" },
+            { value: "chart_table", label: _t("Table"), icon: "fa-table" },
         ];
     }
 
@@ -156,9 +158,9 @@ export class KpiCard extends Component {
 
     get activityStateOptions() {
         return [
-            { value: "all", label: "Alle", icon: "fa-list" },
-            { value: "planned", label: "Geplant", icon: "fa-clock-o" },
-            { value: "done", label: "Erledigt", icon: "fa-check" },
+            { value: "all", label: _t("All"), icon: "fa-list" },
+            { value: "planned", label: _t("Planned"), icon: "fa-clock-o" },
+            { value: "done", label: _t("Done"), icon: "fa-check" },
         ];
     }
 

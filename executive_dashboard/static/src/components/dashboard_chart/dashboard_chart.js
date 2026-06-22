@@ -2,6 +2,7 @@
 
 import { Component, useRef, useState, onMounted, onWillUnmount, onPatched } from "@odoo/owl";
 import { rpc } from "@web/core/network/rpc";
+import { _t } from "@web/core/l10n/translation";
 
 const COLORS = [
     "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
@@ -54,13 +55,14 @@ export class DashboardChart extends Component {
 
     get activityStateOptions() {
         return [
-            { value: "all", label: "Alle", icon: "fa-list" },
-            { value: "planned", label: "Geplant", icon: "fa-clock-o" },
-            { value: "done", label: "Erledigt", icon: "fa-check" },
+            { value: "all", label: _t("All"), icon: "fa-list" },
+            { value: "planned", label: _t("Planned"), icon: "fa-clock-o" },
+            { value: "done", label: _t("Done"), icon: "fa-check" },
         ];
     }
 
     setup() {
+        this._t = _t;
         this.canvasRef = useRef("canvas");
         this.chart = null;
         this.state = useState({ showMenu: false, sortField: "value", sortAsc: false });
@@ -84,23 +86,23 @@ export class DashboardChart extends Component {
 
     get displayOptions() {
         return [
-            { value: "scorecard", label: "Scorecard", icon: "fa-tachometer" },
-            { value: "chart_bar", label: "Balken", icon: "fa-bar-chart" },
-            { value: "chart_bar_h", label: "Balken (H)", icon: "fa-align-left" },
-            { value: "chart_line", label: "Linie", icon: "fa-line-chart" },
-            { value: "chart_pie", label: "Torte", icon: "fa-pie-chart" },
-            { value: "chart_doughnut", label: "Ring", icon: "fa-circle-o" },
-            { value: "chart_gauge", label: "Gauge", icon: "fa-dashboard" },
-            { value: "chart_table", label: "Tabelle", icon: "fa-table" },
+            { value: "scorecard", label: _t("Scorecard"), icon: "fa-tachometer" },
+            { value: "chart_bar", label: _t("Bar"), icon: "fa-bar-chart" },
+            { value: "chart_bar_h", label: _t("Bar (H)"), icon: "fa-align-left" },
+            { value: "chart_line", label: _t("Line"), icon: "fa-line-chart" },
+            { value: "chart_pie", label: _t("Pie"), icon: "fa-pie-chart" },
+            { value: "chart_doughnut", label: _t("Donut"), icon: "fa-circle-o" },
+            { value: "chart_gauge", label: _t("Gauge"), icon: "fa-dashboard" },
+            { value: "chart_table", label: _t("Table"), icon: "fa-table" },
         ];
     }
 
     get widthOptions() {
         return [
-            { value: "third", label: "\u2153 Breite", icon: "fa-columns" },
-            { value: "half", label: "\u00BD Breite", icon: "fa-columns" },
-            { value: "two_thirds", label: "\u2154 Breite", icon: "fa-columns" },
-            { value: "full", label: "Volle Breite", icon: "fa-arrows-h" },
+            { value: "third", label: "\u2153 " + _t("Width"), icon: "fa-columns" },
+            { value: "half", label: "\u00BD " + _t("Width"), icon: "fa-columns" },
+            { value: "two_thirds", label: "\u2154 " + _t("Width"), icon: "fa-columns" },
+            { value: "full", label: _t("Full Width"), icon: "fa-arrows-h" },
         ];
     }
 
@@ -368,7 +370,7 @@ export class DashboardChart extends Component {
         // Target label
         ctx.fillStyle = dark ? "#666" : "#aaa";
         ctx.font = `${radius * 0.14}px -apple-system, sans-serif`;
-        ctx.fillText(`Ziel: ${fmtValue(this.gaugeTarget)}`, cx, cy + radius * 0.72);
+        ctx.fillText(`${_t("Target")}: ${fmtValue(this.gaugeTarget)}`, cx, cy + radius * 0.72);
     }
 
     _getDataLabelsConfig(dark, textColor) {

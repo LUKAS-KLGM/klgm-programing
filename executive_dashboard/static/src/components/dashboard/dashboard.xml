@@ -16,37 +16,37 @@
                                         t-esc="db.name"/>
                             </t>
                             <option disabled="disabled" value="">──────────</option>
-                            <option value="__new__">+ Neu erstellen...</option>
+                            <option value="__new__" t-esc="_t('+ Create new...')"/>
                         </select>
                         <i class="fa fa-chevron-down ed-picker-chevron"/>
                     </div>
                     <button t-att-class="'ed-favorite-btn' + (isFavorite ? ' ed-fav-is-active' : '')"
                             t-on-click="toggleFavorite"
-                            t-att-title="isFavorite ? 'Standard-Dashboard entfernen' : 'Als Standard-Dashboard beim Öffnen setzen'">
+                            t-att-title="isFavorite ? _t('Remove as default dashboard') : _t('Set as default dashboard')">
                         <i t-att-class="isFavorite ? 'fa fa-star' : 'fa fa-star-o'"/>
                     </button>
                 </div>
                 <div class="ed-header-right">
                     <!-- 1. Icon buttons -->
-                    <button class="ed-refresh-btn" t-on-click="toggleInsights" title="AI Insights">
+                    <button class="ed-refresh-btn" t-on-click="toggleInsights" t-att-title="_t('AI Insights')">
                         <i class="fa fa-lightbulb-o"/>
                     </button>
                     <!-- Config dropdown -->
                     <div class="ed-config-wrap">
-                        <button class="ed-refresh-btn" t-on-click.stop="toggleConfigMenu" title="Konfiguration">
+                        <button class="ed-refresh-btn" t-on-click.stop="toggleConfigMenu" t-att-title="_t('Configuration')">
                             <i class="fa fa-cog"/>
                         </button>
                         <div t-if="state.showConfigMenu" class="ed-export-menu">
                             <button t-on-click="toggleBuilder" class="ed-export-item" t-if="state.activeDashboard">
-                                <i class="fa fa-plus"/> KPI hinzufügen
+                                <i class="fa fa-plus"/> <t t-esc="_t('Add KPI')"/>
                             </button>
                             <button t-on-click="toggleTemplates" class="ed-export-item">
-                                <i class="fa fa-magic"/> Branchen-Templates
+                                <i class="fa fa-magic"/> <t t-esc="_t('Industry Templates')"/>
                             </button>
                         </div>
                     </div>
                     <div class="ed-export-wrap">
-                        <button class="ed-refresh-btn" t-on-click="toggleExportMenu" title="Exportieren">
+                        <button class="ed-refresh-btn" t-on-click="toggleExportMenu" t-att-title="_t('Export')">
                             <i class="fa fa-download"/>
                         </button>
                         <div t-if="state.showExportMenu" class="ed-export-menu">
@@ -54,22 +54,22 @@
                                 <i class="fa fa-file-text-o"/> CSV / Excel
                             </button>
                             <button t-on-click="exportPNG" class="ed-export-item">
-                                <i class="fa fa-image"/> Chart als PNG
+                                <i class="fa fa-image"/> <t t-esc="_t('Chart as PNG')"/>
                             </button>
                         </div>
                     </div>
                     <button class="ed-refresh-btn" t-on-click="toggleFullscreen"
-                            t-att-title="state.isFullscreen ? 'Normal' : 'Vollbild'">
+                            t-att-title="state.isFullscreen ? _t('Normal') : _t('Fullscreen')">
                         <i t-att-class="state.isFullscreen ? 'fa fa-compress' : 'fa fa-expand'"/>
                     </button>
-                    <button class="ed-refresh-btn" t-on-click="onRefresh" title="Aktualisieren">
+                    <button class="ed-refresh-btn" t-on-click="onRefresh" t-att-title="_t('Refresh')">
                         <i t-att-class="'fa fa-refresh' + (state.loading ? ' fa-spin' : '')"/>
                     </button>
                     <button class="ed-refresh-btn" t-on-click="toggleDark"
-                            t-att-title="state.isDark ? 'Light Mode' : 'Dark Mode'">
+                            t-att-title="state.isDark ? _t('Light Mode') : _t('Dark Mode')">
                         <i t-att-class="state.isDark ? 'fa fa-sun-o' : 'fa fa-moon-o'"/>
                     </button>
-                    <!-- 2. Vergleich -->
+                    <!-- 2. Comparison -->
                     <select t-on-change="(ev) => this.setComparisonMode(ev.target.value)" class="ed-period-select" style="min-width:100px;">
                         <t t-foreach="comparisonOptions" t-as="opt" t-key="opt.value">
                             <option t-att-value="opt.value"
@@ -77,7 +77,7 @@
                                     t-esc="opt.label"/>
                         </t>
                     </select>
-                    <!-- 3. Zeitraum -->
+                    <!-- 3. Period -->
                     <select t-on-change="onPeriodChange" class="ed-period-select">
                         <t t-foreach="periodOptions" t-as="opt" t-key="opt.value">
                             <option t-att-value="opt.value"
@@ -104,7 +104,7 @@
             <!-- Loading -->
             <div t-if="state.loading" class="ed-loading">
                 <div class="ed-spinner"/>
-                <span>Daten werden geladen...</span>
+                <span t-esc="_t('Loading data...')"/>
             </div>
 
             <!-- Insights Panel -->
@@ -113,7 +113,7 @@
                     <div class="ed-insights-tabs">
                         <button t-att-class="'ed-insights-tab ' + (state.insightsTab === 'summary' ? 'active' : '')"
                                 t-on-click="() => this.switchInsightsTab('summary')">
-                            <i class="fa fa-list-ul"/> Zusammenfassung
+                            <i class="fa fa-list-ul"/> <t t-esc="_t('Summary')"/>
                         </button>
                         <button t-att-class="'ed-insights-tab ' + (state.insightsTab === 'ai' ? 'active' : '')"
                                 t-on-click="() => this.switchInsightsTab('ai')">
@@ -129,7 +129,7 @@
                 </div>
                 <div t-elif="state.insightsTab === 'ai' and !state.hasAiKey" class="ed-insights-nokey">
                     <i class="fa fa-key fa-2x"/>
-                    <p>Hinterlege einen API Key (Anthropic oder OpenAI) in der Dashboard-Konfiguration um AI Insights zu aktivieren.</p>
+                    <p t-esc="_t('Add an API key (Anthropic or OpenAI) in the Dashboard Configuration to enable AI Insights.')"/>
                 </div>
                 <div t-else="" class="ed-insights-list">
                     <t t-foreach="activeInsights" t-as="insight" t-key="insight_index">
@@ -150,13 +150,13 @@
             <div t-if="state.showTemplates" class="ed-modal-overlay" t-on-click.self="toggleTemplates">
                 <div class="ed-modal">
                     <div class="ed-modal-header">
-                        <h3><i class="fa fa-magic"/> Branchen-Templates</h3>
+                        <h3><i class="fa fa-magic"/> <t t-esc="_t('Industry Templates')"/></h3>
                         <button class="ed-modal-close" t-on-click="toggleTemplates">
                             <i class="fa fa-times"/>
                         </button>
                     </div>
                     <div class="ed-modal-body">
-                        <p class="ed-modal-hint">Erstelle ein vorkonfiguriertes Dashboard aus einem Branchen-Template:</p>
+                        <p class="ed-modal-hint" t-esc="_t('Create a pre-configured dashboard from an industry template:')"/>
                         <div class="ed-template-grid">
                             <t t-foreach="state.templates" t-as="tpl" t-key="tpl.key">
                                 <div class="ed-template-card" t-on-click="() => this.createFromTemplate(tpl.key)">
@@ -179,7 +179,7 @@
             <div t-if="state.showCreator" class="ed-modal-overlay" t-on-click.self="closeCreator">
                 <div class="ed-modal ed-modal-creator">
                     <div class="ed-modal-header">
-                        <h3><i class="fa fa-th-large"/> Dashboard erstellen</h3>
+                        <h3><i class="fa fa-th-large"/> <t t-esc="_t('Create Dashboard')"/></h3>
                         <button class="ed-modal-close" t-on-click="closeCreator">
                             <i class="fa fa-times"/>
                         </button>
@@ -188,13 +188,13 @@
                         <div class="ed-builder-form">
                             <div class="ed-builder-row ed-builder-row-2">
                                 <div>
-                                    <label>Dashboard-Name *</label>
+                                    <label t-esc="_t('Dashboard Name *')"/>
                                     <input type="text" t-att-value="state.creatorName"
-                                           placeholder="z.B. Mein Dashboard"
+                                           t-att-placeholder="_t('e.g. My Dashboard')"
                                            t-on-input="(ev) => this.state.creatorName = ev.target.value"/>
                                 </div>
                                 <div>
-                                    <label>Icon</label>
+                                    <label t-esc="_t('Icon')"/>
                                     <select t-on-change="(ev) => this.state.creatorIcon = ev.target.value">
                                         <t t-foreach="creatorIconOptions" t-as="opt" t-key="opt.value">
                                             <option t-att-value="opt.value"
@@ -206,7 +206,9 @@
                                 </div>
                             </div>
                             <div class="ed-menu-divider" style="margin:12px 0;"/>
-                            <label class="ed-creator-label">KPIs auswählen (<t t-esc="state.selectedKpiIds.size"/> ausgewählt)</label>
+                            <label class="ed-creator-label">
+                                <t t-esc="_t('Select KPIs')"/> (<t t-esc="state.selectedKpiIds.size"/> <t t-esc="_t('selected')"/>)
+                            </label>
                             <div class="ed-creator-kpi-list">
                                 <t t-foreach="state.allKpis" t-as="k" t-key="k.id">
                                     <label class="ed-creator-kpi-item"
@@ -226,9 +228,9 @@
                                 <i class="fa fa-exclamation-circle"/> <t t-esc="state.creatorError"/>
                             </div>
                             <div class="ed-builder-actions">
-                                <button class="ed-btn ed-btn-secondary" t-on-click="closeCreator">Abbrechen</button>
+                                <button class="ed-btn ed-btn-secondary" t-on-click="closeCreator" t-esc="_t('Cancel')"/>
                                 <button class="ed-btn ed-btn-primary" t-on-click="submitCreator">
-                                    <i class="fa fa-check"/> Erstellen
+                                    <i class="fa fa-check"/> <t t-esc="_t('Create')"/>
                                 </button>
                             </div>
                         </div>
@@ -240,7 +242,7 @@
             <div t-if="state.showBuilder" class="ed-modal-overlay" t-on-click.self="toggleBuilder">
                 <div class="ed-modal ed-modal-builder">
                     <div class="ed-modal-header">
-                        <h3><i class="fa fa-plus-circle"/> KPI erstellen</h3>
+                        <h3><i class="fa fa-plus-circle"/> <t t-esc="_t('Create KPI')"/></h3>
                         <button class="ed-modal-close" t-on-click="toggleBuilder">
                             <i class="fa fa-times"/>
                         </button>
@@ -248,14 +250,14 @@
                     <div class="ed-modal-body">
                         <div class="ed-builder-form">
                             <div class="ed-builder-row">
-                                <label>Name *</label>
+                                <label t-esc="_t('Name *')"/>
                                 <input type="text" t-att-value="state.builderForm.name"
                                        t-on-input="(ev) => this.onBuilderFieldChange('name', ev)"
-                                       placeholder="z.B. Umsatz pro Monat"/>
+                                       t-att-placeholder="_t('e.g. Revenue per Month')"/>
                             </div>
                             <div class="ed-builder-row ed-builder-row-2">
                                 <div>
-                                    <label>Darstellung</label>
+                                    <label t-esc="_t('Display')"/>
                                     <select t-on-change="(ev) => this.onBuilderFieldChange('display_type', ev)">
                                         <t t-foreach="displayTypeOptions" t-as="opt" t-key="opt.value">
                                             <option t-att-value="opt.value"
@@ -265,16 +267,16 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label>Einheit</label>
+                                    <label t-esc="_t('Unit')"/>
                                     <input type="text" t-att-value="state.builderForm.unit"
                                            t-on-input="(ev) => this.onBuilderFieldChange('unit', ev)"
-                                           placeholder="EUR, %, Stk."/>
+                                           t-att-placeholder="_t('EUR, %, pcs.')"/>
                                 </div>
                             </div>
                             <div class="ed-builder-row">
                                 <label>Odoo Model *</label>
                                 <select t-on-change="(ev) => this.onBuilderModelChange(ev)">
-                                    <option value="">— Model wählen —</option>
+                                    <option value="" t-esc="_t('— Select Model —')"/>
                                     <t t-foreach="state.builderModels" t-as="m" t-key="m.name">
                                         <option t-att-value="m.name"
                                                 t-att-selected="state.builderForm.model_name === m.name"
@@ -284,9 +286,9 @@
                             </div>
                             <div class="ed-builder-row ed-builder-row-2">
                                 <div>
-                                    <label>Messfeld *</label>
+                                    <label t-esc="_t('Measure Field *')"/>
                                     <select t-on-change="(ev) => this.onBuilderFieldChange('measure_field', ev)">
-                                        <option value="">— Feld wählen —</option>
+                                        <option value="" t-esc="_t('— Select Field —')"/>
                                         <t t-foreach="state.builderFields" t-as="f" t-key="f.name">
                                             <option t-att-value="f.name"
                                                     t-att-selected="state.builderForm.measure_field === f.name"
@@ -295,7 +297,7 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label>Aggregation</label>
+                                    <label t-esc="_t('Aggregation')"/>
                                     <select t-on-change="(ev) => this.onBuilderFieldChange('aggregate', ev)">
                                         <t t-foreach="aggregateOptions" t-as="opt" t-key="opt.value">
                                             <option t-att-value="opt.value"
@@ -307,7 +309,7 @@
                             </div>
                             <div class="ed-builder-row ed-builder-row-2">
                                 <div>
-                                    <label>Datumsfeld</label>
+                                    <label t-esc="_t('Date Field')"/>
                                     <select t-on-change="(ev) => this.onBuilderFieldChange('date_field', ev)">
                                         <t t-foreach="state.builderDateFields" t-as="f" t-key="f.name">
                                             <option t-att-value="f.name"
@@ -317,20 +319,20 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label>Gruppierung</label>
+                                    <label t-esc="_t('Group By')"/>
                                     <input type="text" t-att-value="state.builderForm.group_by"
                                            t-on-input="(ev) => this.onBuilderFieldChange('group_by', ev)"
-                                           placeholder="z.B. date:month"/>
+                                           placeholder="e.g. date:month"/>
                                 </div>
                             </div>
                             <div class="ed-builder-row ed-builder-row-2">
                                 <div>
-                                    <label>Zielwert</label>
+                                    <label t-esc="_t('Target Value')"/>
                                     <input type="number" t-att-value="state.builderForm.target_value"
                                            t-on-input="(ev) => this.onBuilderFieldChange('target_value', ev)"/>
                                 </div>
                                 <div>
-                                    <label>Budget</label>
+                                    <label t-esc="_t('Budget')"/>
                                     <input type="number" t-att-value="state.builderForm.budget_value"
                                            t-on-input="(ev) => this.onBuilderFieldChange('budget_value', ev)"/>
                                 </div>
@@ -342,9 +344,9 @@
                                        placeholder="[('state', '=', 'posted')]"/>
                             </div>
                             <div class="ed-builder-actions">
-                                <button class="ed-btn ed-btn-secondary" t-on-click="toggleBuilder">Abbrechen</button>
+                                <button class="ed-btn ed-btn-secondary" t-on-click="toggleBuilder" t-esc="_t('Cancel')"/>
                                 <button class="ed-btn ed-btn-primary" t-on-click="submitBuilder">
-                                    <i class="fa fa-check"/> KPI erstellen
+                                    <i class="fa fa-check"/> <t t-esc="_t('Create KPI')"/>
                                 </button>
                             </div>
                         </div>
@@ -355,7 +357,7 @@
             <!-- Dashboard Content -->
             <div t-if="!state.loading and state.dashboardData" class="ed-content" t-ref="content">
 
-                <!-- KPI Scorecards (Drag & Drop) -->
+                <!-- KPI Scorecards (Drag &amp; Drop) -->
                 <div class="ed-kpi-grid" t-if="scorecards.length">
                     <t t-foreach="scorecards" t-as="kpi" t-key="kpi.id">
                         <div class="ed-kpi-drag-wrap"
@@ -373,7 +375,7 @@
                     </t>
                 </div>
 
-                <!-- Charts (Drag & Drop) -->
+                <!-- Charts (Drag &amp; Drop) -->
                 <div class="ed-chart-grid" t-if="charts.length and state.chartReady">
                     <t t-foreach="charts" t-as="chart" t-key="chart.id">
                         <DashboardChart kpi="chart" isDark="state.isDark"
@@ -391,18 +393,19 @@
                 <!-- Activity History Hint -->
                 <div t-if="!state.hasActivityHistory" class="ed-hint-banner">
                     <i class="fa fa-info-circle"/>
-                    Aktivitäts-KPIs zeigen nur geplante Aktivitäten. Installiere das Modul
-                    <strong>Partner Activity History</strong> um auch erledigte Anrufe, E-Mails und Meetings auszuwerten.
+                    <t t-esc="_t('Activity KPIs only show planned activities. Install the')"/>
+                    <strong> Partner Activity History </strong>
+                    <t t-esc="_t('module to also evaluate completed calls, emails and meetings.')"/>
                 </div>
             </div>
 
             <!-- Empty state -->
             <div t-if="!state.loading and !state.dashboardData and !state.dashboards.length" class="ed-empty">
                 <i class="fa fa-tachometer fa-4x"/>
-                <h3>Keine Dashboards konfiguriert</h3>
-                <p>Erstelle ein Dashboard aus einem Branchen-Template oder gehe zu Konfiguration.</p>
+                <h3 t-esc="_t('No Dashboards Configured')"/>
+                <p t-esc="_t('Create a dashboard from an industry template or go to Configuration.')"/>
                 <button class="ed-btn ed-btn-primary" t-on-click="toggleTemplates">
-                    <i class="fa fa-magic"/> Template verwenden
+                    <i class="fa fa-magic"/> <t t-esc="_t('Use Template')"/>
                 </button>
             </div>
         </div>

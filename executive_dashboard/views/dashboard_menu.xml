@@ -22,9 +22,9 @@
               sequence="10"
               groups="base.group_system"/>
 
-    <!-- Settings action (Bankjournal, AI Key) -->
+    <!-- Settings action (Bank Journal, AI Key) -->
     <record id="action_executive_dashboard_settings" model="ir.actions.act_window">
-        <field name="name">Einstellungen</field>
+        <field name="name">Settings</field>
         <field name="res_model">res.config.settings</field>
         <field name="view_mode">form</field>
         <field name="target">current</field>
@@ -32,7 +32,7 @@
     </record>
 
     <menuitem id="menu_executive_dashboard_settings"
-              name="Einstellungen"
+              name="Settings"
               parent="menu_executive_dashboard_root"
               action="action_executive_dashboard_settings"
               sequence="90"
@@ -40,7 +40,7 @@
 
     <!-- Dashboard configuration (advanced) -->
     <menuitem id="menu_executive_dashboard_config"
-              name="Dashboard-Verwaltung"
+              name="Dashboard Management"
               parent="menu_executive_dashboard_root"
               action="action_executive_dashboard"
               sequence="95"
