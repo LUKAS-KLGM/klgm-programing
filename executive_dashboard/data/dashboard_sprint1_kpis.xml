@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo noupdate="1">
+<odoo noupdate="0">
 
     <!-- ══════════════════════════════════════════════════════ -->
     <!-- Sprint 1: Advanced KPIs — Finanzen, Vertrieb, Ops, HR -->
@@ -31,7 +31,7 @@
     <!-- Repeat Customer Rate -->
     <record id="kpi_ceo_chart_orders_trend" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Umsatz nach Vertriebskanal</field>
+        <field name="name">Revenue by Sales Channel</field>
         <field name="sequence">145</field>
         <field name="display_type">chart_doughnut</field>
         <field name="source_type">model</field>
@@ -63,7 +63,7 @@
 
     <record id="kpi_cfo_dso" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">DSO (Tage)</field>
+        <field name="name">DSO (Days)</field>
         <field name="description">Days Sales Outstanding — Wie viele Tage brauchen Kunden im Schnitt zum Bezahlen</field>
         <field name="sequence">45</field>
         <field name="display_type">scorecard</field>
@@ -94,7 +94,7 @@
 
     <record id="kpi_cfo_dpo" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">DPO (Tage)</field>
+        <field name="name">DPO (Days)</field>
         <field name="description">Days Payable Outstanding — Wie viele Tage braucht ihr im Schnitt zum Bezahlen eurer Lieferanten</field>
         <field name="sequence">46</field>
         <field name="display_type">scorecard</field>
@@ -123,7 +123,7 @@
     <!-- Kontostand live (SQL: Saldo aus Buchhaltung, erstes Bankjournal) -->
     <record id="kpi_cfo_balance" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">Kontostand</field>
+        <field name="name">Bank Balance</field>
         <field name="description">Gebuchter Saldo des Standard-Bankjournals (Summe Soll minus Haben)</field>
         <field name="sequence">47</field>
         <field name="display_type">scorecard</field>
@@ -146,7 +146,7 @@ WHERE aj.type = 'bank'
     <!-- CFO: Forderungen nach Fälligkeitsmonat -->
     <record id="kpi_cfo_chart_ar_aging" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">Forderungen nach Fälligkeit</field>
+        <field name="name">Receivables by Due Date</field>
         <field name="sequence">135</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -165,7 +165,7 @@ WHERE aj.type = 'bank'
     <!-- Durchlaufzeit (Order to Delivery) -->
     <record id="kpi_coo_leadtime" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
-        <field name="name">Lieferanten-Delay</field>
+        <field name="name">Supplier Delay</field>
         <field name="description">Durchschnittliche Lieferzeit der Lieferanten in Tagen</field>
         <field name="sequence">35</field>
         <field name="display_type">scorecard</field>
@@ -210,7 +210,7 @@ WHERE aj.type = 'bank'
 
     <record id="kpi_coo_fulfillment" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
-        <field name="name">Lieferquote</field>
+        <field name="name">Delivery Rate</field>
         <field name="description">Anteil gelieferter Menge an bestellter Menge in Prozent</field>
         <field name="sequence">25</field>
         <field name="display_type">scorecard</field>
@@ -229,7 +229,7 @@ WHERE aj.type = 'bank'
     <!-- Offene Lieferungen (Bestandswert, kein Datumsfilter) -->
     <record id="kpi_coo_open_deliveries" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
-        <field name="name">Offene Lieferungen</field>
+        <field name="name">Open Deliveries</field>
         <field name="description">Ausgangslieferungen in Bearbeitung (zugewiesen, bestätigt, wartend)</field>
         <field name="sequence">22</field>
         <field name="display_type">scorecard</field>
@@ -249,7 +249,7 @@ WHERE aj.type = 'bank'
     <!-- Lagerbestand (Wert) -->
     <record id="kpi_coo_stock_value" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
-        <field name="name">Lagerbestand</field>
+        <field name="name">Inventory Value</field>
         <field name="description">Gesamtwert aller internen Lagerbestände</field>
         <field name="sequence">32</field>
         <field name="display_type">scorecard</field>
@@ -281,7 +281,7 @@ WHERE aj.type = 'bank'
 
     <record id="kpi_coo_return_rate" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
-        <field name="name">Retourenquote</field>
+        <field name="name">Return Rate</field>
         <field name="description">Anteil der Retouren an den Gesamtlieferungen in Prozent</field>
         <field name="sequence">36</field>
         <field name="display_type">scorecard</field>
@@ -300,7 +300,7 @@ WHERE aj.type = 'bank'
     <!-- Abwesenheitsquote % -->
     <record id="kpi_cto_absence_rate" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cto"/>
-        <field name="name">Abwesenheitsquote</field>
+        <field name="name">Absence Rate</field>
         <field name="description">Abwesenheitstage / (Mitarbeiter × 20 Arbeitstage) in Prozent</field>
         <field name="sequence">36</field>
         <field name="display_type">scorecard</field>
@@ -317,7 +317,7 @@ WHERE aj.type = 'bank'
     <!-- Abwesenheitstage -->
     <record id="kpi_cto_leave_days" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cto"/>
-        <field name="name">Abwesenheitstage</field>
+        <field name="name">Absence Days</field>
         <field name="description">Genehmigte Abwesenheitstage (Urlaub, Krankheit, etc.) im Zeitraum</field>
         <field name="sequence">35</field>
         <field name="display_type">scorecard</field>
@@ -334,7 +334,7 @@ WHERE aj.type = 'bank'
     <!-- Aufgaben nach Deadline Status -->
     <record id="kpi_cto_chart_deadline" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cto"/>
-        <field name="name">Aufgaben pro Monat (Deadline)</field>
+        <field name="name">Tasks per Month (Deadline)</field>
         <field name="sequence">107</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>

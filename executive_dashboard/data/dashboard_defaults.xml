@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo noupdate="1">
+<odoo noupdate="0">
 
     <!-- ══════════════════════════════ CEO ══════════════════════════════ -->
     <record id="dashboard_ceo" model="executive.dashboard">
-        <field name="name">CEO — Unternehmensübersicht</field>
+        <field name="name">CEO — Company Overview</field>
         <field name="role">ceo</field>
         <field name="sequence">10</field>
         <field name="icon">fa-building</field>
@@ -13,7 +13,7 @@
     <!-- CEO KPIs -->
     <record id="kpi_ceo_revenue" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Umsatz (netto)</field>
+        <field name="name">Revenue (net)</field>
         <field name="description">Nettoumsatz aus bestätigten Verkaufsaufträgen im gewählten Zeitraum</field>
         <field name="sequence">10</field>
         <field name="display_type">scorecard</field>
@@ -30,7 +30,7 @@
 
     <record id="kpi_ceo_orders" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Aufträge</field>
+        <field name="name">Orders</field>
         <field name="description">Anzahl bestätigter Verkaufsaufträge</field>
         <field name="sequence">20</field>
         <field name="display_type">scorecard</field>
@@ -59,7 +59,7 @@
 
     <record id="kpi_ceo_pipeline" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Pipeline-Wert</field>
+        <field name="name">Pipeline Value</field>
         <field name="description">Gewichteter Wert aller offenen Verkaufschancen (Umsatz × Wahrscheinlichkeit)</field>
         <field name="sequence">40</field>
         <field name="display_type">scorecard</field>
@@ -77,7 +77,7 @@
 
     <record id="kpi_ceo_leads" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Neue Leads</field>
+        <field name="name">New Leads</field>
         <field name="sequence">50</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -92,7 +92,7 @@
 
     <record id="kpi_ceo_ar" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Offene Forderungen</field>
+        <field name="name">Open Receivables</field>
         <field name="description">Summe aller unbezahlten oder teilbezahlten Ausgangsrechnungen</field>
         <field name="sequence">60</field>
         <field name="display_type">scorecard</field>
@@ -109,7 +109,7 @@
 
     <record id="kpi_ceo_employees" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Mitarbeiter</field>
+        <field name="name">Employees</field>
         <field name="sequence">70</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -126,7 +126,7 @@
     <!-- CEO Charts -->
     <record id="kpi_ceo_chart_revenue" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Umsatz pro Monat</field>
+        <field name="name">Revenue per Month</field>
         <field name="sequence">100</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -142,7 +142,7 @@
 
     <record id="kpi_ceo_chart_country" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Umsatz nach Land</field>
+        <field name="name">Revenue by Country</field>
         <field name="sequence">110</field>
         <field name="display_type">chart_pie</field>
         <field name="source_type">model</field>
@@ -157,7 +157,7 @@
 
     <record id="kpi_ceo_chart_pipeline" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Pipeline nach Phase</field>
+        <field name="name">Pipeline by Stage</field>
         <field name="sequence">120</field>
         <field name="display_type">chart_pie</field>
         <field name="source_type">model</field>
@@ -172,7 +172,7 @@
 
     <!-- ══════════════════════════════ CFO ══════════════════════════════ -->
     <record id="dashboard_cfo" model="executive.dashboard">
-        <field name="name">CFO — Finanzen</field>
+        <field name="name">CFO — Finance</field>
         <field name="role">cfo</field>
         <field name="sequence">20</field>
         <field name="icon">fa-money</field>
@@ -181,7 +181,7 @@
 
     <record id="kpi_cfo_invoiced" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">Fakturierung</field>
+        <field name="name">Invoicing</field>
         <field name="description">Summe aller gebuchten Ausgangsrechnungen und Gutschriften</field>
         <field name="sequence">10</field>
         <field name="display_type">scorecard</field>
@@ -198,7 +198,7 @@
 
     <record id="kpi_cfo_margin" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">Marge</field>
+        <field name="name">Margin</field>
         <field name="description">Bruttomarge = Umsatz minus Einkaufspreis der verkauften Waren</field>
         <field name="sequence">20</field>
         <field name="display_type">scorecard</field>
@@ -214,7 +214,7 @@
 
     <record id="kpi_cfo_margin_pct" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">Marge %</field>
+        <field name="name">Margin %</field>
         <field name="description">Bruttomarge in Prozent vom Umsatz (Marge / Fakturierung × 100)</field>
         <field name="sequence">25</field>
         <field name="display_type">scorecard</field>
@@ -227,7 +227,7 @@
 
     <record id="kpi_cfo_ap" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">Eingangsrechnungen</field>
+        <field name="name">Vendor Bills</field>
         <field name="sequence">30</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -242,7 +242,7 @@
 
     <record id="kpi_cfo_ar_open" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">Offene Forderungen</field>
+        <field name="name">Open Receivables</field>
         <field name="sequence">40</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -258,7 +258,7 @@
 
     <record id="kpi_cfo_chart_ar" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">Fakturierung pro Monat</field>
+        <field name="name">Invoicing per Month</field>
         <field name="sequence">100</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -274,7 +274,7 @@
 
     <record id="kpi_cfo_chart_payment" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">Zahlungsstatus</field>
+        <field name="name">Payment Status</field>
         <field name="sequence">110</field>
         <field name="display_type">chart_pie</field>
         <field name="source_type">model</field>
@@ -298,7 +298,7 @@
 
     <record id="kpi_coo_orders" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
-        <field name="name">Aufträge</field>
+        <field name="name">Orders</field>
         <field name="sequence">10</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -313,7 +313,7 @@
 
     <record id="kpi_coo_deliveries" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
-        <field name="name">Lieferungen</field>
+        <field name="name">Deliveries</field>
         <field name="sequence">20</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -328,7 +328,7 @@
 
     <record id="kpi_coo_purchase" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
-        <field name="name">Einkaufsvolumen</field>
+        <field name="name">Purchase Volume</field>
         <field name="sequence">30</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -343,7 +343,7 @@
 
     <record id="kpi_coo_chart_deliveries" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
-        <field name="name">Lieferungen pro Monat</field>
+        <field name="name">Deliveries per Month</field>
         <field name="sequence">100</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -359,7 +359,7 @@
 
     <!-- ══════════════════════════════ CTO ══════════════════════════════ -->
     <record id="dashboard_cto" model="executive.dashboard">
-        <field name="name">CTO — Projekte &amp; Team</field>
+        <field name="name">CTO — Projects &amp; Team</field>
         <field name="role">cto</field>
         <field name="sequence">40</field>
         <field name="icon">fa-code</field>
@@ -368,7 +368,7 @@
 
     <record id="kpi_cto_tasks" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cto"/>
-        <field name="name">Aufgaben</field>
+        <field name="name">Tasks</field>
         <field name="sequence">10</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -383,7 +383,7 @@
 
     <record id="kpi_cto_employees" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cto"/>
-        <field name="name">Mitarbeiter</field>
+        <field name="name">Employees</field>
         <field name="sequence">20</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -399,7 +399,7 @@
 
     <record id="kpi_cto_tasks_per_ma" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cto"/>
-        <field name="name">Aufgaben/MA</field>
+        <field name="name">Tasks/Employee</field>
         <field name="sequence">30</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
@@ -410,7 +410,7 @@
 
     <record id="kpi_cto_chart_project" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cto"/>
-        <field name="name">Aufgaben nach Projekt</field>
+        <field name="name">Tasks by Project</field>
         <field name="sequence">100</field>
         <field name="display_type">chart_pie</field>
         <field name="source_type">model</field>
@@ -425,7 +425,7 @@
 
     <record id="kpi_cto_chart_stage" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cto"/>
-        <field name="name">Aufgaben nach Phase</field>
+        <field name="name">Tasks by Phase</field>
         <field name="sequence">110</field>
         <field name="display_type">chart_pie</field>
         <field name="source_type">model</field>
@@ -440,7 +440,7 @@
 
     <record id="kpi_cto_chart_dept" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cto"/>
-        <field name="name">Team nach Abteilung</field>
+        <field name="name">Team by Department</field>
         <field name="sequence">120</field>
         <field name="display_type">chart_pie</field>
         <field name="source_type">model</field>

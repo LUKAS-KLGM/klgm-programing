@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo noupdate="1">
+<odoo noupdate="0">
 
     <!-- ══════════════════════════════════════════════════════ -->
     <!-- CSO — Sales Performance Dashboard                     -->
@@ -18,7 +18,7 @@
 
     <record id="kpi_cso_revenue" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Umsatz (netto)</field>
+        <field name="name">Revenue (net)</field>
         <field name="sequence">10</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -34,7 +34,7 @@
 
     <record id="kpi_cso_orders" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Aufträge</field>
+        <field name="name">Orders</field>
         <field name="sequence">20</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -61,7 +61,7 @@
 
     <record id="kpi_cso_pipeline" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Pipeline-Wert</field>
+        <field name="name">Pipeline Value</field>
         <field name="sequence">30</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -80,7 +80,7 @@
     <!-- Alle Aktivitäten (gesamt) -->
     <record id="kpi_cso_activities_total" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Aktivitäten gesamt</field>
+        <field name="name">Total Activities</field>
         <field name="sequence">35</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -95,7 +95,7 @@
     <!-- Anrufe (erledigte Call-Aktivitäten) -->
     <record id="kpi_cso_calls" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Anrufe</field>
+        <field name="name">Calls</field>
         <field name="sequence">40</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -110,7 +110,7 @@
     <!-- E-Mails gesendet -->
     <record id="kpi_cso_emails" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">E-Mails</field>
+        <field name="name">Emails</field>
         <field name="sequence">45</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -160,7 +160,7 @@
     <!-- Rabattquote % -->
     <record id="kpi_cso_discount_rate" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Ø Rabatt</field>
+        <field name="name">Avg. Discount</field>
         <field name="description">Durchschnittlicher Rabatt in Prozent über alle Verkaufspositionen</field>
         <field name="sequence">53</field>
         <field name="display_type">scorecard</field>
@@ -180,7 +180,7 @@
     <!-- Neue Leads -->
     <record id="kpi_cso_new_leads" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Neue Leads</field>
+        <field name="name">New Leads</field>
         <field name="sequence">55</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -197,7 +197,7 @@
     <!-- Umsatz pro Vertriebsmitarbeiter -->
     <record id="kpi_cso_chart_revenue_user" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Umsatz pro Mitarbeiter</field>
+        <field name="name">Revenue per Employee</field>
         <field name="sequence">100</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -215,7 +215,7 @@
     <!-- Umsatz pro Vertriebsteam -->
     <record id="kpi_cso_chart_revenue_team" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Umsatz nach Team</field>
+        <field name="name">Revenue by Team</field>
         <field name="sequence">110</field>
         <field name="display_type">chart_doughnut</field>
         <field name="source_type">model</field>
@@ -232,7 +232,7 @@
     <!-- Pipeline nach Mitarbeiter -->
     <record id="kpi_cso_chart_pipeline_user" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Pipeline nach Mitarbeiter</field>
+        <field name="name">Pipeline by Employee</field>
         <field name="sequence">115</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -251,7 +251,7 @@
     <!-- Aktivitäten pro Mitarbeiter -->
     <record id="kpi_cso_chart_activities_user" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Aktivitäten pro Mitarbeiter</field>
+        <field name="name">Activities per Employee</field>
         <field name="sequence">120</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -268,7 +268,7 @@
     <!-- Aktivitäten nach Typ (Anrufe, E-Mails, Meetings, To-Dos) -->
     <record id="kpi_cso_chart_activities_type" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Aktivitäten nach Typ</field>
+        <field name="name">Activities by Type</field>
         <field name="sequence">125</field>
         <field name="display_type">chart_doughnut</field>
         <field name="source_type">model</field>
@@ -284,7 +284,7 @@
     <!-- Aktivitäten pro Monat (Trend) -->
     <record id="kpi_cso_chart_activities_trend" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Aktivitäten pro Monat</field>
+        <field name="name">Activities per Month</field>
         <field name="sequence">130</field>
         <field name="display_type">chart_line</field>
         <field name="source_type">model</field>
@@ -301,7 +301,7 @@
     <!-- Leads nach Phase (Pipeline Health) -->
     <record id="kpi_cso_chart_leads_stage" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Pipeline nach Phase</field>
+        <field name="name">Pipeline by Stage</field>
         <field name="sequence">135</field>
         <field name="display_type">chart_pie</field>
         <field name="source_type">model</field>
@@ -317,7 +317,7 @@
     <!-- Aufträge pro Monat (Trend) -->
     <record id="kpi_cso_chart_orders_trend" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Aufträge pro Monat</field>
+        <field name="name">Orders per Month</field>
         <field name="sequence">140</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -335,7 +335,7 @@
     <!-- Top Kunden -->
     <record id="kpi_cso_chart_top_customers" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Top Kunden</field>
+        <field name="name">Top Customers</field>
         <field name="sequence">145</field>
         <field name="display_type">chart_bar_h</field>
         <field name="source_type">model</field>
@@ -354,7 +354,7 @@
     <!-- Anrufe pro Mitarbeiter -->
     <record id="kpi_cso_chart_calls_user" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Anrufe pro Mitarbeiter</field>
+        <field name="name">Calls per Employee</field>
         <field name="sequence">150</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -370,7 +370,7 @@
     <!-- E-Mails pro Mitarbeiter -->
     <record id="kpi_cso_chart_emails_user" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">E-Mails pro Mitarbeiter</field>
+        <field name="name">Emails per Employee</field>
         <field name="sequence">155</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -386,7 +386,7 @@
     <!-- Meetings pro Mitarbeiter -->
     <record id="kpi_cso_chart_meetings_user" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">Meetings pro Mitarbeiter</field>
+        <field name="name">Meetings per Employee</field>
         <field name="sequence">160</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -402,7 +402,7 @@
     <!-- To-Dos pro Mitarbeiter -->
     <record id="kpi_cso_chart_todos_user" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
-        <field name="name">To-Dos pro Mitarbeiter</field>
+        <field name="name">To-Dos per Employee</field>
         <field name="sequence">165</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>

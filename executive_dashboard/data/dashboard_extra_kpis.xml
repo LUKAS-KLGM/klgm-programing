@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo noupdate="1">
+<odoo noupdate="0">
 
     <!-- ══════════════════════════════════════════ -->
     <!-- CEO: Additional Charts                     -->
     <!-- ══════════════════════════════════════════ -->
     <record id="kpi_ceo_chart_orders_month" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Aufträge pro Monat</field>
+        <field name="name">Orders per Month</field>
         <field name="sequence">130</field>
         <field name="display_type">chart_line</field>
         <field name="source_type">model</field>
@@ -21,7 +21,7 @@
 
     <record id="kpi_ceo_chart_leads_team" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Leads nach Vertriebsteam</field>
+        <field name="name">Leads by Sales Team</field>
         <field name="sequence">140</field>
         <field name="display_type">chart_doughnut</field>
         <field name="source_type">model</field>
@@ -39,7 +39,7 @@
     <!-- ══════════════════════════════════════════ -->
     <record id="kpi_ceo_repeat_rate" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Wiederkaufrate</field>
+        <field name="name">Repeat Purchase Rate</field>
         <field name="description">Anteil der Kunden mit mehr als einem Auftrag im Zeitraum</field>
         <field name="sequence">78</field>
         <field name="display_type">scorecard</field>
@@ -65,7 +65,7 @@ FROM (
     <!-- ══════════════════════════════════════════ -->
     <record id="kpi_ceo_chart_top_customers" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
-        <field name="name">Top Kunden</field>
+        <field name="name">Top Customers</field>
         <field name="sequence">150</field>
         <field name="display_type">chart_bar_h</field>
         <field name="source_type">model</field>
@@ -84,7 +84,7 @@ FROM (
     <!-- ══════════════════════════════════════════ -->
     <record id="kpi_cfo_chart_ap_month" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">Eingangsrechnungen pro Monat</field>
+        <field name="name">Vendor Bills per Month</field>
         <field name="sequence">120</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -100,7 +100,7 @@ FROM (
 
     <record id="kpi_cfo_chart_margin_month" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">Marge pro Monat</field>
+        <field name="name">Margin per Month</field>
         <field name="sequence">130</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -116,7 +116,7 @@ FROM (
 
     <record id="kpi_cfo_chart_quarter" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
-        <field name="name">Fakturierung pro Quartal</field>
+        <field name="name">Invoicing per Quarter</field>
         <field name="sequence">140</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -163,7 +163,7 @@ FROM (
 
     <record id="kpi_coo_chart_orders" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
-        <field name="name">Auftragseingang pro Monat</field>
+        <field name="name">Order Intake per Month</field>
         <field name="sequence">90</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -180,7 +180,7 @@ FROM (
 
     <record id="kpi_coo_chart_status" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
-        <field name="name">Lieferstatus</field>
+        <field name="name">Delivery Status</field>
         <field name="sequence">110</field>
         <field name="display_type">chart_pie</field>
         <field name="source_type">model</field>
@@ -195,7 +195,7 @@ FROM (
 
     <record id="kpi_coo_chart_purchase_month" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
-        <field name="name">Einkauf pro Monat</field>
+        <field name="name">Purchasing per Month</field>
         <field name="sequence">120</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -211,7 +211,7 @@ FROM (
 
     <record id="kpi_coo_chart_category" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
-        <field name="name">Umsatz nach Produktkategorie</field>
+        <field name="name">Revenue by Product Category</field>
         <field name="sequence">130</field>
         <field name="display_type">chart_doughnut</field>
         <field name="source_type">model</field>
@@ -229,7 +229,7 @@ FROM (
     <!-- ══════════════════════════════════════════ -->
     <record id="kpi_cto_chart_tasks_month" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cto"/>
-        <field name="name">Neue Aufgaben pro Monat</field>
+        <field name="name">New Tasks per Month</field>
         <field name="sequence">105</field>
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
@@ -245,7 +245,7 @@ FROM (
 
     <record id="kpi_cto_chart_assignee" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cto"/>
-        <field name="name">Aufgaben nach Verantwortlichem</field>
+        <field name="name">Tasks by Responsible</field>
         <field name="sequence">115</field>
         <field name="display_type">chart_doughnut</field>
         <field name="source_type">model</field>
