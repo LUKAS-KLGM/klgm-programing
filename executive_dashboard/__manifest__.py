@@ -59,6 +59,9 @@ Controlling — Executive Dashboards für Odoo 19
             "executive_dashboard/static/src/components/dashboard/dashboard.js",
             "executive_dashboard/static/src/components/dashboard/dashboard.xml",
         ],
+        "web.assets_tests": [
+            "executive_dashboard/static/src/tours/executive_dashboard_tour.js",
+        ],
     },
     "demo": [
         "data/demo_data.xml",
