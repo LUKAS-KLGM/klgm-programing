@@ -3,7 +3,7 @@
 
     <record id="menu_kjr_verleih" model="website.menu">
         <field name="name">Verleih</field>
-        <field name="url">/kjr/verleih</field>
+        <field name="url">/service/verleih</field>
         <field name="parent_id" ref="website.main_menu"/>
         <field name="sequence">63</field>
         <field name="website_id" ref="website.default_website"/>
@@ -14,7 +14,7 @@
             <div id="wrap" class="container mt-4 mb-5">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <h1 class="mb-0">Materialverleih</h1>
-                    <a href="/kjr/verleih/warenkorb" class="btn btn-outline-primary">
+                    <a href="/service/verleih/warenkorb" class="btn btn-outline-primary">
                         <i class="fa fa-shopping-cart me-1"/>Warenkorb
                         <span class="badge text-bg-primary" id="kjr_cart_count" t-esc="cart_count or 0"/>
                     </a>
@@ -55,10 +55,10 @@
                         </t>
                     </div>
                 </t>
-                <a href="/kjr/verleih/anfrage" class="btn btn-outline-primary btn-lg mt-3">
+                <a href="/service/verleih/anfrage" class="btn btn-outline-primary btn-lg mt-3">
                     <i class="fa fa-paper-plane me-1"/>Direktanfrage (ohne Warenkorb)
                 </a>
-                <a t-if="not is_public_user" href="/kjr/verleih/warenkorb" class="btn btn-primary btn-lg mt-3">
+                <a t-if="not is_public_user" href="/service/verleih/warenkorb" class="btn btn-primary btn-lg mt-3">
                     <i class="fa fa-shopping-cart me-1"/>Zum Warenkorb
                 </a>
             </div>
@@ -76,11 +76,11 @@
                 </t>
                 <t t-if="not lines">
                     <div class="alert alert-info">Der Warenkorb ist leer.
-                        <a href="/kjr/verleih" class="alert-link">Zum Katalog</a>
+                        <a href="/service/verleih" class="alert-link">Zum Katalog</a>
                     </div>
                 </t>
                 <t t-if="lines">
-                    <form method="post" action="/kjr/verleih/warenkorb">
+                    <form method="post" action="/service/verleih/warenkorb">
                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                         <div class="row">
                             <div class="col-md-4 mb-3">
@@ -127,7 +127,7 @@
                             </tbody>
                         </table>
                     </form>
-                    <form method="post" action="/kjr/verleih/checkout">
+                    <form method="post" action="/service/verleih/checkout">
                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                         <input type="hidden" name="date_from" t-att-value="date_from"/>
                         <input type="hidden" name="date_to" t-att-value="date_to"/>
@@ -148,7 +148,7 @@
                         <button type="submit" class="btn btn-primary btn-lg">
                             <i class="fa fa-paper-plane me-1"/>Anfrage absenden
                         </button>
-                        <a href="/kjr/verleih" class="btn btn-outline-secondary btn-lg">Weiter stöbern</a>
+                        <a href="/service/verleih" class="btn btn-outline-secondary btn-lg">Weiter stöbern</a>
                     </form>
                 </t>
             </div>
@@ -164,7 +164,7 @@
                         <t t-foreach="errors.values()" t-as="err"><li><t t-esc="err"/></li></t>
                     </ul></div>
                 </t>
-                <form method="post" action="/kjr/verleih/anfrage">
+                <form method="post" action="/service/verleih/anfrage">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                     <div class="row">
                         <div class="col-md-3 mb-3">
@@ -203,7 +203,7 @@
                         <textarea name="note" class="form-control" rows="2" t-esc="values.get('note','')"/>
                     </div>
                     <button type="submit" class="btn btn-primary btn-lg"><i class="fa fa-paper-plane me-1"/>Anfrage senden</button>
-                    <a href="/kjr/verleih" class="btn btn-outline-secondary btn-lg">Abbrechen</a>
+                    <a href="/service/verleih" class="btn btn-outline-secondary btn-lg">Abbrechen</a>
                 </form>
             </div>
         </t>

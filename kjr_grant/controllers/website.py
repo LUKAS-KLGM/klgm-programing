@@ -3,9 +3,9 @@
 Website-Controller für kjr_grant — öffentliche und User-Seiten.
 
 Routen:
-  GET      /kjr/zuschuss                   Öffentliche Landingpage
-  GET/POST /kjr/antrag-stellen             Antragsformular (Login)
-  GET      /kjr/antrag-bestaetigung        Bestätigungsseite
+  GET      /service/zuschuss                   Öffentliche Landingpage
+  GET/POST /service/antrag-stellen             Antragsformular (Login)
+  GET      /service/antrag-bestaetigung        Bestätigungsseite
 """
 import base64
 import logging
@@ -33,16 +33,16 @@ class KjrWebsiteController(http.Controller):
         commercial = user.partner_id.commercial_partner_id
         return [('is_kjr_member', '=', True), ('id', 'child_of', [commercial.id])]
 
-    @http.route('/kjr/zuschuss', type='http', auth='public', website=True, sitemap=True)
+    @http.route('/service/zuschuss', type='http', auth='public', website=True, sitemap=True)
     def kjr_landing(self, **kw):
         if not request.env.user._is_public():
-            return request.redirect('/kjr/antrag-stellen')
+            return request.redirect('/service/antrag-stellen')
         return request.render('kjr_grant.website_kjr_landing', {
             'page_name': 'kjr_landing',
         })
 
     @http.route(
-        '/kjr/antrag-stellen', type='http', auth='user',
+        '/service/antrag-stellen', type='http', auth='user',
         website=True, methods=['GET', 'POST'], sitemap=True,
     )
     def kjr_apply(self, **post):
@@ -185,7 +185,7 @@ class KjrWebsiteController(http.Controller):
                 'page_name': 'kjr_apply', 'errors': errors, 'values': values,
             })
 
-        return request.redirect(f'/kjr/antrag-bestaetigung?app_id={application.id}')
+        return request.redirect(f'/service/antrag-bestaetigung?app_id={application.id}')
 
     def _handle_participants(self, application, post):
         participant_model = request.env['kjr.grant.participant'].sudo()
@@ -254,7 +254,7 @@ class KjrWebsiteController(http.Controller):
                 subtype_xmlid='mail.mt_note',
             )
 
-    @http.route('/kjr/antrag-bestaetigung', type='http', auth='user', website=True)
+    @http.route('/service/antrag-bestaetigung', type='http', auth='user', website=True)
     def kjr_apply_confirmation(self, app_id=None, **kw):
         application = None
         if app_id:

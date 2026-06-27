@@ -15,7 +15,7 @@ ITEMS_PER_PAGE = 10
 
 class KjrFacilityWebsite(http.Controller):
 
-    @http.route('/kjr/einrichtungen', type='http', auth='public', website=True, sitemap=True)
+    @http.route('/service/einrichtungen', type='http', auth='public', website=True, sitemap=True)
     def facility_list(self, **kw):
         facilities = request.env['kjr.facility'].sudo().search([
             ('website_published', '=', True),
@@ -24,21 +24,21 @@ class KjrFacilityWebsite(http.Controller):
             'facilities': facilities, 'page_name': 'kjr_facilities',
         })
 
-    @http.route('/kjr/einrichtung/<int:facility_id>', type='http', auth='public', website=True, sitemap=True)
+    @http.route('/service/einrichtung/<int:facility_id>', type='http', auth='public', website=True, sitemap=True)
     def facility_detail(self, facility_id, **kw):
         facility = request.env['kjr.facility'].sudo().browse(facility_id)
         if not facility.exists() or not facility.website_published:
-            return request.redirect('/kjr/einrichtungen')
+            return request.redirect('/service/einrichtungen')
         return request.render('kjr_facility.website_facility_detail', {
             'facility': facility, 'page_name': 'kjr_facilities',
         })
 
-    @http.route('/kjr/einrichtung/<int:facility_id>/anfrage', type='http', auth='user',
+    @http.route('/service/einrichtung/<int:facility_id>/anfrage', type='http', auth='user',
                 website=True, methods=['GET', 'POST'])
     def facility_request(self, facility_id, **post):
         facility = request.env['kjr.facility'].sudo().browse(facility_id)
         if not facility.exists() or not facility.website_published:
-            return request.redirect('/kjr/einrichtungen')
+            return request.redirect('/service/einrichtungen')
 
         if request.httprequest.method == 'POST':
             errors = {}

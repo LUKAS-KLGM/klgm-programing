@@ -23,14 +23,14 @@
             <t t-if="not grants">
                 <div class="alert alert-info mt-3">
                     Noch keine Anträge vorhanden.
-                    <a href="/kjr/antrag-stellen" class="alert-link">Jetzt ersten Antrag stellen →</a>
+                    <a href="/service/antrag-stellen" class="alert-link">Jetzt ersten Antrag stellen →</a>
                 </div>
             </t>
             <t t-if="grants">
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Zuschussanträge</h5>
-                        <a href="/kjr/antrag-stellen" class="btn btn-primary btn-sm">
+                        <a href="/service/antrag-stellen" class="btn btn-primary btn-sm">
                             <i class="fa fa-plus me-1"/>Neuer Antrag
                         </a>
                     </div>
@@ -176,7 +176,7 @@
                         <div class="card mb-3">
                             <div class="card-header"><h5 class="mb-0">Dokumente hochladen</h5></div>
                             <div class="card-body">
-                                <form t-att-action="'/kjr/antrag/%d/upload' % grant.id"
+                                <form t-att-action="'/service/antrag/%d/upload' % grant.id"
                                       method="post" enctype="multipart/form-data">
                                     <input type="hidden" name="csrf_token"
                                            t-att-value="request.csrf_token()"/>
@@ -236,7 +236,7 @@
                                 </a>
                             </t>
                             <t t-if="grant.state == 'draft'">
-                                <a href="/kjr/antrag-stellen"
+                                <a href="/service/antrag-stellen"
                                    class="list-group-item list-group-item-action">
                                     <i class="fa fa-plus me-1"/>Weiteren Antrag stellen
                                 </a>
@@ -271,7 +271,7 @@
                                     Sie haben bereits ein Konto? Melden Sie sich an,
                                     um Ihren Antrag zu stellen oder bestehende Anträge einzusehen.
                                 </p>
-                                <a href="/web/login?redirect=/kjr/antrag-stellen"
+                                <a href="/web/login?redirect=/service/antrag-stellen"
                                    class="btn btn-primary btn-lg w-100">
                                     Anmelden
                                 </a>
@@ -287,7 +287,7 @@
                                     Erstmalig hier? Erstellen Sie ein Konto.
                                     Mehrere Personen pro Verband können sich registrieren.
                                 </p>
-                                <a href="/web/signup?redirect=/kjr/antrag-stellen"
+                                <a href="/web/signup?redirect=/service/antrag-stellen"
                                    class="btn btn-success btn-lg w-100">
                                     Konto erstellen
                                 </a>
@@ -339,7 +339,7 @@
                     </div>
                 </t>
 
-                <form method="post" action="/kjr/antrag-stellen"
+                <form method="post" action="/service/antrag-stellen"
                       enctype="multipart/form-data" novalidate="novalidate">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
@@ -788,7 +788,7 @@
                             <a href="/my/kjr-antraege" class="btn btn-outline-secondary">
                                 Alle meine Anträge
                             </a>
-                            <a href="/kjr/antrag-stellen" class="btn btn-outline-primary">
+                            <a href="/service/antrag-stellen" class="btn btn-outline-primary">
                                 Weiteren Antrag stellen
                             </a>
                         </div>

@@ -13,7 +13,7 @@ document.addEventListener("click", async (ev) => {
     const qty = qtyInput ? parseInt(qtyInput.value, 10) || 1 : 1;
     btn.disabled = true;
     try {
-        const result = await rpc("/kjr/verleih/cart/add", { item_id: itemId, qty: qty });
+        const result = await rpc("/service/verleih/cart/add", { item_id: itemId, qty: qty });
         if (result && result.error) {
             alert(result.error);
         } else if (result) {

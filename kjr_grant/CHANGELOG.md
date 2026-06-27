@@ -1,5 +1,16 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.8.1.0
+
+### Geändert
+- **Öffentlicher URL-Präfix `/kjr/…` → `/service/…`** umbenannt, damit die Seiten
+  ins Webseiten-Corporate-Design/-Menü eingebunden werden können. Betroffen:
+  `/service/zuschuss`, `/service/antrag-stellen`, `/service/antrag-bestaetigung`, `/service/antrag/<id>/upload`.
+  Portal-Routen unter `/my/…` bleiben unverändert (Odoo-Standard).
+  Hinweis: Das Website-Menü ist `noupdate` – bei einem **Bestandsupgrade** muss der
+  Menü-Link einmalig manuell auf `/service/…` gesetzt werden; Frischinstallationen
+  übernehmen die neue URL automatisch.
+
 ## 19.0.6.0.0 (2026-06-19) — Richtlinien-Feinabgleich, § 4.9 BayRKG & Härtung
 
 Vollständiger Abgleich der Zuschussverwaltung gegen den verifizierten Wortlaut der

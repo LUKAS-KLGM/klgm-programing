@@ -5,7 +5,7 @@ Portal-Controller für kjr_grant — /my/ Routen für eingeloggte User.
 Routen:
   GET      /my/kjr-antraege[/page/<n>]      Portal-Liste
   GET      /my/kjr-antraege/<id>            Portal-Detailansicht
-  POST     /kjr/antrag/<id>/upload          Datei-Upload für bestehenden Antrag
+  POST     /service/antrag/<id>/upload          Datei-Upload für bestehenden Antrag
 """
 import base64
 import logging
@@ -87,7 +87,7 @@ class KjrPortalController(CustomerPortal):
         })
 
     @http.route(
-        '/kjr/antrag/<int:app_id>/upload',
+        '/service/antrag/<int:app_id>/upload',
         type='http', auth='user', website=True, methods=['POST'], csrf=True,
     )
     def kjr_upload_attachment(self, app_id, **kw):

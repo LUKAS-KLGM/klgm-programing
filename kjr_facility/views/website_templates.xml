@@ -5,7 +5,7 @@
     <data noupdate="1">
         <record id="menu_kjr_einrichtungen" model="website.menu">
             <field name="name">Einrichtungen</field>
-            <field name="url">/kjr/einrichtungen</field>
+            <field name="url">/service/einrichtungen</field>
             <field name="parent_id" ref="website.main_menu"/>
             <field name="sequence">62</field>
             <field name="website_id" ref="website.default_website"/>
@@ -33,7 +33,7 @@
                                         · <i class="fa fa-bed me-1"/><t t-esc="facility.bed_total"/> Betten
                                         · max. <t t-esc="facility.capacity"/> Pers.
                                     </div>
-                                    <a t-attf-href="/kjr/einrichtung/#{facility.id}" class="btn btn-primary mt-auto">Details &amp; Anfrage</a>
+                                    <a t-attf-href="/service/einrichtung/#{facility.id}" class="btn btn-primary mt-auto">Details &amp; Anfrage</a>
                                 </div>
                             </div>
                         </div>
@@ -52,7 +52,7 @@
             <div id="wrap" class="container mt-4 mb-5">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="/kjr/einrichtungen">Einrichtungen</a></li>
+                        <li class="breadcrumb-item"><a href="/service/einrichtungen">Einrichtungen</a></li>
                         <li class="breadcrumb-item active"><t t-esc="facility.name"/></li>
                     </ol>
                 </nav>
@@ -83,7 +83,7 @@
                                         </t>
                                     </div>
                                 </t>
-                                <a t-attf-href="/kjr/einrichtung/#{facility.id}/anfrage"
+                                <a t-attf-href="/service/einrichtung/#{facility.id}/anfrage"
                                    class="btn btn-primary w-100 mt-3">Buchung anfragen</a>
                             </div>
                         </div>
@@ -103,7 +103,7 @@
                         <t t-foreach="errors.values()" t-as="err"><li><t t-esc="err"/></li></t>
                     </ul></div>
                 </t>
-                <form method="post" t-attf-action="/kjr/einrichtung/#{facility.id}/anfrage">
+                <form method="post" t-attf-action="/service/einrichtung/#{facility.id}/anfrage">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -159,7 +159,7 @@
                     <button type="submit" class="btn btn-primary btn-lg">
                         <i class="fa fa-paper-plane me-1"/>Anfrage senden
                     </button>
-                    <a t-attf-href="/kjr/einrichtung/#{facility.id}" class="btn btn-outline-secondary btn-lg">Abbrechen</a>
+                    <a t-attf-href="/service/einrichtung/#{facility.id}" class="btn btn-outline-secondary btn-lg">Abbrechen</a>
                 </form>
             </div>
         </t>

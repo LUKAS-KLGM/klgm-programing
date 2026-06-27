@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Materialverleih',
-    'version': '19.0.2.1.0',
+    'version': '19.0.2.2.0',
     'category': 'Custom/KJR',
     'summary': 'Verleih von Material (Fahrzeuge, Zelte, Technik, Sport, Küche, Spielgeräte) mit '
                'Bestand, Verfügbarkeitsprüfung, Mitgliedertarif, Kaution, Website-Anfrage & Vertrag',

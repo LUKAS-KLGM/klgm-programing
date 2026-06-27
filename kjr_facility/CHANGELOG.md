@@ -1,5 +1,16 @@
 # Changelog — kjr_facility
 
+## 19.0.2.2.0
+
+### Geändert
+- **Öffentlicher URL-Präfix `/kjr/…` → `/service/…`** umbenannt, damit die Seiten
+  ins Webseiten-Corporate-Design/-Menü eingebunden werden können. Betroffen:
+  `/service/einrichtungen`, `/service/einrichtung/<id>`, `/service/einrichtung/<id>/anfrage`.
+  Portal-Routen unter `/my/…` bleiben unverändert (Odoo-Standard).
+  Hinweis: Das Website-Menü ist `noupdate` – bei einem **Bestandsupgrade** muss der
+  Menü-Link einmalig manuell auf `/service/…` gesetzt werden; Frischinstallationen
+  übernehmen die neue URL automatisch.
+
 ## 19.0.2.0.0
 
 Transcriptbasierte Lücken (Gruppenhaus/Tagungshaus) additiv umgesetzt.

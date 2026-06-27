@@ -40,7 +40,7 @@ class KjrRentalWebsite(http.Controller):
     def _cart_count(self):
         return sum(e['qty'] for e in self._get_cart())
 
-    @http.route('/kjr/verleih', type='http', auth='public', website=True, sitemap=True)
+    @http.route('/service/verleih', type='http', auth='public', website=True, sitemap=True)
     def rental_catalog(self, **kw):
         items = request.env['kjr.rental.item'].sudo().search([('website_published', '=', True)])
         by_cat = {}
@@ -56,7 +56,7 @@ class KjrRentalWebsite(http.Controller):
     # ------------------------------------------------------------------
     # R1: Warenkorb / Sammelbestellung
     # ------------------------------------------------------------------
-    @http.route('/kjr/verleih/cart/add', type='json', auth='user', website=True, methods=['POST'])
+    @http.route('/service/verleih/cart/add', type='json', auth='user', website=True, methods=['POST'])
     def rental_cart_add(self, item_id=None, qty=1, **kw):
         try:
             item_id = int(item_id)
@@ -96,7 +96,7 @@ class KjrRentalWebsite(http.Controller):
             })
         return lines
 
-    @http.route('/kjr/verleih/warenkorb', type='http', auth='user', website=True,
+    @http.route('/service/verleih/warenkorb', type='http', auth='user', website=True,
                 methods=['GET', 'POST'])
     def rental_cart_view(self, **post):
         errors = {}
@@ -142,7 +142,7 @@ class KjrRentalWebsite(http.Controller):
             'date_from': raw_from, 'date_to': raw_to,
         })
 
-    @http.route('/kjr/verleih/checkout', type='http', auth='user', website=True,
+    @http.route('/service/verleih/checkout', type='http', auth='user', website=True,
                 methods=['POST'])
     def rental_checkout(self, **post):
         cart = self._get_cart()
@@ -200,7 +200,7 @@ class KjrRentalWebsite(http.Controller):
         self._save_cart([])
         return request.redirect('/my/ausleihen/%d' % order.id)
 
-    @http.route('/kjr/verleih/anfrage', type='http', auth='user', website=True, methods=['GET', 'POST'])
+    @http.route('/service/verleih/anfrage', type='http', auth='user', website=True, methods=['GET', 'POST'])
     def rental_request(self, **post):
         items = request.env['kjr.rental.item'].sudo().search([('website_published', '=', True)])
         if request.httprequest.method == 'POST':
