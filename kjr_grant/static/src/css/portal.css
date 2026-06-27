@@ -17,6 +17,45 @@
     margin-bottom: 0;
 }
 
+/* ------------------------------------------------------------------ */
+/* Zuschussantragsformular (website_kjr_apply) — Akzentfarbe #45B49F   */
+/* Nur auf das Antragsformular gescoped, nicht auf die übrige Website. */
+/* ------------------------------------------------------------------ */
+.kjr-apply-form .bg-primary {
+    background-color: #45B49F !important;
+}
+.kjr-apply-form .btn-primary {
+    --bs-btn-bg: #45B49F;
+    --bs-btn-border-color: #45B49F;
+    --bs-btn-hover-bg: #3d9e8c;
+    --bs-btn-hover-border-color: #3d9e8c;
+    --bs-btn-active-bg: #3d9e8c;
+    --bs-btn-active-border-color: #3d9e8c;
+    --bs-btn-disabled-bg: #45B49F;
+    --bs-btn-disabled-border-color: #45B49F;
+}
+.kjr-apply-form .btn-outline-primary {
+    --bs-btn-color: #45B49F;
+    --bs-btn-border-color: #45B49F;
+    --bs-btn-hover-bg: #45B49F;
+    --bs-btn-hover-border-color: #45B49F;
+    --bs-btn-active-bg: #3d9e8c;
+    --bs-btn-active-border-color: #3d9e8c;
+}
+.kjr-apply-form .text-primary {
+    color: #45B49F !important;
+}
+.kjr-apply-form .form-control:focus,
+.kjr-apply-form .form-select:focus,
+.kjr-apply-form .form-check-input:focus {
+    border-color: #45B49F;
+    box-shadow: 0 0 0 0.25rem rgba(69, 180, 159, 0.25);
+}
+.kjr-apply-form .form-check-input:checked {
+    background-color: #45B49F;
+    border-color: #45B49F;
+}
+
 /* Bescheid-PDF */
 @media print {
     .kjr-bescheid { page-break-inside: avoid; }

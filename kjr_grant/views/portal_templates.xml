@@ -316,7 +316,7 @@
     <!-- ── Website: Antragsformular ───────────────────────────────────── -->
     <template id="website_kjr_apply" name="KJR Zuschussantrag stellen">
         <t t-call="website.layout">
-            <div id="wrap" class="container mt-4 mb-5">
+            <div id="wrap" class="container mt-4 mb-5 kjr-apply-form">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb">
                         <li class="breadcrumb-item"><a href="/">Start</a></li>

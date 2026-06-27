@@ -1,5 +1,13 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.8.3.0
+
+### Geändert
+- **Zuschussantragsformular** (`/service/antrag-stellen`) auf die Akzentfarbe
+  `#45B49F` (Teal) umgestellt: Sektions-Header, Buttons, Fokus-Rahmen und
+  Auswahlfelder. Per Scope-Klasse `kjr-apply-form` nur auf das Formular begrenzt
+  (übrige Website/Portal unberührt).
+
 ## 19.0.8.2.0
 
 ### Neu
