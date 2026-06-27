@@ -1,5 +1,12 @@
 # Changelog – KJR Materialverleih
 
+## 19.0.2.3.0
+
+### Neu
+- **301-Weiterleitungen** der alten `/kjr/…`-Pfade auf `/service/…`
+  (`/kjr/verleih`, `/kjr/verleih/warenkorb`), damit bereits geteilte/indexierte alte Links nicht ins Leere laufen.
+  Eigene Controller-Datei `controllers/legacy_redirects.py` (nur GET-Landingpages).
+
 ## 19.0.2.2.0
 
 ### Geändert

@@ -1,5 +1,12 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.8.2.0
+
+### Neu
+- **301-Weiterleitungen** der alten `/kjr/…`-Pfade auf `/service/…`
+  (`/kjr/zuschuss`, `/kjr/antrag-stellen`, `/kjr/antrag-bestaetigung`), damit bereits geteilte/indexierte alte Links nicht ins Leere laufen.
+  Eigene Controller-Datei `controllers/legacy_redirects.py` (nur GET-Landingpages).
+
 ## 19.0.8.1.0
 
 ### Geändert
