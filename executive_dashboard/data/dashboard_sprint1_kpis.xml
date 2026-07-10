@@ -246,7 +246,11 @@ WHERE aml.account_id = (
         <field name="target_critical">60</field>
     </record>
 
-    <!-- Lagerbestand (Wert) -->
+    <!-- Lagerbestand (Wert). SQL statt Model-KPI, weil stock.quant.value ein
+         reines compute-Feld ohne store=True ist (read_group kann es nicht
+         aggregieren). standard_price ist company_dependent, daher JSONB in
+         der DB (z.B. {"1": 120.0}) — jsonb_each_text greift den ersten Wert
+         unabhängig von der tatsächlichen company_id. -->
     <record id="kpi_coo_stock_value" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
         <field name="name">Inventory Value</field>
@@ -254,7 +258,7 @@ WHERE aml.account_id = (
         <field name="sequence">32</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">sql</field>
-        <field name="sql_query">SELECT COALESCE(SUM(sq.quantity * pp.standard_price), 0)
+        <field name="sql_query">SELECT COALESCE(SUM(sq.quantity * COALESCE((SELECT value::numeric FROM jsonb_each_text(pp.standard_price) LIMIT 1), 0)), 0)
 FROM stock_quant sq
 JOIN product_product pp ON pp.id = sq.product_id
 JOIN stock_location sl ON sl.id = sq.location_id
