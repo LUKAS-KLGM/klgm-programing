@@ -236,10 +236,16 @@ class DashboardKPI(models.Model):
                 (effective_date_field, '<=', str(date_to)),
             ]
 
+        # read_group defaults to SUM when no aggregation function is given,
+        # so avg/min/max need an explicit 'field:agg' spec — otherwise they
+        # silently return the sum instead.
+        measure_spec = (f'{self.measure_field}:{self.aggregate}'
+                         if self.aggregate in ('avg', 'min', 'max') else self.measure_field)
+
         if self.aggregate == 'count':
             value = Model.search_count(current_domain)
         else:
-            results = Model.read_group(current_domain, [self.measure_field], [], limit=1)
+            results = Model.read_group(current_domain, [measure_spec], [], limit=1)
             value = (results[0].get(self.measure_field, 0) or 0) if results else 0
 
         # Previous period (depending on comparison mode)
@@ -274,7 +280,7 @@ class DashboardKPI(models.Model):
                 if self.aggregate == 'count':
                     previous = Model.search_count(prev_domain)
                 else:
-                    results = Model.read_group(prev_domain, [self.measure_field], [], limit=1)
+                    results = Model.read_group(prev_domain, [measure_spec], [], limit=1)
                     previous = (results[0].get(self.measure_field, 0) or 0) if results else 0
 
         # Chart data (grouped) — limit 10 for top charts, sort by value desc for bar/pie
