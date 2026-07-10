@@ -51,7 +51,7 @@
         <field name="sequence">30</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
-        <field name="formula">kpi('Umsatz (netto)') / kpi('Aufträge') if kpi('Aufträge') else 0</field>
+        <field name="formula">kpi('Revenue (net)') / kpi('Orders') if kpi('Orders') else 0</field>
         <field name="unit">EUR</field>
         <field name="color">#F0FFF4</field>
         <field name="show_comparison">False</field>
@@ -219,7 +219,7 @@
         <field name="sequence">25</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
-        <field name="formula">kpi('Marge') / kpi('Fakturierung') * 100 if kpi('Fakturierung') else 0</field>
+        <field name="formula">kpi('Margin') / kpi('Invoicing') * 100 if kpi('Invoicing') else 0</field>
         <field name="unit">%</field>
         <field name="color">#EFF6FF</field>
         <field name="show_comparison">False</field>
@@ -403,7 +403,7 @@
         <field name="sequence">30</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
-        <field name="formula">kpi('Aufgaben') / kpi('Mitarbeiter') if kpi('Mitarbeiter') else 0</field>
+        <field name="formula">kpi('Tasks') / kpi('Employees') if kpi('Employees') else 0</field>
         <field name="color">#FFF7ED</field>
         <field name="show_comparison">False</field>
     </record>

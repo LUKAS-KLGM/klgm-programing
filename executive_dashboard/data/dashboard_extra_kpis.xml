@@ -155,7 +155,7 @@ FROM (
         <field name="sequence">15</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
-        <field name="formula">kpi('_Umsatz') / kpi('Aufträge') if kpi('Aufträge') else 0</field>
+        <field name="formula">kpi('_Umsatz') / kpi('Orders') if kpi('Orders') else 0</field>
         <field name="unit">EUR</field>
         <field name="color">#F0FFF4</field>
         <field name="show_comparison">False</field>
