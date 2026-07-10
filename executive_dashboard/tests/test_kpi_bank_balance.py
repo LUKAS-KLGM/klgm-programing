@@ -11,7 +11,10 @@ bereits einen Kontenplan hat, wird der VORHANDENE Bankjournal
 wiederverwendet statt ein isolierter neuer angelegt. Die Fallback-Suche
 in _compute_bank_balance() ("irgendein Bankjournal") würde dann
 versehentlich die echten Demo-Buchungen mitsummieren. Deshalb explizit
-eine unabhängige Test-Company erzwingen.
+eine unabhängige Test-Company erzwingen — mit eigenem Namen statt
+Odoos setup_independent_company(), das hart auf 'company_1_data'
+codiert ist und mit anderen Odoo-Core-Tests kollidieren kann, die
+denselben Namen verwenden (z.B. l10n_account_edi_ubl_cii_tests).
 """
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.tests import tagged
@@ -23,7 +26,7 @@ class TestKpiBankBalance(AccountTestInvoicingCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        company = cls.setup_independent_company()
+        company = cls._create_company(name='ED Bank Test Company')
         cls.company_data = cls.collect_company_accounting_data(company)
         cls.dashboard = cls.env['executive.dashboard'].create({'name': 'ED Bank Test Dashboard'})
         cls.bank_journal = cls.company_data['default_journal_bank']
