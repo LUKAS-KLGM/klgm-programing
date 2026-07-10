@@ -23,7 +23,13 @@ class TestKpiBankBalance(AccountTestInvoicingCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        company = cls.setup_independent_company()
+        # setup_independent_company() creates a company hardcoded to the name
+        # 'company_1_data'. Chart-of-accounts loading commits internally, so
+        # on a persistent (non-throwaway) test database a company from a
+        # prior test run can survive even though the rest of that run rolled
+        # back — reuse it instead of colliding on the unique name constraint.
+        existing = cls.env['res.company'].sudo().search([('name', '=', 'company_1_data')], limit=1)
+        company = existing or cls.setup_independent_company()
         cls.company_data = cls.collect_company_accounting_data(company)
         cls.dashboard = cls.env['executive.dashboard'].create({'name': 'ED Bank Test Dashboard'})
         cls.bank_journal = cls.company_data['default_journal_bank']
