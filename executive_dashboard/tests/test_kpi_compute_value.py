@@ -3,6 +3,8 @@
 Tests für executive.dashboard.kpi._compute_value(): Orchestrierung über
 alle source_type-Zweige, change_pct-Berechnung/Cap und Target-Ampel.
 """
+from unittest.mock import patch
+
 from odoo.tests.common import TransactionCase
 from odoo.tests import tagged
 
@@ -48,12 +50,15 @@ class TestKpiComputeValue(TransactionCase):
         self.assertEqual(result['value'], 555)
 
     def test_bank_balance_source_dispatches_correctly(self):
-        # No bank journal exists in this minimal env, so _compute_bank_balance
-        # itself returns 0 — this only verifies _compute_value dispatches to
-        # it correctly; the balance math is covered in test_kpi_bank_balance.py.
+        # Only verifies _compute_value() routes source_type='bank_balance' to
+        # _compute_bank_balance() and uses its return value — the balance math
+        # itself is covered by real posted moves in test_kpi_bank_balance.py.
+        # Stubbed here because the real value depends on whatever bank
+        # journals/moves exist in the database (e.g. the App Store demo data).
         kpi = self._kpi(source_type='bank_balance')
-        result = kpi._compute_value('last_30_days')
-        self.assertEqual(result['value'], 0)
+        with patch.object(type(kpi), '_compute_bank_balance', return_value=4321.0):
+            result = kpi._compute_value('last_30_days')
+        self.assertEqual(result['value'], 4321.0)
 
     def test_formula_source_with_kpi_cache(self):
         kpi = self._kpi(source_type='formula', formula="kpi('Revenue') * 2")

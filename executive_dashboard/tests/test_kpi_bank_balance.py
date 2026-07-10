@@ -4,6 +4,14 @@ Tests für executive.dashboard.kpi._compute_bank_balance() gegen einen
 echten, geposteten account.move auf einem Bankjournal. Nutzt Odoos
 offizielles AccountTestInvoicingCommon-Mixin für ein Mindest-Chart-of-
 Accounts (Journal, Konten), statt das manuell nachzubauen.
+
+AccountTestInvoicingCommon.setUpClass() operiert auf cls.env.company —
+wenn diese Company (wie hier, mit den Demo-Daten für Screenshots)
+bereits einen Kontenplan hat, wird der VORHANDENE Bankjournal
+wiederverwendet statt ein isolierter neuer angelegt. Die Fallback-Suche
+in _compute_bank_balance() ("irgendein Bankjournal") würde dann
+versehentlich die echten Demo-Buchungen mitsummieren. Deshalb explizit
+eine unabhängige Test-Company erzwingen.
 """
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.tests import tagged
@@ -15,6 +23,8 @@ class TestKpiBankBalance(AccountTestInvoicingCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        company = cls.setup_independent_company()
+        cls.company_data = cls.collect_company_accounting_data(company)
         cls.dashboard = cls.env['executive.dashboard'].create({'name': 'ED Bank Test Dashboard'})
         cls.bank_journal = cls.company_data['default_journal_bank']
 
@@ -23,6 +33,17 @@ class TestKpiBankBalance(AccountTestInvoicingCommon):
         vals.setdefault('name', 'Bank KPI')
         vals.setdefault('source_type', 'bank_balance')
         return self.env['executive.dashboard.kpi'].create(vals)
+
+    def _archive_other_bank_journals(self):
+        """_compute_bank_balance()'s fallback chain searches for ANY bank
+        journal system-wide, unscoped by company. Archive every bank
+        journal except this test's own (across all companies, including
+        the real demo data seeded for App Store screenshots) so that
+        fallback search is unambiguous."""
+        all_companies = self.env['res.company'].sudo().search([])
+        Journal = self.env['account.journal'].sudo().with_context(allowed_company_ids=all_companies.ids)
+        others = Journal.search([('type', '=', 'bank'), ('id', '!=', self.bank_journal.id)])
+        others.write({'active': False})
 
     def _post_move(self, journal, bank_account, amount, revenue_side=True):
         """Post a simple two-line move on `journal`: `amount` moves through
@@ -70,6 +91,7 @@ class TestKpiBankBalance(AccountTestInvoicingCommon):
         self.assertEqual(kpi._compute_bank_balance(), 500.0)
 
     def test_falls_back_to_first_bank_journal_when_nothing_configured(self):
+        self._archive_other_bank_journals()
         self._post_move(self.bank_journal, self.bank_journal.default_account_id, 125.0, revenue_side=True)
         self.env['ir.config_parameter'].sudo().set_param('executive_dashboard.bank_journal_id', '0')
         kpi = self._kpi()
@@ -90,6 +112,8 @@ class TestKpiBankBalance(AccountTestInvoicingCommon):
         self.assertEqual(kpi._compute_bank_balance(), 0)
 
     def test_no_bank_journal_anywhere_returns_zero(self):
-        self.env['account.journal'].search([('type', '=', 'bank')]).write({'type': 'cash'})
+        all_companies = self.env['res.company'].sudo().search([])
+        Journal = self.env['account.journal'].sudo().with_context(allowed_company_ids=all_companies.ids)
+        Journal.search([('type', '=', 'bank')]).write({'type': 'cash'})
         kpi = self._kpi()
         self.assertEqual(kpi._compute_bank_balance(), 0)
