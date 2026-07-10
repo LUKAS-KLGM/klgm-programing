@@ -17,370 +17,487 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 # ── Period options ──
+#. module: executive_dashboard
 msgid "7 Days"
 msgstr "7 Tage"
 
+#. module: executive_dashboard
 msgid "30 Days"
 msgstr "30 Tage"
 
+#. module: executive_dashboard
 msgid "90 Days"
 msgstr "90 Tage"
 
+#. module: executive_dashboard
 msgid "This Month"
 msgstr "Dieser Monat"
 
+#. module: executive_dashboard
 msgid "This Quarter"
 msgstr "Dieses Quartal"
 
+#. module: executive_dashboard
 msgid "This Year"
 msgstr "Dieses Jahr"
 
+#. module: executive_dashboard
 msgid "Last Year"
 msgstr "Letztes Jahr"
 
+#. module: executive_dashboard
 msgid "All Time"
 msgstr "Jemals"
 
+#. module: executive_dashboard
 msgid "Custom..."
 msgstr "Benutzerdefiniert..."
 
 # ── Comparison options ──
+#. module: executive_dashboard
 msgid "Previous Period"
 msgstr "Vorperiode"
 
+#. module: executive_dashboard
 msgid "Previous Year"
 msgstr "Vorjahr"
 
+#. module: executive_dashboard
 msgid "Budget"
 msgstr "Budget"
 
+#. module: executive_dashboard
 msgid "vs. Previous Period"
 msgstr "vs. Vorperiode"
 
 # ── Display / Chart types ──
+#. module: executive_dashboard
 msgid "Scorecard"
 msgstr "Scorecard"
 
+#. module: executive_dashboard
 msgid "Bar"
 msgstr "Balken"
 
+#. module: executive_dashboard
 msgid "Bar (H)"
 msgstr "Balken (H)"
 
+#. module: executive_dashboard
 msgid "Line"
 msgstr "Linie"
 
+#. module: executive_dashboard
 msgid "Pie"
 msgstr "Torte"
 
+#. module: executive_dashboard
 msgid "Donut"
 msgstr "Ring"
 
+#. module: executive_dashboard
 msgid "Gauge"
 msgstr "Gauge"
 
+#. module: executive_dashboard
 msgid "Table"
 msgstr "Tabelle"
 
+#. module: executive_dashboard
 msgid "Display"
 msgstr "Darstellung"
 
 # ── Width options ──
+#. module: executive_dashboard
 msgid "Width"
 msgstr "Breite"
 
+#. module: executive_dashboard
 msgid "Full Width"
 msgstr "Volle Breite"
 
 # ── Aggregate options ──
+#. module: executive_dashboard
 msgid "Sum"
 msgstr "Summe"
 
+#. module: executive_dashboard
 msgid "Average"
 msgstr "Durchschnitt"
 
+#. module: executive_dashboard
 msgid "Count"
 msgstr "Anzahl"
 
+#. module: executive_dashboard
 msgid "Minimum"
 msgstr "Minimum"
 
+#. module: executive_dashboard
 msgid "Maximum"
 msgstr "Maximum"
 
+#. module: executive_dashboard
 msgid "Aggregation"
 msgstr "Aggregation"
 
 # ── Icon options ──
+#. module: executive_dashboard
 msgid "Dashboard"
 msgstr "Dashboard"
 
+#. module: executive_dashboard
 msgid "Company"
 msgstr "Unternehmen"
 
+#. module: executive_dashboard
 msgid "Finance"
 msgstr "Finanzen"
 
+#. module: executive_dashboard
 msgid "Operations"
 msgstr "Operations"
 
+#. module: executive_dashboard
 msgid "Technology"
 msgstr "Technik"
 
+#. module: executive_dashboard
 msgid "Sales"
 msgstr "Vertrieb"
 
+#. module: executive_dashboard
 msgid "Team"
 msgstr "Team"
 
+#. module: executive_dashboard
 msgid "E-Commerce"
 msgstr "E-Commerce"
 
 # ── Activity state options ──
+#. module: executive_dashboard
 msgid "All"
 msgstr "Alle"
 
+#. module: executive_dashboard
 msgid "Planned"
 msgstr "Geplant"
 
+#. module: executive_dashboard
 msgid "Done"
 msgstr "Erledigt"
 
+#. module: executive_dashboard
 msgid "Activities"
 msgstr "Aktivitäten"
 
 # ── Header buttons ──
+#. module: executive_dashboard
 msgid "AI Insights"
 msgstr "AI Insights"
 
+#. module: executive_dashboard
 msgid "Configuration"
 msgstr "Konfiguration"
 
+#. module: executive_dashboard
 msgid "Add KPI"
 msgstr "KPI hinzufügen"
 
+#. module: executive_dashboard
 msgid "Industry Templates"
 msgstr "Branchen-Templates"
 
+#. module: executive_dashboard
 msgid "Export"
 msgstr "Exportieren"
 
+#. module: executive_dashboard
 msgid "Chart as PNG"
 msgstr "Chart als PNG"
 
+#. module: executive_dashboard
 msgid "Normal"
 msgstr "Normal"
 
+#. module: executive_dashboard
 msgid "Fullscreen"
 msgstr "Vollbild"
 
+#. module: executive_dashboard
 msgid "Refresh"
 msgstr "Aktualisieren"
 
+#. module: executive_dashboard
 msgid "Light Mode"
 msgstr "Light Mode"
 
+#. module: executive_dashboard
 msgid "Dark Mode"
 msgstr "Dark Mode"
 
+#. module: executive_dashboard
 msgid "+ Create new..."
 msgstr "+ Neu erstellen..."
 
+#. module: executive_dashboard
 msgid "Remove as default dashboard"
 msgstr "Standard-Dashboard entfernen"
 
+#. module: executive_dashboard
 msgid "Set as default dashboard"
 msgstr "Als Standard-Dashboard beim Öffnen setzen"
 
 # ── Loading / Empty states ──
+#. module: executive_dashboard
 msgid "Loading data..."
 msgstr "Daten werden geladen..."
 
+#. module: executive_dashboard
 msgid "No Dashboards Configured"
 msgstr "Keine Dashboards konfiguriert"
 
+#. module: executive_dashboard
 msgid "Create a dashboard from an industry template or go to Configuration."
 msgstr "Erstelle ein Dashboard aus einem Branchen-Template oder gehe zu Konfiguration."
 
+#. module: executive_dashboard
 msgid "Use Template"
 msgstr "Template verwenden"
 
+#. module: executive_dashboard
 msgid "No Data"
 msgstr "Keine Daten"
 
 # ── Insights panel ──
+#. module: executive_dashboard
 msgid "Summary"
 msgstr "Zusammenfassung"
 
+#. module: executive_dashboard
 msgid "Add an API key (Anthropic or OpenAI) in the Dashboard Configuration to enable AI Insights."
 msgstr "Hinterlege einen API Key (Anthropic oder OpenAI) in der Dashboard-Konfiguration um AI Insights zu aktivieren."
 
 # ── Templates dialog ──
+#. module: executive_dashboard
 msgid "Create a pre-configured dashboard from an industry template:"
 msgstr "Erstelle ein vorkonfiguriertes Dashboard aus einem Branchen-Template:"
 
 # ── Dashboard Creator ──
+#. module: executive_dashboard
 msgid "Create Dashboard"
 msgstr "Dashboard erstellen"
 
+#. module: executive_dashboard
 msgid "Dashboard Name *"
 msgstr "Dashboard-Name *"
 
+#. module: executive_dashboard
 msgid "e.g. My Dashboard"
 msgstr "z.B. Mein Dashboard"
 
+#. module: executive_dashboard
 msgid "Icon"
 msgstr "Icon"
 
+#. module: executive_dashboard
 msgid "Select KPIs"
 msgstr "KPIs auswählen"
 
+#. module: executive_dashboard
 msgid "selected"
 msgstr "ausgewählt"
 
+#. module: executive_dashboard
 msgid "Cancel"
 msgstr "Abbrechen"
 
+#. module: executive_dashboard
 msgid "Create"
 msgstr "Erstellen"
 
+#. module: executive_dashboard
 msgid "Please enter a name and select at least one KPI."
 msgstr "Bitte Name eingeben und mindestens einen KPI auswählen."
 
+#. module: executive_dashboard
 msgid "Please enter a dashboard name."
 msgstr "Bitte einen Dashboard-Namen eingeben."
 
+#. module: executive_dashboard
 msgid "Please select at least one KPI."
 msgstr "Bitte mindestens einen KPI auswählen."
 
 # ── KPI Builder ──
+#. module: executive_dashboard
 msgid "Create KPI"
 msgstr "KPI erstellen"
 
+#. module: executive_dashboard
 msgid "Name *"
 msgstr "Name *"
 
+#. module: executive_dashboard
 msgid "e.g. Revenue per Month"
 msgstr "z.B. Umsatz pro Monat"
 
+#. module: executive_dashboard
 msgid "Unit"
 msgstr "Einheit"
 
+#. module: executive_dashboard
 msgid "EUR, %, pcs."
 msgstr "EUR, %, Stk."
 
+#. module: executive_dashboard
 msgid "— Select Model —"
 msgstr "— Model wählen —"
 
+#. module: executive_dashboard
 msgid "Measure Field *"
 msgstr "Messfeld *"
 
+#. module: executive_dashboard
 msgid "— Select Field —"
 msgstr "— Feld wählen —"
 
+#. module: executive_dashboard
 msgid "Date Field"
 msgstr "Datumsfeld"
 
+#. module: executive_dashboard
 msgid "Group By"
 msgstr "Gruppierung"
 
+#. module: executive_dashboard
 msgid "Target Value"
 msgstr "Zielwert"
 
 # ── KPI Card ──
+#. module: executive_dashboard
 msgid "Edit"
 msgstr "Bearbeiten"
 
+#. module: executive_dashboard
 msgid "Notes"
 msgstr "Notizen"
 
+#. module: executive_dashboard
 msgid "of target"
 msgstr "von Ziel"
 
+#. module: executive_dashboard
 msgid "Add note..."
 msgstr "Notiz hinzufügen..."
 
+#. module: executive_dashboard
 msgid "Delete"
 msgstr "Löschen"
 
+#. module: executive_dashboard
 msgid "Edit KPI"
 msgstr "KPI bearbeiten"
 
+#. module: executive_dashboard
 msgid "Name"
 msgstr "Name"
 
+#. module: executive_dashboard
 msgid "Description"
 msgstr "Beschreibung"
 
+#. module: executive_dashboard
 msgid "Tooltip text for info icon..."
 msgstr "Tooltip-Text für Info-Icon..."
 
+#. module: executive_dashboard
 msgid "Background Color"
 msgstr "Hintergrundfarbe"
 
+#. module: executive_dashboard
 msgid "Save"
 msgstr "Speichern"
 
 # ── Chart menu ──
+#. module: executive_dashboard
 msgid "Target & Budget"
 msgstr "Ziel & Budget"
 
+#. module: executive_dashboard
 msgid "Target"
 msgstr "Ziel"
 
+#. module: executive_dashboard
 msgid "Value"
 msgstr "Wert"
 
 # ── CSV Export ──
+#. module: executive_dashboard
 msgid "KPI"
 msgstr "KPI"
 
+#. module: executive_dashboard
 msgid "Change %"
 msgstr "Veränderung %"
 
+#. module: executive_dashboard
 msgid "Label"
 msgstr "Label"
 
 # ── Activity hint ──
+#. module: executive_dashboard
 msgid "Activity KPIs only show planned activities. Install the"
 msgstr "Aktivitäts-KPIs zeigen nur geplante Aktivitäten. Installiere das Modul"
 
+#. module: executive_dashboard
 msgid "module to also evaluate completed calls, emails and meetings."
 msgstr "um auch erledigte Anrufe, E-Mails und Meetings auszuwerten."
 
 # ── Server-side menu & settings ──
+#. module: executive_dashboard
 msgid "Settings"
 msgstr "Einstellungen"
 
+#. module: executive_dashboard
 msgid "Dashboard Management"
 msgstr "Dashboard-Verwaltung"
 
+#. module: executive_dashboard
 msgid "Dashboards"
 msgstr "Dashboards"
 
+#. module: executive_dashboard
 msgid "Bank Balance"
 msgstr "Kontostand"
 
+#. module: executive_dashboard
 msgid "Bank Journal"
 msgstr "Bankjournal"
 
+#. module: executive_dashboard
 msgid "Which bank account should be displayed as the balance in the dashboard?"
 msgstr "Welches Bankkonto soll als Kontostand im Dashboard angezeigt werden?"
 
+#. module: executive_dashboard
 msgid "Bank Account"
 msgstr "Bankkonto"
 
+#. module: executive_dashboard
 msgid "Smart Analytics"
 msgstr "Intelligente Analysen"
 
+#. module: executive_dashboard
 msgid "Enable AI-powered insights that automatically analyze your KPIs and provide recommendations"
 msgstr "Aktiviere AI-gestützte Insights die deine KPIs automatisch analysieren und Handlungsempfehlungen geben"
 
+#. module: executive_dashboard
 msgid "Provider"
 msgstr "Anbieter"
 
+#. module: executive_dashboard
 msgid "API Key"
 msgstr "API-Schlüssel"
 
+#. module: executive_dashboard
 msgid "Test Connection"
 msgstr "Verbindung testen"
