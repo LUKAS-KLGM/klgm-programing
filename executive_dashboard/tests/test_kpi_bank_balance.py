@@ -1,0 +1,95 @@
+# -*- coding: utf-8 -*-
+"""
+Tests für executive.dashboard.kpi._compute_bank_balance() gegen einen
+echten, geposteten account.move auf einem Bankjournal. Nutzt Odoos
+offizielles AccountTestInvoicingCommon-Mixin für ein Mindest-Chart-of-
+Accounts (Journal, Konten), statt das manuell nachzubauen.
+"""
+from odoo.addons.account.tests.common import AccountTestInvoicingCommon
+from odoo.tests import tagged
+
+
+@tagged('post_install', '-at_install')
+class TestKpiBankBalance(AccountTestInvoicingCommon):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.dashboard = cls.env['executive.dashboard'].create({'name': 'ED Bank Test Dashboard'})
+        cls.bank_journal = cls.company_data['default_journal_bank']
+
+    def _kpi(self, **vals):
+        vals.setdefault('dashboard_id', self.dashboard.id)
+        vals.setdefault('name', 'Bank KPI')
+        vals.setdefault('source_type', 'bank_balance')
+        return self.env['executive.dashboard.kpi'].create(vals)
+
+    def _post_move(self, journal, bank_account, amount, revenue_side=True):
+        """Post a simple two-line move on `journal`: `amount` moves through
+        `bank_account`, the contra line hits revenue (money in) or expense
+        (money out)."""
+        contra_account = (self.company_data['default_account_revenue'] if revenue_side
+                           else self.company_data['default_account_expense'])
+        move = self.env['account.move'].create({
+            'journal_id': journal.id,
+            'line_ids': [
+                (0, 0, {
+                    'account_id': bank_account.id,
+                    'debit': amount if revenue_side else 0.0,
+                    'credit': 0.0 if revenue_side else amount,
+                    'name': 'bank line',
+                }),
+                (0, 0, {
+                    'account_id': contra_account.id,
+                    'debit': 0.0 if revenue_side else amount,
+                    'credit': amount if revenue_side else 0.0,
+                    'name': 'contra line',
+                }),
+            ],
+        })
+        move.action_post()
+        return move
+
+    def test_balance_reflects_net_posted_activity(self):
+        # 1000 in, then 300 out -> running balance should be 700.
+        self._post_move(self.bank_journal, self.bank_journal.default_account_id, 1000.0, revenue_side=True)
+        self._post_move(self.bank_journal, self.bank_journal.default_account_id, 300.0, revenue_side=False)
+        kpi = self._kpi(journal_id=self.bank_journal.id)
+        self.assertEqual(kpi._compute_bank_balance(), 700.0)
+
+    def test_kpi_level_journal_id_takes_priority(self):
+        self._post_move(self.bank_journal, self.bank_journal.default_account_id, 250.0, revenue_side=True)
+        kpi = self._kpi(journal_id=self.bank_journal.id)
+        self.assertEqual(kpi._compute_bank_balance(), 250.0)
+
+    def test_falls_back_to_global_config_parameter(self):
+        self._post_move(self.bank_journal, self.bank_journal.default_account_id, 500.0, revenue_side=True)
+        self.env['ir.config_parameter'].sudo().set_param(
+            'executive_dashboard.bank_journal_id', str(self.bank_journal.id))
+        kpi = self._kpi()  # no kpi-level journal_id
+        self.assertEqual(kpi._compute_bank_balance(), 500.0)
+
+    def test_falls_back_to_first_bank_journal_when_nothing_configured(self):
+        self._post_move(self.bank_journal, self.bank_journal.default_account_id, 125.0, revenue_side=True)
+        self.env['ir.config_parameter'].sudo().set_param('executive_dashboard.bank_journal_id', '0')
+        kpi = self._kpi()
+        self.assertEqual(kpi._compute_bank_balance(), 125.0)
+
+    def test_draft_moves_are_not_counted(self):
+        contra = self.company_data['default_account_revenue']
+        self.env['account.move'].create({
+            'journal_id': self.bank_journal.id,
+            'line_ids': [
+                (0, 0, {'account_id': self.bank_journal.default_account_id.id,
+                        'debit': 9999.0, 'credit': 0.0, 'name': 'draft bank line'}),
+                (0, 0, {'account_id': contra.id,
+                        'debit': 0.0, 'credit': 9999.0, 'name': 'draft contra'}),
+            ],
+        })  # never posted
+        kpi = self._kpi(journal_id=self.bank_journal.id)
+        self.assertEqual(kpi._compute_bank_balance(), 0)
+
+    def test_no_bank_journal_anywhere_returns_zero(self):
+        self.env['account.journal'].search([('type', '=', 'bank')]).write({'type': 'cash'})
+        kpi = self._kpi()
+        self.assertEqual(kpi._compute_bank_balance(), 0)
