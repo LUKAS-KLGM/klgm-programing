@@ -107,7 +107,10 @@
         <field name="date_field">date_deadline</field>
     </record>
 
-    <!-- E-Mails gesendet -->
+    <!-- E-Mails gesendet. ilike statt '=', da der Standard-Aktivitätstyp je
+         nach Sprache "Email" oder "E-Mail" heißt (category ist bei beiden
+         nur 'default', kann E-Mail/To-Do also nicht wie phonecall/meeting
+         unterscheiden — Name-Matching ist hier die einzige Option). -->
     <record id="kpi_cso_emails" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
         <field name="name">Emails</field>
@@ -115,7 +118,7 @@
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
         <field name="model_name">mail.activity</field>
-        <field name="domain">[('activity_type_id.name', '=', 'Email')]</field>
+        <field name="domain">[('activity_type_id.name', 'ilike', 'mail')]</field>
         <field name="measure_field">id</field>
         <field name="aggregate">count</field>
         <field name="color">#EFF6FF</field>
@@ -375,7 +378,7 @@ WHERE l.type = 'opportunity' AND l.probability = 100 AND s.is_won = true AND l.d
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
         <field name="model_name">mail.activity</field>
-        <field name="domain">[('activity_type_id.name', '=', 'Email'), ('user_id', '!=', False)]</field>
+        <field name="domain">[('activity_type_id.name', 'ilike', 'mail'), ('user_id', '!=', False)]</field>
         <field name="measure_field">id</field>
         <field name="aggregate">count</field>
         <field name="group_by">user_id</field>
@@ -407,7 +410,7 @@ WHERE l.type = 'opportunity' AND l.probability = 100 AND s.is_won = true AND l.d
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
         <field name="model_name">mail.activity</field>
-        <field name="domain">[('activity_type_id.name', '=', 'To-Do'), ('user_id', '!=', False)]</field>
+        <field name="domain">[('activity_type_id.name', 'ilike', 'to-do'), ('user_id', '!=', False)]</field>
         <field name="measure_field">id</field>
         <field name="aggregate">count</field>
         <field name="group_by">user_id</field>
