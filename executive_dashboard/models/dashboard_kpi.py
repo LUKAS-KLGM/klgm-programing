@@ -227,7 +227,7 @@ class DashboardKPI(models.Model):
                 if f in Model._fields:
                     emp_start = f
                     break
-            current_domain = [
+            current_domain = list(base_domain) + [
                 '|', (emp_start, '=', False), (emp_start, '<=', str(date_to)),
                 '|', ('departure_date', '=', False), ('departure_date', '>=', str(date_from)),
             ]
@@ -269,7 +269,7 @@ class DashboardKPI(models.Model):
                         if f in Model._fields:
                             emp_start = f
                             break
-                    prev_domain = [
+                    prev_domain = list(base_domain) + [
                         '|', (emp_start, '=', False), (emp_start, '<=', str(prev_to)),
                         '|', ('departure_date', '=', False), ('departure_date', '>=', str(prev_from)),
                     ]
@@ -329,7 +329,7 @@ class DashboardKPI(models.Model):
                     cur = date_from.replace(day=1)
                     while cur <= date_to:
                         month_end = (cur + relativedelta(months=1)) - timedelta(days=1)
-                        cnt = Model.search_count([
+                        cnt = Model.search_count(list(base_domain) + [
                             '|', (emp_start, '=', False), (emp_start, '<=', str(month_end)),
                             '|', ('departure_date', '=', False), ('departure_date', '>=', str(cur)),
                         ])
@@ -388,14 +388,28 @@ class DashboardKPI(models.Model):
             _logger.warning("Kontostand KPI: Kein Bankjournal gefunden")
             return 0
 
-        _logger.info("Kontostand KPI: Verwende Journal %s (ID %s)", journal.name, journal.id)
+        account = journal.default_account_id
+        if not account:
+            _logger.warning("Kontostand KPI: Journal %s hat kein verknüpftes Konto (default_account_id)",
+                             journal.name)
+            return 0
+
+        # Filtern nach dem Journal selbst würde immer 0 ergeben: jede Buchungszeile
+        # erbt journal_id von ihrer Bewegung (related='move_id.journal_id'), also
+        # heben sich Soll/Haben jeder einzelnen Bewegung im selben Journal per
+        # Definition auf. Der tatsächliche Kontostand ergibt sich erst aus der
+        # Summe der Zeilen auf dem hinterlegten Bankkonto (account_id) über alle
+        # Journale hinweg (Zahlungseingänge/-ausgänge landen oft in anderen
+        # Journalen, buchen aber auf dasselbe Bankkonto).
+        _logger.info("Kontostand KPI: Verwende Journal %s (ID %s), Konto %s (ID %s)",
+                     journal.name, journal.id, account.name, account.id)
         self.env.cr.execute("""
             SELECT COALESCE(SUM(aml.balance), 0)
             FROM account_move_line aml
             JOIN account_move am ON am.id = aml.move_id
-            WHERE aml.journal_id = %s
+            WHERE aml.account_id = %s
               AND am.state = 'posted'
-        """, (journal.id,))
+        """, (account.id,))
         row = self.env.cr.fetchone()
         val = row[0] if row else 0
         _logger.info("Kontostand KPI: Saldo = %s", val)
@@ -416,9 +430,14 @@ class DashboardKPI(models.Model):
             date_to=str(date_to),
         )
         try:
-            self.env.cr.execute(query)
-            row = self.env.cr.fetchone()
-            return row[0] if row and row[0] is not None else 0
+            # A failed statement leaves the whole Postgres transaction
+            # aborted, not just this query — without a savepoint, one
+            # broken SQL KPI would break every other query in the same
+            # request (including unrelated KPIs on the same dashboard).
+            with self.env.cr.savepoint():
+                self.env.cr.execute(query)
+                row = self.env.cr.fetchone()
+                return row[0] if row and row[0] is not None else 0
         except Exception as e:
             _logger.warning("SQL KPI error for %s: %s", self.name, e)
             return 0
