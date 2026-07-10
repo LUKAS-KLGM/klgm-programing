@@ -66,7 +66,7 @@ class TestKpiComputeValue(TransactionCase):
         self.assertEqual(result['value'], 0)
 
     def test_change_pct_capped_at_positive_999(self):
-        kpi = self._model_kpi(comparison_mode='budget', budget_value=0.01)
+        kpi = self._model_kpi(budget_value=0.01)
         result = kpi._compute_value('custom:2026-06-01,2026-06-30', comparison_mode='budget')
         self.assertEqual(result['change_pct'], 999)
 
