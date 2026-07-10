@@ -2,6 +2,7 @@ import logging
 
 from odoo import http
 from odoo.http import request
+from odoo.tools.safe_eval import safe_eval
 
 _logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ class ExecutiveDashboardController(http.Controller):
             return kpi.action_xmlid
         # For model-based KPIs, build a dynamic action
         if kpi.source_type == 'model' and kpi.model_name:
-            domain = eval(kpi.domain or '[]')
+            domain = safe_eval(kpi.domain or '[]')
             if kpi.apply_date_filter and kpi.date_field:
                 date_from, date_to = kpi._get_date_range(period)
                 domain += [

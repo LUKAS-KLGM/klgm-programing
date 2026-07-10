@@ -2,6 +2,7 @@ import logging
 from datetime import date, timedelta
 
 from odoo import api, fields, models
+from odoo.tools.safe_eval import safe_eval
 
 _logger = logging.getLogger(__name__)
 
@@ -196,7 +197,7 @@ class DashboardKPI(models.Model):
             _logger.warning("Model %s not found for KPI %s", effective_model, self.name)
             return {'value': 0, 'previous': 0, 'chart_data': [], 'sparkline': []}
 
-        base_domain = eval(self.domain or '[]')
+        base_domain = safe_eval(self.domain or '[]')
 
         # Map domain fields if using activity.summary
         if effective_model == 'activity.summary':
@@ -481,7 +482,7 @@ class DashboardKPI(models.Model):
                 return kpi_cache.get(name, 0)
 
             try:
-                result['value'] = eval(self.formula, {'kpi': kpi, '__builtins__': {}})
+                result['value'] = safe_eval(self.formula, {'kpi': kpi})
             except Exception as e:
                 _logger.warning("KPI formula error for %s: %s", self.name, e)
                 result['value'] = 0
