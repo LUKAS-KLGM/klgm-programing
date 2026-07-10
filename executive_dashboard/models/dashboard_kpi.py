@@ -293,10 +293,19 @@ class DashboardKPI(models.Model):
                 # For all_time with monthly grouping, switch to quarterly
                 if period == 'all_time' and chart_group.endswith(':month'):
                     chart_group = chart_group.replace(':month', ':quarter')
-                order = chart_group if is_time_group else f'{self.measure_field} desc'
+                if is_time_group:
+                    order = chart_group
+                elif self.aggregate == 'count':
+                    # 'id desc' isn't a valid aggregate/groupby order term in
+                    # Odoo 19 when grouping by count — '__count' is the
+                    # special token read_group accepts regardless of the
+                    # groupby field (the result key is still f'{field}_count').
+                    order = '__count desc'
+                else:
+                    order = f'{measure_spec} desc'
                 time_limit = 60 if period == 'all_time' else 30
                 group_results = Model.read_group(
-                    current_domain, [self.measure_field], [chart_group],
+                    current_domain, [measure_spec], [chart_group],
                     orderby=order, limit=10 if not is_time_group else time_limit,
                 )
                 for r in group_results:
@@ -340,7 +349,7 @@ class DashboardKPI(models.Model):
                     delta = (date_to - date_from).days
                     spark_group = effective_date_field + (':week' if delta > 14 else ':day')
                     spark_results = Model.read_group(
-                        current_domain, [self.measure_field], [spark_group],
+                        current_domain, [measure_spec], [spark_group],
                         orderby=spark_group, limit=30,
                     )
                     for r in spark_results:
