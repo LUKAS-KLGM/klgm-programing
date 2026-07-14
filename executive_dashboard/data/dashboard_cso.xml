@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo noupdate="0">
+<odoo noupdate="1">
 
     <!-- ══════════════════════════════════════════════════════ -->
     <!-- CSO — Sales Performance Dashboard                     -->
@@ -53,7 +53,7 @@
         <field name="sequence">25</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
-        <field name="formula">kpi('Umsatz (netto)') / kpi('Aufträge') if kpi('Aufträge') else 0</field>
+        <field name="formula">kpi('Revenue (net)') / kpi('Orders') if kpi('Orders') else 0</field>
         <field name="unit">EUR</field>
         <field name="color">#F0FFF4</field>
         <field name="show_comparison">False</field>
@@ -107,7 +107,10 @@
         <field name="date_field">date_deadline</field>
     </record>
 
-    <!-- E-Mails gesendet -->
+    <!-- E-Mails gesendet. ilike statt '=', da der Standard-Aktivitätstyp je
+         nach Sprache "Email" oder "E-Mail" heißt (category ist bei beiden
+         nur 'default', kann E-Mail/To-Do also nicht wie phonecall/meeting
+         unterscheiden — Name-Matching ist hier die einzige Option). -->
     <record id="kpi_cso_emails" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
         <field name="name">Emails</field>
@@ -115,7 +118,7 @@
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
         <field name="model_name">mail.activity</field>
-        <field name="domain">[('activity_type_id.name', '=', 'Email')]</field>
+        <field name="domain">[('activity_type_id.name', 'ilike', 'mail')]</field>
         <field name="measure_field">id</field>
         <field name="aggregate">count</field>
         <field name="color">#EFF6FF</field>
@@ -144,14 +147,14 @@
         <field name="description">Durchschnittliche Tage vom Lead bis zum Abschluss (gewonnene Opportunities)</field>
         <field name="sequence">52</field>
         <field name="display_type">scorecard</field>
-        <field name="source_type">model</field>
-        <field name="model_name">crm.lead</field>
-        <field name="domain">[('type', '=', 'opportunity'), ('active', '=', False), ('probability', '=', 100)]</field>
-        <field name="measure_field">days_to_convert</field>
-        <field name="aggregate">avg</field>
+        <field name="source_type">sql</field>
+        <field name="sql_query">SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (l.date_closed - l.create_date)) / 86400)::numeric, 0)
+FROM crm_lead l
+JOIN crm_stage s ON s.id = l.stage_id
+WHERE l.type = 'opportunity' AND l.probability = 100 AND s.is_won = true AND l.date_closed IS NOT NULL</field>
         <field name="unit">Tage</field>
         <field name="color">#EFF6FF</field>
-        <field name="date_field">date_closed</field>
+        <field name="apply_date_filter">False</field>
         <field name="target_value">30</field>
         <field name="target_warning">45</field>
         <field name="target_critical">60</field>
@@ -375,7 +378,7 @@
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
         <field name="model_name">mail.activity</field>
-        <field name="domain">[('activity_type_id.name', '=', 'Email'), ('user_id', '!=', False)]</field>
+        <field name="domain">[('activity_type_id.name', 'ilike', 'mail'), ('user_id', '!=', False)]</field>
         <field name="measure_field">id</field>
         <field name="aggregate">count</field>
         <field name="group_by">user_id</field>
@@ -407,7 +410,7 @@
         <field name="display_type">chart_bar</field>
         <field name="source_type">model</field>
         <field name="model_name">mail.activity</field>
-        <field name="domain">[('activity_type_id.name', '=', 'To-Do'), ('user_id', '!=', False)]</field>
+        <field name="domain">[('activity_type_id.name', 'ilike', 'to-do'), ('user_id', '!=', False)]</field>
         <field name="measure_field">id</field>
         <field name="aggregate">count</field>
         <field name="group_by">user_id</field>

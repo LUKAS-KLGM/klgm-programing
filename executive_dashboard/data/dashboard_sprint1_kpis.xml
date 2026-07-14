@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo noupdate="0">
+<odoo noupdate="1">
 
     <!-- ══════════════════════════════════════════════════════ -->
     <!-- Sprint 1: Advanced KPIs — Finanzen, Vertrieb, Ops, HR -->
@@ -68,7 +68,7 @@
         <field name="sequence">45</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
-        <field name="formula">(kpi('Offene Forderungen') / kpi('_Tagesumsatz') * 30) if kpi('_Tagesumsatz') else 0</field>
+        <field name="formula">(kpi('Open Receivables') / kpi('_Tagesumsatz') * 30) if kpi('_Tagesumsatz') else 0</field>
         <field name="unit">Tage</field>
         <field name="color">#EFF6FF</field>
         <field name="show_comparison">False</field>
@@ -131,10 +131,10 @@
         <field name="sql_query">SELECT COALESCE(SUM(aml.balance), 0)
 FROM account_move_line aml
 JOIN account_move am ON am.id = aml.move_id
-JOIN account_journal aj ON aj.id = aml.journal_id
-WHERE aj.type = 'bank'
-  AND am.state = 'posted'
-  AND aj.id = (SELECT id FROM account_journal WHERE type = 'bank' ORDER BY sequence, id LIMIT 1)</field>
+WHERE aml.account_id = (
+    SELECT default_account_id FROM account_journal WHERE type = 'bank' ORDER BY sequence, id LIMIT 1
+)
+  AND am.state = 'posted'</field>
         <field name="unit">EUR</field>
         <field name="color">#F0FFF4</field>
         <field name="show_comparison">False</field>
@@ -246,18 +246,23 @@ WHERE aj.type = 'bank'
         <field name="target_critical">60</field>
     </record>
 
-    <!-- Lagerbestand (Wert) -->
+    <!-- Lagerbestand (Wert). SQL statt Model-KPI, weil stock.quant.value ein
+         reines compute-Feld ohne store=True ist (read_group kann es nicht
+         aggregieren). standard_price ist company_dependent, daher JSONB in
+         der DB (z.B. {"1": 120.0}) — jsonb_each_text greift den ersten Wert
+         unabhängig von der tatsächlichen company_id. -->
     <record id="kpi_coo_stock_value" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
         <field name="name">Inventory Value</field>
         <field name="description">Gesamtwert aller internen Lagerbestände</field>
         <field name="sequence">32</field>
         <field name="display_type">scorecard</field>
-        <field name="source_type">model</field>
-        <field name="model_name">stock.quant</field>
-        <field name="domain">[('location_id.usage', '=', 'internal')]</field>
-        <field name="measure_field">value</field>
-        <field name="aggregate">sum</field>
+        <field name="source_type">sql</field>
+        <field name="sql_query">SELECT COALESCE(SUM(sq.quantity * COALESCE((SELECT value::numeric FROM jsonb_each_text(pp.standard_price) LIMIT 1), 0)), 0)
+FROM stock_quant sq
+JOIN product_product pp ON pp.id = sq.product_id
+JOIN stock_location sl ON sl.id = sq.location_id
+WHERE sl.usage = 'internal'</field>
         <field name="unit">EUR</field>
         <field name="color">#EFF6FF</field>
         <field name="apply_date_filter">False</field>
@@ -286,7 +291,7 @@ WHERE aj.type = 'bank'
         <field name="sequence">36</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
-        <field name="formula">kpi('_Retouren') / kpi('Lieferungen') * 100 if kpi('Lieferungen') else 0</field>
+        <field name="formula">kpi('_Retouren') / kpi('Deliveries') * 100 if kpi('Deliveries') else 0</field>
         <field name="unit">%</field>
         <field name="color">#FFF7ED</field>
         <field name="show_comparison">False</field>
@@ -305,7 +310,7 @@ WHERE aj.type = 'bank'
         <field name="sequence">36</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
-        <field name="formula">kpi('Abwesenheitstage') / (kpi('Mitarbeiter') * 20) * 100 if kpi('Mitarbeiter') else 0</field>
+        <field name="formula">kpi('Absence Days') / (kpi('Employees') * 20) * 100 if kpi('Employees') else 0</field>
         <field name="unit">%</field>
         <field name="color">#FFF7ED</field>
         <field name="show_comparison">False</field>

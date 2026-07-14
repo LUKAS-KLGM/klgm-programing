@@ -2,6 +2,7 @@ import logging
 from datetime import date, timedelta
 
 from odoo import api, fields, models
+from odoo.tools.safe_eval import safe_eval
 
 _logger = logging.getLogger(__name__)
 
@@ -196,7 +197,7 @@ class DashboardKPI(models.Model):
             _logger.warning("Model %s not found for KPI %s", effective_model, self.name)
             return {'value': 0, 'previous': 0, 'chart_data': [], 'sparkline': []}
 
-        base_domain = eval(self.domain or '[]')
+        base_domain = safe_eval(self.domain or '[]')
 
         # Map domain fields if using activity.summary
         if effective_model == 'activity.summary':
@@ -226,7 +227,7 @@ class DashboardKPI(models.Model):
                 if f in Model._fields:
                     emp_start = f
                     break
-            current_domain = [
+            current_domain = list(base_domain) + [
                 '|', (emp_start, '=', False), (emp_start, '<=', str(date_to)),
                 '|', ('departure_date', '=', False), ('departure_date', '>=', str(date_from)),
             ]
@@ -236,10 +237,16 @@ class DashboardKPI(models.Model):
                 (effective_date_field, '<=', str(date_to)),
             ]
 
+        # read_group defaults to SUM when no aggregation function is given,
+        # so avg/min/max need an explicit 'field:agg' spec — otherwise they
+        # silently return the sum instead.
+        measure_spec = (f'{self.measure_field}:{self.aggregate}'
+                         if self.aggregate in ('avg', 'min', 'max') else self.measure_field)
+
         if self.aggregate == 'count':
             value = Model.search_count(current_domain)
         else:
-            results = Model.read_group(current_domain, [self.measure_field], [], limit=1)
+            results = Model.read_group(current_domain, [measure_spec], [], limit=1)
             value = (results[0].get(self.measure_field, 0) or 0) if results else 0
 
         # Previous period (depending on comparison mode)
@@ -262,7 +269,7 @@ class DashboardKPI(models.Model):
                         if f in Model._fields:
                             emp_start = f
                             break
-                    prev_domain = [
+                    prev_domain = list(base_domain) + [
                         '|', (emp_start, '=', False), (emp_start, '<=', str(prev_to)),
                         '|', ('departure_date', '=', False), ('departure_date', '>=', str(prev_from)),
                     ]
@@ -274,7 +281,7 @@ class DashboardKPI(models.Model):
                 if self.aggregate == 'count':
                     previous = Model.search_count(prev_domain)
                 else:
-                    results = Model.read_group(prev_domain, [self.measure_field], [], limit=1)
+                    results = Model.read_group(prev_domain, [measure_spec], [], limit=1)
                     previous = (results[0].get(self.measure_field, 0) or 0) if results else 0
 
         # Chart data (grouped) — limit 10 for top charts, sort by value desc for bar/pie
@@ -286,10 +293,19 @@ class DashboardKPI(models.Model):
                 # For all_time with monthly grouping, switch to quarterly
                 if period == 'all_time' and chart_group.endswith(':month'):
                     chart_group = chart_group.replace(':month', ':quarter')
-                order = chart_group if is_time_group else f'{self.measure_field} desc'
+                if is_time_group:
+                    order = chart_group
+                elif self.aggregate == 'count':
+                    # 'id desc' isn't a valid aggregate/groupby order term in
+                    # Odoo 19 when grouping by count — '__count' is the
+                    # special token read_group accepts regardless of the
+                    # groupby field (the result key is still f'{field}_count').
+                    order = '__count desc'
+                else:
+                    order = f'{measure_spec} desc'
                 time_limit = 60 if period == 'all_time' else 30
                 group_results = Model.read_group(
-                    current_domain, [self.measure_field], [chart_group],
+                    current_domain, [measure_spec], [chart_group],
                     orderby=order, limit=10 if not is_time_group else time_limit,
                 )
                 for r in group_results:
@@ -322,7 +338,7 @@ class DashboardKPI(models.Model):
                     cur = date_from.replace(day=1)
                     while cur <= date_to:
                         month_end = (cur + relativedelta(months=1)) - timedelta(days=1)
-                        cnt = Model.search_count([
+                        cnt = Model.search_count(list(base_domain) + [
                             '|', (emp_start, '=', False), (emp_start, '<=', str(month_end)),
                             '|', ('departure_date', '=', False), ('departure_date', '>=', str(cur)),
                         ])
@@ -333,7 +349,7 @@ class DashboardKPI(models.Model):
                     delta = (date_to - date_from).days
                     spark_group = effective_date_field + (':week' if delta > 14 else ':day')
                     spark_results = Model.read_group(
-                        current_domain, [self.measure_field], [spark_group],
+                        current_domain, [measure_spec], [spark_group],
                         orderby=spark_group, limit=30,
                     )
                     for r in spark_results:
@@ -381,14 +397,28 @@ class DashboardKPI(models.Model):
             _logger.warning("Kontostand KPI: Kein Bankjournal gefunden")
             return 0
 
-        _logger.info("Kontostand KPI: Verwende Journal %s (ID %s)", journal.name, journal.id)
+        account = journal.default_account_id
+        if not account:
+            _logger.warning("Kontostand KPI: Journal %s hat kein verknüpftes Konto (default_account_id)",
+                             journal.name)
+            return 0
+
+        # Filtern nach dem Journal selbst würde immer 0 ergeben: jede Buchungszeile
+        # erbt journal_id von ihrer Bewegung (related='move_id.journal_id'), also
+        # heben sich Soll/Haben jeder einzelnen Bewegung im selben Journal per
+        # Definition auf. Der tatsächliche Kontostand ergibt sich erst aus der
+        # Summe der Zeilen auf dem hinterlegten Bankkonto (account_id) über alle
+        # Journale hinweg (Zahlungseingänge/-ausgänge landen oft in anderen
+        # Journalen, buchen aber auf dasselbe Bankkonto).
+        _logger.info("Kontostand KPI: Verwende Journal %s (ID %s), Konto %s (ID %s)",
+                     journal.name, journal.id, account.name, account.id)
         self.env.cr.execute("""
             SELECT COALESCE(SUM(aml.balance), 0)
             FROM account_move_line aml
             JOIN account_move am ON am.id = aml.move_id
-            WHERE aml.journal_id = %s
+            WHERE aml.account_id = %s
               AND am.state = 'posted'
-        """, (journal.id,))
+        """, (account.id,))
         row = self.env.cr.fetchone()
         val = row[0] if row else 0
         _logger.info("Kontostand KPI: Saldo = %s", val)
@@ -409,9 +439,14 @@ class DashboardKPI(models.Model):
             date_to=str(date_to),
         )
         try:
-            self.env.cr.execute(query)
-            row = self.env.cr.fetchone()
-            return row[0] if row and row[0] is not None else 0
+            # A failed statement leaves the whole Postgres transaction
+            # aborted, not just this query — without a savepoint, one
+            # broken SQL KPI would break every other query in the same
+            # request (including unrelated KPIs on the same dashboard).
+            with self.env.cr.savepoint():
+                self.env.cr.execute(query)
+                row = self.env.cr.fetchone()
+                return row[0] if row and row[0] is not None else 0
         except Exception as e:
             _logger.warning("SQL KPI error for %s: %s", self.name, e)
             return 0
@@ -475,7 +510,7 @@ class DashboardKPI(models.Model):
                 return kpi_cache.get(name, 0)
 
             try:
-                result['value'] = eval(self.formula, {'kpi': kpi, '__builtins__': {}})
+                result['value'] = safe_eval(self.formula, {'kpi': kpi})
             except Exception as e:
                 _logger.warning("KPI formula error for %s: %s", self.name, e)
                 result['value'] = 0

@@ -2,28 +2,30 @@
     "name": "Controlling",
     "version": "19.0.6.4.0",
     "category": "Productivity",
-    "summary": "Konfigurierbare Executive Dashboards mit KPIs, Charts, AI Insights und Branchen-Templates",
+    "summary": "Configurable executive dashboards with KPIs, charts, AI insights and industry templates",
     "description": """
-Controlling — Executive Dashboards für Odoo 19
+Controlling — Executive Dashboards for Odoo 19
 ================================================
-- KPI-Karten mit Live-Daten und Vorperiodenvergleich
-- Berechnete KPIs (AOV, Marge %, Lieferquote, etc.)
-- Native Charts (Bar, Line, Pie, Gauge)
-- Drill-Down per Klick
-- Rollenbasiert: CEO, CFO, COO, CTO, CSO
-- Zeitfilter (30 Tage, Quartal, Jahr, Custom)
-- Vergleichsperioden: Vorperiode, Vorjahr, Budget
-- AI Insights: Regelbasierte KPI-Analyse mit Empfehlungen
-- Drag & Drop Reihenfolge
-- KPI-Kommentare und Notizen
-- Multi-Company Support
-- Custom KPI Builder
-- 4 Branchen-Templates (E-Commerce, Dienstleistung, Produktion, Handel)
-- Scheduled E-Mail Reports
-- CSV/PNG Export, Dark Mode, Fullscreen
+- KPI cards with live data and period-over-period comparison
+- Calculated KPIs (AOV, margin %, delivery rate, etc.)
+- Native charts (bar, line, pie, gauge)
+- Drill-down on click
+- Role-based: CEO, CFO, COO, CTO, CSO
+- Time filters (30 days, quarter, year, custom)
+- Comparison periods: previous period, previous year, budget
+- AI Insights: rule-based KPI analysis with recommendations
+- Drag & drop ordering
+- KPI comments and notes
+- Multi-company support
+- Custom KPI builder
+- 4 industry templates (e-commerce, services, manufacturing, retail)
+- Scheduled email reports
+- CSV/PNG export, dark mode, fullscreen
     """,
     "author": "KLGM UG (haftungsbeschränkt) i.G.",
     "website": "https://klgm-consulting.de",
+    "price": 199.0,
+    "currency": "EUR",
     "depends": [
         "base",
         "web",
@@ -68,5 +70,5 @@ Controlling — Executive Dashboards für Odoo 19
     ],
     "installable": True,
     "application": True,
-    "license": "LGPL-3",
+    "license": "OPL-1",
 }
