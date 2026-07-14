@@ -105,7 +105,7 @@ registry.category("web_tour.tours").add("executive_dashboard_tour", {
 
         // ── 11. Switch chart back to Scorecard ────────────────────────────────
         {
-            trigger: ".ed-chart-card .ed-chart-menu .ed-menu-item .fa-credit-card",
+            trigger: ".ed-chart-card .ed-chart-menu .ed-menu-item .fa-tachometer",
             content: "Switch back to scorecard display",
             run: "click",
         },
