@@ -18,463 +18,581 @@ msgstr ""
 
 # ── Period options ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "7 Days"
 msgstr "7 Tage"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "30 Days"
 msgstr "30 Tage"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "90 Days"
 msgstr "90 Tage"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "This Month"
 msgstr "Dieser Monat"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "This Quarter"
 msgstr "Dieses Quartal"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "This Year"
 msgstr "Dieses Jahr"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Last Year"
 msgstr "Letztes Jahr"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "All Time"
 msgstr "Jemals"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Custom..."
 msgstr "Benutzerdefiniert..."
 
 # ── Comparison options ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Previous Period"
 msgstr "Vorperiode"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Previous Year"
 msgstr "Vorjahr"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Budget"
 msgstr "Budget"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "vs. Previous Period"
 msgstr "vs. Vorperiode"
 
 # ── Display / Chart types ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Scorecard"
 msgstr "Scorecard"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Bar"
 msgstr "Balken"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Bar (H)"
 msgstr "Balken (H)"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Line"
 msgstr "Linie"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Pie"
 msgstr "Torte"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Donut"
 msgstr "Ring"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Gauge"
 msgstr "Gauge"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Table"
 msgstr "Tabelle"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Display"
 msgstr "Darstellung"
 
 # ── Width options ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Width"
 msgstr "Breite"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Full Width"
 msgstr "Volle Breite"
 
 # ── Aggregate options ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Sum"
 msgstr "Summe"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Average"
 msgstr "Durchschnitt"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Count"
 msgstr "Anzahl"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Minimum"
 msgstr "Minimum"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Maximum"
 msgstr "Maximum"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Aggregation"
 msgstr "Aggregation"
 
 # ── Icon options ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Dashboard"
 msgstr "Dashboard"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Company"
 msgstr "Unternehmen"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Finance"
 msgstr "Finanzen"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Operations"
 msgstr "Operations"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Technology"
 msgstr "Technik"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Sales"
 msgstr "Vertrieb"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Team"
 msgstr "Team"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "E-Commerce"
 msgstr "E-Commerce"
 
 # ── Activity state options ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "All"
 msgstr "Alle"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Planned"
 msgstr "Geplant"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Done"
 msgstr "Erledigt"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Activities"
 msgstr "Aktivitäten"
 
 # ── Header buttons ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "AI Insights"
 msgstr "AI Insights"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Configuration"
 msgstr "Konfiguration"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Add KPI"
 msgstr "KPI hinzufügen"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Industry Templates"
 msgstr "Branchen-Templates"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Export"
 msgstr "Exportieren"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "CSV / Excel"
 msgstr "CSV / Excel"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Chart as PNG"
 msgstr "Chart als PNG"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Normal"
 msgstr "Normal"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Fullscreen"
 msgstr "Vollbild"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Refresh"
 msgstr "Aktualisieren"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Light Mode"
 msgstr "Light Mode"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Dark Mode"
 msgstr "Dark Mode"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "+ Create new..."
 msgstr "+ Neu erstellen..."
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Remove as default dashboard"
 msgstr "Standard-Dashboard entfernen"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Set as default dashboard"
 msgstr "Als Standard-Dashboard beim Öffnen setzen"
 
 # ── Loading / Empty states ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Loading data..."
 msgstr "Daten werden geladen..."
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "No Dashboards Configured"
 msgstr "Keine Dashboards konfiguriert"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Create a dashboard from an industry template or go to Configuration."
-msgstr "Erstelle ein Dashboard aus einem Branchen-Template oder gehe zu Konfiguration."
+msgstr ""
+"Erstelle ein Dashboard aus einem Branchen-Template oder gehe zu "
+"Konfiguration."
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Use Template"
 msgstr "Template verwenden"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "No Data"
 msgstr "Keine Daten"
 
 # ── Insights panel ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Summary"
 msgstr "Zusammenfassung"
 
 #. module: executive_dashboard
-msgid "Add an API key (Anthropic or OpenAI) in the Dashboard Configuration to enable AI Insights."
-msgstr "Hinterlege einen API Key (Anthropic oder OpenAI) in der Dashboard-Konfiguration um AI Insights zu aktivieren."
+#. odoo-javascript
+msgid ""
+"Add an API key (Anthropic or OpenAI) in the Dashboard Configuration to "
+"enable AI Insights."
+msgstr ""
+"Hinterlege einen API Key (Anthropic oder OpenAI) in der Dashboard-"
+"Konfiguration um AI Insights zu aktivieren."
 
 # ── Templates dialog ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Create a pre-configured dashboard from an industry template:"
 msgstr "Erstelle ein vorkonfiguriertes Dashboard aus einem Branchen-Template:"
 
 # ── Dashboard Creator ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Create Dashboard"
 msgstr "Dashboard erstellen"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Dashboard Name *"
 msgstr "Dashboard-Name *"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "e.g. My Dashboard"
 msgstr "z.B. Mein Dashboard"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Icon"
 msgstr "Icon"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Select KPIs"
 msgstr "KPIs auswählen"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "selected"
 msgstr "ausgewählt"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Cancel"
 msgstr "Abbrechen"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Create"
 msgstr "Erstellen"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Please enter a name and select at least one KPI."
 msgstr "Bitte Name eingeben und mindestens einen KPI auswählen."
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Please enter a dashboard name."
 msgstr "Bitte einen Dashboard-Namen eingeben."
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Please select at least one KPI."
 msgstr "Bitte mindestens einen KPI auswählen."
 
 # ── KPI Builder ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Create KPI"
 msgstr "KPI erstellen"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Name *"
 msgstr "Name *"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "e.g. Revenue per Month"
 msgstr "z.B. Umsatz pro Monat"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Unit"
 msgstr "Einheit"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "EUR, %, pcs."
 msgstr "EUR, %, Stk."
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Odoo Model *"
 msgstr "Odoo Model *"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "— Select Model —"
 msgstr "— Model wählen —"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Measure Field *"
 msgstr "Messfeld *"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "— Select Field —"
 msgstr "— Feld wählen —"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Date Field"
 msgstr "Datumsfeld"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Group By"
 msgstr "Gruppierung"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Domain (optional)"
 msgstr "Domain (optional)"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Target Value"
 msgstr "Zielwert"
 
 # ── KPI Card ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Edit"
 msgstr "Bearbeiten"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Notes"
 msgstr "Notizen"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "of target"
 msgstr "von Ziel"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Add note..."
 msgstr "Notiz hinzufügen..."
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Delete"
 msgstr "Löschen"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Edit KPI"
 msgstr "KPI bearbeiten"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Name"
 msgstr "Name"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Description"
 msgstr "Beschreibung"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Tooltip text for info icon..."
 msgstr "Tooltip-Text für Info-Icon..."
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Background Color"
 msgstr "Hintergrundfarbe"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Save"
 msgstr "Speichern"
 
 # ── Chart menu ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Target & Budget"
 msgstr "Ziel & Budget"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Target"
 msgstr "Ziel"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Value"
 msgstr "Wert"
 
 # ── CSV Export ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "KPI"
 msgstr "KPI"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Change %"
 msgstr "Veränderung %"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Label"
 msgstr "Label"
 
 # ── Activity hint ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Activity KPIs only show planned activities. Install the"
-msgstr "Aktivitäts-KPIs zeigen nur geplante Aktivitäten. Installiere das Modul"
+msgstr ""
+"Aktivitäts-KPIs zeigen nur geplante Aktivitäten. Installiere das Modul"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "module to also evaluate completed calls, emails and meetings."
 msgstr "um auch erledigte Anrufe, E-Mails und Meetings auszuwerten."
 
 # ── Server-side menu & settings ──
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Settings"
 msgstr "Einstellungen"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Dashboard Management"
 msgstr "Dashboard-Verwaltung"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Dashboards"
 msgstr "Dashboards"
 
@@ -484,38 +602,52 @@ msgid "Bank Balance"
 msgstr "Kontostand"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Bank Journal"
 msgstr "Bankjournal"
 
 #. module: executive_dashboard
-msgid "Which bank account should be displayed as the balance in the dashboard?"
+#. odoo-javascript
+msgid ""
+"Which bank account should be displayed as the balance in the dashboard?"
 msgstr "Welches Bankkonto soll als Kontostand im Dashboard angezeigt werden?"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Bank Account"
 msgstr "Bankkonto"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Smart Analytics"
 msgstr "Intelligente Analysen"
 
 #. module: executive_dashboard
-msgid "Enable AI-powered insights that automatically analyze your KPIs and provide recommendations"
-msgstr "Aktiviere AI-gestützte Insights die deine KPIs automatisch analysieren und Handlungsempfehlungen geben"
+#. odoo-javascript
+msgid ""
+"Enable AI-powered insights that automatically analyze your KPIs and provide "
+"recommendations"
+msgstr ""
+"Aktiviere AI-gestützte Insights die deine KPIs automatisch analysieren und "
+"Handlungsempfehlungen geben"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Provider"
 msgstr "Anbieter"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "API Key"
 msgstr "API-Schlüssel"
 
 #. module: executive_dashboard
+#. odoo-javascript
 msgid "Test Connection"
 msgstr "Verbindung testen"
 
-# ── KPI & dashboard data labels (executive.dashboard / executive.dashboard.kpi "name") ──
+# ── KPI & dashboard data labels (executive.dashboard /
+# executive.dashboard.kpi "name") ──
 #. module: executive_dashboard
 #: model:executive.dashboard,name:executive_dashboard.dashboard_ceo
 msgid "CEO — Company Overview"
