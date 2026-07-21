@@ -19,309 +19,399 @@ msgstr ""
 # ── Period options ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:515
 msgid "7 Days"
 msgstr "7 Tage"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:516
 msgid "30 Days"
 msgstr "30 Tage"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:517
 msgid "90 Days"
 msgstr "90 Tage"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:518
 msgid "This Month"
 msgstr "Dieser Monat"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:519
 msgid "This Quarter"
 msgstr "Dieses Quartal"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:520
 msgid "This Year"
 msgstr "Dieses Jahr"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:521
 msgid "Last Year"
 msgstr "Letztes Jahr"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:522
 msgid "All Time"
 msgstr "Jemals"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:523
 msgid "Custom..."
 msgstr "Benutzerdefiniert..."
 
 # ── Comparison options ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:218
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:464
 msgid "Previous Period"
 msgstr "Vorperiode"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:219
 msgid "Previous Year"
 msgstr "Vorjahr"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:220
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:335
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.xml:50
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:168
 msgid "Budget"
 msgstr "Budget"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.js:124
 msgid "vs. Previous Period"
 msgstr "vs. Vorperiode"
 
 # ── Display / Chart types ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:560
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:89
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.js:144
 msgid "Scorecard"
 msgstr "Scorecard"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:561
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:90
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.js:145
 msgid "Bar"
 msgstr "Balken"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:562
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:91
 msgid "Bar (H)"
 msgstr "Balken (H)"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:563
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:92
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.js:146
 msgid "Line"
 msgstr "Linie"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:564
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:93
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.js:147
 msgid "Pie"
 msgstr "Torte"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:565
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:94
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.js:148
 msgid "Donut"
 msgstr "Ring"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:566
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:95
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.js:149
 msgid "Gauge"
 msgstr "Gauge"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:567
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:96
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.js:150
 msgid "Table"
 msgstr "Tabelle"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:260
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.xml:25
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:36
 msgid "Display"
 msgstr "Darstellung"
 
 # ── Width options ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:102
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:103
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:104
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.xml:34
 msgid "Width"
 msgstr "Breite"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:105
 msgid "Full Width"
 msgstr "Volle Breite"
 
 # ── Aggregate options ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:573
 msgid "Sum"
 msgstr "Summe"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:574
 msgid "Average"
 msgstr "Durchschnitt"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:575
 msgid "Count"
 msgstr "Anzahl"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:576
 msgid "Minimum"
 msgstr "Minimum"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:577
 msgid "Maximum"
 msgstr "Maximum"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:300
 msgid "Aggregation"
 msgstr "Aggregation"
 
 # ── Icon options ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:333
 msgid "Dashboard"
 msgstr "Dashboard"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:334
 msgid "Company"
 msgstr "Unternehmen"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:335
 msgid "Finance"
 msgstr "Finanzen"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:336
 msgid "Operations"
 msgstr "Operations"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:337
 msgid "Technology"
 msgstr "Technik"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:338
 msgid "Sales"
 msgstr "Vertrieb"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:339
 msgid "Team"
 msgstr "Team"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:340
 msgid "E-Commerce"
 msgstr "E-Commerce"
 
 # ── Activity state options ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:58
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.js:161
 msgid "All"
 msgstr "Alle"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:59
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.js:162
 msgid "Planned"
 msgstr "Geplant"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:60
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.js:163
 msgid "Done"
 msgstr "Erledigt"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.xml:56
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:51
 msgid "Activities"
 msgstr "Aktivitäten"
 
 # ── Header buttons ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:31
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:120
 msgid "AI Insights"
 msgstr "AI Insights"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:36
 msgid "Configuration"
 msgstr "Konfiguration"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:41
 msgid "Add KPI"
 msgstr "KPI hinzufügen"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:44
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:153
 msgid "Industry Templates"
 msgstr "Branchen-Templates"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:49
 msgid "Export"
 msgstr "Exportieren"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:54
 msgid "CSV / Excel"
 msgstr "CSV / Excel"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:57
 msgid "Chart as PNG"
 msgstr "Chart als PNG"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:62
 msgid "Normal"
 msgstr "Normal"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:62
 msgid "Fullscreen"
 msgstr "Vollbild"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:65
 msgid "Refresh"
 msgstr "Aktualisieren"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:69
 msgid "Light Mode"
 msgstr "Light Mode"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:69
 msgid "Dark Mode"
 msgstr "Dark Mode"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:19
 msgid "+ Create new..."
 msgstr "+ Neu erstellen..."
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:25
 msgid "Remove as default dashboard"
 msgstr "Standard-Dashboard entfernen"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:25
 msgid "Set as default dashboard"
 msgstr "Als Standard-Dashboard beim Öffnen setzen"
 
 # ── Loading / Empty states ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:107
 msgid "Loading data..."
 msgstr "Daten werden geladen..."
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:405
 msgid "No Dashboards Configured"
 msgstr "Keine Dashboards konfiguriert"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:406
 msgid "Create a dashboard from an industry template or go to Configuration."
 msgstr ""
 "Erstelle ein Dashboard aus einem Branchen-Template oder gehe zu "
@@ -329,22 +419,26 @@ msgstr ""
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:408
 msgid "Use Template"
 msgstr "Template verwenden"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.xml:115
 msgid "No Data"
 msgstr "Keine Daten"
 
 # ── Insights panel ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:116
 msgid "Summary"
 msgstr "Zusammenfassung"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:132
 msgid ""
 "Add an API key (Anthropic or OpenAI) in the Dashboard Configuration to "
 "enable AI Insights."
@@ -355,244 +449,297 @@ msgstr ""
 # ── Templates dialog ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:159
 msgid "Create a pre-configured dashboard from an industry template:"
 msgstr "Erstelle ein vorkonfiguriertes Dashboard aus einem Branchen-Template:"
 
 # ── Dashboard Creator ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:182
 msgid "Create Dashboard"
 msgstr "Dashboard erstellen"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:191
 msgid "Dashboard Name *"
 msgstr "Dashboard-Name *"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:193
 msgid "e.g. My Dashboard"
 msgstr "z.B. Mein Dashboard"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:197
 msgid "Icon"
 msgstr "Icon"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:210
 msgid "Select KPIs"
 msgstr "KPIs auswählen"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:210
 msgid "selected"
 msgstr "ausgewählt"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:231
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:347
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:174
 msgid "Cancel"
 msgstr "Abbrechen"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:233
 msgid "Create"
 msgstr "Erstellen"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:308
 msgid "Please enter a name and select at least one KPI."
 msgstr "Bitte Name eingeben und mindestens einen KPI auswählen."
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:312
 msgid "Please enter a dashboard name."
 msgstr "Bitte einen Dashboard-Namen eingeben."
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:316
 msgid "Please select at least one KPI."
 msgstr "Bitte mindestens einen KPI auswählen."
 
 # ── KPI Builder ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:245
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:349
 msgid "Create KPI"
 msgstr "KPI erstellen"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:253
 msgid "Name *"
 msgstr "Name *"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:256
 msgid "e.g. Revenue per Month"
 msgstr "z.B. Umsatz pro Monat"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:464
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:270
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:150
 msgid "Unit"
 msgstr "Einheit"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:273
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:152
 msgid "EUR, %, pcs."
 msgstr "EUR, %, Stk."
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:277
 msgid "Odoo Model *"
 msgstr "Odoo Model *"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:279
 msgid "— Select Model —"
 msgstr "— Model wählen —"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:289
 msgid "Measure Field *"
 msgstr "Messfeld *"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:291
 msgid "— Select Field —"
 msgstr "— Feld wählen —"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:312
 msgid "Date Field"
 msgstr "Datumsfeld"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:322
 msgid "Group By"
 msgstr "Gruppierung"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:341
 msgid "Domain (optional)"
 msgstr "Domain (optional)"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:330
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:163
 msgid "Target Value"
 msgstr "Zielwert"
 
 # ── KPI Card ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:33
 msgid "Edit"
 msgstr "Bearbeiten"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:23
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:47
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:91
 msgid "Notes"
 msgstr "Notizen"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:79
 msgid "of target"
 msgstr "von Ziel"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:97
 msgid "Add note..."
 msgstr "Notiz hinzufügen..."
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:115
 msgid "Delete"
 msgstr "Löschen"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:130
 msgid "Edit KPI"
 msgstr "KPI bearbeiten"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:138
 msgid "Name"
 msgstr "Name"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:143
 msgid "Description"
 msgstr "Beschreibung"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:145
 msgid "Tooltip text for info icon..."
 msgstr "Tooltip-Text für Info-Icon..."
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:156
 msgid "Background Color"
 msgstr "Hintergrundfarbe"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:176
 msgid "Save"
 msgstr "Speichern"
 
 # ── Chart menu ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.xml:43
 msgid "Target & Budget"
 msgstr "Ziel & Budget"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:373
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.xml:45
 msgid "Target"
 msgstr "Ziel"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:464
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:474
+#: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.xml:88
 msgid "Value"
 msgstr "Wert"
 
 # ── CSV Export ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:464
 msgid "KPI"
 msgstr "KPI"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:464
 msgid "Change %"
 msgstr "Veränderung %"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:474
 msgid "Label"
 msgstr "Label"
 
 # ── Activity hint ──
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:396
 msgid "Activity KPIs only show planned activities. Install the"
 msgstr ""
 "Aktivitäts-KPIs zeigen nur geplante Aktivitäten. Installiere das Modul"
 
 #. module: executive_dashboard
 #. odoo-javascript
+#: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:398
 msgid "module to also evaluate completed calls, emails and meetings."
 msgstr "um auch erledigte Anrufe, E-Mails und Meetings auszuwerten."
 
 # ── Server-side menu & settings ──
 #. module: executive_dashboard
-#. odoo-javascript
 msgid "Settings"
 msgstr "Einstellungen"
 
 #. module: executive_dashboard
-#. odoo-javascript
 msgid "Dashboard Management"
 msgstr "Dashboard-Verwaltung"
 
 #. module: executive_dashboard
-#. odoo-javascript
 msgid "Dashboards"
 msgstr "Dashboards"
 
@@ -602,28 +749,23 @@ msgid "Bank Balance"
 msgstr "Kontostand"
 
 #. module: executive_dashboard
-#. odoo-javascript
 msgid "Bank Journal"
 msgstr "Bankjournal"
 
 #. module: executive_dashboard
-#. odoo-javascript
 msgid ""
 "Which bank account should be displayed as the balance in the dashboard?"
 msgstr "Welches Bankkonto soll als Kontostand im Dashboard angezeigt werden?"
 
 #. module: executive_dashboard
-#. odoo-javascript
 msgid "Bank Account"
 msgstr "Bankkonto"
 
 #. module: executive_dashboard
-#. odoo-javascript
 msgid "Smart Analytics"
 msgstr "Intelligente Analysen"
 
 #. module: executive_dashboard
-#. odoo-javascript
 msgid ""
 "Enable AI-powered insights that automatically analyze your KPIs and provide "
 "recommendations"
@@ -632,17 +774,14 @@ msgstr ""
 "Handlungsempfehlungen geben"
 
 #. module: executive_dashboard
-#. odoo-javascript
 msgid "Provider"
 msgstr "Anbieter"
 
 #. module: executive_dashboard
-#. odoo-javascript
 msgid "API Key"
 msgstr "API-Schlüssel"
 
 #. module: executive_dashboard
-#. odoo-javascript
 msgid "Test Connection"
 msgstr "Verbindung testen"
 
