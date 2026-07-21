@@ -296,10 +296,7 @@ class ExecutiveDashboardController(http.Controller):
                 continue
             vals = {
                 'dashboard_id': dashboard.id,
-                # Language-independent source name: keeps formula kpi(...)
-                # references valid regardless of the creating user's
-                # language (name is translatable for display purposes).
-                'name': src._cache_key(),
+                'name': src.name,
                 'description': src.description,
                 'sequence': (i + 1) * 10,
                 'display_type': item.get('display_type', src.display_type),

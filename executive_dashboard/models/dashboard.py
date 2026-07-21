@@ -6,13 +6,23 @@ from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
+# See executive_dashboard.models.dashboard_kpi.KPI_NAME_DE for why this is a
+# plain dict applied at display time rather than name=translate=True.
+DASHBOARD_NAME_DE = {
+    'CEO — Company Overview': 'CEO — Unternehmensübersicht',
+    'CFO — Finance': 'CFO — Finanzen',
+    'COO — Operations': 'COO — Operations',
+    'CSO — Sales Performance': 'CSO — Sales Performance',
+    'CTO — Projects & Team': 'CTO — Projekte & Team',
+}
+
 
 class ExecutiveDashboard(models.Model):
     _name = 'executive.dashboard'
     _description = 'Executive Dashboard'
     _order = 'sequence, id'
 
-    name = fields.Char(required=True, translate=True)
+    name = fields.Char(required=True)
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     role = fields.Selection([
@@ -72,12 +82,20 @@ class ExecutiveDashboard(models.Model):
     # Actions
     # ═══════════════════════════════════════════
 
+    def _display_name(self):
+        """German display label for German-language users, else the stored
+        (English) name. See dashboard_kpi.DashboardKPI._display_name."""
+        self.ensure_one()
+        if (self.env.lang or '').startswith('de'):
+            return DASHBOARD_NAME_DE.get(self.name, self.name)
+        return self.name
+
     def action_open_dashboard(self):
         self.ensure_one()
         return {
             'type': 'ir.actions.client',
             'tag': 'executive_dashboard',
-            'name': self.name,
+            'name': self._display_name(),
             'params': {'dashboard_id': self.id},
         }
 
@@ -96,7 +114,7 @@ class ExecutiveDashboard(models.Model):
             if kpi.source_type in ('model', 'sql', 'bank_balance'):
                 result = kpi._compute_value(period, kpi_cache=None,
                     activity_state=activity_state, comparison_mode=comparison_mode)
-                kpi_cache[kpi._cache_key()] = result['value']
+                kpi_cache[kpi.name] = result['value']
                 kpi_results.append(result)
             else:
                 kpi_results.append(kpi)
@@ -113,7 +131,7 @@ class ExecutiveDashboard(models.Model):
 
         return {
             'id': self.id,
-            'name': self.name,
+            'name': self._display_name(),
             'role': self.role,
             'period': period,
             'auto_refresh': self.auto_refresh or 0,

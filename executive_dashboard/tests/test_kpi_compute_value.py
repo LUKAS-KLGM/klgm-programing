@@ -70,27 +70,29 @@ class TestKpiComputeValue(TransactionCase):
         result = kpi._compute_value('last_30_days', kpi_cache={'Revenue': 21})
         self.assertEqual(result['value'], 0)
 
-    def test_cache_key_is_language_independent(self):
-        # name is translatable (localized KPI labels), but _cache_key() must
-        # always resolve to the same value regardless of the active context
-        # language — formula strings like kpi('Revenue (net)') hardcode the
-        # English source text and would silently break otherwise.
+    def test_display_name_translates_under_german_context(self):
         kpi = self._kpi(name='Revenue (net)')
-        self.assertEqual(kpi._cache_key(), 'Revenue (net)')
-        self.assertEqual(kpi.with_context(lang='en_US')._cache_key(), 'Revenue (net)')
+        self.assertEqual(kpi.with_context(lang='de_DE')._display_name(), 'Umsatz (netto)')
+        self.assertEqual(kpi._display_name(), 'Revenue (net)')
 
-    def test_dashboard_formula_lookup_uses_cache_key_not_display_name(self):
-        # Regression test: _get_dashboard_data() must key the KPI cache off
-        # _cache_key(), not the (translatable) display name, or a formula
-        # KPI's kpi(...) reference to a sibling breaks as soon as that
-        # sibling's name is shown translated.
-        revenue = self._model_kpi(name='Revenue (net)')
+    def test_display_name_falls_back_for_unmapped_name(self):
+        # Custom, user-authored KPIs have no German entry — must not error,
+        # just show the name as typed.
+        kpi = self._kpi(name='Some Custom KPI')
+        self.assertEqual(kpi.with_context(lang='de_DE')._display_name(), 'Some Custom KPI')
+
+    def test_dashboard_formula_lookup_survives_german_display_language(self):
+        # Regression test: kpi_cache must stay keyed by the stored (English)
+        # name, not _display_name(), or a formula KPI's kpi('Revenue (net)')
+        # reference breaks for German-language viewers as soon as a sibling
+        # KPI's *displayed* name diverges from its stored name.
+        self._model_kpi(name='Revenue (net)')
         self._kpi(source_type='formula', name='AOV',
-                   formula="kpi('LOOKUP_KEY_STUB') * 10", show_comparison=False)
-        with patch.object(type(revenue), '_cache_key', return_value='LOOKUP_KEY_STUB'):
-            data = self.dashboard._get_dashboard_data('custom:2026-06-01,2026-06-30')
+                   formula="kpi('Revenue (net)') / 2", show_comparison=False)
+        data = self.dashboard.with_context(lang='de_DE')._get_dashboard_data(
+            'custom:2026-06-01,2026-06-30')
         aov_result = next(k for k in data['kpis'] if k['name'] == 'AOV')
-        self.assertEqual(aov_result['value'], 10000.0)
+        self.assertEqual(aov_result['value'], 500.0)
 
     def test_change_pct_capped_at_positive_999(self):
         kpi = self._model_kpi(budget_value=0.01)
