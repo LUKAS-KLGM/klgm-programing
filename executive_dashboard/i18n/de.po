@@ -213,6 +213,10 @@ msgid "Export"
 msgstr "Exportieren"
 
 #. module: executive_dashboard
+msgid "CSV / Excel"
+msgstr "CSV / Excel"
+
+#. module: executive_dashboard
 msgid "Chart as PNG"
 msgstr "Chart als PNG"
 
@@ -350,6 +354,10 @@ msgid "EUR, %, pcs."
 msgstr "EUR, %, Stk."
 
 #. module: executive_dashboard
+msgid "Odoo Model *"
+msgstr "Odoo Model *"
+
+#. module: executive_dashboard
 msgid "— Select Model —"
 msgstr "— Model wählen —"
 
@@ -368,6 +376,10 @@ msgstr "Datumsfeld"
 #. module: executive_dashboard
 msgid "Group By"
 msgstr "Gruppierung"
+
+#. module: executive_dashboard
+msgid "Domain (optional)"
+msgstr "Domain (optional)"
 
 #. module: executive_dashboard
 msgid "Target Value"
