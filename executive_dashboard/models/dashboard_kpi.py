@@ -13,7 +13,7 @@ class DashboardKPI(models.Model):
     _order = 'sequence, id'
 
     dashboard_id = fields.Many2one('executive.dashboard', required=True, ondelete='cascade')
-    name = fields.Char(required=True)
+    name = fields.Char(required=True, translate=True)
     description = fields.Char(help='Kurze Erklärung des KPIs für Tooltip')
     sequence = fields.Integer(default=10)
 
@@ -455,6 +455,17 @@ class DashboardKPI(models.Model):
     # Compute Value
     # ═══════════════════════════════════════════
 
+    def _cache_key(self):
+        """Language-independent key for formula kpi(...) lookups.
+
+        `name` is translatable so the dashboard can show localized labels,
+        but formula strings like kpi('Revenue (net)') hardcode the English
+        source text. Always resolve through the en_US value so the cache
+        key matches regardless of the viewing user's language.
+        """
+        self.ensure_one()
+        return self.with_context(lang='en_US').name
+
     def _compute_value(self, period, kpi_cache=None, activity_state='all',
                        comparison_mode='previous_period'):
         self.ensure_one()
@@ -504,7 +515,7 @@ class DashboardKPI(models.Model):
                 kpi_cache = {}
                 for other in self.dashboard_id.kpi_ids:
                     if other.id != self.id and other.source_type == 'model':
-                        kpi_cache[other.name] = other._aggregate_model(period)['value']
+                        kpi_cache[other._cache_key()] = other._aggregate_model(period)['value']
 
             def kpi(name):
                 return kpi_cache.get(name, 0)

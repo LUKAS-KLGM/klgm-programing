@@ -70,6 +70,28 @@ class TestKpiComputeValue(TransactionCase):
         result = kpi._compute_value('last_30_days', kpi_cache={'Revenue': 21})
         self.assertEqual(result['value'], 0)
 
+    def test_cache_key_is_language_independent(self):
+        # name is translatable (localized KPI labels), but _cache_key() must
+        # always resolve to the same value regardless of the active context
+        # language — formula strings like kpi('Revenue (net)') hardcode the
+        # English source text and would silently break otherwise.
+        kpi = self._kpi(name='Revenue (net)')
+        self.assertEqual(kpi._cache_key(), 'Revenue (net)')
+        self.assertEqual(kpi.with_context(lang='en_US')._cache_key(), 'Revenue (net)')
+
+    def test_dashboard_formula_lookup_uses_cache_key_not_display_name(self):
+        # Regression test: _get_dashboard_data() must key the KPI cache off
+        # _cache_key(), not the (translatable) display name, or a formula
+        # KPI's kpi(...) reference to a sibling breaks as soon as that
+        # sibling's name is shown translated.
+        revenue = self._model_kpi(name='Revenue (net)')
+        self._kpi(source_type='formula', name='AOV',
+                   formula="kpi('LOOKUP_KEY_STUB') * 10", show_comparison=False)
+        with patch.object(type(revenue), '_cache_key', return_value='LOOKUP_KEY_STUB'):
+            data = self.dashboard._get_dashboard_data('custom:2026-06-01,2026-06-30')
+        aov_result = next(k for k in data['kpis'] if k['name'] == 'AOV')
+        self.assertEqual(aov_result['value'], 10000.0)
+
     def test_change_pct_capped_at_positive_999(self):
         kpi = self._model_kpi(budget_value=0.01)
         result = kpi._compute_value('custom:2026-06-01,2026-06-30', comparison_mode='budget')

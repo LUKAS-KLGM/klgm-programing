@@ -12,7 +12,7 @@ class ExecutiveDashboard(models.Model):
     _description = 'Executive Dashboard'
     _order = 'sequence, id'
 
-    name = fields.Char(required=True)
+    name = fields.Char(required=True, translate=True)
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     role = fields.Selection([
@@ -96,7 +96,7 @@ class ExecutiveDashboard(models.Model):
             if kpi.source_type in ('model', 'sql', 'bank_balance'):
                 result = kpi._compute_value(period, kpi_cache=None,
                     activity_state=activity_state, comparison_mode=comparison_mode)
-                kpi_cache[kpi.name] = result['value']
+                kpi_cache[kpi._cache_key()] = result['value']
                 kpi_results.append(result)
             else:
                 kpi_results.append(kpi)
