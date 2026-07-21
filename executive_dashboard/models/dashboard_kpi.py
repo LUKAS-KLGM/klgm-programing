@@ -6,85 +6,6 @@ from odoo.tools.safe_eval import safe_eval
 
 _logger = logging.getLogger(__name__)
 
-# German display labels for the English KPI names shipped in data/*.xml.
-# Deliberately a plain Python dict rather than name=translate=True + i18n/de.po:
-# formula KPIs reference sibling KPIs by literal English name (e.g.
-# kpi('Revenue (net)')), and a from-.po translation would also need each
-# formula-referenced KPI's own display name to stay resolvable — a static
-# mapping applied only at display time keeps `name` itself language-stable
-# everywhere it's used as a lookup key.
-KPI_NAME_DE = {
-    'AOV': 'AOV',
-    'Absence Days': 'Abwesenheitstage',
-    'Absence Rate': 'Abwesenheitsquote',
-    'Activities by Type': 'Aktivitäten nach Typ',
-    'Activities per Employee': 'Aktivitäten pro Mitarbeiter',
-    'Activities per Month': 'Aktivitäten pro Monat',
-    'Avg. Discount': 'Ø Rabatt',
-    'Bank Balance': 'Kontostand',
-    'Calls': 'Anrufe',
-    'Calls per Employee': 'Anrufe pro Mitarbeiter',
-    'DPO (Days)': 'DPO (Tage)',
-    'DSO (Days)': 'DSO (Tage)',
-    'Deliveries': 'Lieferungen',
-    'Deliveries per Month': 'Lieferungen pro Monat',
-    'Delivery Rate': 'Lieferquote',
-    'Delivery Status': 'Lieferstatus',
-    'Emails': 'E-Mails',
-    'Emails per Employee': 'E-Mails pro Mitarbeiter',
-    'Employees': 'Mitarbeiter',
-    'Inventory Value': 'Lagerbestand',
-    'Invoicing': 'Fakturierung',
-    'Invoicing per Month': 'Fakturierung pro Monat',
-    'Invoicing per Quarter': 'Fakturierung pro Quartal',
-    'Leads by Sales Team': 'Leads nach Vertriebsteam',
-    'Margin': 'Marge',
-    'Margin %': 'Marge %',
-    'Margin per Month': 'Marge pro Monat',
-    'Meetings': 'Meetings',
-    'Meetings per Employee': 'Meetings pro Mitarbeiter',
-    'New Leads': 'Neue Leads',
-    'New Tasks per Month': 'Neue Aufgaben pro Monat',
-    'Open Deliveries': 'Offene Lieferungen',
-    'Open Receivables': 'Offene Forderungen',
-    'Order Intake per Month': 'Auftragseingang pro Monat',
-    'Orders': 'Aufträge',
-    'Orders per Month': 'Aufträge pro Monat',
-    'Payment Status': 'Zahlungsstatus',
-    'Pipeline Value': 'Pipeline-Wert',
-    'Pipeline by Employee': 'Pipeline nach Mitarbeiter',
-    'Pipeline by Stage': 'Pipeline nach Phase',
-    'Purchase Volume': 'Einkaufsvolumen',
-    'Purchasing per Month': 'Einkauf pro Monat',
-    'Receivables by Due Date': 'Forderungen nach Fälligkeit',
-    'Repeat Purchase Rate': 'Wiederkaufrate',
-    'Return Rate': 'Retourenquote',
-    'Revenue (net)': 'Umsatz (netto)',
-    'Revenue by Country': 'Umsatz nach Land',
-    'Revenue by Product Category': 'Umsatz nach Produktkategorie',
-    'Revenue by Sales Channel': 'Umsatz nach Vertriebskanal',
-    'Revenue by Team': 'Umsatz nach Team',
-    'Revenue per Capita': 'Umsatz Pro Kopf',
-    'Revenue per Employee': 'Umsatz pro Mitarbeiter',
-    'Revenue per Month': 'Umsatz pro Monat',
-    'Sales Cycle': 'Sales Cycle',
-    'Sales Strength/Employee': 'Vertriebsstärke/MA',
-    'Supplier Delay': 'Lieferanten-Delay',
-    'Tasks': 'Aufgaben',
-    'Tasks by Phase': 'Aufgaben nach Phase',
-    'Tasks by Project': 'Aufgaben nach Projekt',
-    'Tasks by Responsible': 'Aufgaben nach Verantwortlichem',
-    'Tasks per Month (Deadline)': 'Aufgaben pro Monat (Deadline)',
-    'Tasks/Employee': 'Aufgaben/MA',
-    'Team by Department': 'Team nach Abteilung',
-    'To-Dos per Employee': 'To-Dos pro Mitarbeiter',
-    'Top Customers': 'Top Kunden',
-    'Total Activities': 'Aktivitäten gesamt',
-    'Vendor Bills': 'Eingangsrechnungen',
-    'Vendor Bills per Month': 'Eingangsrechnungen pro Monat',
-    'Win Rate': 'Gewinnquote',
-}
-
 
 class DashboardKPI(models.Model):
     _name = 'executive.dashboard.kpi'
@@ -92,7 +13,7 @@ class DashboardKPI(models.Model):
     _order = 'sequence, id'
 
     dashboard_id = fields.Many2one('executive.dashboard', required=True, ondelete='cascade')
-    name = fields.Char(required=True)
+    name = fields.Char(required=True, translate=True)
     description = fields.Char(help='Kurze Erklärung des KPIs für Tooltip')
     sequence = fields.Integer(default=10)
 
@@ -534,21 +455,23 @@ class DashboardKPI(models.Model):
     # Compute Value
     # ═══════════════════════════════════════════
 
-    def _display_name(self):
-        """German display label for German-language users, else the stored
-        (English) name. `name` itself stays untouched so formula strings
-        like kpi('Revenue (net)') keep matching it as a lookup key."""
+    def _cache_key(self):
+        """Language-independent key for formula kpi(...) lookups.
+
+        `name` is translatable so the dashboard can show localized labels,
+        but formula strings like kpi('Revenue (net)') hardcode the English
+        source text. Always resolve through the en_US value so the cache
+        key matches regardless of the viewing user's language.
+        """
         self.ensure_one()
-        if (self.env.lang or '').startswith('de'):
-            return KPI_NAME_DE.get(self.name, self.name)
-        return self.name
+        return self.with_context(lang='en_US').name
 
     def _compute_value(self, period, kpi_cache=None, activity_state='all',
                        comparison_mode='previous_period'):
         self.ensure_one()
         result = {
             'id': self.id,
-            'name': self._display_name(),
+            'name': self.name,
             'display_type': self.display_type,
             'unit': self.unit or '',
             'color': self.color or '#EFF6FF',
@@ -592,7 +515,7 @@ class DashboardKPI(models.Model):
                 kpi_cache = {}
                 for other in self.dashboard_id.kpi_ids:
                     if other.id != self.id and other.source_type == 'model':
-                        kpi_cache[other.name] = other._aggregate_model(period)['value']
+                        kpi_cache[other._cache_key()] = other._aggregate_model(period)['value']
 
             def kpi(name):
                 return kpi_cache.get(name, 0)
