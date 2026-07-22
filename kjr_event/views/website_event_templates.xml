@@ -88,7 +88,7 @@
         <!-- "Treffpunkt" und "Webseite" gehören inhaltlich zum Ort-Block dazu (Ziel +
              Treffpunkt + weiterführender Link) und teilen sich daher dessen bestehenden
              Toggle (opt_event_location_block) statt einen eigenen zu bekommen. -->
-        <xpath expr="//a[@title='Get directions']" position="after">
+        <xpath expr="//a[@t-att-href=&quot;event._google_map_link()&quot;]" position="after">
             <div t-if="event.kjr_meeting_point" class="mt-3">
                 <h6 class="o_wevent_sidebar_title">Treffpunkt</h6>
                 <p class="mb-0" t-field="event.kjr_meeting_point"/>
