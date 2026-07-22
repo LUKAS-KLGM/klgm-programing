@@ -4,7 +4,7 @@
     # NUR für den gemeinsamen Staging-Test beider offenen PRs (Dokumente-Block =
     # 19.0.2.2.0, Treffpunkt/Wichtig/Webseite = 19.0.2.3.0). Diese Versionsnummer/
     # dieser Branch ist kein eigener PR und sollte nicht gemerged werden.
-    'version': '19.0.2.4.0',
+    'version': '19.0.2.4.1',
     'category': 'Custom/KJR',
     'summary': 'Erweiterung der Odoo-Veranstaltungen für KJR-Ferienprogramm und Schulungen '
                '(Juleica, Rettungsschwimmer): Altersgruppen, Einwilligung Minderjähriger, '
