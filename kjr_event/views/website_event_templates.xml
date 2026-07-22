@@ -106,7 +106,7 @@
                     <li t-foreach="event.kjr_document_ids" t-as="kjr_doc" class="mb-1">
                         <a t-att-href="kjr_doc.download_url" target="_blank" rel="noopener"
                            t-att-title="kjr_doc.name">
-                            <i class="fa fa-file-pdf-o me-2" role="img" aria-label="Dokument"/>
+                            <i class="fa fa-file-pdf-o me-2" role="presentation"/>
                             <span t-out="kjr_doc.name"/>
                         </a>
                     </li>
