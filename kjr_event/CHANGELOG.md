@@ -1,5 +1,16 @@
 # Changelog – kjr_event
 
+## 19.0.2.5.0
+
+### Hinzugefügt
+- **E13 Mindestanzahl Teilnehmer (Nupian-Parität)**: Odoo kennt nativ nur ein
+  Sitzplatz-Maximum (`seats_max`), keine Mindestanzahl. Neues Feld `event.event.kjr_seats_min`
+  (0 = keine Mindestanzahl) + computed `kjr_seats_min_reached` (Vergleich mit `seats_taken` =
+  Registrierte + bereits Erschienene). Backend: Feld in der bestehenden „Teilnahme"-Gruppe im
+  KJR-Reiter, Warnbox erscheint, sobald die Mindestanzahl unterschritten ist. Rein
+  backend-intern, keine Website-Darstellung (Feld dient der internen Planung/Entscheidung,
+  ob eine Veranstaltung bei zu wenig Anmeldungen abgesagt wird).
+
 ## 19.0.2.0.0
 
 ### Hinzugefügt

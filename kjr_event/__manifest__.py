@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Ferienprogramm & Schulungen',
-    'version': '19.0.2.1.0',
+    # Hinweis für Lukas: parallel gibt es zwei weitere offene PRs, die ebenfalls von
+    # 19.0.2.1.0 abzweigen (Dokumente-Block = 19.0.2.2.0, Treffpunkt/Wichtig/Webseite =
+    # 19.0.2.3.0). Versionsnummer hier ggf. je nach Merge-Reihenfolge nochmal anpassen.
+    'version': '19.0.2.5.0',
     'category': 'Custom/KJR',
     'summary': 'Erweiterung der Odoo-Veranstaltungen für KJR-Ferienprogramm und Schulungen '
                '(Juleica, Rettungsschwimmer): Altersgruppen, Einwilligung Minderjähriger, '
-               'Notfallkontakt, Teilnahmebescheinigung',
+               'Notfallkontakt, Teilnahmebescheinigung, Mindestanzahl Teilnehmer',
     'author': 'KLGM UG (haftungsbeschränkt)',
     'website': 'https://www.klgm-consulting.de',
     'license': 'OPL-1',

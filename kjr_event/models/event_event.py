@@ -15,6 +15,19 @@ class EventEvent(models.Model):
     ], string='KJR-Art')
     kjr_min_age = fields.Integer(string='Mindestalter', help='0 = keine Prüfung.')
     kjr_max_age = fields.Integer(string='Höchstalter', help='0 = keine Obergrenze.')
+    # E13 – Mindestanzahl Teilnehmer (Nupian-Parität; Odoo kennt nativ nur ein Maximum)
+    kjr_seats_min = fields.Integer(
+        string='Mindestanzahl Teilnehmer',
+        help='0 = keine Mindestanzahl. Odoo hat serienmäßig nur ein Sitzplatz-Maximum '
+             '(seats_max) – dieses Feld ergänzt die von Nupian gewohnte Mindestanzahl, '
+             'z. B. um zu entscheiden, ob eine Fahrt bei zu wenig Anmeldungen abgesagt wird.',
+    )
+    kjr_seats_min_reached = fields.Boolean(
+        string='Mindestanzahl erreicht',
+        compute='_compute_kjr_seats_min_reached',
+        help='True, wenn keine Mindestanzahl gesetzt ist oder die aktuellen Anmeldungen '
+             '(Registrierte + bereits Erschienene, also seats_taken) die Mindestanzahl erreichen.',
+    )
     kjr_enforce_age_range = fields.Boolean(
         string='Altersgruppe erzwingen',
         help='Wenn aktiv, wird eine Anmeldung außerhalb der Altersgruppe hart abgewiesen '
@@ -62,3 +75,8 @@ class EventEvent(models.Model):
     def _compute_is_juleica(self):
         for rec in self:
             rec.is_juleica_course = rec.kjr_event_type == 'juleica_course'
+
+    @api.depends('kjr_seats_min', 'seats_taken')
+    def _compute_kjr_seats_min_reached(self):
+        for event in self:
+            event.kjr_seats_min_reached = not event.kjr_seats_min or event.seats_taken >= event.kjr_seats_min
