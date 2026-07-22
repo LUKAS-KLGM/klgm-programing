@@ -2,9 +2,20 @@
 
 ## staging/kjr-event-combined-test (nur für Staging-Test, kein offizieller Release)
 
-Kombiniert die beiden unabhängigen, noch offenen PRs 19.0.2.2.0 (Dokumente-Block) und
-19.0.2.3.0 (Treffpunkt/Wichtig/Webseite) für den gemeinsamen Test auf der
-KJR-Staging-Instanz. Siehe die beiden Abschnitte unten für Details.
+Kombiniert alle drei unabhängigen, noch offenen PRs 19.0.2.2.0 (Dokumente-Block),
+19.0.2.3.0 (Treffpunkt/Wichtig/Webseite) und 19.0.2.5.0 (Mindestanzahl Teilnehmer) für
+den gemeinsamen Test auf der KJR-Staging-Instanz. Siehe die Abschnitte unten für Details.
+
+## 19.0.2.5.0
+
+### Hinzugefügt
+- **E13 Mindestanzahl Teilnehmer (Nupian-Parität)**: Odoo kennt nativ nur ein
+  Sitzplatz-Maximum (`seats_max`), keine Mindestanzahl. Neues Feld `event.event.kjr_seats_min`
+  (0 = keine Mindestanzahl) + computed `kjr_seats_min_reached` (Vergleich mit `seats_taken` =
+  Registrierte + bereits Erschienene). Backend: Feld in der bestehenden „Teilnahme"-Gruppe im
+  KJR-Reiter, Warnbox erscheint, sobald die Mindestanzahl unterschritten ist. Rein
+  backend-intern, keine Website-Darstellung (Feld dient der internen Planung/Entscheidung,
+  ob eine Veranstaltung bei zu wenig Anmeldungen abgesagt wird).
 
 ## 19.0.2.3.0
 
