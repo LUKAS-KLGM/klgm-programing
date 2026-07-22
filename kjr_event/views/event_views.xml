@@ -59,6 +59,21 @@
                         </list>
                     </field>
                 </page>
+                <!-- E12: Treffpunkt, Wichtig, Webseite (Nupian-Parität) -->
+                <page string="Treffpunkt &amp; Hinweise" name="kjr_meeting_info">
+                    <div class="alert alert-info" role="alert">
+                        „Wichtig" wird auf der Website immer oberhalb der Beschreibung angezeigt.
+                        „Treffpunkt" und „Webseite" erscheinen im Ort-Block der Seitenleiste (nur
+                        wenn dieser im Website-Editor aktiviert ist).
+                    </div>
+                    <group>
+                        <field name="kjr_meeting_point"
+                               placeholder="z. B. Bahnhof Sonthofen, Zustieg auch in Immenstadt/Kempten möglich"/>
+                        <field name="kjr_important_note"
+                               placeholder="z. B. Bitte 100€ in bar mitgeben ..."/>
+                        <field name="kjr_website_url" widget="url" placeholder="https://..."/>
+                    </group>
+                </page>
             </notebook>
         </field>
     </record>
