@@ -1188,3 +1188,125 @@ msgstr "Anthropic (Claude)"
 #: model:ir.model.fields.selection,name:executive_dashboard.selection__res_config_settings__ed_ai_provider__openai
 msgid "OpenAI (GPT)"
 msgstr "OpenAI (GPT)"
+
+# ── KPI descriptions (tooltips) ──
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cso_aov
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_aov
+msgid "Average Order Value — average revenue per order (Revenue / Orders)"
+msgstr "Average Order Value — Durchschnittlicher Bestellwert (Umsatz / Aufträge)"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cso_sales_cycle
+msgid "Average number of days from lead to close (won opportunities)"
+msgstr "Durchschnittliche Tage vom Lead bis zum Abschluss (gewonnene Opportunities)"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cso_discount_rate
+msgid "Average discount percentage across all sales order lines"
+msgstr "Durchschnittlicher Rabatt in Prozent über alle Verkaufspositionen"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_revenue
+msgid "Net revenue from confirmed sales orders in the selected period"
+msgstr "Nettoumsatz aus bestätigten Verkaufsaufträgen im gewählten Zeitraum"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_orders
+msgid "Number of confirmed sales orders"
+msgstr "Anzahl bestätigter Verkaufsaufträge"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_pipeline
+msgid "Weighted value of all open opportunities (revenue × probability)"
+msgstr "Gewichteter Wert aller offenen Verkaufschancen (Umsatz × Wahrscheinlichkeit)"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_ar
+msgid "Sum of all unpaid or partially paid customer invoices"
+msgstr "Summe aller unbezahlten oder teilbezahlten Ausgangsrechnungen"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cfo_invoiced
+msgid "Sum of all posted customer invoices and credit notes"
+msgstr "Summe aller gebuchten Ausgangsrechnungen und Gutschriften"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cfo_margin
+msgid "Gross margin = revenue minus cost of goods sold"
+msgstr "Bruttomarge = Umsatz minus Einkaufspreis der verkauften Waren"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cfo_margin_pct
+msgid "Gross margin as a percentage of revenue (margin / invoicing × 100)"
+msgstr "Bruttomarge in Prozent vom Umsatz (Marge / Fakturierung × 100)"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_repeat_rate
+msgid "Share of customers with more than one order in the period"
+msgstr "Anteil der Kunden mit mehr als einem Auftrag im Zeitraum"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_revenue_per_head
+msgid "Revenue per employee — growth &gt;5% very good, 3-5% normal, &lt;3% critical (business model tips over within 3 years)"
+msgstr "Umsatz je Mitarbeiter — Steigerung >5% sehr gut, 3-5% normal, <3% kritisch (Geschäftsmodell kippt in 3 Jahren)"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_sales_strength
+msgid "Delivery lines per employee — measures operational sales productivity"
+msgstr "Lieferpositionen je Mitarbeiter — misst die operative Vertriebsproduktivität"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_winrate
+msgid "Number of won opportunities in the period"
+msgstr "Anzahl gewonnener Verkaufschancen im Zeitraum"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cfo_dso
+msgid "Days Sales Outstanding — average number of days customers take to pay"
+msgstr "Days Sales Outstanding — Wie viele Tage brauchen Kunden im Schnitt zum Bezahlen"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cfo_dpo
+msgid "Days Payable Outstanding — average number of days you take to pay your suppliers"
+msgstr "Days Payable Outstanding — Wie viele Tage braucht ihr im Schnitt zum Bezahlen eurer Lieferanten"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cfo_balance
+msgid "Posted balance of the default bank journal (total debit minus credit)"
+msgstr "Gebuchter Saldo des Standard-Bankjournals (Summe Soll minus Haben)"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_coo_leadtime
+msgid "Average supplier delivery time in days"
+msgstr "Durchschnittliche Lieferzeit der Lieferanten in Tagen"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_coo_fulfillment
+msgid "Share of delivered quantity relative to ordered quantity, in percent"
+msgstr "Anteil gelieferter Menge an bestellter Menge in Prozent"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_coo_open_deliveries
+msgid "Outgoing deliveries in progress (assigned, confirmed, waiting)"
+msgstr "Ausgangslieferungen in Bearbeitung (zugewiesen, bestätigt, wartend)"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_coo_stock_value
+msgid "Total value of all internal stock"
+msgstr "Gesamtwert aller internen Lagerbestände"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_coo_return_rate
+msgid "Share of returns relative to total deliveries, in percent"
+msgstr "Anteil der Retouren an den Gesamtlieferungen in Prozent"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cto_absence_rate
+msgid "Absence days / (employees × 20 working days), in percent"
+msgstr "Abwesenheitstage / (Mitarbeiter × 20 Arbeitstage) in Prozent"
+
+#. module: executive_dashboard
+#: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cto_leave_days
+msgid "Approved absence days (vacation, sick leave, etc.) in the period"
+msgstr "Genehmigte Abwesenheitstage (Urlaub, Krankheit, etc.) im Zeitraum"

@@ -49,7 +49,7 @@
     <record id="kpi_cso_aov" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
         <field name="name">AOV</field>
-        <field name="description">Average Order Value — Durchschnittlicher Bestellwert (Umsatz / Aufträge)</field>
+        <field name="description">Average Order Value — average revenue per order (Revenue / Orders)</field>
         <field name="sequence">25</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
@@ -144,7 +144,7 @@
     <record id="kpi_cso_sales_cycle" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
         <field name="name">Sales Cycle</field>
-        <field name="description">Durchschnittliche Tage vom Lead bis zum Abschluss (gewonnene Opportunities)</field>
+        <field name="description">Average number of days from lead to close (won opportunities)</field>
         <field name="sequence">52</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">sql</field>
@@ -164,7 +164,7 @@ WHERE l.type = 'opportunity' AND l.probability = 100 AND s.is_won = true AND l.d
     <record id="kpi_cso_discount_rate" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cso"/>
         <field name="name">Avg. Discount</field>
-        <field name="description">Durchschnittlicher Rabatt in Prozent über alle Verkaufspositionen</field>
+        <field name="description">Average discount percentage across all sales order lines</field>
         <field name="sequence">53</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>

@@ -14,7 +14,7 @@ class DashboardKPI(models.Model):
 
     dashboard_id = fields.Many2one('executive.dashboard', required=True, ondelete='cascade')
     name = fields.Char(required=True, translate=True)
-    description = fields.Char(help='Kurze Erklärung des KPIs für Tooltip')
+    description = fields.Char(translate=True, help='Kurze Erklärung des KPIs für Tooltip')
     sequence = fields.Integer(default=10)
 
     # Display
