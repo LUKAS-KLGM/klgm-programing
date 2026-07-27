@@ -12,10 +12,10 @@ registry.category("web_tour.tours").add("executive_dashboard_tour", {
     url: "/odoo",
     steps: () => [
 
-        // ── 1. Open Controlling app ───────────────────────────────────────────
+        // ── 1. Open Executive Dashboard app ─────────────────────────────────
         {
             trigger: ".o_app[data-menu-xmlid='executive_dashboard.menu_executive_dashboard_root']",
-            content: "Open the Controlling app",
+            content: "Open the Executive Dashboard app",
             run: "click",
         },
 

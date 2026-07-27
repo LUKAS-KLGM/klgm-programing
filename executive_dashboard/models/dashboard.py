@@ -398,7 +398,7 @@ Nur das JSON-Array, kein anderer Text."""
             </table>
             <div style="padding:16px 24px;background:#f8f9fa;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;text-align:center;">
                 <p style="color:#888;font-size:11px;margin:0;">
-                    Automatischer Report von Controlling Dashboard &middot; Odoo 19
+                    Automatischer Report von Executive Dashboard &middot; Odoo 19
                 </p>
             </div>
         </div>

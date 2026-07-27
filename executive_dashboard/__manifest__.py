@@ -1,11 +1,11 @@
 {
-    "name": "Controlling",
-    "version": "19.0.6.5.9",
+    "name": "Executive Dashboard | KPIs, Charts & AI Insights",
+    "version": "19.0.6.5.10",
     "category": "Productivity",
     "summary": "Configurable executive dashboards with KPIs, charts, AI insights and industry templates",
     "description": """
-Controlling — Executive Dashboards for Odoo 19
-================================================
+Executive Dashboard — KPIs, Charts & AI Insights for Odoo 19
+==============================================================
 - KPI cards with live data and period-over-period comparison
 - Calculated KPIs (AOV, margin %, delivery rate, etc.)
 - Native charts (bar, line, pie, gauge)

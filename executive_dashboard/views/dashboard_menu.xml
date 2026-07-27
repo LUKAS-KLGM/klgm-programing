@@ -3,7 +3,7 @@
 
     <!-- Root menu (nur Administratoren) -->
     <menuitem id="menu_executive_dashboard_root"
-              name="Controlling"
+              name="Executive Dashboard"
               web_icon="executive_dashboard,static/description/icon.svg"
               sequence="1"
               groups="base.group_system"/>

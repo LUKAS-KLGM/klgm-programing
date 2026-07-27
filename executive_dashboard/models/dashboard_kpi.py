@@ -382,7 +382,7 @@ class DashboardKPI(models.Model):
         if self.journal_id:
             journal = self.journal_id
 
-        # 2. Global setting from Controlling → Einstellungen
+        # 2. Global setting from Executive Dashboard → Einstellungen
         if not journal:
             ICP = self.env['ir.config_parameter'].sudo()
             j_str = ICP.get_param('executive_dashboard.bank_journal_id', '0') or '0'

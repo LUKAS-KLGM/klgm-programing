@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app data-string="Controlling" string="Controlling" name="executive_dashboard">
+                <app data-string="Executive Dashboard" string="Executive Dashboard" name="executive_dashboard">
                     <block title="Bank Balance" name="bank_settings">
                         <setting string="Bank Journal" help="Which bank account should be displayed as the balance in the dashboard?">
                             <div class="content-group">
