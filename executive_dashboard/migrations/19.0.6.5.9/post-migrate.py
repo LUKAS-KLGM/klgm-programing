@@ -57,8 +57,16 @@ def migrate(cr, version):
             "Approved absence days (vacation, sick leave, etc.) in the period",
     }
 
+    # `description` just became translate=True in this version, which
+    # converts the column to jsonb ({"en_US": ..., "de_DE": ...}) as part of
+    # the schema migration that runs before this script — every key already
+    # holds the old German text at this point. Only the en_US key needs to
+    # move to the new English source string; de_DE already holds the
+    # correct German text and must be left untouched.
     for de, en in KPI_DESCRIPTIONS.items():
         cr.execute(
-            "UPDATE executive_dashboard_kpi SET description = %s WHERE description = %s",
+            "UPDATE executive_dashboard_kpi "
+            "SET description = jsonb_set(description, '{en_US}', to_jsonb(%s::text)) "
+            "WHERE description ->> 'en_US' = %s",
             (en, de),
         )
