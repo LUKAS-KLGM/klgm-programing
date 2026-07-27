@@ -299,7 +299,9 @@ class DashboardKPI(models.Model):
                     # 'id desc' isn't a valid aggregate/groupby order term in
                     # Odoo 19 when grouping by count — '__count' is the
                     # special token read_group accepts regardless of the
-                    # groupby field (the result key is still f'{field}_count').
+                    # groupby field. Note: the result dict's actual count key
+                    # is f'{bare_field}_count' (no ':granularity' suffix),
+                    # handled separately below.
                     order = '__count desc'
                 else:
                     order = f'{measure_spec} desc'
@@ -315,7 +317,11 @@ class DashboardKPI(models.Model):
                     elif label is False:
                         label = 'Sonstige'
                     val = r.get(self.measure_field, 0) or 0
-                    count = r.get(f'{chart_group}_count', r.get('__count', 0))
+                    # read_group's count key is keyed on the bare field name,
+                    # not the ':granularity' groupby spec (e.g. 'date_count'
+                    # for a 'date:month' groupby, never 'date:month_count').
+                    count_field = chart_group.split(':')[0]
+                    count = r.get(f'{count_field}_count', r.get('__count', 0))
                     chart_data.append({
                         'label': str(label),
                         'value': val if self.aggregate != 'count' else count,
@@ -352,9 +358,10 @@ class DashboardKPI(models.Model):
                         current_domain, [measure_spec], [spark_group],
                         orderby=spark_group, limit=30,
                     )
+                    spark_count_field = spark_group.split(':')[0]
                     for r in spark_results:
                         val = r.get(self.measure_field, 0) or 0
-                        count = r.get(f'{spark_group}_count', r.get('__count', 0))
+                        count = r.get(f'{spark_count_field}_count', r.get('__count', 0))
                         sparkline.append(val if self.aggregate != 'count' else count)
                     sparkline = sparkline[-14:]
             except Exception:
