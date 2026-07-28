@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<!-- E11: fügt der bestehenden "Sidebar Blocks"-Optionsgruppe der Event-Seite
+     (website_event.EventMainPageOption) einen weiteren Toggle "Dokumente" hinzu,
+     analog zu Registration/Dates/Calendar links/Location/Organizer/Share. -->
+<t t-inherit="website_event.EventMainPageOption" t-inherit-mode="extension">
+    <xpath expr="//BuilderContext[@action=&quot;'websiteConfig'&quot;]" position="inside">
+        <BuilderRow label.translate="Dokumente" level="1">
+            <BuilderCheckbox actionParam="{views: ['kjr_event.opt_event_kjr_documents_block']}"/>
+        </BuilderRow>
+    </xpath>
+</t>
+
+</templates>

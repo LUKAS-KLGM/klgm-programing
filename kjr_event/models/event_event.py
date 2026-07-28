@@ -71,6 +71,35 @@ class EventEvent(models.Model):
         help='Weitere Portalbenutzer mit Lesezugriff auf die Teilnehmerliste dieser Veranstaltung.',
     )
 
+    # E11 – Dokumente (Website)
+    kjr_document_ids = fields.One2many(
+        'kjr.event.document', 'event_id',
+        string='Dokumente',
+        help='Zusätzliche Dateien (z. B. PDF-Merkblätter, Hinweise) zur Veranstaltung. '
+             'Anzeigbar auf der Website als optionaler Sidebar-Block (Website-Editor → '
+             'Anpassen → Sidebar-Blöcke → Dokumente).',
+    )
+
+    # E12 – Treffpunkt, Wichtig, Webseite (Nupian-Parität)
+    kjr_meeting_point = fields.Text(
+        string='Treffpunkt',
+        help='Abfahrts-/Treffpunkt, falls abweichend vom eigentlichen Veranstaltungsort '
+             '(z. B. "Bahnhof Sonthofen, Zustieg auch in Immenstadt/Kempten möglich"). '
+             'Wird auf der Website im Ort-Block der Seitenleiste angezeigt.',
+    )
+    kjr_important_note = fields.Html(
+        string='Wichtig',
+        help='Auffällig hervorgehobener Hinweis (z. B. "Bitte 100€ in bar mitgeben") – wird '
+             'immer sichtbar oberhalb der Beschreibung auf der Website angezeigt, unabhängig '
+             'von den an-/abschaltbaren Seitenleisten-Blöcken.',
+    )
+    kjr_website_url = fields.Char(
+        string='Webseite',
+        help='Weiterführender externer Link (z. B. zur Webseite des Ausflugsziels). '
+             'Nicht zu verwechseln mit dem internen Odoo-Seiten-Link (website_url) oder der '
+             'Online-Event-URL (event_url) – dieser Link ist rein informativ.',
+    )
+
     @api.depends('kjr_event_type')
     def _compute_is_juleica(self):
         for rec in self:

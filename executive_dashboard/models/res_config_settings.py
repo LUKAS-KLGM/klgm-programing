@@ -8,7 +8,7 @@ class ResConfigSettings(models.TransientModel):
     ed_ai_provider = fields.Selection([
         ('anthropic', 'Anthropic (Claude)'),
         ('openai', 'OpenAI (GPT)'),
-    ], string='AI Anbieter', default='anthropic',
+    ], string='AI Provider', default='anthropic',
         config_parameter='executive_dashboard.ai_provider')
 
     ed_ai_api_key = fields.Char(
@@ -18,7 +18,7 @@ class ResConfigSettings(models.TransientModel):
     # ── Kontostand ──
     ed_bank_journal = fields.Selection(
         selection='_get_bank_journals',
-        string='Bankjournal für Kontostand',
+        string='Bank Journal for Balance',
         config_parameter='executive_dashboard.bank_journal_id')
 
     @api.model

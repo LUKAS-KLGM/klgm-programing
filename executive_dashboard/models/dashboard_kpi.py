@@ -1,7 +1,7 @@
 import logging
 from datetime import date, timedelta
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 from odoo.tools.safe_eval import safe_eval
 
 _logger = logging.getLogger(__name__)
@@ -13,83 +13,83 @@ class DashboardKPI(models.Model):
     _order = 'sequence, id'
 
     dashboard_id = fields.Many2one('executive.dashboard', required=True, ondelete='cascade')
-    name = fields.Char(required=True)
-    description = fields.Char(help='Kurze Erklärung des KPIs für Tooltip')
+    name = fields.Char(required=True, translate=True)
+    description = fields.Char(translate=True, help='Short explanation of the KPI, shown as a tooltip')
     sequence = fields.Integer(default=10)
 
     # Display
     display_type = fields.Selection([
-        ('scorecard', 'Scorecard (KPI-Karte)'),
-        ('chart_bar', 'Balkendiagramm'),
-        ('chart_bar_h', 'Balkendiagramm (horizontal)'),
-        ('chart_line', 'Liniendiagramm'),
-        ('chart_pie', 'Tortendiagramm'),
-        ('chart_doughnut', 'Ringdiagramm'),
-        ('chart_table', 'Tabelle'),
-        ('chart_gauge', 'Gauge (Tacho)'),
+        ('scorecard', 'Scorecard (KPI card)'),
+        ('chart_bar', 'Bar Chart'),
+        ('chart_bar_h', 'Bar Chart (horizontal)'),
+        ('chart_line', 'Line Chart'),
+        ('chart_pie', 'Pie Chart'),
+        ('chart_doughnut', 'Doughnut Chart'),
+        ('chart_table', 'Table'),
+        ('chart_gauge', 'Gauge'),
     ], required=True, default='scorecard')
-    unit = fields.Char(help='z.B. EUR, %, Stk.')
-    color = fields.Char(default='#EFF6FF', help='Hintergrundfarbe der Scorecard')
+    unit = fields.Char(help='e.g. EUR, %, pcs.')
+    color = fields.Char(default='#EFF6FF', help='Background colour of the scorecard')
     width = fields.Selection([
-        ('third', 'Drittel'),
-        ('half', 'Halbe Breite'),
-        ('two_thirds', 'Zwei Drittel'),
-        ('full', 'Volle Breite'),
+        ('third', 'One Third'),
+        ('half', 'Half Width'),
+        ('two_thirds', 'Two Thirds'),
+        ('full', 'Full Width'),
     ], default='half')
 
     # Data source
     source_type = fields.Selection([
-        ('model', 'Odoo Model (Aggregation)'),
-        ('formula', 'Berechnet (Formel)'),
+        ('model', 'Odoo Model (aggregation)'),
+        ('formula', 'Calculated (formula)'),
         ('sql', 'SQL Query'),
-        ('bank_balance', 'Kontostand (Bankjournal)'),
+        ('bank_balance', 'Bank Balance (journal)'),
     ], required=True, default='model')
 
     # For source_type = 'model'
-    model_name = fields.Char(help='z.B. sale.report, account.move')
-    domain = fields.Text(default='[]', help='Odoo Domain als Python-Liste')
-    measure_field = fields.Char(help='Feld zum Aggregieren, z.B. price_subtotal')
+    model_name = fields.Char(help='e.g. sale.report, account.move')
+    domain = fields.Text(default='[]', help='Odoo domain as a Python list')
+    measure_field = fields.Char(help='Field to aggregate, e.g. price_subtotal')
     aggregate = fields.Selection([
-        ('sum', 'Summe'),
-        ('avg', 'Durchschnitt'),
-        ('count', 'Anzahl'),
+        ('sum', 'Sum'),
+        ('avg', 'Average'),
+        ('count', 'Count'),
         ('min', 'Minimum'),
         ('max', 'Maximum'),
     ], default='sum')
-    group_by = fields.Char(help='Gruppierung für Charts, z.B. date:month')
+    group_by = fields.Char(help='Grouping for charts, e.g. date:month')
 
     # For source_type = 'formula'
-    formula = fields.Text(help='Python-Ausdruck. Verfügbar: kpi(name) für andere KPI-Werte.')
+    formula = fields.Text(help='Python expression. Available: kpi(name) for other KPI values.')
 
     # For source_type = 'sql'
-    sql_query = fields.Text(help='SQL SELECT der einen einzelnen Wert liefert. '
-                                 'Platzhalter: {date_from}, {date_to} für Zeitfilter.')
+    sql_query = fields.Text(help='SQL SELECT returning a single value. '
+                                 'Placeholders: {date_from}, {date_to} for the date filter.')
 
     # For source_type = 'bank_balance'
-    journal_id = fields.Many2one('account.journal', string='Bankjournal',
+    journal_id = fields.Many2one('account.journal', string='Bank Journal',
         domain="[('type', '=', 'bank')]",
-        help='Bankjournal für Kontostand. Leer = erstes Bankjournal.')
+        help='Bank journal for the balance. Empty = first bank journal.')
 
     # Comparison
     show_comparison = fields.Boolean(default=True)
 
     # Drill-down
-    action_xmlid = fields.Char(help='z.B. sale.action_order_report_all')
+    action_xmlid = fields.Char(help='e.g. sale.action_order_report_all')
 
     # Date field for filtering
-    date_field = fields.Char(default='date', help='Datumsfeld für Zeitfilter')
-    apply_date_filter = fields.Boolean(default=True, help='False für Bestandswerte wie Mitarbeiter.')
+    date_field = fields.Char(default='date', help='Date field used by the period filter')
+    apply_date_filter = fields.Boolean(default=True, help='False for stock values such as headcount.')
 
     # Target / Ampel (v3)
-    target_value = fields.Float(help='Zielwert für Ampel-Anzeige')
-    target_warning = fields.Float(help='Schwelle für Gelb (z.B. 80% des Ziels)')
-    target_critical = fields.Float(help='Schwelle für Rot (z.B. 50% des Ziels)')
+    target_value = fields.Float(help='Target value for the status indicator')
+    target_warning = fields.Float(help='Threshold for amber (e.g. 80% of target)')
+    target_critical = fields.Float(help='Threshold for red (e.g. 50% of target)')
 
     # Budget (v6)
-    budget_value = fields.Float(help='Budget-Wert für Vergleich')
+    budget_value = fields.Float(help='Budget value used for comparison')
 
     # Notes (v6)
-    note_ids = fields.One2many('executive.dashboard.kpi.note', 'kpi_id', string='Notizen')
+    note_ids = fields.One2many('executive.dashboard.kpi.note', 'kpi_id', string='Notes')
 
     # ═══════════════════════════════════════════
     # Date Ranges
@@ -299,7 +299,9 @@ class DashboardKPI(models.Model):
                     # 'id desc' isn't a valid aggregate/groupby order term in
                     # Odoo 19 when grouping by count — '__count' is the
                     # special token read_group accepts regardless of the
-                    # groupby field (the result key is still f'{field}_count').
+                    # groupby field. Note: the result dict's actual count key
+                    # is f'{bare_field}_count' (no ':granularity' suffix),
+                    # handled separately below.
                     order = '__count desc'
                 else:
                     order = f'{measure_spec} desc'
@@ -309,13 +311,17 @@ class DashboardKPI(models.Model):
                     orderby=order, limit=10 if not is_time_group else time_limit,
                 )
                 for r in group_results:
-                    label = r.get(chart_group, 'Sonstige')
+                    label = r.get(chart_group, _('Other'))
                     if isinstance(label, (list, tuple)):
                         label = label[1] if len(label) > 1 else label[0]
                     elif label is False:
-                        label = 'Sonstige'
+                        label = _('Other')
                     val = r.get(self.measure_field, 0) or 0
-                    count = r.get(f'{chart_group}_count', r.get('__count', 0))
+                    # read_group's count key is keyed on the bare field name,
+                    # not the ':granularity' groupby spec (e.g. 'date_count'
+                    # for a 'date:month' groupby, never 'date:month_count').
+                    count_field = chart_group.split(':')[0]
+                    count = r.get(f'{count_field}_count', r.get('__count', 0))
                     chart_data.append({
                         'label': str(label),
                         'value': val if self.aggregate != 'count' else count,
@@ -352,9 +358,10 @@ class DashboardKPI(models.Model):
                         current_domain, [measure_spec], [spark_group],
                         orderby=spark_group, limit=30,
                     )
+                    spark_count_field = spark_group.split(':')[0]
                     for r in spark_results:
                         val = r.get(self.measure_field, 0) or 0
-                        count = r.get(f'{spark_group}_count', r.get('__count', 0))
+                        count = r.get(f'{spark_count_field}_count', r.get('__count', 0))
                         sparkline.append(val if self.aggregate != 'count' else count)
                     sparkline = sparkline[-14:]
             except Exception:
@@ -375,7 +382,7 @@ class DashboardKPI(models.Model):
         if self.journal_id:
             journal = self.journal_id
 
-        # 2. Global setting from Controlling → Einstellungen
+        # 2. Global setting from Executive Dashboard → Einstellungen
         if not journal:
             ICP = self.env['ir.config_parameter'].sudo()
             j_str = ICP.get_param('executive_dashboard.bank_journal_id', '0') or '0'
@@ -399,7 +406,7 @@ class DashboardKPI(models.Model):
 
         account = journal.default_account_id
         if not account:
-            _logger.warning("Kontostand KPI: Journal %s hat kein verknüpftes Konto (default_account_id)",
+            _logger.warning("Bank Balance KPI: journal %s has no linked account (default_account_id)",
                              journal.name)
             return 0
 
@@ -455,6 +462,17 @@ class DashboardKPI(models.Model):
     # Compute Value
     # ═══════════════════════════════════════════
 
+    def _cache_key(self):
+        """Language-independent key for formula kpi(...) lookups.
+
+        `name` is translatable so the dashboard can show localized labels,
+        but formula strings like kpi('Revenue (net)') hardcode the English
+        source text. Always resolve through the en_US value so the cache
+        key matches regardless of the viewing user's language.
+        """
+        self.ensure_one()
+        return self.with_context(lang='en_US').name
+
     def _compute_value(self, period, kpi_cache=None, activity_state='all',
                        comparison_mode='previous_period'):
         self.ensure_one()
@@ -504,7 +522,7 @@ class DashboardKPI(models.Model):
                 kpi_cache = {}
                 for other in self.dashboard_id.kpi_ids:
                     if other.id != self.id and other.source_type == 'model':
-                        kpi_cache[other.name] = other._aggregate_model(period)['value']
+                        kpi_cache[other._cache_key()] = other._aggregate_model(period)['value']
 
             def kpi(name):
                 return kpi_cache.get(name, 0)
@@ -527,11 +545,11 @@ class DashboardKPI(models.Model):
 
         # Comparison label
         labels = {
-            'previous_period': 'vs. Vorperiode',
-            'previous_year': 'vs. Vorjahr',
-            'budget': 'vs. Budget',
+            'previous_period': _('vs. previous period'),
+            'previous_year': _('vs. previous year'),
+            'budget': _('vs. budget'),
         }
-        result['comparison_label'] = labels.get(comparison_mode, 'vs. Vorperiode')
+        result['comparison_label'] = labels.get(comparison_mode, _('vs. previous period'))
 
         # Target / Ampel
         if self.target_value:

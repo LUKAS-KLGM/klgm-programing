@@ -49,6 +49,40 @@
                         <field name="cooperation_user_ids" widget="many2many_tags"/>
                     </group>
                 </page>
+                <!-- E12: Treffpunkt, Wichtig, Webseite (Nupian-Parität) -->
+                <page string="Treffpunkt &amp; Hinweise" name="kjr_meeting_info">
+                    <div class="alert alert-info" role="alert">
+                        „Wichtig" wird auf der Website immer oberhalb der Beschreibung angezeigt.
+                        „Treffpunkt" und „Webseite" erscheinen im Ort-Block der Seitenleiste (nur
+                        wenn dieser im Website-Editor aktiviert ist).
+                    </div>
+                    <group>
+                        <field name="kjr_meeting_point"
+                               placeholder="z. B. Bahnhof Sonthofen, Zustieg auch in Immenstadt/Kempten möglich"/>
+                        <field name="kjr_important_note"
+                               placeholder="z. B. Bitte 100€ in bar mitgeben ..."/>
+                        <field name="kjr_website_url" widget="url" placeholder="https://..."/>
+                    </group>
+                </page>
+
+                <!-- E11: Dokumente (Website) -->
+                <page string="Dokumente" name="kjr_documents">
+                    <div class="alert alert-info" role="alert">
+                        Dateien (z. B. PDF-Merkblätter, Hinweise), die auf der Website als
+                        optionaler Sidebar-Block angezeigt werden können. Der Block muss pro
+                        Website-Theme einmalig im Website-Editor unter „Anpassen → Sidebar-Blöcke
+                        → Dokumente“ aktiviert werden – er erscheint dann automatisch nur, wenn
+                        hier mindestens ein Dokument hinterlegt ist.
+                    </div>
+                    <field name="kjr_document_ids">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="name" placeholder="z. B. Packliste, Elternbrief"/>
+                            <field name="datas" widget="binary" filename="datas_fname"/>
+                            <field name="datas_fname" invisible="1"/>
+                        </list>
+                    </field>
+                </page>
             </notebook>
         </field>
     </record>

@@ -11,7 +11,7 @@
     <record id="kpi_ceo_winrate" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
         <field name="name">Win Rate</field>
-        <field name="description">Anzahl gewonnener Verkaufschancen im Zeitraum</field>
+        <field name="description">Number of won opportunities in the period</field>
         <field name="sequence">55</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -64,12 +64,12 @@
     <record id="kpi_cfo_dso" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
         <field name="name">DSO (Days)</field>
-        <field name="description">Days Sales Outstanding — Wie viele Tage brauchen Kunden im Schnitt zum Bezahlen</field>
+        <field name="description">Days Sales Outstanding — average number of days customers take to pay</field>
         <field name="sequence">45</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
         <field name="formula">(kpi('Open Receivables') / kpi('_Tagesumsatz') * 30) if kpi('_Tagesumsatz') else 0</field>
-        <field name="unit">Tage</field>
+        <field name="unit">Days</field>
         <field name="color">#EFF6FF</field>
         <field name="show_comparison">False</field>
         <field name="target_value">45</field>
@@ -95,12 +95,12 @@
     <record id="kpi_cfo_dpo" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
         <field name="name">DPO (Days)</field>
-        <field name="description">Days Payable Outstanding — Wie viele Tage braucht ihr im Schnitt zum Bezahlen eurer Lieferanten</field>
+        <field name="description">Days Payable Outstanding — average number of days you take to pay your suppliers</field>
         <field name="sequence">46</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
         <field name="formula">abs(kpi('_AP_Open') / kpi('_Tageseinkauf') * 30) if kpi('_Tageseinkauf') else 0</field>
-        <field name="unit">Tage</field>
+        <field name="unit">Days</field>
         <field name="color">#FFF7ED</field>
         <field name="show_comparison">False</field>
     </record>
@@ -124,7 +124,7 @@
     <record id="kpi_cfo_balance" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
         <field name="name">Bank Balance</field>
-        <field name="description">Gebuchter Saldo des Standard-Bankjournals (Summe Soll minus Haben)</field>
+        <field name="description">Posted balance of the default bank journal (total debit minus credit)</field>
         <field name="sequence">47</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">sql</field>
@@ -166,7 +166,7 @@ WHERE aml.account_id = (
     <record id="kpi_coo_leadtime" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
         <field name="name">Supplier Delay</field>
-        <field name="description">Durchschnittliche Lieferzeit der Lieferanten in Tagen</field>
+        <field name="description">Average supplier delivery time in days</field>
         <field name="sequence">35</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -174,7 +174,7 @@ WHERE aml.account_id = (
         <field name="domain">[('state', 'in', ['purchase', 'done'])]</field>
         <field name="measure_field">days_to_arrival</field>
         <field name="aggregate">avg</field>
-        <field name="unit">Tage</field>
+        <field name="unit">Days</field>
         <field name="color">#FFF7ED</field>
         <field name="date_field">date_order</field>
     </record>
@@ -211,7 +211,7 @@ WHERE aml.account_id = (
     <record id="kpi_coo_fulfillment" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
         <field name="name">Delivery Rate</field>
-        <field name="description">Anteil gelieferter Menge an bestellter Menge in Prozent</field>
+        <field name="description">Share of delivered quantity relative to ordered quantity, in percent</field>
         <field name="sequence">25</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
@@ -230,7 +230,7 @@ WHERE aml.account_id = (
     <record id="kpi_coo_open_deliveries" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
         <field name="name">Open Deliveries</field>
-        <field name="description">Ausgangslieferungen in Bearbeitung (zugewiesen, bestätigt, wartend)</field>
+        <field name="description">Outgoing deliveries in progress (assigned, confirmed, waiting)</field>
         <field name="sequence">22</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -254,7 +254,7 @@ WHERE aml.account_id = (
     <record id="kpi_coo_stock_value" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
         <field name="name">Inventory Value</field>
-        <field name="description">Gesamtwert aller internen Lagerbestände</field>
+        <field name="description">Total value of all internal stock</field>
         <field name="sequence">32</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">sql</field>
@@ -287,7 +287,7 @@ WHERE sl.usage = 'internal'</field>
     <record id="kpi_coo_return_rate" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_coo"/>
         <field name="name">Return Rate</field>
-        <field name="description">Anteil der Retouren an den Gesamtlieferungen in Prozent</field>
+        <field name="description">Share of returns relative to total deliveries, in percent</field>
         <field name="sequence">36</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
@@ -306,7 +306,7 @@ WHERE sl.usage = 'internal'</field>
     <record id="kpi_cto_absence_rate" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cto"/>
         <field name="name">Absence Rate</field>
-        <field name="description">Abwesenheitstage / (Mitarbeiter × 20 Arbeitstage) in Prozent</field>
+        <field name="description">Absence days / (employees × 20 working days), in percent</field>
         <field name="sequence">36</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
@@ -323,7 +323,7 @@ WHERE sl.usage = 'internal'</field>
     <record id="kpi_cto_leave_days" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cto"/>
         <field name="name">Absence Days</field>
-        <field name="description">Genehmigte Abwesenheitstage (Urlaub, Krankheit, etc.) im Zeitraum</field>
+        <field name="description">Approved absence days (vacation, sick leave, etc.) in the period</field>
         <field name="sequence">35</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -331,7 +331,7 @@ WHERE sl.usage = 'internal'</field>
         <field name="domain">[('state', '=', 'validate')]</field>
         <field name="measure_field">number_of_days</field>
         <field name="aggregate">sum</field>
-        <field name="unit">Tage</field>
+        <field name="unit">Days</field>
         <field name="color">#FFF7ED</field>
         <field name="date_field">date_from</field>
     </record>

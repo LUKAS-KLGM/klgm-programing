@@ -51,7 +51,7 @@
                         </button>
                         <div t-if="state.showExportMenu" class="ed-export-menu">
                             <button t-on-click="exportCSV" class="ed-export-item">
-                                <i class="fa fa-file-text-o"/> CSV / Excel
+                                <i class="fa fa-file-text-o"/> <t t-esc="_t('CSV / Excel')"/>
                             </button>
                             <button t-on-click="exportPNG" class="ed-export-item">
                                 <i class="fa fa-image"/> <t t-esc="_t('Chart as PNG')"/>
@@ -117,7 +117,7 @@
                         </button>
                         <button t-att-class="'ed-insights-tab ' + (state.insightsTab === 'ai' ? 'active' : '')"
                                 t-on-click="() => this.switchInsightsTab('ai')">
-                            <i class="fa fa-magic"/> AI Insights
+                            <i class="fa fa-magic"/> <t t-esc="_t('AI Insights')"/>
                         </button>
                     </div>
                     <button class="ed-insights-close" t-on-click="toggleInsights">
@@ -274,7 +274,7 @@
                                 </div>
                             </div>
                             <div class="ed-builder-row">
-                                <label>Odoo Model *</label>
+                                <label t-esc="_t('Odoo Model *')"/>
                                 <select t-on-change="(ev) => this.onBuilderModelChange(ev)">
                                     <option value="" t-esc="_t('— Select Model —')"/>
                                     <t t-foreach="state.builderModels" t-as="m" t-key="m.name">
@@ -338,7 +338,7 @@
                                 </div>
                             </div>
                             <div class="ed-builder-row">
-                                <label>Domain (optional)</label>
+                                <label t-esc="_t('Domain (optional)')"/>
                                 <input type="text" t-att-value="state.builderForm.domain"
                                        t-on-input="(ev) => this.onBuilderFieldChange('domain', ev)"
                                        placeholder="[('state', '=', 'posted')]"/>

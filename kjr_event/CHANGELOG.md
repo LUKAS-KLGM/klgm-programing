@@ -11,6 +11,28 @@
   backend-intern, keine Website-Darstellung (Feld dient der internen Planung/Entscheidung,
   ob eine Veranstaltung bei zu wenig Anmeldungen abgesagt wird).
 
+## 19.0.2.3.0
+
+### Hinzugefügt
+- **E12 Treffpunkt/Wichtig/Webseite (Nupian-Parität)**: Drei neue Felder auf `event.event`:
+  `kjr_meeting_point` (Text, "Treffpunkt"), `kjr_important_note` (Html, "Wichtig"),
+  `kjr_website_url` (Char, "Webseite"). Backend: neuer Reiter „Treffpunkt & Hinweise".
+  Frontend: „Wichtig" erscheint immer (kein Toggle) als Warnbox oberhalb der Beschreibung;
+  „Treffpunkt" und „Webseite" ergänzen den bestehenden Ort-Block in der Seitenleiste und
+  teilen sich dessen vorhandenen Toggle (`opt_event_location_block`).
+
+## 19.0.2.2.0
+
+### Hinzugefügt
+- **E11 Dokumente-Block (Website)**: Neues Model `kjr.event.document` (Mehrfach-Dateien
+  je Veranstaltung, `event.event.kjr_document_ids`). Backend: eigener Reiter „Dokumente“
+  im Event-Formular (editierbare Liste, Datei-Upload). Frontend: neuer optionaler
+  Sidebar-Block auf der öffentlichen Event-Seite (`website_event.event_description_full`),
+  an-/abschaltbar im Website-Editor unter „Anpassen → Sidebar-Blöcke → Dokumente“ –
+  analog zu den bestehenden Blöcken Ort/Organizer/Teilen. Block erscheint automatisch nur,
+  wenn mindestens ein Dokument hinterlegt ist. Zugriffsrechte (public/portal: nur Lesen;
+  Event-Nutzer/-Manager: volle Verwaltung) analog zu den bestehenden `website_event`-Modellen.
+
 ## 19.0.2.0.0
 
 ### Hinzugefügt
