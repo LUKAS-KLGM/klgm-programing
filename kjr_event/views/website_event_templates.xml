@@ -73,4 +73,46 @@
         </xpath>
     </template>
 
+    <!-- E11: Dokumente-Block (Sidebar) -->
+
+    <!-- Reiner Toggle-Marker: aktiv/inaktiv wird von den Website-Builder-Optionen
+         (siehe static/src/website_builder/event_documents_option.xml) über die
+         View-Aktivierung dieses (leeren) Templates gesteuert, exakt wie bei
+         website_event.opt_event_location_block/opt_event_organizer_block/... . -->
+    <template id="opt_event_kjr_documents_block"
+              name="KJR Dokumente-Block"
+              inherit_id="website_event.event_description_full"
+              active="True"/>
+
+    <!-- Tatsächliche Markup-Erweiterung: Flag setzen + Sidebar-Sichtbarkeit + Inhalt. -->
+    <template id="event_description_full_kjr_documents"
+              name="KJR: Dokumente in Event-Beschreibung"
+              inherit_id="website_event.event_description_full">
+        <xpath expr="//t[@t-set='opt_event_share_block']" position="after">
+            <t t-set="opt_event_kjr_documents_block"
+               t-value="is_view_active('kjr_event.opt_event_kjr_documents_block')"/>
+        </xpath>
+        <xpath expr="//aside[@id='o_wevent_event_main_sidebar']" position="attributes">
+            <attribute name="t-if">opt_event_registration_block or opt_event_dates_block or opt_event_calendar_block or
+                opt_event_location_block or opt_event_organizer_block or opt_event_share_block or opt_event_kjr_documents_block</attribute>
+        </xpath>
+        <xpath expr="//div[@t-if='opt_event_share_block']" position="before">
+            <div t-if="opt_event_kjr_documents_block and event.kjr_document_ids"
+                 class="o_wevent_sidebar_block o_wevent_bordered_block pb-3 mb-4">
+                <div>
+                    <h6 class="o_wevent_sidebar_title">Dokumente</h6>
+                </div>
+                <ul class="list-unstyled mb-0">
+                    <li t-foreach="event.kjr_document_ids" t-as="kjr_doc" class="mb-1">
+                        <a t-att-href="kjr_doc.download_url" target="_blank" rel="noopener"
+                           t-att-title="kjr_doc.name">
+                            <i class="fa fa-file-pdf-o me-2" role="presentation"/>
+                            <span t-out="kjr_doc.name"/>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </xpath>
+    </template>
+
 </odoo>
