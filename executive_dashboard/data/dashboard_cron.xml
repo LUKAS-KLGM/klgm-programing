@@ -2,7 +2,7 @@
 <odoo noupdate="1">
 
     <record id="cron_dashboard_mail" model="ir.cron">
-        <field name="name">Controlling: Dashboard Reports versenden</field>
+        <field name="name">Executive Dashboard: Reports versenden</field>
         <field name="model_id" ref="model_executive_dashboard"/>
         <field name="state">code</field>
         <field name="code">model._cron_send_dashboard_reports()</field>

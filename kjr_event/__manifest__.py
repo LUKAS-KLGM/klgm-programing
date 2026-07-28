@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Ferienprogramm & Schulungen',
-    # Hinweis für Lukas: Es gibt parallel einen zweiten offenen PR (Dokumente-Block),
-    # der ebenfalls von 19.0.2.1.0 abzweigt und auf 19.0.2.2.0 hochzählt. Je nachdem,
-    # welcher PR zuerst gemerged wird, muss die Versionsnummer hier ggf. noch auf
-    # 19.0.2.4.0 angepasst werden, damit keine zwei Releases dieselbe Version tragen.
     'version': '19.0.2.3.0',
     'category': 'Custom/KJR',
     'summary': 'Erweiterung der Odoo-Veranstaltungen für KJR-Ferienprogramm und Schulungen '
@@ -33,6 +29,11 @@
         'views/website_event_templates.xml',
         'views/portal_templates.xml',
     ],
+    'assets': {
+        'website.website_builder_assets': [
+            'kjr_event/static/src/website_builder/**/*',
+        ],
+    },
     'installable': True,
     'application': False,
     'auto_install': False,

@@ -58,6 +58,15 @@ class EventEvent(models.Model):
         help='Weitere Portalbenutzer mit Lesezugriff auf die Teilnehmerliste dieser Veranstaltung.',
     )
 
+    # E11 – Dokumente (Website)
+    kjr_document_ids = fields.One2many(
+        'kjr.event.document', 'event_id',
+        string='Dokumente',
+        help='Zusätzliche Dateien (z. B. PDF-Merkblätter, Hinweise) zur Veranstaltung. '
+             'Anzeigbar auf der Website als optionaler Sidebar-Block (Website-Editor → '
+             'Anpassen → Sidebar-Blöcke → Dokumente).',
+    )
+
     # E12 – Treffpunkt, Wichtig, Webseite (Nupian-Parität)
     kjr_meeting_point = fields.Text(
         string='Treffpunkt',

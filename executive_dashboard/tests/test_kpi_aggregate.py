@@ -114,3 +114,24 @@ class TestKpiAggregateModel(TransactionCase):
         result = kpi._aggregate_model('custom:2026-06-01,2026-06-30')
         self.assertEqual(
             result, {'value': 0, 'previous': 0, 'chart_data': [], 'sparkline': []})
+
+    def test_count_chart_data_with_time_groupby(self):
+        # Regression: for a time-grouped (':month'/':week'/':day') aggregate
+        # 'count' KPI, read_group's count key is on the bare field
+        # ('date_deadline_count'), never '<field>:month_count' — a chart
+        # built off the wrong key silently renders an all-zero line/bar.
+        kpi = self._kpi(
+            aggregate='count', display_type='chart_bar',
+            group_by='date_deadline:month',
+        )
+        result = kpi._aggregate_model('custom:2026-01-01,2026-06-30')
+        # Jan (out-of-range lead), May (previous-period lead), Jun (2 current)
+        self.assertEqual(len(result['chart_data']), 3)
+        self.assertEqual(sum(g['value'] for g in result['chart_data']), 4)
+        self.assertTrue(all(g['value'] > 0 for g in result['chart_data']))
+
+    def test_count_sparkline_with_time_groupby(self):
+        kpi = self._kpi(aggregate='count', display_type='scorecard')
+        result = kpi._aggregate_model('custom:2026-01-01,2026-06-30')
+        self.assertTrue(result['sparkline'])
+        self.assertTrue(any(v > 0 for v in result['sparkline']))

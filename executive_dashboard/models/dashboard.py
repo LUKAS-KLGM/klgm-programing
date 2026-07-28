@@ -2,7 +2,7 @@ import json
 import logging
 from datetime import date, timedelta
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -12,61 +12,61 @@ class ExecutiveDashboard(models.Model):
     _description = 'Executive Dashboard'
     _order = 'sequence, id'
 
-    name = fields.Char(required=True)
+    name = fields.Char(required=True, translate=True)
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     role = fields.Selection([
-        ('ceo', 'CEO — Unternehmensübersicht'),
-        ('cfo', 'CFO — Finanzen'),
+        ('ceo', 'CEO — Company Overview'),
+        ('cfo', 'CFO — Finance'),
         ('coo', 'COO — Operations'),
-        ('cto', 'CTO — Projekte & Team'),
+        ('cto', 'CTO — Projects & Team'),
         ('cso', 'CSO — Sales Performance'),
-        ('custom', 'Benutzerdefiniert'),
+        ('custom', 'Custom'),
     ], required=True, default='custom')
     color = fields.Integer(default=0)
     icon = fields.Char(default='fa-tachometer')
 
     kpi_ids = fields.One2many('executive.dashboard.kpi', 'dashboard_id', string='KPIs')
-    group_ids = fields.Many2many('res.groups', string='Sichtbar für Gruppen',
-        help='Leer = sichtbar für alle internen Benutzer')
+    group_ids = fields.Many2many('res.groups', string='Visible to Groups',
+        help='Empty = visible to all internal users')
 
     default_period = fields.Selection([
-        ('last_7_days', 'Letzte 7 Tage'),
-        ('last_30_days', 'Letzte 30 Tage'),
-        ('last_90_days', 'Letzte 90 Tage'),
-        ('this_month', 'Aktueller Monat'),
-        ('this_quarter', 'Aktuelles Quartal'),
-        ('this_year', 'Aktuelles Jahr'),
-        ('last_year', 'Letztes Jahr'),
+        ('last_7_days', 'Last 7 Days'),
+        ('last_30_days', 'Last 30 Days'),
+        ('last_90_days', 'Last 90 Days'),
+        ('this_month', 'This Month'),
+        ('this_quarter', 'This Quarter'),
+        ('this_year', 'This Year'),
+        ('last_year', 'Last Year'),
     ], default='last_30_days', required=True)
 
-    auto_refresh = fields.Integer(default=0, help='Auto-Refresh in Sekunden. 0 = aus.')
+    auto_refresh = fields.Integer(default=0, help='Auto-refresh interval in seconds. 0 = off.')
 
     # ── Mail Report (v5, merged from dashboard_mail.py) ──
-    mail_enabled = fields.Boolean('E-Mail-Versand aktiviert', default=False)
+    mail_enabled = fields.Boolean('Email Sending Enabled', default=False)
     mail_frequency = fields.Selection([
-        ('daily', 'Täglich'),
-        ('weekly', 'Wöchentlich (Montag)'),
-        ('monthly', 'Monatlich (1. des Monats)'),
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly (Monday)'),
+        ('monthly', 'Monthly (1st of the month)'),
     ], default='weekly')
     mail_recipient_ids = fields.Many2many(
-        'res.users', string='Empfänger',
-        help='Benutzer die den Dashboard-Report per E-Mail erhalten')
-    mail_last_sent = fields.Datetime('Zuletzt gesendet', readonly=True)
+        'res.users', string='Recipients',
+        help='Users who receive the dashboard report by email')
+    mail_last_sent = fields.Datetime('Last Sent', readonly=True)
 
     # ── Comparison Mode (v6) ──
     comparison_mode = fields.Selection([
-        ('previous_period', 'Vorperiode'),
-        ('previous_year', 'Vorjahr'),
+        ('previous_period', 'Previous Period'),
+        ('previous_year', 'Previous Year'),
         ('budget', 'Budget'),
     ], default='previous_period')
 
     # ── Multi-Company (v6) ──
-    company_id = fields.Many2one('res.company', string='Unternehmen',
+    company_id = fields.Many2one('res.company', string='Company',
         default=lambda self: self.env.company)
 
     # ── Template origin ──
-    template_key = fields.Char(readonly=True, help='Interner Schlüssel des Branchen-Templates')
+    template_key = fields.Char(readonly=True, help='Internal key of the industry template')
 
     # ═══════════════════════════════════════════
     # Actions
@@ -96,7 +96,7 @@ class ExecutiveDashboard(models.Model):
             if kpi.source_type in ('model', 'sql', 'bank_balance'):
                 result = kpi._compute_value(period, kpi_cache=None,
                     activity_state=activity_state, comparison_mode=comparison_mode)
-                kpi_cache[kpi.name] = result['value']
+                kpi_cache[kpi._cache_key()] = result['value']
                 kpi_results.append(result)
             else:
                 kpi_results.append(kpi)
@@ -143,9 +143,12 @@ class ExecutiveDashboard(models.Model):
             top = improving[0]
             insights.append({
                 'type': 'positive', 'icon': 'fa-arrow-up',
-                'title': 'Stärkste Verbesserung',
-                'text': f"{top['name']} ist um {top['change_pct']}% gestiegen "
-                        f"(aktuell: {top['display_value']} {top.get('unit', '')}).",
+                'title': _('Strongest Improvement'),
+                'text': _(
+                    '%(name)s is up %(pct)s%% (currently: %(value)s %(unit)s).',
+                    name=top['name'], pct=top['change_pct'],
+                    value=top['display_value'], unit=top.get('unit', ''),
+                ),
             })
 
         # 2. Underperformer
@@ -156,9 +159,12 @@ class ExecutiveDashboard(models.Model):
             worst = declining[0]
             insights.append({
                 'type': 'negative', 'icon': 'fa-arrow-down',
-                'title': 'Stärkster Rückgang',
-                'text': f"{worst['name']} ist um {abs(worst['change_pct'])}% gefallen "
-                        f"(aktuell: {worst['display_value']} {worst.get('unit', '')}).",
+                'title': _('Largest Decline'),
+                'text': _(
+                    '%(name)s is down %(pct)s%% (currently: %(value)s %(unit)s).',
+                    name=worst['name'], pct=abs(worst['change_pct']),
+                    value=worst['display_value'], unit=worst.get('unit', ''),
+                ),
             })
 
         # 3. Zielerreichung
@@ -170,45 +176,59 @@ class ExecutiveDashboard(models.Model):
             status = 'positive' if pct >= 70 else 'warning' if pct >= 40 else 'negative'
             insights.append({
                 'type': status, 'icon': 'fa-bullseye',
-                'title': 'Zielerreichung',
-                'text': f"{green} von {total} KPIs ({pct}%) haben ihr Ziel erreicht.",
+                'title': _('Target Achievement'),
+                'text': _(
+                    '%(green)s of %(total)s KPIs (%(pct)s%%) reached their target.',
+                    green=green, total=total, pct=pct,
+                ),
             })
             red_kpis = [k for k in with_targets if k.get('target_status') == 'red']
             if red_kpis:
                 names = ', '.join(k['name'] for k in red_kpis[:3])
                 insights.append({
                     'type': 'negative', 'icon': 'fa-exclamation-triangle',
-                    'title': 'Kritische KPIs',
-                    'text': f"Unter Ziel: {names}.",
+                    'title': _('Critical KPIs'),
+                    'text': _('Below target: %(names)s.', names=names),
                 })
 
-        # 4. Übersicht
+        # 4. Overview
         if scorecards:
             up = len([k for k in scorecards if k.get('change_pct', 0) > 0])
             down = len([k for k in scorecards if k.get('change_pct', 0) < 0])
             stable = len(scorecards) - up - down
             insights.append({
                 'type': 'info', 'icon': 'fa-info-circle',
-                'title': 'Übersicht',
-                'text': f"{len(scorecards)} KPIs: {up} steigend, {down} fallend, {stable} stabil.",
+                'title': _('Overview'),
+                'text': _(
+                    '%(count)s KPIs: %(up)s rising, %(down)s falling, %(stable)s stable.',
+                    count=len(scorecards), up=up, down=down, stable=stable,
+                ),
             })
 
-        # 5. Anomalien (>50% Veränderung)
+        # 5. Anomalies (>50% change)
         for k in scorecards:
             if abs(k.get('change_pct', 0)) > 50:
-                direction = 'gestiegen' if k['change_pct'] > 0 else 'gefallen'
+                if k['change_pct'] > 0:
+                    text = _(
+                        '%(name)s is up %(pct)s%%. This may be worth reviewing.',
+                        name=k['name'], pct=abs(k['change_pct']),
+                    )
+                else:
+                    text = _(
+                        '%(name)s is down %(pct)s%%. This may be worth reviewing.',
+                        name=k['name'], pct=abs(k['change_pct']),
+                    )
                 insights.append({
                     'type': 'warning', 'icon': 'fa-exclamation-circle',
-                    'title': 'Ungewöhnliche Veränderung',
-                    'text': f"{k['name']} ist um {abs(k['change_pct'])}% {direction}. "
-                            f"Das könnte überprüft werden.",
+                    'title': _('Unusual Change'),
+                    'text': text,
                 })
 
         if not insights:
             insights.append({
                 'type': 'info', 'icon': 'fa-check-circle',
-                'title': 'Alles im grünen Bereich',
-                'text': 'Keine auffälligen Veränderungen im aktuellen Zeitraum.',
+                'title': _('All Clear'),
+                'text': _('No notable changes in the current period.'),
             })
 
         return insights
@@ -224,9 +244,9 @@ class ExecutiveDashboard(models.Model):
         api_key = ICP.get_param('executive_dashboard.ai_api_key', '')
         if not api_key:
             return [{'type': 'warning', 'icon': 'fa-key',
-                     'title': 'API Key fehlt',
-                     'text': 'Bitte hinterlege einen AI API Key in der Dashboard-Konfiguration '
-                             '(Anthropic oder OpenAI).'}]
+                     'title': _('API Key Missing'),
+                     'text': _('Add an AI API key (Anthropic or OpenAI) in the '
+                               'Dashboard Configuration to enable AI Insights.')}]
 
         data = self._get_dashboard_data(period)
         kpis = [k for k in data.get('kpis', [])
@@ -238,27 +258,31 @@ class ExecutiveDashboard(models.Model):
             if k['display_type'] == 'scorecard':
                 line = f"- {k['name']}: {k['display_value']} {k.get('unit', '')}"
                 if k.get('change_pct'):
-                    line += f" ({'+' if k['change_pct'] > 0 else ''}{k['change_pct']}% vs. Vorperiode)"
+                    line += f" ({'+' if k['change_pct'] > 0 else ''}{k['change_pct']}% vs. previous period)"
                 if k.get('target_value'):
-                    line += f" [Ziel: {k['target_value']}, Status: {k.get('target_status', '?')}]"
+                    line += f" [target: {k['target_value']}, status: {k.get('target_status', '?')}]"
                 kpi_lines.append(line)
 
         kpi_text = '\n'.join(kpi_lines)
         period_label = period.replace('_', ' ')
 
-        prompt = f"""Analysiere die folgenden KPIs eines Unternehmens-Dashboards "{data.get('name', '')}" für den Zeitraum "{period_label}".
+        # The analysis is written in the reader's language, not a fixed one:
+        # `self.env.lang` follows the user's profile language.
+        lang_name = self.env['res.lang']._lang_get(self.env.lang or 'en_US').name
+
+        prompt = f"""Analyse the following KPIs from the company dashboard "{data.get('name', '')}" for the period "{period_label}".
 
 KPIs:
 {kpi_text}
 
-Gib eine kurze, prägnante Analyse auf Deutsch mit:
-1. Die wichtigste Erkenntnis (1-2 Sätze)
-2. Risiken oder Handlungsbedarf (1-2 Sätze)
-3. Positives Highlight (1 Satz)
-4. Konkreter Handlungsvorschlag (1 Satz)
+Give a short, precise analysis written in {lang_name}, covering:
+1. The single most important finding (1-2 sentences)
+2. Risks or areas needing action (1-2 sentences)
+3. A positive highlight (1 sentence)
+4. One concrete recommended action (1 sentence)
 
-Antworte als JSON-Array mit Objects: {{"type": "positive|negative|warning|info", "icon": "fa-icon-name", "title": "Kurztitel", "text": "Erklärung"}}
-Nur das JSON-Array, kein anderer Text."""
+Respond with a JSON array of objects: {{"type": "positive|negative|warning|info", "icon": "fa-icon-name", "title": "short title", "text": "explanation"}}
+Return only the JSON array, no other text."""
 
         try:
             import requests
@@ -273,8 +297,13 @@ Nur das JSON-Array, kein anderer Text."""
                         'content-type': 'application/json',
                     },
                     json={
-                        'model': 'claude-sonnet-4-20250514',
+                        'model': 'claude-sonnet-5',
                         'max_tokens': 1024,
+                        # Sonnet 5 thinks by default; thinking and response text
+                        # share max_tokens, so leaving it on would risk cutting
+                        # the JSON array off mid-array. This is a short,
+                        # well-specified generation — no thinking needed.
+                        'thinking': {'type': 'disabled'},
                         'messages': [{'role': 'user', 'content': prompt}],
                     },
                     timeout=30,
@@ -366,7 +395,8 @@ Nur das JSON-Array, kein anderer Text."""
             if kpi.get('target_value') and kpi.get('target_status'):
                 colors = {'green': '#059669', 'yellow': '#d97706', 'red': '#dc2626'}
                 tc = colors.get(kpi['target_status'], '#999')
-                target = f'<span style="color:{tc};font-size:11px;">&#9679; Ziel: {kpi["target_value"]}</span>'
+                target_label = _('Target')
+                target = f'<span style="color:{tc};font-size:11px;">&#9679; {target_label}: {kpi["target_value"]}</span>'
             rows += f"""
             <tr style="background:{bg};">
                 <td style="padding:10px 14px;font-weight:500;color:#333;">{kpi['name']}</td>
@@ -398,7 +428,7 @@ Nur das JSON-Array, kein anderer Text."""
             </table>
             <div style="padding:16px 24px;background:#f8f9fa;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;text-align:center;">
                 <p style="color:#888;font-size:11px;margin:0;">
-                    Automatischer Report von Controlling Dashboard &middot; Odoo 19
+                    Automatischer Report von Executive Dashboard &middot; Odoo 19
                 </p>
             </div>
         </div>
@@ -457,40 +487,40 @@ Nur das JSON-Array, kein anderer Text."""
             {
                 'key': 'ecommerce',
                 'name': 'E-Commerce',
-                'description': 'Online-Shop KPIs: Umsatz, Bestellungen, AOV, Retouren, Top-Produkte',
+                'description': 'Online shop KPIs: revenue, orders, AOV, returns, top products',
                 'icon': 'fa-shopping-cart',
                 'role': 'custom',
                 'default_period': 'last_30_days',
                 'kpis': [
-                    {'name': 'Online-Umsatz', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Online Revenue', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'sale.report', 'domain': "[('state', 'not in', ['draft', 'cancel', 'sent'])]",
                      'measure_field': 'price_subtotal', 'aggregate': 'sum', 'unit': 'EUR', 'color': '#EFF6FF',
                      'date_field': 'date'},
-                    {'name': 'Bestellungen', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Orders', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'sale.report', 'domain': "[('state', 'not in', ['draft', 'cancel', 'sent'])]",
                      'measure_field': 'price_subtotal', 'aggregate': 'count', 'color': '#EFF6FF',
                      'date_field': 'date'},
                     {'name': 'AOV', 'display_type': 'scorecard', 'source_type': 'formula',
-                     'formula': "kpi('Online-Umsatz') / kpi('Bestellungen') if kpi('Bestellungen') else 0",
+                     'formula': "kpi('Online Revenue') / kpi('Orders') if kpi('Orders') else 0",
                      'unit': 'EUR', 'color': '#F0FFF4', 'show_comparison': False},
-                    {'name': 'Retouren', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Returns', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'stock.picking',
                      'domain': "[('picking_type_code', '=', 'incoming'), ('origin', 'like', 'Return')]",
                      'measure_field': 'id', 'aggregate': 'count', 'color': '#FFF7ED',
                      'date_field': 'date_done'},
-                    {'name': 'Neue Kunden', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'New Customers', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'res.partner', 'domain': "[('customer_rank', '>', 0)]",
                      'measure_field': 'id', 'aggregate': 'count', 'color': '#F0FFF4',
                      'date_field': 'create_date'},
-                    {'name': 'Umsatz pro Monat', 'display_type': 'chart_bar', 'source_type': 'model',
+                    {'name': 'Revenue per Month', 'display_type': 'chart_bar', 'source_type': 'model',
                      'model_name': 'sale.report', 'domain': "[('state', 'not in', ['draft', 'cancel', 'sent'])]",
                      'measure_field': 'price_subtotal', 'aggregate': 'sum', 'group_by': 'date:month',
                      'width': 'full', 'date_field': 'date', 'show_comparison': False},
-                    {'name': 'Top-Produkte', 'display_type': 'chart_bar_h', 'source_type': 'model',
+                    {'name': 'Top Products', 'display_type': 'chart_bar_h', 'source_type': 'model',
                      'model_name': 'sale.report', 'domain': "[('state', 'not in', ['draft', 'cancel', 'sent'])]",
                      'measure_field': 'price_subtotal', 'aggregate': 'sum', 'group_by': 'product_id',
                      'width': 'full', 'date_field': 'date', 'show_comparison': False},
-                    {'name': 'Umsatz nach Land', 'display_type': 'chart_pie', 'source_type': 'model',
+                    {'name': 'Revenue by Country', 'display_type': 'chart_pie', 'source_type': 'model',
                      'model_name': 'sale.report', 'domain': "[('state', 'not in', ['draft', 'cancel', 'sent'])]",
                      'measure_field': 'price_subtotal', 'aggregate': 'sum', 'group_by': 'country_id',
                      'date_field': 'date', 'show_comparison': False},
@@ -498,42 +528,42 @@ Nur das JSON-Array, kein anderer Text."""
             },
             {
                 'key': 'dienstleistung',
-                'name': 'Dienstleistung & Beratung',
-                'description': 'Projektbasierte KPIs: Auslastung, Umsatz/MA, Projektmarge',
+                'name': 'Services & Consulting',
+                'description': 'Project-based KPIs: utilisation, revenue per employee, project margin',
                 'icon': 'fa-briefcase',
                 'role': 'custom',
                 'default_period': 'last_30_days',
                 'kpis': [
-                    {'name': 'Umsatz', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Revenue', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'sale.report', 'domain': "[('state', 'not in', ['draft', 'cancel', 'sent'])]",
                      'measure_field': 'price_subtotal', 'aggregate': 'sum', 'unit': 'EUR', 'color': '#EFF6FF',
                      'date_field': 'date'},
-                    {'name': 'Aktive Projekte', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Active Projects', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'project.project', 'domain': "[]",
                      'measure_field': 'id', 'aggregate': 'count', 'color': '#F0FFF4',
                      'apply_date_filter': False, 'show_comparison': False},
-                    {'name': 'Offene Aufgaben', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Open Tasks', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'project.task', 'domain': "[('stage_id.fold', '=', False)]",
                      'measure_field': 'id', 'aggregate': 'count', 'color': '#FFF7ED',
                      'date_field': 'create_date'},
-                    {'name': 'Mitarbeiter', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Employees', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'hr.employee', 'domain': "[('departure_date', '=', False)]",
                      'measure_field': 'id', 'aggregate': 'count', 'color': '#EFF6FF',
                      'apply_date_filter': False, 'show_comparison': False},
-                    {'name': 'Pipeline-Wert', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Pipeline Value', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'crm.lead', 'domain': "[('type', '=', 'opportunity')]",
                      'measure_field': 'prorated_revenue', 'aggregate': 'sum', 'unit': 'EUR', 'color': '#FFF7ED',
                      'date_field': 'create_date'},
-                    {'name': 'Fakturierung pro Monat', 'display_type': 'chart_bar', 'source_type': 'model',
+                    {'name': 'Invoicing per Month', 'display_type': 'chart_bar', 'source_type': 'model',
                      'model_name': 'account.invoice.report',
                      'domain': "[('move_type', 'in', ['out_invoice', 'out_refund']), ('state', '=', 'posted')]",
                      'measure_field': 'price_subtotal', 'aggregate': 'sum', 'group_by': 'invoice_date:month',
                      'width': 'full', 'date_field': 'invoice_date', 'show_comparison': False},
-                    {'name': 'Aufgaben nach Projekt', 'display_type': 'chart_pie', 'source_type': 'model',
+                    {'name': 'Tasks by Project', 'display_type': 'chart_pie', 'source_type': 'model',
                      'model_name': 'project.task', 'domain': "[]",
                      'measure_field': 'id', 'aggregate': 'count', 'group_by': 'project_id',
                      'date_field': 'create_date', 'show_comparison': False},
-                    {'name': 'Team nach Abteilung', 'display_type': 'chart_doughnut', 'source_type': 'model',
+                    {'name': 'Team by Department', 'display_type': 'chart_doughnut', 'source_type': 'model',
                      'model_name': 'hr.employee', 'domain': "[('departure_date', '=', False)]",
                      'measure_field': 'id', 'aggregate': 'count', 'group_by': 'department_id',
                      'apply_date_filter': False, 'show_comparison': False},
@@ -541,40 +571,40 @@ Nur das JSON-Array, kein anderer Text."""
             },
             {
                 'key': 'produktion',
-                'name': 'Produktion & Fertigung',
+                'name': 'Production & Manufacturing',
                 'description': 'Lager, Einkauf, Lieferungen, Durchlaufzeiten',
                 'icon': 'fa-industry',
                 'role': 'custom',
                 'default_period': 'last_30_days',
                 'kpis': [
-                    {'name': 'Einkaufsvolumen', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Purchase Volume', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'purchase.report', 'domain': "[('state', 'in', ['purchase', 'done'])]",
                      'measure_field': 'price_total', 'aggregate': 'sum', 'unit': 'EUR', 'color': '#EFF6FF',
                      'date_field': 'date_order'},
-                    {'name': 'Lieferungen', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Deliveries', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'stock.picking',
                      'domain': "[('picking_type_code', '=', 'outgoing'), ('state', '=', 'done')]",
                      'measure_field': 'id', 'aggregate': 'count', 'color': '#F0FFF4',
                      'date_field': 'date_done'},
-                    {'name': 'Wareneingänge', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Goods Receipts', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'stock.picking',
                      'domain': "[('picking_type_code', '=', 'incoming'), ('state', '=', 'done')]",
                      'measure_field': 'id', 'aggregate': 'count', 'color': '#FFF7ED',
                      'date_field': 'date_done'},
-                    {'name': 'Offene Bestellungen', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Open Purchase Orders', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'purchase.order', 'domain': "[('state', '=', 'purchase')]",
                      'measure_field': 'id', 'aggregate': 'count', 'color': '#EFF6FF',
                      'apply_date_filter': False, 'show_comparison': False},
-                    {'name': 'Einkauf pro Monat', 'display_type': 'chart_bar', 'source_type': 'model',
+                    {'name': 'Purchases per Month', 'display_type': 'chart_bar', 'source_type': 'model',
                      'model_name': 'purchase.report', 'domain': "[('state', 'in', ['purchase', 'done'])]",
                      'measure_field': 'price_total', 'aggregate': 'sum', 'group_by': 'date_order:month',
                      'width': 'full', 'unit': 'EUR', 'date_field': 'date_order', 'show_comparison': False},
-                    {'name': 'Lieferungen pro Monat', 'display_type': 'chart_bar', 'source_type': 'model',
+                    {'name': 'Deliveries per Month', 'display_type': 'chart_bar', 'source_type': 'model',
                      'model_name': 'stock.picking',
                      'domain': "[('picking_type_code', '=', 'outgoing'), ('state', '=', 'done')]",
                      'measure_field': 'id', 'aggregate': 'count', 'group_by': 'date_done:month',
                      'width': 'full', 'date_field': 'date_done', 'show_comparison': False},
-                    {'name': 'Einkauf nach Lieferant', 'display_type': 'chart_pie', 'source_type': 'model',
+                    {'name': 'Purchases by Vendor', 'display_type': 'chart_pie', 'source_type': 'model',
                      'model_name': 'purchase.report', 'domain': "[('state', 'in', ['purchase', 'done'])]",
                      'measure_field': 'price_total', 'aggregate': 'sum', 'group_by': 'partner_id',
                      'date_field': 'date_order', 'show_comparison': False},
@@ -582,44 +612,44 @@ Nur das JSON-Array, kein anderer Text."""
             },
             {
                 'key': 'handel',
-                'name': 'Handel & Retail',
+                'name': 'Trade & Retail',
                 'description': 'Verkauf, Lager, Marge, Kundenstamm',
                 'icon': 'fa-shopping-bag',
                 'role': 'custom',
                 'default_period': 'last_30_days',
                 'kpis': [
-                    {'name': 'Umsatz', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Revenue', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'sale.report', 'domain': "[('state', 'not in', ['draft', 'cancel', 'sent'])]",
                      'measure_field': 'price_subtotal', 'aggregate': 'sum', 'unit': 'EUR', 'color': '#EFF6FF',
                      'date_field': 'date'},
-                    {'name': 'Bestellungen', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Orders', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'sale.report', 'domain': "[('state', 'not in', ['draft', 'cancel', 'sent'])]",
                      'measure_field': 'price_subtotal', 'aggregate': 'count', 'color': '#EFF6FF',
                      'date_field': 'date'},
-                    {'name': 'Marge', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Margin', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'account.invoice.report',
                      'domain': "[('move_type', 'in', ['out_invoice', 'out_refund']), ('state', '=', 'posted')]",
                      'measure_field': 'price_margin', 'aggregate': 'sum', 'unit': 'EUR', 'color': '#F0FFF4',
                      'date_field': 'invoice_date'},
-                    {'name': 'Offene Forderungen', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Open Receivables', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'account.move',
                      'domain': "[('move_type', '=', 'out_invoice'), ('state', '=', 'posted'), ('payment_state', 'in', ['not_paid', 'partial'])]",
                      'measure_field': 'amount_residual', 'aggregate': 'sum', 'unit': 'EUR', 'color': '#FFF7ED',
                      'apply_date_filter': False, 'show_comparison': False},
-                    {'name': 'Kunden', 'display_type': 'scorecard', 'source_type': 'model',
+                    {'name': 'Customers', 'display_type': 'scorecard', 'source_type': 'model',
                      'model_name': 'res.partner', 'domain': "[('customer_rank', '>', 0)]",
                      'measure_field': 'id', 'aggregate': 'count', 'color': '#F0FFF4',
                      'apply_date_filter': False, 'show_comparison': False},
-                    {'name': 'Umsatz pro Monat', 'display_type': 'chart_bar', 'source_type': 'model',
+                    {'name': 'Revenue per Month', 'display_type': 'chart_bar', 'source_type': 'model',
                      'model_name': 'sale.report', 'domain': "[('state', 'not in', ['draft', 'cancel', 'sent'])]",
                      'measure_field': 'price_subtotal', 'aggregate': 'sum', 'group_by': 'date:month',
                      'width': 'full', 'date_field': 'date', 'show_comparison': False},
-                    {'name': 'Umsatz nach Produktkategorie', 'display_type': 'chart_doughnut',
+                    {'name': 'Revenue by Product Category', 'display_type': 'chart_doughnut',
                      'source_type': 'model', 'model_name': 'sale.report',
                      'domain': "[('state', 'not in', ['draft', 'cancel', 'sent'])]",
                      'measure_field': 'price_subtotal', 'aggregate': 'sum', 'group_by': 'categ_id',
                      'date_field': 'date', 'show_comparison': False},
-                    {'name': 'Zahlungsstatus', 'display_type': 'chart_pie', 'source_type': 'model',
+                    {'name': 'Payment Status', 'display_type': 'chart_pie', 'source_type': 'model',
                      'model_name': 'account.move',
                      'domain': "[('move_type', '=', 'out_invoice'), ('state', '=', 'posted')]",
                      'measure_field': 'id', 'aggregate': 'count', 'group_by': 'payment_state',

@@ -14,7 +14,7 @@
     <record id="kpi_ceo_revenue" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
         <field name="name">Revenue (net)</field>
-        <field name="description">Nettoumsatz aus bestätigten Verkaufsaufträgen im gewählten Zeitraum</field>
+        <field name="description">Net revenue from confirmed sales orders in the selected period</field>
         <field name="sequence">10</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -31,7 +31,7 @@
     <record id="kpi_ceo_orders" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
         <field name="name">Orders</field>
-        <field name="description">Anzahl bestätigter Verkaufsaufträge</field>
+        <field name="description">Number of confirmed sales orders</field>
         <field name="sequence">20</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -47,7 +47,7 @@
     <record id="kpi_ceo_aov" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
         <field name="name">AOV</field>
-        <field name="description">Average Order Value — Durchschnittlicher Bestellwert (Umsatz / Aufträge)</field>
+        <field name="description">Average Order Value — average revenue per order (Revenue / Orders)</field>
         <field name="sequence">30</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
@@ -60,7 +60,7 @@
     <record id="kpi_ceo_pipeline" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
         <field name="name">Pipeline Value</field>
-        <field name="description">Gewichteter Wert aller offenen Verkaufschancen (Umsatz × Wahrscheinlichkeit)</field>
+        <field name="description">Weighted value of all open opportunities (revenue × probability)</field>
         <field name="sequence">40</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -93,7 +93,7 @@
     <record id="kpi_ceo_ar" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
         <field name="name">Open Receivables</field>
-        <field name="description">Summe aller unbezahlten oder teilbezahlten Ausgangsrechnungen</field>
+        <field name="description">Sum of all unpaid or partially paid customer invoices</field>
         <field name="sequence">60</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -182,7 +182,7 @@
     <record id="kpi_cfo_invoiced" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
         <field name="name">Invoicing</field>
-        <field name="description">Summe aller gebuchten Ausgangsrechnungen und Gutschriften</field>
+        <field name="description">Sum of all posted customer invoices and credit notes</field>
         <field name="sequence">10</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -199,7 +199,7 @@
     <record id="kpi_cfo_margin" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
         <field name="name">Margin</field>
-        <field name="description">Bruttomarge = Umsatz minus Einkaufspreis der verkauften Waren</field>
+        <field name="description">Gross margin = revenue minus cost of goods sold</field>
         <field name="sequence">20</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">model</field>
@@ -215,7 +215,7 @@
     <record id="kpi_cfo_margin_pct" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_cfo"/>
         <field name="name">Margin %</field>
-        <field name="description">Bruttomarge in Prozent vom Umsatz (Marge / Fakturierung × 100)</field>
+        <field name="description">Gross margin as a percentage of revenue (margin / invoicing × 100)</field>
         <field name="sequence">25</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>

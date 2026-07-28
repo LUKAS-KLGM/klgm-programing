@@ -10,6 +10,18 @@
   „Treffpunkt" und „Webseite" ergänzen den bestehenden Ort-Block in der Seitenleiste und
   teilen sich dessen vorhandenen Toggle (`opt_event_location_block`).
 
+## 19.0.2.2.0
+
+### Hinzugefügt
+- **E11 Dokumente-Block (Website)**: Neues Model `kjr.event.document` (Mehrfach-Dateien
+  je Veranstaltung, `event.event.kjr_document_ids`). Backend: eigener Reiter „Dokumente“
+  im Event-Formular (editierbare Liste, Datei-Upload). Frontend: neuer optionaler
+  Sidebar-Block auf der öffentlichen Event-Seite (`website_event.event_description_full`),
+  an-/abschaltbar im Website-Editor unter „Anpassen → Sidebar-Blöcke → Dokumente“ –
+  analog zu den bestehenden Blöcken Ort/Organizer/Teilen. Block erscheint automatisch nur,
+  wenn mindestens ein Dokument hinterlegt ist. Zugriffsrechte (public/portal: nur Lesen;
+  Event-Nutzer/-Manager: volle Verwaltung) analog zu den bestehenden `website_event`-Modellen.
+
 ## 19.0.2.0.0
 
 ### Hinzugefügt

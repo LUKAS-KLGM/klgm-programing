@@ -1,3 +1,7 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_kjr_event_coop_event,kjr.coop.event.read,event.model_event_event,group_kjr_cooperation_partner,1,0,0,0
 access_kjr_event_coop_registration,kjr.coop.registration.read,event.model_event_registration,group_kjr_cooperation_partner,1,0,0,0
+access_kjr_event_document_public,kjr.event.document.public,model_kjr_event_document,base.group_public,1,0,0,0
+access_kjr_event_document_portal,kjr.event.document.portal,model_kjr_event_document,base.group_portal,1,0,0,0
+access_kjr_event_document_user,kjr.event.document.user,model_kjr_event_document,event.group_event_user,1,1,1,0
+access_kjr_event_document_manager,kjr.event.document.manager,model_kjr_event_document,event.group_event_manager,1,1,1,1
