@@ -38,24 +38,28 @@ msgstr "90 Tage"
 #. module: executive_dashboard
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:518
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__default_period__this_month
 msgid "This Month"
 msgstr "Dieser Monat"
 
 #. module: executive_dashboard
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:519
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__default_period__this_quarter
 msgid "This Quarter"
 msgstr "Dieses Quartal"
 
 #. module: executive_dashboard
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:520
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__default_period__this_year
 msgid "This Year"
 msgstr "Dieses Jahr"
 
 #. module: executive_dashboard
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:521
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__default_period__last_year
 msgid "Last Year"
 msgstr "Letztes Jahr"
 
@@ -76,12 +80,14 @@ msgstr "Benutzerdefiniert..."
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:218
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:464
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__comparison_mode__previous_period
 msgid "Previous Period"
 msgstr "Vorperiode"
 
 #. module: executive_dashboard
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:219
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__comparison_mode__previous_year
 msgid "Previous Year"
 msgstr "Vorjahr"
 
@@ -91,6 +97,7 @@ msgstr "Vorjahr"
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.xml:335
 #: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.xml:50
 #: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:168
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__comparison_mode__budget
 msgid "Budget"
 msgstr "Budget"
 
@@ -153,6 +160,7 @@ msgstr "Ring"
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:566
 #: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:95
 #: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.js:149
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__display_type__chart_gauge
 msgid "Gauge"
 msgstr "Gauge"
 
@@ -161,6 +169,7 @@ msgstr "Gauge"
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:567
 #: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:96
 #: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.js:150
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__display_type__chart_table
 msgid "Table"
 msgstr "Tabelle"
 
@@ -185,6 +194,7 @@ msgstr "Breite"
 #. module: executive_dashboard
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:105
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__width__full
 msgid "Full Width"
 msgstr "Volle Breite"
 
@@ -192,30 +202,35 @@ msgstr "Volle Breite"
 #. module: executive_dashboard
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:573
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__aggregate__sum
 msgid "Sum"
 msgstr "Summe"
 
 #. module: executive_dashboard
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:574
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__aggregate__avg
 msgid "Average"
 msgstr "Durchschnitt"
 
 #. module: executive_dashboard
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:575
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__aggregate__count
 msgid "Count"
 msgstr "Anzahl"
 
 #. module: executive_dashboard
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:576
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__aggregate__min
 msgid "Minimum"
 msgstr "Minimum"
 
 #. module: executive_dashboard
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:577
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__aggregate__max
 msgid "Maximum"
 msgstr "Maximum"
 
@@ -235,6 +250,7 @@ msgstr "Dashboard"
 #. module: executive_dashboard
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard/dashboard.js:334
+#: model:ir.model.fields,field_description:executive_dashboard.field_executive_dashboard__company_id
 msgid "Company"
 msgstr "Unternehmen"
 
@@ -619,6 +635,7 @@ msgstr "Bearbeiten"
 #: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:23
 #: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:47
 #: code:addons/executive_dashboard/static/src/components/kpi_card/kpi_card.xml:91
+#: model:ir.model.fields,field_description:executive_dashboard.field_executive_dashboard_kpi__note_ids
 msgid "Notes"
 msgstr "Notizen"
 
@@ -687,6 +704,7 @@ msgstr "Ziel & Budget"
 #. odoo-javascript
 #: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.js:373
 #: code:addons/executive_dashboard/static/src/components/dashboard_chart/dashboard_chart.xml:45
+#: code:addons/executive_dashboard/models/dashboard.py:179
 msgid "Target"
 msgstr "Ziel"
 
@@ -757,6 +775,7 @@ msgstr "Kontostand"
 
 #. module: executive_dashboard
 #: model_terms:ir.ui.view,arch_db:executive_dashboard.res_config_settings_view_form
+#: model:ir.model.fields,field_description:executive_dashboard.field_executive_dashboard_kpi__journal_id
 msgid "Bank Journal"
 msgstr "Bankjournal"
 
@@ -804,26 +823,31 @@ msgstr "Verbindung testen"
 # executive.dashboard.kpi "name") ──
 #. module: executive_dashboard
 #: model:executive.dashboard,name:executive_dashboard.dashboard_ceo
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__role__ceo
 msgid "CEO — Company Overview"
 msgstr "CEO — Unternehmensübersicht"
 
 #. module: executive_dashboard
 #: model:executive.dashboard,name:executive_dashboard.dashboard_cfo
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__role__cfo
 msgid "CFO — Finance"
 msgstr "CFO — Finanzen"
 
 #. module: executive_dashboard
 #: model:executive.dashboard,name:executive_dashboard.dashboard_coo
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__role__coo
 msgid "COO — Operations"
 msgstr "COO — Operations"
 
 #. module: executive_dashboard
 #: model:executive.dashboard,name:executive_dashboard.dashboard_cso
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__role__cso
 msgid "CSO — Sales Performance"
 msgstr "CSO — Sales Performance"
 
 #. module: executive_dashboard
 #: model:executive.dashboard,name:executive_dashboard.dashboard_cto
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__role__cto
 msgid "CTO — Projects & Team"
 msgstr "CTO — Projekte & Team"
 
@@ -1194,12 +1218,14 @@ msgstr "OpenAI (GPT)"
 #: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cso_aov
 #: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_aov
 msgid "Average Order Value — average revenue per order (Revenue / Orders)"
-msgstr "Average Order Value — Durchschnittlicher Bestellwert (Umsatz / Aufträge)"
+msgstr ""
+"Average Order Value — Durchschnittlicher Bestellwert (Umsatz / Aufträge)"
 
 #. module: executive_dashboard
 #: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cso_sales_cycle
 msgid "Average number of days from lead to close (won opportunities)"
-msgstr "Durchschnittliche Tage vom Lead bis zum Abschluss (gewonnene Opportunities)"
+msgstr ""
+"Durchschnittliche Tage vom Lead bis zum Abschluss (gewonnene Opportunities)"
 
 #. module: executive_dashboard
 #: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cso_discount_rate
@@ -1219,7 +1245,8 @@ msgstr "Anzahl bestätigter Verkaufsaufträge"
 #. module: executive_dashboard
 #: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_pipeline
 msgid "Weighted value of all open opportunities (revenue × probability)"
-msgstr "Gewichteter Wert aller offenen Verkaufschancen (Umsatz × Wahrscheinlichkeit)"
+msgstr ""
+"Gewichteter Wert aller offenen Verkaufschancen (Umsatz × Wahrscheinlichkeit)"
 
 #. module: executive_dashboard
 #: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_ar
@@ -1248,13 +1275,18 @@ msgstr "Anteil der Kunden mit mehr als einem Auftrag im Zeitraum"
 
 #. module: executive_dashboard
 #: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_revenue_per_head
-msgid "Revenue per employee — growth &gt;5% very good, 3-5% normal, &lt;3% critical (business model tips over within 3 years)"
-msgstr "Umsatz je Mitarbeiter — Steigerung >5% sehr gut, 3-5% normal, <3% kritisch (Geschäftsmodell kippt in 3 Jahren)"
+msgid ""
+"Revenue per employee — growth &gt;5% very good, 3-5% normal, &lt;3% critical"
+" (business model tips over within 3 years)"
+msgstr ""
+"Umsatz je Mitarbeiter — Steigerung >5% sehr gut, 3-5% normal, <3% kritisch "
+"(Geschäftsmodell kippt in 3 Jahren)"
 
 #. module: executive_dashboard
 #: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_sales_strength
 msgid "Delivery lines per employee — measures operational sales productivity"
-msgstr "Lieferpositionen je Mitarbeiter — misst die operative Vertriebsproduktivität"
+msgstr ""
+"Lieferpositionen je Mitarbeiter — misst die operative Vertriebsproduktivität"
 
 #. module: executive_dashboard
 #: model:executive.dashboard.kpi,description:executive_dashboard.kpi_ceo_winrate
@@ -1264,12 +1296,18 @@ msgstr "Anzahl gewonnener Verkaufschancen im Zeitraum"
 #. module: executive_dashboard
 #: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cfo_dso
 msgid "Days Sales Outstanding — average number of days customers take to pay"
-msgstr "Days Sales Outstanding — Wie viele Tage brauchen Kunden im Schnitt zum Bezahlen"
+msgstr ""
+"Days Sales Outstanding — Wie viele Tage brauchen Kunden im Schnitt zum "
+"Bezahlen"
 
 #. module: executive_dashboard
 #: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cfo_dpo
-msgid "Days Payable Outstanding — average number of days you take to pay your suppliers"
-msgstr "Days Payable Outstanding — Wie viele Tage braucht ihr im Schnitt zum Bezahlen eurer Lieferanten"
+msgid ""
+"Days Payable Outstanding — average number of days you take to pay your "
+"suppliers"
+msgstr ""
+"Days Payable Outstanding — Wie viele Tage braucht ihr im Schnitt zum "
+"Bezahlen eurer Lieferanten"
 
 #. module: executive_dashboard
 #: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cfo_balance
@@ -1310,3 +1348,346 @@ msgstr "Abwesenheitstage / (Mitarbeiter × 20 Arbeitstage) in Prozent"
 #: model:executive.dashboard.kpi,description:executive_dashboard.kpi_cto_leave_days
 msgid "Approved absence days (vacation, sick leave, etc.) in the period"
 msgstr "Genehmigte Abwesenheitstage (Urlaub, Krankheit, etc.) im Zeitraum"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__role__custom
+msgid "Custom"
+msgstr "Benutzerdefiniert"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__default_period__last_7_days
+msgid "Last 7 Days"
+msgstr "Letzte 7 Tage"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__default_period__last_30_days
+msgid "Last 30 Days"
+msgstr "Letzte 30 Tage"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__default_period__last_90_days
+msgid "Last 90 Days"
+msgstr "Letzte 90 Tage"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__mail_frequency__daily
+msgid "Daily"
+msgstr "Täglich"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__mail_frequency__weekly
+msgid "Weekly (Monday)"
+msgstr "Wöchentlich (Montag)"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard__mail_frequency__monthly
+msgid "Monthly (1st of the month)"
+msgstr "Monatlich (1. des Monats)"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__display_type__scorecard
+msgid "Scorecard (KPI card)"
+msgstr "Scorecard (KPI-Karte)"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__display_type__chart_bar
+msgid "Bar Chart"
+msgstr "Balkendiagramm"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__display_type__chart_bar_h
+msgid "Bar Chart (horizontal)"
+msgstr "Balkendiagramm (horizontal)"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__display_type__chart_line
+msgid "Line Chart"
+msgstr "Liniendiagramm"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__display_type__chart_pie
+msgid "Pie Chart"
+msgstr "Tortendiagramm"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__display_type__chart_doughnut
+msgid "Doughnut Chart"
+msgstr "Ringdiagramm"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__width__third
+msgid "One Third"
+msgstr "Drittel"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__width__half
+msgid "Half Width"
+msgstr "Halbe Breite"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__width__two_thirds
+msgid "Two Thirds"
+msgstr "Zwei Drittel"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__source_type__model
+msgid "Odoo Model (aggregation)"
+msgstr "Odoo-Modell (Aggregation)"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__source_type__formula
+msgid "Calculated (formula)"
+msgstr "Berechnet (Formel)"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__source_type__sql
+msgid "SQL Query"
+msgstr "SQL-Abfrage"
+
+#. module: executive_dashboard
+#: model:ir.model.fields.selection,name:executive_dashboard.selection__executive_dashboard_kpi__source_type__bank_balance
+msgid "Bank Balance (journal)"
+msgstr "Kontostand (Bankjournal)"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,field_description:executive_dashboard.field_executive_dashboard__group_ids
+msgid "Visible to Groups"
+msgstr "Sichtbar für Gruppen"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,field_description:executive_dashboard.field_executive_dashboard__mail_enabled
+msgid "Email Sending Enabled"
+msgstr "E-Mail-Versand aktiviert"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,field_description:executive_dashboard.field_executive_dashboard__mail_recipient_ids
+msgid "Recipients"
+msgstr "Empfänger"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,field_description:executive_dashboard.field_executive_dashboard__mail_last_sent
+msgid "Last Sent"
+msgstr "Zuletzt gesendet"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,field_description:executive_dashboard.field_res_config_settings__ed_bank_journal
+msgid "Bank Journal for Balance"
+msgstr "Bankjournal für Kontostand"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,field_description:executive_dashboard.field_res_config_settings__ed_ai_provider
+msgid "AI Provider"
+msgstr "AI-Anbieter"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard__group_ids
+msgid "Empty = visible to all internal users"
+msgstr "Leer = sichtbar für alle internen Benutzer"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard__auto_refresh
+msgid "Auto-refresh interval in seconds. 0 = off."
+msgstr "Auto-Refresh in Sekunden. 0 = aus."
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard__mail_recipient_ids
+msgid "Users who receive the dashboard report by email"
+msgstr "Benutzer, die den Dashboard-Report per E-Mail erhalten"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard__template_key
+msgid "Internal key of the industry template"
+msgstr "Interner Schlüssel des Branchen-Templates"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__description
+msgid "Short explanation of the KPI, shown as a tooltip"
+msgstr "Kurze Erklärung des KPIs für den Tooltip"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__unit
+msgid "e.g. EUR, %, pcs."
+msgstr "z. B. EUR, %, Stk."
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__color
+msgid "Background colour of the scorecard"
+msgstr "Hintergrundfarbe der Scorecard"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__model_name
+msgid "e.g. sale.report, account.move"
+msgstr "z. B. sale.report, account.move"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__domain
+msgid "Odoo domain as a Python list"
+msgstr "Odoo-Domain als Python-Liste"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__measure_field
+msgid "Field to aggregate, e.g. price_subtotal"
+msgstr "Feld zum Aggregieren, z. B. price_subtotal"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__group_by
+msgid "Grouping for charts, e.g. date:month"
+msgstr "Gruppierung für Charts, z. B. date:month"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__formula
+msgid "Python expression. Available: kpi(name) for other KPI values."
+msgstr "Python-Ausdruck. Verfügbar: kpi(name) für andere KPI-Werte."
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__sql_query
+msgid ""
+"SQL SELECT returning a single value. Placeholders: {date_from}, {date_to} "
+"for the date filter."
+msgstr ""
+"SQL-SELECT, das einen einzelnen Wert liefert. Platzhalter: {date_from}, "
+"{date_to} für den Zeitfilter."
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__journal_id
+msgid "Bank journal for the balance. Empty = first bank journal."
+msgstr "Bankjournal für den Kontostand. Leer = erstes Bankjournal."
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__action_xmlid
+msgid "e.g. sale.action_order_report_all"
+msgstr "z. B. sale.action_order_report_all"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__date_field
+msgid "Date field used by the period filter"
+msgstr "Datumsfeld für den Zeitfilter"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__apply_date_filter
+msgid "False for stock values such as headcount."
+msgstr "False für Bestandswerte wie Mitarbeiterzahl."
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__target_value
+msgid "Target value for the status indicator"
+msgstr "Zielwert für die Ampel-Anzeige"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__target_warning
+msgid "Threshold for amber (e.g. 80% of target)"
+msgstr "Schwelle für Gelb (z. B. 80 % des Ziels)"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__target_critical
+msgid "Threshold for red (e.g. 50% of target)"
+msgstr "Schwelle für Rot (z. B. 50 % des Ziels)"
+
+#. module: executive_dashboard
+#: model:ir.model.fields,help:executive_dashboard.field_executive_dashboard_kpi__budget_value
+msgid "Budget value used for comparison"
+msgstr "Budget-Wert für den Vergleich"
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:146
+msgid "Strongest Improvement"
+msgstr "Stärkste Verbesserung"
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:162
+msgid "Largest Decline"
+msgstr "Stärkster Rückgang"
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:179
+msgid "Target Achievement"
+msgstr "Zielerreichung"
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:190
+msgid "Critical KPIs"
+msgstr "Kritische KPIs"
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:191
+msgid "Below target: %(names)s."
+msgstr "Unter Ziel: %(names)s."
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:201
+msgid "Overview"
+msgstr "Übersicht"
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:223
+msgid "Unusual Change"
+msgstr "Ungewöhnliche Veränderung"
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:230
+msgid "All Clear"
+msgstr "Alles im grünen Bereich"
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:231
+msgid "No notable changes in the current period."
+msgstr "Keine auffälligen Veränderungen im aktuellen Zeitraum."
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:247
+msgid "API Key Missing"
+msgstr "API-Key fehlt"
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:248
+msgid ""
+"Add an AI API key (Anthropic or OpenAI) in the Dashboard Configuration to "
+"enable AI Insights."
+msgstr ""
+"Hinterlege einen AI-API-Key (Anthropic oder OpenAI) in der Dashboard-"
+"Konfiguration, um AI Insights zu aktivieren."
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard_kpi.py:548
+msgid "vs. previous period"
+msgstr "vs. Vorperiode"
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard_kpi.py:549
+msgid "vs. previous year"
+msgstr "vs. Vorjahr"
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard_kpi.py:550
+msgid "vs. budget"
+msgstr "vs. Budget"
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:148
+msgid "%(name)s is up %(pct)s%% (currently: %(value)s %(unit)s)."
+msgstr "%(name)s ist um %(pct)s %% gestiegen (aktuell: %(value)s %(unit)s)."
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:164
+msgid "%(name)s is down %(pct)s%% (currently: %(value)s %(unit)s)."
+msgstr "%(name)s ist um %(pct)s %% gefallen (aktuell: %(value)s %(unit)s)."
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:181
+msgid "%(green)s of %(total)s KPIs (%(pct)s%%) reached their target."
+msgstr "%(green)s von %(total)s KPIs (%(pct)s %%) haben ihr Ziel erreicht."
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:203
+msgid "%(count)s KPIs: %(up)s rising, %(down)s falling, %(stable)s stable."
+msgstr "%(count)s KPIs: %(up)s steigend, %(down)s fallend, %(stable)s stabil."
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:213
+msgid "%(name)s is up %(pct)s%%. This may be worth reviewing."
+msgstr "%(name)s ist um %(pct)s %% gestiegen. Das könnte überprüft werden."
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard.py:218
+msgid "%(name)s is down %(pct)s%%. This may be worth reviewing."
+msgstr "%(name)s ist um %(pct)s %% gefallen. Das könnte überprüft werden."

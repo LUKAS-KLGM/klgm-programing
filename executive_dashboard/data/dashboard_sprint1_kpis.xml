@@ -69,7 +69,7 @@
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
         <field name="formula">(kpi('Open Receivables') / kpi('_Tagesumsatz') * 30) if kpi('_Tagesumsatz') else 0</field>
-        <field name="unit">Tage</field>
+        <field name="unit">Days</field>
         <field name="color">#EFF6FF</field>
         <field name="show_comparison">False</field>
         <field name="target_value">45</field>
@@ -100,7 +100,7 @@
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
         <field name="formula">abs(kpi('_AP_Open') / kpi('_Tageseinkauf') * 30) if kpi('_Tageseinkauf') else 0</field>
-        <field name="unit">Tage</field>
+        <field name="unit">Days</field>
         <field name="color">#FFF7ED</field>
         <field name="show_comparison">False</field>
     </record>
@@ -174,7 +174,7 @@ WHERE aml.account_id = (
         <field name="domain">[('state', 'in', ['purchase', 'done'])]</field>
         <field name="measure_field">days_to_arrival</field>
         <field name="aggregate">avg</field>
-        <field name="unit">Tage</field>
+        <field name="unit">Days</field>
         <field name="color">#FFF7ED</field>
         <field name="date_field">date_order</field>
     </record>
@@ -331,7 +331,7 @@ WHERE sl.usage = 'internal'</field>
         <field name="domain">[('state', '=', 'validate')]</field>
         <field name="measure_field">number_of_days</field>
         <field name="aggregate">sum</field>
-        <field name="unit">Tage</field>
+        <field name="unit">Days</field>
         <field name="color">#FFF7ED</field>
         <field name="date_field">date_from</field>
     </record>

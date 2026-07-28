@@ -1,6 +1,6 @@
 {
     "name": "Executive Dashboard | KPIs, Charts & AI Insights",
-    "version": "19.0.6.5.10",
+    "version": "19.0.6.6.0",
     "category": "Productivity",
     "summary": "Configurable executive dashboards with KPIs, charts, AI insights and industry templates",
     "description": """

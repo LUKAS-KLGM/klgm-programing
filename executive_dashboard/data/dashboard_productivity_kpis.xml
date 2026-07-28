@@ -48,7 +48,7 @@
         <field name="display_type">scorecard</field>
         <field name="source_type">formula</field>
         <field name="formula">kpi('_Lieferpositionen') / kpi('Employees') if kpi('Employees') else 0</field>
-        <field name="unit">Pos.</field>
+        <field name="unit">lines</field>
         <field name="color">#F0FFF4</field>
         <field name="show_comparison">True</field>
     </record>

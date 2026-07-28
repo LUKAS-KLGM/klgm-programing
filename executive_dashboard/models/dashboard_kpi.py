@@ -1,7 +1,7 @@
 import logging
 from datetime import date, timedelta
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 from odoo.tools.safe_eval import safe_eval
 
 _logger = logging.getLogger(__name__)
@@ -14,82 +14,82 @@ class DashboardKPI(models.Model):
 
     dashboard_id = fields.Many2one('executive.dashboard', required=True, ondelete='cascade')
     name = fields.Char(required=True, translate=True)
-    description = fields.Char(translate=True, help='Kurze Erklärung des KPIs für Tooltip')
+    description = fields.Char(translate=True, help='Short explanation of the KPI, shown as a tooltip')
     sequence = fields.Integer(default=10)
 
     # Display
     display_type = fields.Selection([
-        ('scorecard', 'Scorecard (KPI-Karte)'),
-        ('chart_bar', 'Balkendiagramm'),
-        ('chart_bar_h', 'Balkendiagramm (horizontal)'),
-        ('chart_line', 'Liniendiagramm'),
-        ('chart_pie', 'Tortendiagramm'),
-        ('chart_doughnut', 'Ringdiagramm'),
-        ('chart_table', 'Tabelle'),
-        ('chart_gauge', 'Gauge (Tacho)'),
+        ('scorecard', 'Scorecard (KPI card)'),
+        ('chart_bar', 'Bar Chart'),
+        ('chart_bar_h', 'Bar Chart (horizontal)'),
+        ('chart_line', 'Line Chart'),
+        ('chart_pie', 'Pie Chart'),
+        ('chart_doughnut', 'Doughnut Chart'),
+        ('chart_table', 'Table'),
+        ('chart_gauge', 'Gauge'),
     ], required=True, default='scorecard')
-    unit = fields.Char(help='z.B. EUR, %, Stk.')
-    color = fields.Char(default='#EFF6FF', help='Hintergrundfarbe der Scorecard')
+    unit = fields.Char(help='e.g. EUR, %, pcs.')
+    color = fields.Char(default='#EFF6FF', help='Background colour of the scorecard')
     width = fields.Selection([
-        ('third', 'Drittel'),
-        ('half', 'Halbe Breite'),
-        ('two_thirds', 'Zwei Drittel'),
-        ('full', 'Volle Breite'),
+        ('third', 'One Third'),
+        ('half', 'Half Width'),
+        ('two_thirds', 'Two Thirds'),
+        ('full', 'Full Width'),
     ], default='half')
 
     # Data source
     source_type = fields.Selection([
-        ('model', 'Odoo Model (Aggregation)'),
-        ('formula', 'Berechnet (Formel)'),
+        ('model', 'Odoo Model (aggregation)'),
+        ('formula', 'Calculated (formula)'),
         ('sql', 'SQL Query'),
-        ('bank_balance', 'Kontostand (Bankjournal)'),
+        ('bank_balance', 'Bank Balance (journal)'),
     ], required=True, default='model')
 
     # For source_type = 'model'
-    model_name = fields.Char(help='z.B. sale.report, account.move')
-    domain = fields.Text(default='[]', help='Odoo Domain als Python-Liste')
-    measure_field = fields.Char(help='Feld zum Aggregieren, z.B. price_subtotal')
+    model_name = fields.Char(help='e.g. sale.report, account.move')
+    domain = fields.Text(default='[]', help='Odoo domain as a Python list')
+    measure_field = fields.Char(help='Field to aggregate, e.g. price_subtotal')
     aggregate = fields.Selection([
-        ('sum', 'Summe'),
-        ('avg', 'Durchschnitt'),
-        ('count', 'Anzahl'),
+        ('sum', 'Sum'),
+        ('avg', 'Average'),
+        ('count', 'Count'),
         ('min', 'Minimum'),
         ('max', 'Maximum'),
     ], default='sum')
-    group_by = fields.Char(help='Gruppierung für Charts, z.B. date:month')
+    group_by = fields.Char(help='Grouping for charts, e.g. date:month')
 
     # For source_type = 'formula'
-    formula = fields.Text(help='Python-Ausdruck. Verfügbar: kpi(name) für andere KPI-Werte.')
+    formula = fields.Text(help='Python expression. Available: kpi(name) for other KPI values.')
 
     # For source_type = 'sql'
-    sql_query = fields.Text(help='SQL SELECT der einen einzelnen Wert liefert. '
-                                 'Platzhalter: {date_from}, {date_to} für Zeitfilter.')
+    sql_query = fields.Text(help='SQL SELECT returning a single value. '
+                                 'Placeholders: {date_from}, {date_to} for the date filter.')
 
     # For source_type = 'bank_balance'
-    journal_id = fields.Many2one('account.journal', string='Bankjournal',
+    journal_id = fields.Many2one('account.journal', string='Bank Journal',
         domain="[('type', '=', 'bank')]",
-        help='Bankjournal für Kontostand. Leer = erstes Bankjournal.')
+        help='Bank journal for the balance. Empty = first bank journal.')
 
     # Comparison
     show_comparison = fields.Boolean(default=True)
 
     # Drill-down
-    action_xmlid = fields.Char(help='z.B. sale.action_order_report_all')
+    action_xmlid = fields.Char(help='e.g. sale.action_order_report_all')
 
     # Date field for filtering
-    date_field = fields.Char(default='date', help='Datumsfeld für Zeitfilter')
-    apply_date_filter = fields.Boolean(default=True, help='False für Bestandswerte wie Mitarbeiter.')
+    date_field = fields.Char(default='date', help='Date field used by the period filter')
+    apply_date_filter = fields.Boolean(default=True, help='False for stock values such as headcount.')
 
     # Target / Ampel (v3)
-    target_value = fields.Float(help='Zielwert für Ampel-Anzeige')
-    target_warning = fields.Float(help='Schwelle für Gelb (z.B. 80% des Ziels)')
-    target_critical = fields.Float(help='Schwelle für Rot (z.B. 50% des Ziels)')
+    target_value = fields.Float(help='Target value for the status indicator')
+    target_warning = fields.Float(help='Threshold for amber (e.g. 80% of target)')
+    target_critical = fields.Float(help='Threshold for red (e.g. 50% of target)')
 
     # Budget (v6)
-    budget_value = fields.Float(help='Budget-Wert für Vergleich')
+    budget_value = fields.Float(help='Budget value used for comparison')
 
     # Notes (v6)
-    note_ids = fields.One2many('executive.dashboard.kpi.note', 'kpi_id', string='Notizen')
+    note_ids = fields.One2many('executive.dashboard.kpi.note', 'kpi_id', string='Notes')
 
     # ═══════════════════════════════════════════
     # Date Ranges
@@ -406,7 +406,7 @@ class DashboardKPI(models.Model):
 
         account = journal.default_account_id
         if not account:
-            _logger.warning("Kontostand KPI: Journal %s hat kein verknüpftes Konto (default_account_id)",
+            _logger.warning("Bank Balance KPI: journal %s has no linked account (default_account_id)",
                              journal.name)
             return 0
 
@@ -545,11 +545,11 @@ class DashboardKPI(models.Model):
 
         # Comparison label
         labels = {
-            'previous_period': 'vs. Vorperiode',
-            'previous_year': 'vs. Vorjahr',
-            'budget': 'vs. Budget',
+            'previous_period': _('vs. previous period'),
+            'previous_year': _('vs. previous year'),
+            'budget': _('vs. budget'),
         }
-        result['comparison_label'] = labels.get(comparison_mode, 'vs. Vorperiode')
+        result['comparison_label'] = labels.get(comparison_mode, _('vs. previous period'))
 
         # Target / Ampel
         if self.target_value:

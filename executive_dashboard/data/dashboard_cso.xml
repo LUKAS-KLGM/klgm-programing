@@ -152,7 +152,7 @@
 FROM crm_lead l
 JOIN crm_stage s ON s.id = l.stage_id
 WHERE l.type = 'opportunity' AND l.probability = 100 AND s.is_won = true AND l.date_closed IS NOT NULL</field>
-        <field name="unit">Tage</field>
+        <field name="unit">Days</field>
         <field name="color">#EFF6FF</field>
         <field name="apply_date_filter">False</field>
         <field name="target_value">30</field>
