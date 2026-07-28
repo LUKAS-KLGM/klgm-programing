@@ -19,12 +19,20 @@
                             <field name="kjr_min_age"/>
                             <field name="kjr_max_age"/>
                             <field name="requires_parental_consent"/>
+                            <field name="kjr_seats_min"/>
+                            <field name="seats_taken"/>
+                            <field name="kjr_seats_min_reached" invisible="1"/>
                         </group>
                     </group>
                     <div class="alert alert-info" role="alert" invisible="not requires_parental_consent">
                         Für die Anmeldung Minderjähriger sollte die Einwilligung der Erziehungsberechtigten
                         erfasst werden – auf der Website am einfachsten über Veranstaltungs-Fragen
                         (Kommunikation → Fragen) oder über die Anmelde-Detailfelder.
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not is_kjr or kjr_seats_min_reached">
+                        Mindestanzahl Teilnehmer/innen noch nicht erreicht (siehe Anzahl
+                        angemeldeter Plätze oben) – Durchführung der Veranstaltung ggf. prüfen.
                     </div>
                     <group>
                         <group string="Zahlung" invisible="not is_kjr">
