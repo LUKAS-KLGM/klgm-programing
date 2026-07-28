@@ -40,7 +40,7 @@
     <record id="kpi_ceo_repeat_rate" model="executive.dashboard.kpi">
         <field name="dashboard_id" ref="dashboard_ceo"/>
         <field name="name">Repeat Purchase Rate</field>
-        <field name="description">Anteil der Kunden mit mehr als einem Auftrag im Zeitraum</field>
+        <field name="description">Share of customers with more than one order in the period</field>
         <field name="sequence">78</field>
         <field name="display_type">scorecard</field>
         <field name="source_type">sql</field>

@@ -9,7 +9,7 @@
             <form string="Executive Dashboard">
                 <header>
                     <button name="action_open_dashboard" type="object"
-                            string="Dashboard öffnen" class="btn-primary"
+                            string="Open Dashboard" class="btn-primary"
                             icon="fa-tachometer"/>
                     <button name="action_send_dashboard_mail" type="object"
                             string="Test-Mail senden" class="btn-secondary"
@@ -32,7 +32,7 @@
                             <field name="active" string="Aktiv"/>
                             <field name="auto_refresh" string="Auto-Aktualisierung (Sek.)" help="0 = deaktiviert"/>
                             <field name="company_id" string="Unternehmen" groups="base.group_multi_company"/>
-                            <field name="group_ids" widget="many2many_tags" string="Sichtbar für"/>
+                            <field name="group_ids" widget="many2many_tags" string="Visible To"/>
                         </group>
                     </group>
                     <notebook>
@@ -69,14 +69,14 @@
                             <group>
                                 <group>
                                     <field name="mail_enabled" string="Automatischer E-Mail-Versand"/>
-                                    <field name="mail_frequency" string="Häufigkeit" invisible="not mail_enabled"/>
+                                    <field name="mail_frequency" string="Frequency" invisible="not mail_enabled"/>
                                 </group>
                                 <group>
                                     <field name="mail_last_sent" string="Zuletzt gesendet" readonly="1"/>
                                 </group>
                             </group>
                             <group invisible="not mail_enabled">
-                                <field name="mail_recipient_ids" widget="many2many_tags" string="Empfänger"/>
+                                <field name="mail_recipient_ids" widget="many2many_tags" string="Recipients"/>
                             </group>
                         </page>
                     </notebook>
@@ -99,14 +99,14 @@
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="auto_refresh"/>
                 <button name="action_open_dashboard" type="object"
-                        string="Öffnen" icon="fa-external-link"/>
+                        string="Open" icon="fa-external-link"/>
             </list>
         </field>
     </record>
 
     <!-- Dashboard Action -->
     <record id="action_executive_dashboard" model="ir.actions.act_window">
-        <field name="name">Dashboard-Konfiguration</field>
+        <field name="name">Dashboard Configuration</field>
         <field name="res_model">executive.dashboard</field>
         <field name="view_mode">list,form</field>
     </record>
