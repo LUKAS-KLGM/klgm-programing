@@ -1691,3 +1691,8 @@ msgstr "%(name)s ist um %(pct)s %% gestiegen. Das könnte überprüft werden."
 #: code:addons/executive_dashboard/models/dashboard.py:218
 msgid "%(name)s is down %(pct)s%%. This may be worth reviewing."
 msgstr "%(name)s ist um %(pct)s %% gefallen. Das könnte überprüft werden."
+
+#. module: executive_dashboard
+#: code:addons/executive_dashboard/models/dashboard_kpi.py:314
+msgid "Other"
+msgstr "Sonstige"

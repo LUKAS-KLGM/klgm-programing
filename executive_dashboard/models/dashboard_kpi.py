@@ -311,11 +311,11 @@ class DashboardKPI(models.Model):
                     orderby=order, limit=10 if not is_time_group else time_limit,
                 )
                 for r in group_results:
-                    label = r.get(chart_group, 'Sonstige')
+                    label = r.get(chart_group, _('Other'))
                     if isinstance(label, (list, tuple)):
                         label = label[1] if len(label) > 1 else label[0]
                     elif label is False:
-                        label = 'Sonstige'
+                        label = _('Other')
                     val = r.get(self.measure_field, 0) or 0
                     # read_group's count key is keyed on the bare field name,
                     # not the ':granularity' groupby spec (e.g. 'date_count'
