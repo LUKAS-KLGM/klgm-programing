@@ -73,6 +73,34 @@
         </xpath>
     </template>
 
+    <!-- E12: Treffpunkt, Wichtig, Webseite (Nupian-Parität) -->
+    <template id="event_description_full_kjr_meeting_info"
+              name="KJR: Treffpunkt, Wichtig, Webseite"
+              inherit_id="website_event.event_description_full">
+        <!-- "Wichtig" ist bewusst KEIN an-/abschaltbarer Sidebar-Block: ein wichtiger
+             Hinweis soll nicht versehentlich per Website-Editor-Toggle verschwinden
+             können. Immer sichtbar, sobald das Feld befüllt ist – oberhalb der
+             eigentlichen Beschreibung, analog zu den Alert-Boxen im Backend-Formular. -->
+        <xpath expr="//div[@t-field='event.description']" position="before">
+            <div t-if="event.kjr_important_note" class="alert alert-warning mb-3" role="alert"
+                 t-field="event.kjr_important_note"/>
+        </xpath>
+        <!-- "Treffpunkt" und "Webseite" gehören inhaltlich zum Ort-Block dazu (Ziel +
+             Treffpunkt + weiterführender Link) und teilen sich daher dessen bestehenden
+             Toggle (opt_event_location_block) statt einen eigenen zu bekommen. -->
+        <xpath expr="//a[@t-att-href=&quot;event._google_map_link()&quot;]" position="after">
+            <div t-if="event.kjr_meeting_point" class="mt-3">
+                <h6 class="o_wevent_sidebar_title">Treffpunkt</h6>
+                <p class="mb-0" t-field="event.kjr_meeting_point"/>
+            </div>
+            <div t-if="event.kjr_website_url" class="mt-3">
+                <a t-att-href="event.kjr_website_url" target="_blank" rel="noopener">
+                    <i class="fa fa-external-link me-1" role="presentation"/>Webseite
+                </a>
+            </div>
+        </xpath>
+    </template>
+
     <!-- E11: Dokumente-Block (Sidebar) -->
 
     <!-- Reiner Toggle-Marker: aktiv/inaktiv wird von den Website-Builder-Optionen

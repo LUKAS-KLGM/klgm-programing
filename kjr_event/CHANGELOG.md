@@ -1,5 +1,15 @@
 # Changelog – kjr_event
 
+## 19.0.2.3.0
+
+### Hinzugefügt
+- **E12 Treffpunkt/Wichtig/Webseite (Nupian-Parität)**: Drei neue Felder auf `event.event`:
+  `kjr_meeting_point` (Text, "Treffpunkt"), `kjr_important_note` (Html, "Wichtig"),
+  `kjr_website_url` (Char, "Webseite"). Backend: neuer Reiter „Treffpunkt & Hinweise".
+  Frontend: „Wichtig" erscheint immer (kein Toggle) als Warnbox oberhalb der Beschreibung;
+  „Treffpunkt" und „Webseite" ergänzen den bestehenden Ort-Block in der Seitenleiste und
+  teilen sich dessen vorhandenen Toggle (`opt_event_location_block`).
+
 ## 19.0.2.2.0
 
 ### Hinzugefügt
