@@ -1461,6 +1461,7 @@ msgstr "E-Mail-Versand aktiviert"
 
 #. module: executive_dashboard
 #: model:ir.model.fields,field_description:executive_dashboard.field_executive_dashboard__mail_recipient_ids
+#: model_terms:ir.ui.view,arch_db:executive_dashboard.view_executive_dashboard_form
 msgid "Recipients"
 msgstr "Empfänger"
 
@@ -1696,3 +1697,28 @@ msgstr "%(name)s ist um %(pct)s %% gefallen. Das könnte überprüft werden."
 #: code:addons/executive_dashboard/models/dashboard_kpi.py:314
 msgid "Other"
 msgstr "Sonstige"
+
+#. module: executive_dashboard
+#: model_terms:ir.ui.view,arch_db:executive_dashboard.view_executive_dashboard_form
+msgid "Open Dashboard"
+msgstr "Dashboard öffnen"
+
+#. module: executive_dashboard
+#: model_terms:ir.ui.view,arch_db:executive_dashboard.view_executive_dashboard_form
+msgid "Visible To"
+msgstr "Sichtbar für"
+
+#. module: executive_dashboard
+#: model_terms:ir.ui.view,arch_db:executive_dashboard.view_executive_dashboard_form
+msgid "Frequency"
+msgstr "Häufigkeit"
+
+#. module: executive_dashboard
+#: model_terms:ir.ui.view,arch_db:executive_dashboard.view_executive_dashboard_list
+msgid "Open"
+msgstr "Öffnen"
+
+#. module: executive_dashboard
+#: model:ir.actions.act_window,name:executive_dashboard.action_executive_dashboard
+msgid "Dashboard Configuration"
+msgstr "Dashboard-Konfiguration"
