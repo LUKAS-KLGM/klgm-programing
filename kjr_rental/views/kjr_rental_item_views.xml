@@ -1,12 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- Suchansicht: ERSATZ FÜR DEN KAMERA-SCAN.
+         Ein Handscanner tippt den gelesenen Code in das gerade aktive Eingabefeld.
+         Landet er in der Suchzeile, muss die Standardsuche (Feld "name") deshalb
+         zusätzlich Inventarnummer UND Barcode abdecken - sonst findet die
+         Geschäftsstelle den gescannten Artikel nicht. -->
+    <record id="view_kjr_rental_item_search" model="ir.ui.view">
+        <field name="name">kjr.rental.item.search</field>
+        <field name="model">kjr.rental.item</field>
+        <field name="arch" type="xml">
+            <search string="Verleihartikel">
+                <field name="name" string="Artikel / Nummer / Barcode"
+                       filter_domain="['|', '|', ('name', 'ilike', self), ('code', 'ilike', self), ('barcode', 'ilike', self)]"/>
+                <field name="barcode" string="Barcode"/>
+                <field name="code" string="Inventarnummer"/>
+                <field name="category_id"/>
+                <field name="location_id"/>
+                <separator/>
+                <filter string="Auf Website" name="published" domain="[('website_published','=',True)]"/>
+                <filter string="Ohne Barcode" name="no_barcode"
+                        domain="['|', ('barcode','=',False), ('barcode','=','')]"
+                        help="Artikel, für die noch kein Inventaretikett vergeben wurde."/>
+                <separator/>
+                <filter string="Kategorie" name="group_category" context="{'group_by':'category_id'}"/>
+                <filter string="Lager" name="group_location" context="{'group_by':'location_id'}"/>
+            </search>
+        </field>
+    </record>
+
     <record id="view_kjr_rental_item_list" model="ir.ui.view">
         <field name="name">kjr.rental.item.list</field>
         <field name="model">kjr.rental.item</field>
         <field name="arch" type="xml">
             <list string="Verleihartikel">
+                <!-- Mehrfachauswahl: Barcodes für alle markierten Artikel auf einmal
+                     erzeugen, danach direkt über "Drucken > Inventaretikett" bekleben. -->
+                <header>
+                    <button name="action_generate_barcode" type="object"
+                            string="Barcode erzeugen" icon="fa-barcode"
+                            groups="kjr_rental.group_kjr_rental_user"/>
+                </header>
                 <field name="name"/>
+                <field name="code" optional="hide"/>
+                <!-- Standardmäßig ausgeblendet: nur für Etiketten-/Inventurarbeit relevant. -->
+                <field name="barcode" optional="hide"/>
                 <field name="category_id"/>
                 <field name="location_id"/>
                 <field name="quantity_total"/>
@@ -24,12 +62,21 @@
         <field name="model">kjr.rental.item</field>
         <field name="arch" type="xml">
             <form string="Verleihartikel">
+                <header>
+                    <!-- Nur sichtbar, solange kein Etikett vergeben ist: die Methode
+                         überschreibt vorhandene Barcodes bewusst nicht. -->
+                    <button name="action_generate_barcode" type="object"
+                            string="Barcode erzeugen" icon="fa-barcode"
+                            invisible="barcode"
+                            groups="kjr_rental.group_kjr_rental_user"/>
+                </header>
                 <sheet>
                     <field name="image_1920" widget="image" class="oe_avatar"/>
                     <div class="oe_title"><label for="name"/><h1><field name="name"/></h1></div>
                     <group>
                         <group string="Einordnung">
                             <field name="code"/>
+                            <field name="barcode" placeholder="z. B. KJR-BUS-01"/>
                             <field name="category_id"/>
                             <field name="location_id"/>
                             <field name="quantity_total"/>
@@ -54,7 +101,20 @@
                             <field name="book_value"/>
                         </group>
                     </group>
-                    <field name="description" placeholder="Beschreibung..."/>
+                    <notebook>
+                        <page string="Beschreibung" name="description">
+                            <field name="description" placeholder="Beschreibung..."/>
+                        </page>
+                        <page string="Nutzungshinweise" name="usage_warning">
+                            <div class="text-muted mb-2">
+                                Verbindliche Regeln für genau diesen Artikel. Der Text wird
+                                dem Entleiher auf der Website vor dem Absenden der Anfrage
+                                angezeigt und muss dort bestätigt werden.
+                            </div>
+                            <field name="usage_warning" nolabel="1"
+                                   placeholder="z. B. Führerscheinklasse, Aufbau nur durch eingewiesene Personen, gereinigt zurückgeben..."/>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
@@ -85,6 +145,7 @@
         <field name="name">Verleihartikel</field>
         <field name="res_model">kjr.rental.item</field>
         <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_kjr_rental_item_search"/>
     </record>
 
     <!-- Stammdaten: Kategorien (frei pflegbar) -->

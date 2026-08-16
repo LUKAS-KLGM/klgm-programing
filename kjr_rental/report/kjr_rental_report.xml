@@ -13,6 +13,83 @@
         <field name="group_ids" eval="[(4, ref('kjr_rental.group_kjr_rental_user'))]"/>
     </record>
 
+    <!-- Inventaretikett: Bogen mit mehreren Artikeln, aus der Listenauswahl
+         heraus druckbar (binding_model_id). Struktur bewusst identisch zur
+         Vertrags-Action oben. -->
+    <record id="action_report_rental_label" model="ir.actions.report">
+        <field name="name">Inventaretikett</field>
+        <field name="model">kjr.rental.item</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">kjr_rental.report_rental_label</field>
+        <field name="report_file">kjr_rental.report_rental_label</field>
+        <field name="print_report_name">'Etikett_%s' % (object.code or object.name or '').replace('/', '-')</field>
+        <field name="binding_model_id" ref="model_kjr_rental_item"/>
+        <field name="binding_type">report</field>
+        <field name="group_ids" eval="[(4, ref('kjr_rental.group_kjr_rental_user'))]"/>
+    </record>
+
+    <template id="report_rental_label">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div class="page">
+                    <!--
+                        Tabellenraster statt Flexbox: der PDF-Renderer bricht Tabellen
+                        zeilenweise um, sodass mit page-break-inside:avoid nie ein
+                        Etikett quer über den Seitenrand zerschnitten wird.
+                        2 Etiketten je Zeile ≈ 90 mm Breite – passt auf handelsübliche
+                        Bogenware und bleibt auch bei reinem A4-Druck brauchbar.
+                    -->
+                    <table style="width:100%; table-layout:fixed; border-collapse:separate; border-spacing:0;">
+                        <tbody>
+                            <tr t-foreach="list(range(0, len(docs), 2))" t-as="row_start"
+                                style="page-break-inside:avoid;">
+                                <td t-foreach="docs[row_start:row_start + 2]" t-as="o"
+                                    style="width:50%; vertical-align:top; padding:2mm;">
+                                    <div style="border:1px solid #999; border-radius:2mm; padding:3mm; height:42mm; overflow:hidden;">
+                                        <div style="font-size:13pt; font-weight:bold; line-height:1.1;">
+                                            <span t-field="o.name"/>
+                                        </div>
+                                        <div style="font-size:9pt; color:#444; margin-top:1mm;">
+                                            Inv.-Nr.:
+                                            <span t-if="o.code" t-field="o.code"/>
+                                            <span t-else="">—</span>
+                                            <t t-if="o.location_id">
+                                                · <span t-field="o.location_id.name"/>
+                                            </t>
+                                        </div>
+                                        <!-- Barcode über den Kern-Endpunkt aus dem Modul 'web'
+                                             (ADR-1: keine Abhängigkeit zu 'stock').
+                                             humanreadable=1 druckt den Wert zusätzlich als
+                                             Klartext unter die Balken, damit er notfalls
+                                             abgetippt werden kann. Erzeugte Barcodes enthalten
+                                             nur A-Z, 0-9 und '-' und sind daher ohne Kodierung
+                                             als URL-Pfad verwendbar.
+                                             Ohne Wert lieferte der Endpunkt ein kaputtes Bild –
+                                             deshalb der Hinweistext im t-else. -->
+                                        <div style="text-align:center; margin-top:2mm;">
+                                            <img t-if="o.barcode"
+                                                 t-attf-src="/report/barcode/Code128/#{o.barcode}?width=560&amp;height=110&amp;humanreadable=1"
+                                                 style="max-width:100%; height:auto;"
+                                                 t-att-alt="o.barcode"/>
+                                            <div t-else=""
+                                                 style="font-size:9pt; color:#a00; border:1px dashed #a00; padding:3mm; margin-top:2mm;">
+                                                Kein Barcode hinterlegt.<br/>
+                                                Im Artikel über „Barcode erzeugen“ vergeben und erneut drucken.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <!-- Ungerade Anzahl: leere Zelle, damit die letzte Zeile
+                                     nicht auf volle Breite gedehnt wird. -->
+                                <td t-if="row_start + 2 &gt; len(docs)" style="width:50%;"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
     <template id="rental_contract_template">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">

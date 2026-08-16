@@ -69,6 +69,31 @@
             <field name="price_per_day">20.0</field><field name="price_member_per_day">12.0</field>
             <field name="deposit">80.0</field><field name="icon">fa-cutlery</field>
         </record>
+        <!-- Spielmobil: eigenes Angebot mit eigener Landingpage (/service/spielmobil).
+             Steht wie alle Seed-Daten unter noupdate="1" - der Datensatz wird beim
+             Upgrade EINMAL angelegt und danach nie wieder überschrieben, die
+             Geschäftsstelle kann ihn also gefahrlos anpassen.
+             TODO KJR: Tagespreis, Mitgliedspreis und Kaution sind Platzhalter (0,00 €)
+             und müssen vom Kreisjugendring bestätigt werden. Solange sie unbestätigt
+             sind, ist der Artikel bewusst NICHT auf der Website veröffentlicht
+             (website_published = False), damit online keine falschen Preise stehen.
+             Nach der Freigabe: Preise eintragen und "Auf Website" aktivieren. -->
+        <record id="item_spielmobil" model="kjr.rental.item">
+            <field name="name">Spielmobil</field><field name="category_id" ref="cat_games"/>
+            <field name="location_id" ref="loc_sonthofen"/><field name="quantity_total">1</field>
+            <field name="price_per_day">0.0</field><field name="price_member_per_day">0.0</field>
+            <field name="deposit">0.0</field><field name="icon">fa-truck</field>
+            <field name="website_published" eval="False"/>
+            <field name="description">Mobile Spiel- und Aktionsausstattung für Ferienprogramme, Stadtteilfeste und Gruppenaktionen. Wird komplett bestückt übergeben.</field>
+            <field name="usage_warning"><![CDATA[<ul>
+    <li>Abholung und Rückgabe nur nach vorheriger Einweisung durch die Geschäftsstelle.</li>
+    <li>Führen des Anhängers nur mit gültiger Fahrerlaubnis der passenden Klasse.</li>
+    <li>Aufbau und Betreuung ausschließlich durch volljährige, eingewiesene Personen.</li>
+    <li>Nutzung nur im Rahmen von Jugend- und Bildungsarbeit.</li>
+    <li>Vollständig, gereinigt und trocken zurückgeben; Schäden sofort melden.</li>
+</ul>]]></field>
+        </record>
+
         <record id="item_games" model="kjr.rental.item">
             <field name="name">Großspielgeräte (Kubb, Twister XXL)</field><field name="category_id" ref="cat_games"/>
             <field name="location_id" ref="loc_immenstadt"/><field name="quantity_total">5</field>

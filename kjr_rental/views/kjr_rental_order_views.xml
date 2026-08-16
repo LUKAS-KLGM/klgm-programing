@@ -16,6 +16,8 @@
                 <filter string="Kaution offen" name="deposit_open" domain="[('deposit_total','&gt;',0),('deposit_state','=','none')]"/>
                 <filter string="Kaution erhalten" name="deposit_received" domain="[('deposit_state','=','received')]"/>
                 <separator/>
+                <filter string="Schaden festgestellt" name="return_damage" domain="[('return_damage','=',True)]"/>
+                <separator/>
                 <filter string="Status" name="group_state" context="{'group_by':'state'}"/>
                 <filter string="Entleiher" name="group_partner" context="{'group_by':'partner_id'}"/>
                 <filter string="Zahlungsstatus" name="group_payment" context="{'group_by':'invoice_payment_state'}"/>
@@ -46,6 +48,7 @@
                        decoration-success="invoice_payment_state in ('paid','in_payment')"
                        decoration-warning="invoice_payment_state == 'partial'"
                        decoration-danger="invoice_payment_state == 'not_paid'"/>
+                <field name="return_damage" optional="hide"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
                        decoration-success="state == 'returned'"
@@ -105,6 +108,40 @@
                             <field name="currency_id" column_invisible="1"/>
                         </list>
                     </field>
+                    <group>
+                        <group string="Nutzung">
+                            <field name="purpose" placeholder="Wofür wird das Material eingesetzt? (z. B. Zeltlager Jugendgruppe)"
+                                   readonly="state in ('returned','cancelled')"/>
+                        </group>
+                        <group string="Bestätigungen">
+                            <!-- Wird ausschließlich vom Website-Formular gesetzt und ist
+                                 der Nachweis, dass die Nutzungshinweise gelesen wurden.
+                                 Daher im Backend bewusst nur lesbar. -->
+                            <field name="usage_terms_accepted" readonly="1"/>
+                        </group>
+                    </group>
+                    <!-- Rücknahmeprotokoll: erst ab der Ausgabe relevant, davor nur
+                         verwirrend. Bleibt nach der Rückgabe sichtbar (Dokumentation). -->
+                    <group string="Rückgabe" invisible="state not in ('issued','returned')">
+                        <group>
+                            <field name="return_checked_complete" readonly="state == 'cancelled'"/>
+                            <field name="return_checked_clean" readonly="state == 'cancelled'"/>
+                        </group>
+                        <group>
+                            <field name="return_damage" readonly="state == 'cancelled'"/>
+                            <!-- Der Vermerk muss bei JEDER Abweichung erfassbar sein, nicht
+                                 nur bei Schäden: kommt Material unvollständig oder
+                                 ungereinigt zurück, verlangt action_return einen Vermerk.
+                                 Wäre das Feld dann unsichtbar, müsste das Personal
+                                 "Gereinigt zurückgegeben" wahrheitswidrig ankreuzen, um den
+                                 Vorgang überhaupt abschließen zu können — genau der
+                                 Nachweiswert, für den die Checkliste gebaut wurde, ginge
+                                 verloren. -->
+                            <field name="return_note"
+                                   readonly="state == 'cancelled'"
+                                   placeholder="Was ist beschädigt, unvollständig oder ungereinigt? Grundlage für einen Einbehalt der Kaution."/>
+                        </group>
+                    </group>
                     <group>
                         <group string="Kaution">
                             <field name="deposit_state"/>

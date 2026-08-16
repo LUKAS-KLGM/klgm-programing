@@ -9,44 +9,209 @@
         <field name="website_id" ref="website.default_website"/>
     </record>
 
+    <!-- Bewusst KEIN eigener Website-Menüeintrag für /service/spielmobil: die Seite
+         ist über den Materialverleih verlinkt und über die Sitemap auffindbar. Ob
+         das Spielmobil einen eigenen Hauptmenüpunkt bekommt, entscheidet der KJR. -->
+
+    <!-- ── Wiederverwendbare Blöcke ───────────────────────────────────── -->
+
+    <!-- Verbindliche Nutzungshinweise + Pflicht-Checkbox.
+         BEWUSST als eingeblendeter Block im Formular (kein Modal/Popup): ein Popup
+         kann von Werbeblockern unterdrückt und von Screenreadern übersprungen
+         werden – der Hinweis wäre dann rechtlich wertlos.
+         Erwartet im Kontext: usage_items (Artikel mit Hinweisen), usage_required
+         (Checkbox hart als Pflichtfeld), values (Formularwerte). -->
+    <template id="rental_usage_terms_block" name="KJR Verleih: Nutzungshinweise">
+        <div t-if="usage_items" class="alert alert-warning" role="region"
+             aria-labelledby="kjr_usage_heading">
+            <h5 id="kjr_usage_heading" class="alert-heading">
+                <i class="fa fa-exclamation-triangle me-2" aria-hidden="true"/>Verbindliche Nutzungshinweise
+            </h5>
+            <p class="mb-3">
+                Für die folgenden Artikel gelten besondere Nutzungsregeln. Bitte lesen Sie
+                diese vor dem Absenden und bestätigen Sie sie.
+            </p>
+            <t t-foreach="usage_items" t-as="uitem">
+                <div class="mb-3">
+                    <strong t-esc="uitem.name"/>
+                    <div class="small" t-field="uitem.usage_warning"/>
+                </div>
+            </t>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="kjr_usage_terms"
+                       name="usage_terms_accepted" value="1"
+                       t-att-required="'required' if usage_required else False"
+                       t-att-checked="'checked' if values.get('usage_terms_accepted') else False"/>
+                <label class="form-check-label fw-bold" for="kjr_usage_terms">
+                    Ich habe die Nutzungshinweise gelesen und bestätige sie verbindlich. *
+                </label>
+                <div t-if="not usage_required" class="form-text">
+                    Pflichtangabe, sobald ein Artikel mit Nutzungshinweisen angefragt wird.
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Pflichtfeld „Zweck der Nutzung" inkl. Erklärung zur Nutzungsberechtigung. -->
+    <template id="rental_purpose_field" name="KJR Verleih: Zweck der Nutzung">
+        <div class="mb-3">
+            <label class="form-label fw-bold" for="kjr_purpose">Zweck der Nutzung *</label>
+            <textarea id="kjr_purpose" name="purpose" class="form-control" rows="3"
+                      required="required" aria-describedby="kjr_purpose_help"
+                      placeholder="z. B. Ferienfreizeit der Jugendgruppe, Gruppenstunde, Ferienprogramm der Gemeinde"
+                      t-esc="values.get('purpose','')"/>
+            <div id="kjr_purpose_help" class="form-text">
+                Der Verleih ist an Zwecke der Kinder- und Jugendarbeit nach dem SGB VIII
+                (Kinder- und Jugendhilfe) gebunden. Bitte beschreiben Sie kurz die Maßnahme
+                oder Veranstaltung, für die das Material eingesetzt wird – daraus ergibt sich
+                die Nutzungsberechtigung.
+            </div>
+        </div>
+    </template>
+
+    <!-- Hinweis, welcher Tarif für die angemeldete Organisation gilt. -->
+    <template id="rental_tariff_notice" name="KJR Verleih: geltender Tarif">
+        <div t-if="is_member" class="alert alert-success" role="status">
+            <i class="fa fa-check-circle me-2" aria-hidden="true"/>
+            Für <strong t-esc="partner.name"/> gilt der <strong>Mitgliedstarif</strong>
+            (Mitgliedsverband des Kreisjugendrings Oberallgäu).
+        </div>
+        <div t-else="" class="alert alert-info" role="status">
+            <i class="fa fa-info-circle me-2" aria-hidden="true"/>
+            Für <strong t-esc="partner.name"/> gilt der <strong>Standardtarif</strong>.
+            Ist Ihre Organisation Mitgliedsverband des Kreisjugendrings Oberallgäu?
+            Dann melden Sie sich bitte bei der Geschäftsstelle – der Mitgliedstarif wird
+            dann für künftige Anfragen hinterlegt.
+        </div>
+    </template>
+
+    <!-- ── Öffentlich: Katalog ────────────────────────────────────────── -->
     <template id="website_rental_catalog" name="KJR Verleih">
         <t t-call="website.layout">
             <div id="wrap" class="container mt-4 mb-5">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <h1 class="mb-0">Materialverleih</h1>
                     <a href="/service/verleih/warenkorb" class="btn btn-outline-primary">
-                        <i class="fa fa-shopping-cart me-1"/>Warenkorb
+                        <i class="fa fa-shopping-cart me-1" aria-hidden="true"/>Warenkorb
                         <span class="badge text-bg-primary" id="kjr_cart_count" t-esc="cart_count or 0"/>
                     </a>
                 </div>
                 <p class="text-muted mb-4">Material für eure Jugendarbeit – Mitgliedsverbände zu vergünstigten Tarifen.</p>
+
+                <!-- Nutzungsberechtigung, Tarife und Umsatzsteuer -->
+                <div class="card border-0 bg-light mb-4">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Wer darf ausleihen?</h2>
+                        <p class="mb-3">
+                            Der Materialverleih richtet sich an die Mitgliedsverbände des Kreisjugendrings
+                            Oberallgäu sowie an Jugendgruppen, Gemeinden, Schulen und Einrichtungen der
+                            Kinder- und Jugendarbeit im Landkreis. Voraussetzung ist, dass das Material für
+                            Zwecke der Kinder- und Jugendarbeit nach dem SGB VIII eingesetzt wird. Deshalb
+                            ist bei jeder Anfrage der Zweck der Nutzung anzugeben. Über die Ausleihe
+                            entscheidet die Geschäftsstelle; eine Anfrage ist noch keine Zusage.
+                        </p>
+                        <h2 class="h5 mb-3">Mitglieds- und Standardtarif</h2>
+                        <p class="mb-3">
+                            Mitgliedsverbände des Kreisjugendrings erhalten den vergünstigten Mitgliedstarif.
+                            Maßgeblich ist das bei Ihrer Organisation hinterlegte Kennzeichen
+                            „KJR-Mitgliedsverband"; alle übrigen Ausleihen erfolgen zum Standardtarif.
+                            Beide Tarife sind unten je Artikel angegeben.
+                            <t t-if="is_public_user">
+                                Nach der Anmeldung wird Ihnen der für Sie geltende Tarif angezeigt.
+                            </t>
+                        </p>
+                        <t t-if="not is_public_user">
+                            <t t-call="kjr_rental.rental_tariff_notice"/>
+                        </t>
+                        <h2 class="h5 mb-3">Hinweis zur Umsatzsteuer</h2>
+                        <!-- TODO KJR: Die umsatzsteuerliche Einordnung des Materialverleihs
+                             (Betrieb gewerblicher Art / § 2b UStG) ist laut Projektunterlagen
+                             noch nicht abschließend geklärt. Solange bewusst OHNE Steuersatz und
+                             ohne Aussage „netto/brutto" formuliert. Nach Klärung mit der
+                             Steuerberatung hier den endgültigen Text einsetzen. -->
+                        <p class="mb-0 text-muted small">
+                            Die angegebenen Beträge sind Orientierungswerte für die Anfrage. Ob und in
+                            welchem Umfang auf die Verleihentgelte Umsatzsteuer entfällt, wird derzeit
+                            geklärt. Eine gegebenenfalls anfallende Umsatzsteuer weist der Kreisjugendring
+                            auf der Rechnung gesondert aus. Verbindlich ist stets die Rechnung der
+                            Geschäftsstelle.
+                        </p>
+                    </div>
+                </div>
+
                 <t t-if="is_public_user">
                     <div class="alert alert-info">
                         Bitte <a href="/web/login" class="alert-link">melden Sie sich an</a>,
                         um Material in den Warenkorb zu legen und anzufragen.
                     </div>
                 </t>
+
+                <!-- Spielmobil-Verweis -->
+                <div class="card border-primary mb-4">
+                    <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div>
+                            <h2 class="h5 mb-1"><i class="fa fa-bus me-2" aria-hidden="true"/>Spielmobil des Kreisjugendrings</h2>
+                            <p class="mb-0 text-muted small">
+                                Spiel- und Bewegungsangebote vor Ort – nur für Gemeinden im
+                                Landkreis Oberallgäu, gesondert anzufragen.
+                            </p>
+                        </div>
+                        <a href="/service/spielmobil" class="btn btn-primary">Zum Spielmobil</a>
+                    </div>
+                </div>
+
                 <t t-foreach="items_by_category" t-as="cat">
-                    <h4 class="mt-4"><i t-if="cat.icon" t-attf-class="fa #{cat.icon} me-2"/><t t-esc="cat.name or 'Sonstiges'"/></h4>
+                    <h2 class="h4 mt-4"><i t-if="cat.icon" t-attf-class="fa #{cat.icon} me-2" aria-hidden="true"/><t t-esc="cat.name or 'Sonstiges'"/></h2>
                     <div class="row">
                         <t t-foreach="items_by_category[cat]" t-as="item">
                             <div class="col-md-6 col-lg-4 mb-3">
                                 <div class="card h-100 kjr-rental-card">
+                                    <!-- Foto mit fester Anzeigehöhe; Odoo skaliert über die
+                                         Größenangabe in der Bild-URL, geladen wird erst beim
+                                         Scrollen (loading="lazy"). show_images: siehe
+                                         Controller – ohne Leserecht liefert /web/image nur
+                                         den grauen Odoo-Platzhalter, dann lieber das Icon. -->
+                                    <img t-if="show_images and item.image_1920" class="card-img-top"
+                                         t-attf-src="/web/image/kjr.rental.item/#{item.id}/image_1920/480x360"
+                                         t-attf-alt="Foto: #{item.name}"
+                                         width="480" height="360" loading="lazy"
+                                         style="height:200px;object-fit:cover;"/>
+                                    <!-- Fallback ohne Foto: bisheriges Icon, für Screenreader
+                                         als Bild mit Beschriftung ausgezeichnet. -->
+                                    <div t-else=""
+                                         class="card-img-top d-flex align-items-center justify-content-center bg-light"
+                                         style="height:200px;" role="img"
+                                         t-attf-aria-label="Symbolbild für #{item.name}">
+                                        <i t-attf-class="fa #{item.icon or 'fa-cube'} fa-3x text-primary" aria-hidden="true"/>
+                                    </div>
                                     <div class="card-body">
-                                        <h5 class="card-title">
-                                            <i t-if="item.icon" t-attf-class="fa #{item.icon} me-2 text-primary"/>
+                                        <h3 class="card-title h5">
+                                            <i t-if="item.icon" t-attf-class="fa #{item.icon} me-2 text-primary" aria-hidden="true"/>
                                             <t t-esc="item.name"/>
-                                        </h5>
+                                        </h3>
                                         <p class="card-text text-muted small"><t t-esc="item.description"/></p>
+                                        <!-- Mitgliedstarif nur nennen, wenn er am Artikel auch
+                                             aktiviert ist: price_for() liefert bei
+                                             has_member_price=False den Standardpreis, ein
+                                             gepflegter, aber deaktivierter Mitgliedspreis wäre
+                                             also eine Zusage, die die Rechnung nicht einhält. -->
                                         <div class="small">
-                                            Standard: <strong><t t-esc="'%.2f €' % item.price_per_day"/></strong>/Tag ·
-                                            Mitglied: <strong><t t-esc="'%.2f €' % item.price_member_per_day"/></strong>/Tag
+                                            Standard: <strong><t t-esc="'%.2f €' % item.price_per_day"/></strong>/Tag
+                                            <t t-if="item.has_member_price">
+                                                · Mitglied: <strong><t t-esc="'%.2f €' % item.price_member_per_day"/></strong>/Tag
+                                            </t>
+                                        </div>
+                                        <div t-if="not is_public_user" class="small mt-1">
+                                            <span t-attf-class="badge #{'text-bg-success' if is_member else 'text-bg-secondary'}">
+                                                Ihr Tarif: <t t-esc="'%.2f €' % item.price_for(is_member)"/>/Tag
+                                            </span>
                                         </div>
                                         <div class="small text-muted">Kaution: <t t-esc="'%.2f €' % item.deposit"/></div>
                                         <div t-if="not is_public_user" class="input-group input-group-sm mt-2">
+                                            <label class="visually-hidden" t-attf-for="kjr_qty_#{item.id}">Menge für <t t-esc="item.name"/></label>
                                             <input type="number" min="1" value="1" class="form-control kjr-cart-qty" t-attf-id="kjr_qty_#{item.id}"/>
                                             <button type="button" class="btn btn-primary kjr-cart-add" t-att-data-item-id="item.id">
-                                                <i class="fa fa-cart-plus me-1"/>In den Warenkorb
+                                                <i class="fa fa-cart-plus me-1" aria-hidden="true"/>In den Warenkorb
                                             </button>
                                         </div>
                                     </div>
@@ -56,21 +221,22 @@
                     </div>
                 </t>
                 <a href="/service/verleih/anfrage" class="btn btn-outline-primary btn-lg mt-3">
-                    <i class="fa fa-paper-plane me-1"/>Direktanfrage (ohne Warenkorb)
+                    <i class="fa fa-paper-plane me-1" aria-hidden="true"/>Direktanfrage (ohne Warenkorb)
                 </a>
                 <a t-if="not is_public_user" href="/service/verleih/warenkorb" class="btn btn-primary btn-lg mt-3">
-                    <i class="fa fa-shopping-cart me-1"/>Zum Warenkorb
+                    <i class="fa fa-shopping-cart me-1" aria-hidden="true"/>Zum Warenkorb
                 </a>
             </div>
         </t>
     </template>
 
+    <!-- ── Warenkorb ──────────────────────────────────────────────────── -->
     <template id="website_rental_cart" name="KJR Verleih Warenkorb">
         <t t-call="website.layout">
             <div id="wrap" class="container mt-4 mb-5">
                 <h1 class="mb-3">Warenkorb</h1>
                 <t t-if="errors">
-                    <div class="alert alert-danger"><ul class="mb-0">
+                    <div class="alert alert-danger" role="alert"><ul class="mb-0">
                         <t t-foreach="errors.values()" t-as="err"><li><t t-esc="err"/></li></t>
                     </ul></div>
                 </t>
@@ -80,52 +246,65 @@
                     </div>
                 </t>
                 <t t-if="lines">
+                    <t t-call="kjr_rental.rental_tariff_notice"/>
                     <form method="post" action="/service/verleih/warenkorb">
                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                         <div class="row">
                             <div class="col-md-4 mb-3">
-                                <label class="form-label fw-bold">Von</label>
-                                <input type="date" name="date_from" class="form-control" t-att-value="date_from"/>
+                                <label class="form-label fw-bold" for="kjr_cart_from">Von</label>
+                                <input type="date" id="kjr_cart_from" name="date_from" class="form-control" t-att-value="date_from"/>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label class="form-label fw-bold">Bis</label>
-                                <input type="date" name="date_to" class="form-control" t-att-value="date_to"/>
+                                <label class="form-label fw-bold" for="kjr_cart_to">Bis</label>
+                                <input type="date" id="kjr_cart_to" name="date_to" class="form-control" t-att-value="date_to"/>
                             </div>
                             <div class="col-md-4 mb-3 d-flex align-items-end">
                                 <button type="submit" class="btn btn-outline-secondary">
-                                    <i class="fa fa-refresh me-1"/>Aktualisieren &amp; Verfügbarkeit prüfen
+                                    <i class="fa fa-refresh me-1" aria-hidden="true"/>Aktualisieren &amp; Verfügbarkeit prüfen
                                 </button>
                             </div>
                         </div>
-                        <table class="table">
-                            <thead><tr>
-                                <th>Artikel</th><th>Standard/Tag</th><th>Mitglied/Tag</th>
-                                <th style="width:120px">Menge</th><th>Verfügbar im Zeitraum</th><th/>
-                            </tr></thead>
-                            <tbody>
-                                <t t-foreach="lines" t-as="l">
-                                    <tr>
-                                        <td><i t-if="l['item'].icon" t-attf-class="fa #{l['item'].icon} me-1"/><t t-esc="l['item'].name"/></td>
-                                        <td><t t-esc="'%.2f €' % l['item'].price_per_day"/></td>
-                                        <td><t t-esc="'%.2f €' % l['item'].price_member_per_day"/></td>
-                                        <td><input type="number" min="0" t-attf-name="qty_#{l['item'].id}" t-att-value="l['qty']" class="form-control form-control-sm"/></td>
-                                        <td>
-                                            <t t-if="l['available'] is None"><span class="text-muted">—</span></t>
-                                            <t t-else="">
-                                                <span t-attf-class="badge #{'text-bg-success' if l['available'] >= l['qty'] else 'text-bg-danger'}">
-                                                    <t t-esc="l['available']"/>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead><tr>
+                                    <th>Artikel</th><th>Standard/Tag</th><th>Mitglied/Tag</th>
+                                    <th>Ihr Tarif/Tag</th>
+                                    <th style="width:120px">Menge</th><th>Verfügbar im Zeitraum</th><th/>
+                                </tr></thead>
+                                <tbody>
+                                    <t t-foreach="lines" t-as="l">
+                                        <tr>
+                                            <td><i t-if="l['item'].icon" t-attf-class="fa #{l['item'].icon} me-1" aria-hidden="true"/><t t-esc="l['item'].name"/></td>
+                                            <td><t t-esc="'%.2f €' % l['item'].price_per_day"/></td>
+                                            <td><t t-esc="'%.2f €' % l['item'].price_member_per_day"/></td>
+                                            <td>
+                                                <span t-attf-class="badge #{'text-bg-success' if is_member else 'text-bg-secondary'}">
+                                                    <t t-esc="'%.2f €' % l['item'].price_for(is_member)"/>
                                                 </span>
-                                            </t>
-                                        </td>
-                                        <td>
-                                            <button type="submit" name="remove_item" t-att-value="l['item'].id" class="btn btn-sm btn-outline-danger" title="Entfernen">
-                                                <i class="fa fa-trash"/>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </t>
-                            </tbody>
-                        </table>
+                                            </td>
+                                            <td>
+                                                <label class="visually-hidden" t-attf-for="kjr_cart_qty_#{l['item'].id}">Menge für <t t-esc="l['item'].name"/></label>
+                                                <input type="number" min="0" t-attf-id="kjr_cart_qty_#{l['item'].id}" t-attf-name="qty_#{l['item'].id}" t-att-value="l['qty']" class="form-control form-control-sm"/>
+                                            </td>
+                                            <td>
+                                                <t t-if="l['available'] is None"><span class="text-muted">—</span></t>
+                                                <t t-else="">
+                                                    <span t-attf-class="badge #{'text-bg-success' if l['available'] >= l['qty'] else 'text-bg-danger'}">
+                                                        <t t-esc="l['available']"/>
+                                                    </span>
+                                                </t>
+                                            </td>
+                                            <td>
+                                                <button type="submit" name="remove_item" t-att-value="l['item'].id" class="btn btn-sm btn-outline-danger">
+                                                    <i class="fa fa-trash" aria-hidden="true"/>
+                                                    <span class="visually-hidden">Artikel <t t-esc="l['item'].name"/> entfernen</span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
                     </form>
                     <form method="post" action="/service/verleih/checkout">
                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
@@ -133,20 +312,22 @@
                         <input type="hidden" name="date_to" t-att-value="date_to"/>
                         <div class="row">
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">E-Mail</label>
-                                <input type="email" name="contact_email" class="form-control" t-att-value="values.get('contact_email','')"/>
+                                <label class="form-label" for="kjr_cart_email">E-Mail</label>
+                                <input type="email" id="kjr_cart_email" name="contact_email" class="form-control" t-att-value="values.get('contact_email','')"/>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">Telefon</label>
-                                <input type="tel" name="contact_phone" class="form-control" t-att-value="values.get('contact_phone','')"/>
+                                <label class="form-label" for="kjr_cart_phone">Telefon</label>
+                                <input type="tel" id="kjr_cart_phone" name="contact_phone" class="form-control" t-att-value="values.get('contact_phone','')"/>
                             </div>
                         </div>
+                        <t t-call="kjr_rental.rental_purpose_field"/>
                         <div class="mb-3">
-                            <label class="form-label">Anmerkungen</label>
-                            <textarea name="note" class="form-control" rows="2" t-esc="values.get('note','')"/>
+                            <label class="form-label" for="kjr_cart_note">Anmerkungen</label>
+                            <textarea id="kjr_cart_note" name="note" class="form-control" rows="2" t-esc="values.get('note','')"/>
                         </div>
+                        <t t-call="kjr_rental.rental_usage_terms_block"/>
                         <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="fa fa-paper-plane me-1"/>Anfrage absenden
+                            <i class="fa fa-paper-plane me-1" aria-hidden="true"/>Anfrage absenden
                         </button>
                         <a href="/service/verleih" class="btn btn-outline-secondary btn-lg">Weiter stöbern</a>
                     </form>
@@ -155,56 +336,261 @@
         </t>
     </template>
 
+    <!-- ── Direktanfrage ──────────────────────────────────────────────── -->
     <template id="website_rental_request" name="KJR Verleih Anfrage">
         <t t-call="website.layout">
             <div id="wrap" class="container mt-4 mb-5">
                 <h1 class="mb-3">Verleihanfrage</h1>
                 <t t-if="errors">
-                    <div class="alert alert-danger"><ul class="mb-0">
+                    <div class="alert alert-danger" role="alert"><ul class="mb-0">
                         <t t-foreach="errors.values()" t-as="err"><li><t t-esc="err"/></li></t>
                     </ul></div>
                 </t>
+                <t t-call="kjr_rental.rental_tariff_notice"/>
                 <form method="post" action="/service/verleih/anfrage">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                     <div class="row">
                         <div class="col-md-3 mb-3">
-                            <label class="form-label fw-bold">Von *</label>
-                            <input type="date" name="date_from" class="form-control" t-att-value="values.get('date_from','')" required="required"/>
+                            <label class="form-label fw-bold" for="kjr_req_from">Von *</label>
+                            <input type="date" id="kjr_req_from" name="date_from" class="form-control" t-att-value="values.get('date_from','')" required="required"/>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label class="form-label fw-bold">Bis *</label>
-                            <input type="date" name="date_to" class="form-control" t-att-value="values.get('date_to','')" required="required"/>
+                            <label class="form-label fw-bold" for="kjr_req_to">Bis *</label>
+                            <input type="date" id="kjr_req_to" name="date_to" class="form-control" t-att-value="values.get('date_to','')" required="required"/>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label class="form-label">E-Mail</label>
-                            <input type="email" name="contact_email" class="form-control" t-att-value="values.get('contact_email','')"/>
+                            <label class="form-label" for="kjr_req_email">E-Mail</label>
+                            <input type="email" id="kjr_req_email" name="contact_email" class="form-control" t-att-value="values.get('contact_email','')"/>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label class="form-label">Telefon</label>
-                            <input type="tel" name="contact_phone" class="form-control" t-att-value="values.get('contact_phone','')"/>
+                            <label class="form-label" for="kjr_req_phone">Telefon</label>
+                            <input type="tel" id="kjr_req_phone" name="contact_phone" class="form-control" t-att-value="values.get('contact_phone','')"/>
                         </div>
                     </div>
-                    <h5 class="mt-2">Artikel</h5>
-                    <table class="table">
-                        <thead><tr><th>Artikel</th><th>Standard/Tag</th><th>Mitglied/Tag</th><th style="width:120px">Menge</th></tr></thead>
-                        <tbody>
-                            <t t-foreach="items" t-as="item">
-                                <tr>
-                                    <td><i t-if="item.icon" t-attf-class="fa #{item.icon} me-1"/><t t-esc="item.name"/></td>
-                                    <td><t t-esc="'%.2f €' % item.price_per_day"/></td>
-                                    <td><t t-esc="'%.2f €' % item.price_member_per_day"/></td>
-                                    <td><input type="number" min="0" t-attf-name="item_#{item.id}" class="form-control form-control-sm" value="0"/></td>
-                                </tr>
-                            </t>
-                        </tbody>
-                    </table>
+                    <h2 class="h5 mt-2">Artikel</h2>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead><tr><th>Artikel</th><th>Standard/Tag</th><th>Mitglied/Tag</th><th>Ihr Tarif/Tag</th><th style="width:120px">Menge</th></tr></thead>
+                            <tbody>
+                                <t t-foreach="items" t-as="item">
+                                    <tr>
+                                        <td><i t-if="item.icon" t-attf-class="fa #{item.icon} me-1" aria-hidden="true"/><t t-esc="item.name"/></td>
+                                        <td><t t-esc="'%.2f €' % item.price_per_day"/></td>
+                                        <td><t t-esc="'%.2f €' % item.price_member_per_day"/></td>
+                                        <td>
+                                            <span t-attf-class="badge #{'text-bg-success' if is_member else 'text-bg-secondary'}">
+                                                <t t-esc="'%.2f €' % item.price_for(is_member)"/>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <label class="visually-hidden" t-attf-for="kjr_req_item_#{item.id}">Menge für <t t-esc="item.name"/></label>
+                                            <input type="number" min="0" t-attf-id="kjr_req_item_#{item.id}" t-attf-name="item_#{item.id}" class="form-control form-control-sm"
+                                                   t-att-value="values.get('item_%d' % item.id, '0')"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                    <t t-call="kjr_rental.rental_purpose_field"/>
                     <div class="mb-3">
-                        <label class="form-label">Anmerkungen</label>
-                        <textarea name="note" class="form-control" rows="2" t-esc="values.get('note','')"/>
+                        <label class="form-label" for="kjr_req_note">Anmerkungen</label>
+                        <textarea id="kjr_req_note" name="note" class="form-control" rows="2" t-esc="values.get('note','')"/>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-lg"><i class="fa fa-paper-plane me-1"/>Anfrage senden</button>
+                    <t t-call="kjr_rental.rental_usage_terms_block"/>
+                    <button type="submit" class="btn btn-primary btn-lg"><i class="fa fa-paper-plane me-1" aria-hidden="true"/>Anfrage senden</button>
                     <a href="/service/verleih" class="btn btn-outline-secondary btn-lg">Abbrechen</a>
                 </form>
+            </div>
+        </t>
+    </template>
+
+    <!-- ── Öffentlich: Spielmobil ─────────────────────────────────────── -->
+    <template id="website_spielmobil" name="KJR Spielmobil">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-4 mb-5">
+                <nav aria-label="Brotkrumennavigation">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/service/verleih">Materialverleih</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Spielmobil</li>
+                    </ol>
+                </nav>
+                <h1 class="mb-3">Spielmobil</h1>
+
+                <!-- Erfolgsmeldung nach dem Absenden -->
+                <t t-if="order">
+                    <div class="alert alert-success" role="alert">
+                        <h2 class="h5 alert-heading">Vielen Dank für Ihre Anfrage.</h2>
+                        <p class="mb-0">
+                            Ihre Anfrage ist unter der Nummer <strong t-esc="order.name"/> eingegangen.
+                            Die Geschäftsstelle des Kreisjugendrings prüft den Termin und meldet sich
+                            bei Ihnen. Diese Bestätigung ist noch keine Zusage.
+                        </p>
+                    </div>
+                    <a href="/service/verleih" class="btn btn-outline-secondary">Zurück zum Materialverleih</a>
+                </t>
+
+                <t t-if="not order">
+                    <div class="row">
+                        <div class="col-lg-7">
+                            <!-- Foto des Spielmobils, sofern am Artikel gepflegt -->
+                            <img t-if="item and item.image_1920 and show_images" class="img-fluid rounded mb-3"
+                                 t-attf-src="/web/image/kjr.rental.item/#{item.id}/image_1920/960x640"
+                                 t-attf-alt="Foto: #{item.name}"
+                                 width="960" height="640" loading="lazy"/>
+                            <p class="lead">
+                                Das Spielmobil des Kreisjugendrings Oberallgäu bringt Spiel- und
+                                Bewegungsangebote direkt in die Gemeinden und Ortsteile.
+                            </p>
+                            <!-- Adressatenkreis bewusst eng: Entscheidung aus dem Website-Termin
+                                 am 23.07.2026 — „Spielmobil NICHT in den allgemeinen Verleih-Shop
+                                 integrieren … Infobox 'nur für Gemeinden im Landkreis Oberallgäu'".
+                                 Den Kreis hier NICHT eigenmächtig auf Verbände, Schulen oder
+                                 sonstige Einrichtungen ausweiten — das wäre eine öffentliche
+                                 Zusage, die der KJR so nicht getroffen hat. -->
+                            <div class="alert alert-info" role="note">
+                                <i class="fa fa-info-circle me-2" aria-hidden="true"/>
+                                Das Spielmobil kann <strong>nur von Gemeinden im Landkreis
+                                Oberallgäu</strong> angefragt werden.
+                            </div>
+                            <!-- TODO KJR: Die folgenden Abschnitte müssen von der Geschäftsstelle
+                                 inhaltlich befüllt werden. Bewusst NICHTS erfunden: Ausstattung,
+                                 Einsatzbedingungen und Betreuung sind aus den Projektunterlagen
+                                 nicht belegt. Platzhalter bis zur Freigabe stehen lassen. -->
+                            <h2 class="h5 mt-4">Was ist dabei?</h2>
+                            <p class="text-muted">
+                                <span class="badge text-bg-warning">Platzhalter – Text vom KJR zu ergänzen</span>
+                                Hier beschreibt der Kreisjugendring die Ausstattung des Spielmobils
+                                (Spiel- und Bewegungsgeräte, Materialien, Fahrzeug).
+                            </p>
+                            <h2 class="h5 mt-4">Voraussetzungen vor Ort</h2>
+                            <p class="text-muted">
+                                <span class="badge text-bg-warning">Platzhalter – Text vom KJR zu ergänzen</span>
+                                Hier beschreibt der Kreisjugendring die Anforderungen an den Einsatzort
+                                (benötigte Fläche, Untergrund, Strom- und Wasseranschluss, Auf- und Abbau,
+                                Zahl der benötigten Betreuungspersonen, Versicherung, Absage-/Schlechtwetterregelung).
+                            </p>
+                            <h2 class="h5 mt-4">Kosten</h2>
+                            <!-- Preise NUR bei freigegebenen Werten (show_prices, siehe
+                                 KjrRentalWebsite._spielmobil_prices_confirmed): der Artikel muss
+                                 veröffentlicht sein UND einen gepflegten Tagespreis haben.
+                                 Die Seed-Daten stehen bewusst auf 0,00 € (vom KJR noch nicht
+                                 bestätigt) und der Artikel ist deshalb nicht veröffentlicht —
+                                 diese Landingpage ist aber trotzdem öffentlich. Ohne die Prüfung
+                                 stünde hier für jeden lesbar "0,00 € pro Tag", also eine
+                                 unbestätigte Preisaussage. Einzelne Zeilen zusätzlich nur bei
+                                 Wert > 0, damit nirgends ein Platzhalter-Nullbetrag erscheint.
+                                 Die Anfragemöglichkeit rechts bleibt davon unberührt. -->
+                            <t t-if="show_prices">
+                                <ul class="list-unstyled">
+                                    <li t-if="item.price_per_day &gt; 0">Standardtarif: <strong t-esc="'%.2f €' % item.price_per_day"/> pro Tag</li>
+                                    <li t-if="item.price_member_per_day &gt; 0">Mitgliedstarif: <strong t-esc="'%.2f €' % item.price_member_per_day"/> pro Tag</li>
+                                    <li t-if="item.deposit &gt; 0">Kaution: <strong t-esc="'%.2f €' % item.deposit"/></li>
+                                </ul>
+                                <!-- TODO KJR: Steuerhinweis nach abschließender Klärung der
+                                     umsatzsteuerlichen Einordnung ersetzen (siehe Katalogseite). -->
+                                <p class="text-muted small">
+                                    Die Beträge sind Orientierungswerte für die Anfrage. Ob und in welchem
+                                    Umfang Umsatzsteuer entfällt, wird derzeit geklärt und auf der Rechnung
+                                    gesondert ausgewiesen. Verbindlich ist die Rechnung der Geschäftsstelle.
+                                </p>
+                            </t>
+                            <t t-else="">
+                                <p class="text-muted">
+                                    Die Konditionen für den Einsatz des Spielmobils teilen wir Ihnen auf
+                                    Anfrage mit: Die Geschäftsstelle des Kreisjugendrings nennt Ihnen die
+                                    Kosten mit der Terminbestätigung. Auf dieser Seite sind noch keine
+                                    Preise hinterlegt.
+                                </p>
+                            </t>
+                            <p class="text-muted small mb-0">
+                                Der Einsatz des Spielmobils ist an Zwecke der Kinder- und Jugendarbeit
+                                nach dem SGB VIII gebunden.
+                            </p>
+                        </div>
+
+                        <div class="col-lg-5">
+                            <div class="card shadow-sm">
+                                <div class="card-body">
+                                    <h2 class="h5 mb-3">Spielmobil anfragen</h2>
+                                    <t t-if="errors">
+                                        <div class="alert alert-danger" role="alert"><ul class="mb-0">
+                                            <t t-foreach="errors.values()" t-as="err"><li><t t-esc="err"/></li></t>
+                                        </ul></div>
+                                    </t>
+                                    <t t-if="not item">
+                                        <div class="alert alert-warning" role="alert">
+                                            Das Spielmobil ist derzeit nicht für Online-Anfragen hinterlegt.
+                                            Bitte wenden Sie sich direkt an die Geschäftsstelle des
+                                            Kreisjugendrings Oberallgäu.
+                                        </div>
+                                    </t>
+                                    <t t-if="item">
+                                        <t t-if="not is_public_user">
+                                            <t t-call="kjr_rental.rental_tariff_notice"/>
+                                        </t>
+                                        <form method="post" action="/service/spielmobil">
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold" for="kjr_sm_person">Ansprechpartner/in *</label>
+                                                <input type="text" id="kjr_sm_person" name="contact_person" class="form-control"
+                                                       required="required" t-att-value="values.get('contact_person','')"/>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold" for="kjr_sm_org">Name der Gemeinde *</label>
+                                                <input type="text" id="kjr_sm_org" name="organisation" class="form-control"
+                                                       required="required" t-att-value="values.get('organisation','')"/>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold" for="kjr_sm_email">E-Mail *</label>
+                                                <input type="email" id="kjr_sm_email" name="contact_email" class="form-control"
+                                                       required="required" t-att-value="values.get('contact_email','')"/>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold" for="kjr_sm_phone">Telefon *</label>
+                                                <input type="tel" id="kjr_sm_phone" name="contact_phone" class="form-control"
+                                                       required="required" t-att-value="values.get('contact_phone','')"/>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold" for="kjr_sm_date">Wunschtermin *</label>
+                                                <input type="date" id="kjr_sm_date" name="date_wish" class="form-control"
+                                                       required="required" t-att-value="values.get('date_wish','')"
+                                                       aria-describedby="kjr_sm_date_help"/>
+                                                <div id="kjr_sm_date_help" class="form-text">
+                                                    Mehrtägige Einsätze bitte unter „Anmerkungen" beschreiben.
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold" for="kjr_sm_place">Einsatzort *</label>
+                                                <input type="text" id="kjr_sm_place" name="place" class="form-control"
+                                                       required="required" t-att-value="values.get('place','')"
+                                                       placeholder="Ort, Straße bzw. Platz"/>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold" for="kjr_sm_participants">Erwartete Teilnehmerzahl *</label>
+                                                <input type="number" min="1" id="kjr_sm_participants" name="participants" class="form-control"
+                                                       required="required" t-att-value="values.get('participants','')"/>
+                                            </div>
+                                            <t t-call="kjr_rental.rental_purpose_field"/>
+                                            <div class="mb-3">
+                                                <label class="form-label" for="kjr_sm_note">Anmerkungen</label>
+                                                <textarea id="kjr_sm_note" name="note" class="form-control" rows="2" t-esc="values.get('note','')"/>
+                                            </div>
+                                            <t t-call="kjr_rental.rental_usage_terms_block"/>
+                                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                                <i class="fa fa-paper-plane me-1" aria-hidden="true"/>Anfrage senden
+                                            </button>
+                                            <p class="form-text mb-0 mt-2">
+                                                Mit dem Absenden geht Ihre Anfrage bei der Geschäftsstelle ein.
+                                                Sie ist unverbindlich und noch keine Zusage.
+                                            </p>
+                                        </form>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
             </div>
         </t>
     </template>

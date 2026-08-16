@@ -2,6 +2,8 @@
 """Ausleihvorgang mit Workflow und Verfügbarkeitsprüfung."""
 import logging
 
+from markupsafe import Markup
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
@@ -26,7 +28,18 @@ class KjrRentalOrder(models.Model):
     partner_id = fields.Many2one('res.partner', string='Entleiher', required=True, ondelete='restrict', tracking=True)
     contact_email = fields.Char(string='E-Mail')
     contact_phone = fields.Char(string='Telefon')
-    is_member = fields.Boolean(string='KJR-Mitglied (Tarif)', tracking=True)
+    # R2: Mitgliedstarif wird aus dem Kontakt abgeleitet, statt ihn bei jeder
+    # Online-Anfrage manuell nachzuziehen. store=True/readonly=False, damit die
+    # Geschäftsstelle im Einzelfall übersteuern kann (siehe _compute_is_member).
+    is_member = fields.Boolean(
+        string='KJR-Mitglied (Tarif)', tracking=True,
+        compute='_compute_is_member', store=True, readonly=False,
+        help='Wird aus dem Kennzeichen "KJR-Mitgliedsverband" des Entleihers '
+             'übernommen und bestimmt den Tagespreis der Positionen. Der Wert kann '
+             'hier im Einzelfall übersteuert werden; die Übersteuerung bleibt '
+             'erhalten, solange der Entleiher nicht gewechselt wird. Ab Status '
+             '"Ausgegeben" wird nicht mehr automatisch nachgezogen.',
+    )
     state = fields.Selection([
         ('draft', 'Anfrage'),
         ('reserved', 'Reserviert'),
@@ -58,6 +71,80 @@ class KjrRentalOrder(models.Model):
     deposit_refund_date = fields.Date(string='Kaution erstattet/einbehalten am', tracking=True)
     note = fields.Text(string='Anmerkungen')
 
+    # ------------------------------------------------------------------
+    # R2: Zweckbindung und Nutzungshinweise
+    # ------------------------------------------------------------------
+    purpose = fields.Text(
+        string='Zweck der Nutzung',
+        help='Wofür wird das Material eingesetzt (Veranstaltung, Gruppe, Anlass)? '
+             'Der Verleih ist an die Jugendarbeit nach SGB VIII gebunden: ohne '
+             'dokumentierten Zweck ist weder die Nutzungsberechtigung nachweisbar '
+             'noch die steuerliche Einordnung des Vorgangs (Zweckbetrieb bzw. '
+             'Vermögensverwaltung) begründbar. Im Online-Formular ist die Angabe '
+             'Pflicht; im Backend bleibt sie erfassbar-optional, damit die '
+             'Geschäftsstelle auch unvollständige Vorgänge aufnehmen kann.',
+    )
+    usage_terms_accepted = fields.Boolean(
+        string='Nutzungshinweise bestätigt', readonly=True, copy=False, tracking=True,
+        help='Nachweis, dass der Entleiher die Nutzungshinweise zu den ausgeliehenen '
+             'Artikeln bestätigt hat (Haftung, Aufsicht, Rückgabezustand). Wird beim '
+             'Absenden des Online-Formulars gesetzt und ist deshalb kein Eingabefeld — '
+             'der Zeitpunkt der Bestätigung steht im Chatter.',
+    )
+
+    # ------------------------------------------------------------------
+    # R2: Dokumentierter Rückgabeprozess
+    # ------------------------------------------------------------------
+    return_checked_complete = fields.Boolean(
+        string='Vollständig zurückgegeben', tracking=True,
+        help='Alle Positionen inklusive Zubehör wurden bei der Rücknahme gezählt und '
+             'sind vollständig. Das Häkchen dokumentiert den festgestellten Zustand — '
+             'es ist KEINE Freigabebedingung: bleibt es leer, ist die Rücknahme '
+             'trotzdem abschließbar, dann aber mit Rückgabevermerk.',
+    )
+    return_checked_clean = fields.Boolean(
+        string='Gereinigt zurückgegeben', tracking=True,
+        help='Das Material wurde in gereinigtem, wieder verleihbarem Zustand '
+             'zurückgegeben. Auch dieses Häkchen dokumentiert nur den Zustand; kommt '
+             'das Material verschmutzt zurück, bleibt es leer und der Rückgabevermerk '
+             'beschreibt den Mangel.',
+    )
+    return_damage = fields.Boolean(
+        string='Schaden festgestellt', tracking=True,
+        help='Bei der Rücknahme wurde ein Schaden oder Verlust festgestellt. Wie bei '
+             'jeder anderen Abweichung ist dann ein Rückgabevermerk zwingend — er ist '
+             'die dokumentierte Feststellung und zugleich eine mögliche Begründung für '
+             'einen Kautionseinbehalt.',
+    )
+    return_note = fields.Text(
+        string='Rückgabevermerk',
+        help='Beschreibung des Zustands bei der Rücknahme: was fehlt, was ist beschädigt, '
+             'was wurde vereinbart. Pflicht, sobald eine Abweichung vorliegt '
+             '(unvollständig, nicht gereinigt oder Schaden). Dient außerdem als '
+             'Begründung für einen Einbehalt der Kaution — ein Einbehalt setzt eine '
+             'Begründung voraus, aber nicht zwingend einen Schaden (z. B. verspätete '
+             'Rückgabe oder Nichtabholung).',
+    )
+
+    @api.depends('partner_id', 'partner_id.is_kjr_member')
+    def _compute_is_member(self):
+        """Mitgliedstarif aus dem Entleiher-Kontakt ableiten.
+
+        Die Übersteuerung durch die Geschäftsstelle bleibt erhalten: Odoo ruft den
+        Compute eines gespeicherten, schreibbaren Feldes nur dann erneut auf, wenn
+        sich eine Abhängigkeit ändert (hier: der Entleiher oder dessen Kennzeichen).
+        Ein Wechsel des Entleihers SOLL den Tarif neu bestimmen — ab Status
+        'Ausgegeben' bleibt der einmal abgerechnete Tarif dagegen eingefroren
+        (analog zu KjrRentalOrderLine._compute_price).
+        """
+        for rec in self:
+            if rec.state in ('issued', 'returned', 'cancelled'):
+                # Laufende/abgeschlossene Vorgänge nicht nachträglich umtarifieren.
+                # Selbstzuweisung, damit im Loop JEDEM Record ein Wert zugewiesen ist.
+                rec.is_member = rec.is_member
+                continue
+            rec.is_member = bool(rec.partner_id.is_kjr_member)
+
     @api.depends('date_from', 'date_to')
     def _compute_rental_days(self):
         for rec in self:
@@ -83,14 +170,41 @@ class KjrRentalOrder(models.Model):
             if rec.date_from and rec.date_to and rec.date_to < rec.date_from:
                 raise ValidationError(_('Das Rückgabedatum darf nicht vor dem Ausleihdatum liegen.'))
 
+    @api.model
+    def _to_bool(self, value):
+        """Checkbox-Werte aus dem Website-Formular robust nach Boolean wandeln.
+
+        Ein HTML-Formular liefert 'on'/'1'/'ja' (oder das Feld fehlt ganz).
+        @api.onchange feuert im Controller nicht, deshalb wird der Wert hier
+        beim Schreiben normalisiert statt auf eine Onchange zu bauen.
+        """
+        if isinstance(value, str):
+            return value.strip().lower() in ('1', 'true', 'yes', 'on', 'ja', 'checked')
+        return bool(value)
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if not vals.get('name') or vals.get('name') == _('Neu'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('kjr.rental.order') or _('Neu')
-        return super().create(vals_list)
+            # usage_terms_accepted ist readonly (Nachweis, kein Eingabefeld) — über
+            # create() aus dem Controller ist es dennoch setzbar; readonly wirkt nur
+            # in der Oberfläche.
+            if 'usage_terms_accepted' in vals:
+                vals['usage_terms_accepted'] = self._to_bool(vals['usage_terms_accepted'])
+        orders = super().create(vals_list)
+        for order in orders:
+            if order.usage_terms_accepted:
+                # Bestätigung mit Zeitstempel im Chatter festhalten (Nachweischarakter).
+                order.message_post(
+                    body=_('Der Entleiher hat die Nutzungshinweise beim Absenden der '
+                           'Anfrage bestätigt.'),
+                    subtype_xmlid='mail.mt_note')
+        return orders
 
     def write(self, vals):
+        if 'usage_terms_accepted' in vals:
+            vals['usage_terms_accepted'] = self._to_bool(vals['usage_terms_accepted'])
         res = super().write(vals)
         # Bei Änderung von Zeitraum/Positionen aktive Ausleihen erneut auf Verfügbarkeit prüfen,
         # damit reservierte/ausgegebene Vorgänge nicht nachträglich überbucht werden.
@@ -131,6 +245,67 @@ class KjrRentalOrder(models.Model):
             rec._check_availability()
             rec.state = 'issued'
 
+    def _return_findings(self):
+        """Abweichungen der Rücknahme als Liste von Klartexten (leer = alles in Ordnung)."""
+        self.ensure_one()
+        findings = []
+        if not self.return_checked_complete:
+            findings.append(_('nicht vollständig zurückgegeben'))
+        if not self.return_checked_clean:
+            findings.append(_('nicht gereinigt zurückgegeben'))
+        if self.return_damage:
+            findings.append(_('Schaden festgestellt'))
+        return findings
+
+    def _check_return_checklist(self):
+        """R2: Die Rückgabeprüfung dokumentiert den ZUSTAND — sie ist keine Freigabe.
+
+        Verschmutztes, unvollständiges oder beschädigtes Material muss zurückgenommen
+        werden können; genau dafür ist die Rücknahme da. Würde der Abschluss gesetzte
+        Häkchen voraussetzen, müsste das Personal "vollständig"/"gereinigt"
+        wahrheitswidrig ankreuzen — die Checkliste verlöre den Nachweiswert, für den
+        sie gebaut wurde. Verlangt wird deshalb nur: jede Abweichung braucht einen
+        Rückgabevermerk, der sie beschreibt.
+        """
+        for rec in self:
+            findings = rec._return_findings()
+            if findings and not (rec.return_note or '').strip():
+                raise UserError(_(
+                    'Die Rücknahme von %(name)s weist Abweichungen auf (%(findings)s). '
+                    'Bitte den Rückgabevermerk im Reiter "Rückgabe" ausfüllen: was fehlt, '
+                    'was ist beschädigt, was wurde vereinbart. Der Vermerk ist die '
+                    'dokumentierte Feststellung und zugleich die Begründung für einen '
+                    'möglichen Einbehalt der Kaution. Die Häkchen bitte NICHT '
+                    'wahrheitswidrig setzen, um den Abschluss zu erzwingen — sie halten '
+                    'den tatsächlichen Zustand fest.',
+                    name=rec.name, findings=', '.join(findings),
+                ))
+
+    def _return_check_message(self):
+        """Ergebnis der Rückgabeprüfung als Chatter-Notiz (spätere Nachvollziehbarkeit)."""
+        self.ensure_one()
+        note = (self.return_note or '').strip()
+        # Markup: message_post escapt einfache Zeichenketten, HTML muss ausdrücklich
+        # als Markup übergeben werden – sonst stünden die <ul>/<li>-Tags als Text im
+        # Chatter. Die eingesetzten Werte (u. a. der frei erfasste Rückgabevermerk)
+        # werden von Markup.__mod__ weiterhin escaped.
+        return Markup(_(
+            'Rückgabeprüfung dokumentiert:'
+            '<ul>'
+            '<li>Vollständig zurückgegeben: %(complete)s</li>'
+            '<li>Gereinigt zurückgegeben: %(clean)s</li>'
+            '<li>Schaden festgestellt: %(damage)s</li>'
+            '<li>Rückgabevermerk: %(note)s</li>'
+            '</ul>'
+        )) % {
+            # Der Chatter hält den TATSÄCHLICHEN Zustand fest (ja/nein), nicht den
+            # Prüffortschritt: ein "nein" ist ein gültiges Ergebnis der Rücknahme.
+            'complete': _('ja') if self.return_checked_complete else _('nein'),
+            'clean': _('ja') if self.return_checked_clean else _('nein'),
+            'damage': _('ja') if self.return_damage else _('nein'),
+            'note': note or _('–'),
+        }
+
     def action_return(self):
         # B-cross-1: optionaler Auto-Rechnungs-Schalter via Systemparameter
         auto_invoice = str(self.env['ir.config_parameter'].sudo().get_param(
@@ -138,7 +313,31 @@ class KjrRentalOrder(models.Model):
         for rec in self:
             if rec.state != 'issued':
                 raise UserError(_('Nur ausgegebene Ausleihen können zurückgenommen werden.'))
+            # R2: erst prüfen, dann Status setzen. Geprüft wird nur, ob jede
+            # festgestellte Abweichung auch beschrieben ist — der Zustand selbst
+            # (unvollständig/verschmutzt/beschädigt) hindert die Rücknahme nicht.
+            rec._check_return_checklist()
+            findings = rec._return_findings()
             rec.state = 'returned'
+            rec.message_post(body=rec._return_check_message(), subtype_xmlid='mail.mt_note')
+            if findings and rec.deposit_state == 'received':
+                # Bewusst KEIN automatischer Einbehalt: ob und in welcher Höhe die
+                # Kaution einbehalten wird, entscheidet die Geschäftsstelle. Der
+                # Rückgabevermerk dient dabei als Begründung (action_withhold_deposit).
+                # Der Hinweis hängt an JEDER Abweichung, nicht nur am Schaden — auch
+                # fehlende oder ungereinigte Rückgaben können einen Einbehalt tragen.
+                # TODO Kundenentscheidung KJR: Soll bei Abweichungen (insbesondere
+                # "Schaden festgestellt") die Kaution automatisch einbehalten werden?
+                # Bis zur Klärung bleibt die konservative Variante (Hinweis +
+                # manuelle Entscheidung).
+                rec.message_post(
+                    body=_('Abweichung dokumentiert (%(findings)s): Bitte über die '
+                           'erhaltene Kaution (%(amount).2f) entscheiden — '
+                           '"Kaution einbehalten" übernimmt den Rückgabevermerk als '
+                           'Begründung, "Kaution erstatten" schließt den Vorgang ohne '
+                           'Einbehalt ab.',
+                           findings=', '.join(findings), amount=rec.deposit_total),
+                    subtype_xmlid='mail.mt_note')
             if auto_invoice and not rec.invoice_id and rec.amount_total > 0:
                 # Auto-Rechnung darf die Rückgabe nicht blockieren: schlägt das Buchen fehl
                 # (z. B. fehlende Kontenfindung), bleibt die Rechnung als Entwurf bestehen
@@ -248,16 +447,39 @@ class KjrRentalOrder(models.Model):
                 body=_('Kaution (%.2f) erstattet.') % rec.deposit_total,
                 subtype_xmlid='mail.mt_note')
 
-    def action_withhold_deposit(self):
-        """B-cross-3: Kaution einbehalten (z. B. bei Schaden)."""
+    def action_withhold_deposit(self, reason=None):
+        """B-cross-3: Kaution einbehalten.
+
+        R2: Der Einbehalt braucht eine dokumentierte Begründung — aber NICHT
+        zwingend einen Schaden. Auch eine verspätete Rückgabe, eine Nichtabholung
+        oder unvollständig/ungereinigt zurückgegebenes Material kann einen Einbehalt
+        tragen. Statt einer zweiten Begründungslogik wird der Rückgabevermerk
+        (return_note) verwendet, der jede dieser Feststellungen aufnehmen kann; ein
+        optionaler `reason` (z. B. aus einem Aufruf im Code) hat Vorrang.
+
+        Voraussetzung dafür ist, dass der Rückgabevermerk in der Oberfläche auch
+        ohne angekreuzten Schaden erfassbar ist — siehe Hinweis in der Formularsicht
+        (Reiter "Rückgabe").
+        """
         for rec in self:
             if rec.deposit_state != 'received':
                 raise UserError(_('Es ist keine erhaltene Kaution vorhanden, die einbehalten werden kann.'))
+            justification = (reason or rec.return_note or '').strip()
+            if not justification:
+                raise UserError(_(
+                    'Der Einbehalt der Kaution von %(name)s muss begründet sein. Bitte '
+                    'den Grund im Rückgabevermerk (Reiter "Rückgabe") festhalten und '
+                    'den Einbehalt danach erneut auslösen. Ein Schaden ist dafür keine '
+                    'Voraussetzung — auch eine verspätete Rückgabe, eine Nichtabholung '
+                    'oder unvollständig bzw. ungereinigt zurückgegebenes Material ist '
+                    'eine tragfähige Begründung, sie muss nur dokumentiert sein.',
+                    name=rec.name))
             rec.deposit_state = 'withheld'
             rec.deposit_paid = False
             rec.deposit_refund_date = fields.Date.context_today(rec)
             rec.message_post(
-                body=_('Kaution (%.2f) einbehalten.') % rec.deposit_total,
+                body=_('Kaution (%(amount).2f) einbehalten. Begründung: %(reason)s',
+                       amount=rec.deposit_total, reason=justification),
                 subtype_xmlid='mail.mt_note')
 
     def action_print_contract(self):
@@ -295,12 +517,40 @@ class KjrRentalOrderLine(models.Model):
             else:
                 rec.available_in_period = 0
 
-    @api.depends('item_id', 'order_id.is_member')
+    # R2: Die Kette bleibt geschlossen, obwohl is_member jetzt selbst ein
+    # gespeichertes Compute-Feld ist: ändert sich der Entleiher (oder dessen
+    # Kennzeichen), rechnet Odoo erst order.is_member und dadurch auch die
+    # abhängigen Zeilenpreise neu. Gleiches gilt beim manuellen Übersteuern,
+    # weil auch dieser Schreibvorgang auf is_member die Abhängigen anstößt.
+    #
+    # B2: Der Einfrier-Schutz hängt zusätzlich an der Rechnung, nicht nur am Status.
+    # Eine Rechnung kann entstehen, BEVOR/OHNE dass der Vorgang dauerhaft in einem
+    # eingefrorenen Status steht: action_create_invoice prüft den Status gar nicht,
+    # und ein Manager darf eine bereits fakturierte Ausleihe über action_reset_draft
+    # aus 'issued' zurück auf 'Anfrage' setzen. Dort wären die Zeilenpreise wieder
+    # frei — Rechnung und Auftrag liefen unbemerkt auseinander. Sobald invoice_id
+    # gesetzt ist, sind die Preise deshalb ebenfalls eingefroren.
+    # 'order_id.invoice_id' gehört damit in die depends-Kette; 'order_id.state'
+    # bewusst NICHT: ein Statuswechsel soll keine Neuberechnung anstoßen, die von
+    # der Geschäftsstelle manuell gesetzte Preise (readonly=False) überschreibt.
+    # Der Status wird im Guard trotzdem gelesen — er kann nur strenger machen.
+    @api.depends('item_id', 'order_id.is_member', 'order_id.invoice_id')
     def _compute_price(self):
         for rec in self:
-            # Preise ausgegebener/zurückgegebener/stornierter Vorgänge nicht überschreiben
-            # (auch nicht bei programmatischen Writes auf item_id/is_member).
-            if rec.order_id.state in ('issued', 'returned', 'cancelled'):
+            # Preise fakturierter bzw. ausgegebener/zurückgegebener/stornierter
+            # Vorgänge nicht überschreiben (auch nicht bei programmatischen Writes
+            # auf item_id/is_member).
+            # ABER nur für bereits erfasste Positionen (rec._origin): eine NEU
+            # hinzugefügte Zeile hat noch keinen abgerechneten Preis. Ohne Zuweisung
+            # fällt Odoo bei ihr auf den Nullwert zurück – die Position stünde dann
+            # still mit 0,00 € Tagespreis und 0,00 € Kaution in Rechnung und Vertrag.
+            frozen = bool(rec.order_id.invoice_id) or rec.order_id.state in ('issued', 'returned', 'cancelled')
+            if frozen and rec._origin:
+                # Selbstzuweisung statt blankem 'continue': so ist JEDEM Record im
+                # Loop ein Wert zugewiesen (Odoo-Vorgabe für Compute-Methoden), und
+                # der bestehende Preis bleibt erhalten.
+                rec.price_per_day = rec.price_per_day
+                rec.deposit_unit = rec.deposit_unit
                 continue
             if rec.item_id:
                 rec.price_per_day = rec.item_id.price_for(rec.order_id.is_member)
