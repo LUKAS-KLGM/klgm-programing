@@ -55,6 +55,13 @@
                             <field name="check_out_default_time" widget="float_time"/>
                             <field name="invoice_auto_post"/>
                         </group>
+                        <!-- F1: Vergabekriterien der Einrichtung. 0 = Regel aus. -->
+                        <group string="Buchungsregeln" name="booking_rules">
+                            <field name="max_advance_months"/>
+                            <field name="min_persons"/>
+                            <field name="min_nights"/>
+                            <field name="requires_organized_group"/>
+                        </group>
                     </group>
                     <field name="description_short" placeholder="Kurzbeschreibung für die Liste/Website"/>
                     <notebook>

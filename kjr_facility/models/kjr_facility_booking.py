@@ -4,6 +4,8 @@ import base64
 import logging
 from datetime import timedelta
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
@@ -56,6 +58,12 @@ class KjrFacilityBooking(models.Model):
         ondelete='restrict', tracking=True,
     )
     group_name = fields.Char(string='Gruppenbezeichnung')
+    # F2: Bisher gab es nur die Betreuerzahl sowie E-Mail/Telefon, aber keinen Namen
+    # der verantwortlichen Ansprechperson — im Website-Termin bemängelt.
+    contact_person = fields.Char(
+        string='Ansprechpartner/in',
+        help='Name der verantwortlichen Ansprechperson der Gruppe (Anmeldung, Rückfragen, '
+             'Schlüsselübergabe).')
     contact_email = fields.Char(string='E-Mail')
     contact_phone = fields.Char(string='Telefon')
 
@@ -68,6 +76,27 @@ class KjrFacilityBooking(models.Model):
     participant_count = fields.Integer(string='Teilnehmer', default=0, tracking=True)
     leader_count = fields.Integer(string='Betreuer', default=0)
     supervision_ok = fields.Boolean(string='Betreuung ausreichend', compute='_compute_supervision')
+    # F2: Belegungsregeln der Einrichtung (Mindestbelegung/-aufenthalt, Zielgruppe).
+    is_organized_group = fields.Boolean(
+        string='Organisierte Jugend-/Bildungsgruppe',
+        help='Ankreuzen, wenn die Gruppe ein anerkannter Träger der Jugendarbeit, eine Schule '
+             'oder eine vergleichbare Bildungseinrichtung ist. Einige Einrichtungen dürfen nur '
+             'an solche Gruppen vergeben werden.')
+    occupancy_warning = fields.Char(
+        string='Hinweis Belegungs-/Vorlaufregeln', compute='_compute_occupancy_warning',
+        help='Weicher Hinweis (kein harter Constraint) auf Mindestbelegung, '
+             'Mindestaufenthalt, Zielgruppe und Buchungsvorlauf: Die Geschäftsstelle darf '
+             'abweichende Buchungen im Backend bewusst erfassen. Hart durchgesetzt werden '
+             'diese Regeln nur im Website-Anfrageformular.')
+    visitor_tax_exempt_count = fields.Integer(
+        string='Zusätzlich vom Fremdenverkehrsbeitrag befreit', default=0,
+        help='Anzahl der TEILNEHMENDEN, für die zusätzlich kein Fremdenverkehrsbeitrag '
+             'anfällt: Einwohnerinnen und Einwohner der Standortgemeinde, Kinder unter '
+             '7 Jahren sowie Schwerbehinderte. ACHTUNG: Betreuerinnen und Betreuer '
+             '(Feld „Betreuer") sind nach der Satzungslage ohnehin befreit und gehen '
+             'gar nicht erst in die Berechnung ein — sie dürfen hier NICHT noch einmal '
+             'eingetragen werden, sonst wird doppelt abgezogen. '
+             'Beitragspflichtig sind: Teilnehmer − dieser Wert.')
     room_ids = fields.Many2many(
         'kjr.facility.room', 'kjr_booking_room_rel', 'booking_id', 'room_id',
         string='Räume',
@@ -98,6 +127,11 @@ class KjrFacilityBooking(models.Model):
     amount_accommodation = fields.Monetary(string='Unterkunft', compute='_compute_amounts', store=True)
     amount_meals = fields.Monetary(string='Verpflegung (Betrag)', compute='_compute_amounts', store=True)
     amount_equipment = fields.Monetary(string='Ausstattung', compute='_compute_amounts', store=True)
+    # F2: Fremdenverkehrsbeitrag (pro Person und Nacht) und einmalige Endreinigung.
+    amount_visitor_tax = fields.Monetary(
+        string='Fremdenverkehrsbeitrag', compute='_compute_amounts', store=True)
+    amount_cleaning = fields.Monetary(
+        string='Endreinigung', compute='_compute_amounts', store=True)
     amount_untaxed = fields.Monetary(string='Netto', compute='_compute_amounts', store=True)
     amount_tax = fields.Monetary(string='USt', compute='_compute_amounts', store=True)
     amount_total = fields.Monetary(string='Gesamt (brutto)', compute='_compute_amounts', store=True)
@@ -165,9 +199,107 @@ class KjrFacilityBooking(models.Model):
         for rec in self:
             rec.bed_count = sum(rec.room_ids.mapped('capacity'))
 
+    @api.model
+    def _stay_is_weekday_only(self, check_in, check_out):
+        """F2: Prüft, ob der gesamte Aufenthalt in die Woche (Mo–Fr) fällt.
+
+        Fachliche Regel laut Geschäftsstelle ("Wochenendtarif nur, wenn wirklich keine
+        Wochenendnacht dabei ist, mind. 4 Nächte unter der Woche"):
+
+        * Übernachtet wird in den Nächten check_in .. check_out - 1 Tag.
+        * Eine Nacht gilt als Wochenendnacht, wenn sie an einem Freitag, Samstag oder
+          Sonntag BEGINNT (Fr->Sa, Sa->So, So->Mo).
+        * Der Aufenthalt ist also genau dann reiner Wochentagsaufenthalt, wenn jede
+          Nacht an einem Montag bis Donnerstag beginnt. Daraus folgt automatisch:
+          Anreise Mo–Do, Abreise spätestens Fr derselben Woche, maximal 4 Nächte
+          (Mo, Di, Mi, Do) — mehr Wochentagsnächte gibt es am Stück nicht.
+
+        Die Mindestnächte-Bedingung (tariff_id.weekday_min_nights) wird bewusst NICHT
+        hier geprüft, damit die Kalenderregel getrennt testbar bleibt.
+
+        :return: True, wenn keine Wochenendnacht im Zeitraum liegt.
+        """
+        if not check_in or not check_out or check_out <= check_in:
+            return False
+        night = check_in
+        while night < check_out:
+            if night.weekday() > 3:  # 0=Mo … 3=Do sind Wochentagsnächte
+                return False
+            night += timedelta(days=1)
+        return True
+
+    def _uses_weekday_rate(self):
+        """F2: Gilt für diese Buchung der Mo–Fr-Sondertarif?
+
+        Der günstigere Mo–Fr-Satz greift nur, wenn ALLE drei Bedingungen erfüllt sind:
+        gepflegter Wochentagspreis > 0, reiner Mo–Fr-Aufenthalt (siehe
+        :meth:`_stay_is_weekday_only`) und mindestens ``weekday_min_nights`` Nächte.
+        """
+        self.ensure_one()
+        t = self.tariff_id
+        if not t or (t.weekday_price_per_person_night or 0.0) <= 0.0:
+            return False
+        return ((self.nights or 0) >= (t.weekday_min_nights or 0)
+                and self._stay_is_weekday_only(self.check_in, self.check_out))
+
+    def _accommodation_rate_per_person_night(self):
+        """F2: Liefert den anzuwendenden Personen-Nachtpreis (Regel- oder Mo–Fr-Tarif)."""
+        self.ensure_one()
+        t = self.tariff_id
+        if not t:
+            return 0.0
+        if self._uses_weekday_rate():
+            return t.weekday_price_per_person_night or 0.0
+        return t.price_per_person_night or 0.0
+
+    # ── Fremdenverkehrsbeitrag: Bemessung und steuerliche Behandlung ─────────
+    #
+    # TODO(Steuer): Der Fremdenverkehrsbeitrag wird DERZEIT als DURCHLAUFENDER
+    # POSTEN behandelt, d. h. ohne Umsatzsteuer gerechnet und ohne Steuerschlüssel
+    # auf die Rechnung gestellt. Grundlage ist die Zusage auf der Website ("Den
+    # Beitrag führen wir an die Gemeinde ab") — für eine an die Standortgemeinde
+    # abzuführende kommunale Abgabe ist das die konservative Annahme. Die endgültige
+    # steuerliche Einordnung ist laut Projektunterlagen noch mit dem Steuerbüro zu
+    # klären.
+    #
+    # UMSTELLUNG auf die steuerpflichtige Variante: ``_visitor_tax_pass_through``
+    # auf False setzen (bzw. im Kundenmodul überschreiben). Dann läuft der Beitrag
+    # mit dem Steuersatz des Tarifs (tariff_id.tax_id) sowohl in die Summenfelder
+    # als auch in die Rechnungsposition. Weitere Anpassungen sind nicht nötig:
+    # Berechnung und Rechnungserzeugung lesen beide _visitor_tax_taxes().
+    _visitor_tax_pass_through = True
+
+    def _visitor_tax_taxes(self):
+        """Steuerschlüssel der Position „Fremdenverkehrsbeitrag“.
+
+        Leeres Recordset = durchlaufender Posten (kein Steuerausweis).
+        Siehe TODO(Steuer) oben.
+        """
+        self.ensure_one()
+        if self._visitor_tax_pass_through:
+            return self.env['account.tax']
+        return self.tariff_id.tax_id if self.tariff_id else self.env['account.tax']
+
+    def _visitor_tax_person_count(self):
+        """Anzahl der beitragspflichtigen Personen (Bemessungsgrundlage).
+
+        Nach der Immenstädter Satzungslage sind Betreuende und Begleitpersonen vom
+        Fremdenverkehrsbeitrag BEFREIT; sie gehen deshalb gar nicht erst in die
+        Grundmenge ein (``leader_count`` wird bewusst nicht addiert).
+        ``visitor_tax_exempt_count`` erfasst ausschließlich ZUSÄTZLICH befreite
+        Teilnehmende (Einwohner der Standortgemeinde, Kinder unter 7 Jahren,
+        Schwerbehinderte) — Betreuende dort erneut einzutragen wäre ein doppelter
+        Abzug (siehe Hilfetext des Feldes). Das Ergebnis wird nie negativ.
+        """
+        self.ensure_one()
+        return max(0, (self.participant_count or 0) - (self.visitor_tax_exempt_count or 0))
+
     @api.depends(
-        'nights', 'participant_count', 'meal_option', 'tariff_id',
+        'nights', 'check_in', 'check_out', 'participant_count',
+        'visitor_tax_exempt_count', 'meal_option', 'tariff_id',
         'tariff_id.price_per_person_night', 'tariff_id.price_flat_per_night',
+        'tariff_id.weekday_price_per_person_night', 'tariff_id.weekday_min_nights',
+        'tariff_id.visitor_tax_per_person_night', 'tariff_id.final_cleaning_fee',
         'tariff_id.meal_breakfast', 'tariff_id.meal_half', 'tariff_id.meal_full',
         'tariff_id.tax_id', 'equipment_ids', 'equipment_ids.price_per_day',
         'company_id', 'company_id.currency_id',
@@ -177,7 +309,9 @@ class KjrFacilityBooking(models.Model):
             t = rec.tariff_id
             nights = rec.nights or 0
             pax = rec.participant_count or 0
-            accommodation = nights * (pax * (t.price_per_person_night if t else 0.0)
+            # F2: Personen-Nachtpreis ggf. als Mo–Fr-Sondertarif.
+            rate_per_person = rec._accommodation_rate_per_person_night()
+            accommodation = nights * (pax * rate_per_person
                                       + (t.price_flat_per_night if t else 0.0))
             meal_rate = 0.0
             if t:
@@ -188,23 +322,118 @@ class KjrFacilityBooking(models.Model):
                 }.get(rec.meal_option, 0.0)
             meals = nights * pax * meal_rate
             equipment = nights * sum(rec.equipment_ids.mapped('price_per_day'))
+            # F2: Endreinigung fällt EINMALIG je Buchung an (nicht je Nacht/Person).
+            cleaning = (t.final_cleaning_fee or 0.0) if (t and nights > 0) else 0.0
+            # F2: Fremdenverkehrsbeitrag je beitragspflichtiger Person und Nacht.
+            # Bemessungsgrundlage siehe _visitor_tax_person_count(): Betreuende sind
+            # satzungsgemäß befreit und zählen nicht mit, visitor_tax_exempt_count
+            # zieht zusätzlich befreite Teilnehmende ab (nie negativ).
+            liable_persons = rec._visitor_tax_person_count()
+            visitor_tax = nights * liable_persons * (t.visitor_tax_per_person_night or 0.0) if t else 0.0
             rec.amount_accommodation = accommodation
             rec.amount_meals = meals
             rec.amount_equipment = equipment
+            rec.amount_cleaning = cleaning
+            rec.amount_visitor_tax = visitor_tax
             # Steuer positionsweise berechnen, damit die Buchungsbeträge exakt mit der
             # später erzeugten Rechnung (Rundung je Position) übereinstimmen.
             currency = rec.company_id.currency_id or self.env.company.currency_id
             taxes = t.tax_id if t else self.env['account.tax']
             untaxed = tax = 0.0
-            for component in (accommodation, meals, equipment):
+            for component in (accommodation, meals, equipment, cleaning):
                 if not component:
                     continue
                 res = taxes.compute_all(component, currency=currency, quantity=1.0)
                 untaxed += res['total_excluded']
                 tax += res['total_included'] - res['total_excluded']
+            # Fremdenverkehrsbeitrag getrennt: er kann (Default) als durchlaufender
+            # Posten ohne Steuer laufen — siehe TODO(Steuer) bei
+            # _visitor_tax_pass_through. Die Rechnungsposition in
+            # action_create_invoice verwendet exakt denselben Steuerschlüssel, damit
+            # amount_total der Buchung und der Rechnungsbetrag identisch bleiben.
+            if visitor_tax:
+                visitor_taxes = rec._visitor_tax_taxes()
+                if visitor_taxes:
+                    res = visitor_taxes.compute_all(visitor_tax, currency=currency, quantity=1.0)
+                    untaxed += res['total_excluded']
+                    tax += res['total_included'] - res['total_excluded']
+                else:
+                    # Ohne Steuerschlüssel entspricht das Netto der Position exakt dem
+                    # (kaufmännisch gerundeten) Betrag — genau wie bei einer
+                    # Rechnungszeile mit tax_ids = [].
+                    untaxed += currency.round(visitor_tax)
             rec.amount_untaxed = untaxed
             rec.amount_tax = tax
             rec.amount_total = untaxed + tax
+
+    @api.depends(
+        'participant_count', 'leader_count', 'nights', 'is_organized_group', 'facility_id',
+        'check_in', 'facility_id.min_persons', 'facility_id.min_nights',
+        'facility_id.requires_organized_group', 'facility_id.max_advance_months',
+    )
+    def _compute_occupancy_warning(self):
+        """F2: Weicher Hinweis auf verletzte Belegungs- und Vorlaufregeln.
+
+        Bewusst KEIN Constraint: Die Geschäftsstelle muss Ausnahmen im Backend erfassen
+        dürfen (Projektstandard). Die harte Durchsetzung erfolgt nur im Website-Formular.
+        """
+        today = fields.Date.today()
+        for rec in self:
+            facility = rec.facility_id
+            issues = []
+            if facility:
+                # Mindestbelegung zählt Teilnehmende UND Betreuende (siehe Hilfetext des
+                # Feldes kjr.facility.min_persons) — genauso rechnet auch die Prüfung im
+                # Website-Formular. Würde hier nur participant_count verglichen, meldete
+                # das Backend eine Unterbelegung für Buchungen, die die Website zulässt.
+                persons = (rec.participant_count or 0) + (rec.leader_count or 0)
+                if facility.min_persons and persons < facility.min_persons:
+                    issues.append(_(
+                        'die Mindestbelegung von %(min)d Personen ist mit %(cur)d Personen '
+                        '(Teilnehmende und Betreuende) unterschritten'
+                    ) % {'min': facility.min_persons, 'cur': persons})
+                if facility.min_nights and (rec.nights or 0) < facility.min_nights:
+                    issues.append(_(
+                        'der Mindestaufenthalt von %(min)d Nächten ist mit %(cur)d Nächten '
+                        'unterschritten'
+                    ) % {'min': facility.min_nights, 'cur': rec.nights or 0})
+                if facility.requires_organized_group and not rec.is_organized_group:
+                    issues.append(_(
+                        'die Einrichtung darf nur an organisierte Jugend-/Bildungsgruppen '
+                        'vergeben werden'
+                    ))
+                # B4: Buchungsvorlauf (Vorstandsbeschluss vom 21.07.2026) ist wie die
+                # übrigen Belegungsregeln nur ein weicher Hinweis. Die Geschäftsstelle
+                # muss begründete Ausnahmen (z. B. Stammgruppen mit langfristiger
+                # Planung) erfassen können; hart durchgesetzt wird die Frist allein im
+                # Website-Anfrageformular. 0 Monate = unbegrenzt; Anreisen in der
+                # Vergangenheit/heute werden nie bemängelt (Altbuchungen, Nacherfassung).
+                months = facility.max_advance_months or 0
+                if months > 0 and rec.check_in and rec.check_in > today:
+                    latest = today + relativedelta(months=months)
+                    if rec.check_in > latest:
+                        issues.append(_(
+                            'der Buchungsvorlauf von %(m)d Monaten ist überschritten '
+                            '(Anreise %(wish)s, laut Vorstandsbeschluss vom 21.07.2026 '
+                            'spätestens %(latest)s)'
+                        ) % {
+                            'm': months,
+                            'wish': rec.check_in.strftime('%d.%m.%Y'),
+                            'latest': latest.strftime('%d.%m.%Y'),
+                        })
+            if issues:
+                if len(issues) == 1:
+                    detail = issues[0]
+                else:
+                    detail = _('%(head)s sowie %(last)s') % {
+                        'head': ', '.join(issues[:-1]), 'last': issues[-1],
+                    }
+                rec.occupancy_warning = _(
+                    'Hinweis: Für %(fac)s %(detail)s. Bitte Ausnahme mit der Geschäftsstelle '
+                    'abstimmen.'
+                ) % {'fac': facility.name or '', 'detail': detail}
+            else:
+                rec.occupancy_warning = False
 
     @api.depends('amount_total', 'deposit_pct')
     def _compute_deposit(self):
@@ -279,24 +508,65 @@ class KjrFacilityBooking(models.Model):
                     p=rec.participant_count, b=rec.bed_count,
                 ))
 
-    @api.constrains('room_ids', 'check_in', 'check_out', 'state')
+    # B4: Der Buchungsvorlauf (Vorstandsbeschluss vom 21.07.2026) war hier bis
+    # 19.0.3.0.0 ein @api.constrains und galt damit auch im Backend. Das widerspricht
+    # dem Projektstandard — die Schwesterregeln (Mindestbelegung, Mindestaufenthalt,
+    # organisierte Gruppe) sind bewusst nur weiche Hinweise — und machte begründete
+    # Ausnahmen der Geschäftsstelle unmöglich; Altbuchungen jenseits der Frist
+    # blockierten zudem jedes Speichern. Die Prüfung liegt jetzt als Hinweis in
+    # _compute_occupancy_warning (Backend) bzw. als harte Validierung im
+    # Website-Controller (_validate_facility_request).
+
+    @api.constrains('room_ids', 'check_in', 'check_out', 'state',
+                    'participant_count', 'leader_count', 'facility_id')
     def _check_double_booking(self):
+        """Doppelbelegung prüfen — mit und ohne Raumauswahl.
+
+        Mit Raumauswahl: kollidiert einer der gewählten Räume mit einer anderen,
+        nicht stornierten Buchung? Ohne Raumauswahl (typisch für Backend-Buchungen
+        und Einrichtungen ohne Raumaufteilung) wird stattdessen die Gesamtkapazität
+        der Einrichtung im Überlappungszeitraum geprüft.
+        """
         for rec in self:
-            if rec.state == 'cancelled' or not rec.room_ids or not (rec.check_in and rec.check_out):
+            if rec.state == 'cancelled' or not (rec.check_in and rec.check_out) or not rec.facility_id:
                 continue
-            conflicting = self.search([
-                ('id', '!=', rec.id),
-                ('state', '!=', 'cancelled'),
-                ('room_ids', 'in', rec.room_ids.ids),
-                ('check_in', '<', rec.check_out),
-                ('check_out', '>', rec.check_in),
-            ], limit=1)
-            if conflicting:
+            overlapping = self._find_overlapping(
+                rec.facility_id.id, rec.check_in, rec.check_out,
+                room_ids=rec.room_ids.ids or None, exclude_id=rec.id or None,
+            )
+            if rec.room_ids:
+                if overlapping:
+                    raise ValidationError(_(
+                        'Raum-Doppelbelegung: Mindestens ein gewählter Raum ist im Zeitraum '
+                        'bereits durch Buchung %(other)s belegt.'
+                    ) % {'other': overlapping[0].name})
+                continue
+            # F2: Ohne Raumauswahl gegen die Gesamtkapazität der Einrichtung prüfen.
+            # Es wird nur eingegriffen, wenn es tatsächlich Parallelbuchungen gibt —
+            # die Einzelbuchung allein deckt bereits _check_capacity ab.
+            capacity = rec.facility_id.capacity or 0
+            if not capacity or not overlapping:
+                continue
+            others = sum(
+                (bk.participant_count or 0) + (bk.leader_count or 0) for bk in overlapping
+            )
+            own = (rec.participant_count or 0) + (rec.leader_count or 0)
+            if others + own > capacity:
                 raise ValidationError(_(
-                    'Raum-Doppelbelegung: Mindestens ein gewählter Raum ist im Zeitraum '
-                    'bereits durch Buchung %(other)s belegt.',
-                    other=conflicting.name,
-                ))
+                    'Überbelegung: Im Zeitraum %(ci)s–%(co)s sind in %(fac)s bereits '
+                    '%(others)d Personen aus %(cnt)d anderen Buchungen (z. B. %(other)s) '
+                    'eingeplant. Zusammen mit dieser Buchung (%(own)d Personen) wird die '
+                    'Kapazität von %(cap)d Plätzen überschritten.'
+                ) % {
+                    'ci': rec.check_in.strftime('%d.%m.%Y'),
+                    'co': rec.check_out.strftime('%d.%m.%Y'),
+                    'fac': rec.facility_id.name or '',
+                    'others': others,
+                    'cnt': len(overlapping),
+                    'other': overlapping[0].name,
+                    'own': own,
+                    'cap': capacity,
+                })
 
     @api.model
     def _find_overlapping(self, facility_id, check_in, check_out, room_ids=None, exclude_id=None):
@@ -452,11 +722,13 @@ class KjrFacilityBooking(models.Model):
         tax_cmd = [(6, 0, tax.ids)] if tax else False
         lines = []
         if self.amount_accommodation:
+            # F2: Kenntlich machen, wenn der günstigere Mo–Fr-Tarif angewandt wurde.
+            weekday_hint = _(' – Mo–Fr-Tarif') if self._uses_weekday_rate() else ''
             lines.append((0, 0, {
                 'name': _('Unterkunft %(fac)s, %(n)d Nächte, %(p)d Pers. (%(ci)s–%(co)s)') % {
                     'fac': self.facility_id.name, 'n': self.nights, 'p': self.participant_count,
                     'ci': self.check_in, 'co': self.check_out,
-                },
+                } + weekday_hint,
                 'quantity': 1.0, 'price_unit': self.amount_accommodation,
                 'tax_ids': tax_cmd,
             }))
@@ -469,6 +741,32 @@ class KjrFacilityBooking(models.Model):
             lines.append((0, 0, {
                 'name': _('Zusatzausstattung'),
                 'quantity': 1.0, 'price_unit': self.amount_equipment, 'tax_ids': tax_cmd,
+            }))
+        # F2: Endreinigung (einmalig) und Fremdenverkehrsbeitrag als eigene Positionen.
+        # Die Endreinigung wird wie die übrigen Leistungen mit dem Tarif-Steuersatz
+        # abgerechnet; der Fremdenverkehrsbeitrag folgt _visitor_tax_taxes() (Default:
+        # ohne Steuer, siehe TODO(Steuer)). In beiden Fällen entspricht die
+        # Rechnungssumme exakt dem in der Buchung ausgewiesenen Gesamtbetrag, weil
+        # _compute_amounts dieselbe Fallunterscheidung verwendet.
+        if self.amount_cleaning:
+            lines.append((0, 0, {
+                'name': _('Endreinigung (einmalig)'),
+                'quantity': 1.0, 'price_unit': self.amount_cleaning, 'tax_ids': tax_cmd,
+            }))
+        if self.amount_visitor_tax:
+            # B1: Bemessung identisch zu _compute_amounts (Betreuende sind befreit).
+            # B2/TODO(Steuer): Steuerschlüssel kommt aus _visitor_tax_taxes() —
+            # standardmäßig leer (durchlaufender Posten, „an die Gemeinde abgeführt").
+            # Dadurch stimmt die Rechnungssumme exakt mit amount_total überein.
+            visitor_taxes = self._visitor_tax_taxes()
+            visitor_tax_hint = '' if visitor_taxes else _(
+                ' (durchlaufender Posten, wird an die Gemeinde abgeführt)')
+            lines.append((0, 0, {
+                'name': _('Fremdenverkehrsbeitrag, %(p)d Pers. × %(n)d Nächte') % {
+                    'p': self._visitor_tax_person_count(), 'n': self.nights,
+                } + visitor_tax_hint,
+                'quantity': 1.0, 'price_unit': self.amount_visitor_tax,
+                'tax_ids': [(6, 0, visitor_taxes.ids)],
             }))
         move_vals = {
             'move_type': 'out_invoice',

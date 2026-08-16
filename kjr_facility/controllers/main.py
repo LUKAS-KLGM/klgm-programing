@@ -4,6 +4,8 @@ import base64
 import logging
 from datetime import date as date_cls
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import http, _
 from odoo.http import request
 from odoo.addons.portal.controllers.portal import CustomerPortal, pager as portal_pager
@@ -11,6 +13,9 @@ from odoo.exceptions import AccessError, MissingError
 
 _logger = logging.getLogger(__name__)
 ITEMS_PER_PAGE = 10
+MEAL_OPTIONS = ('none', 'breakfast', 'half', 'full')
+# Werte, die ein angehaktes Kästchen im HTML-Formular liefern kann.
+CHECKBOX_TRUE = ('1', 'true', 'on', 'yes', 'ja', 'checked')
 
 
 class KjrFacilityWebsite(http.Controller):
@@ -33,6 +38,258 @@ class KjrFacilityWebsite(http.Controller):
             'facility': facility, 'page_name': 'kjr_facilities',
         })
 
+    # ══════════════════════════════════════════════════════════════════════════
+    # ANFRAGEFORMULAR — Hilfsfunktionen
+    # ══════════════════════════════════════════════════════════════════════════
+
+    @staticmethod
+    def _to_int(value):
+        """Robuste Umwandlung eines Formularwerts in eine ganze Zahl (0 als Fallback)."""
+        try:
+            return int(value or 0)
+        except (ValueError, TypeError):
+            return 0
+
+    @staticmethod
+    def _to_date(value):
+        """Formularwert (JJJJ-MM-TT) in ein Datum wandeln; None bei ungültiger Eingabe."""
+        try:
+            return date_cls.fromisoformat((value or '').strip())
+        except (ValueError, AttributeError, TypeError):
+            return None
+
+    @staticmethod
+    def _to_bool(value):
+        """Ankreuzfeld auswerten (ein nicht angehaktes Kästchen wird gar nicht gesendet)."""
+        return str(value or '').strip().lower() in CHECKBOX_TRUE
+
+    @staticmethod
+    def _nights_label(count):
+        """Deutsche Ein-/Mehrzahl für Nächte — für gut lesbare Fehlermeldungen."""
+        return _('1 Nacht') if count == 1 else _('%d Nächte') % count
+
+    def _website_tariff(self, facility):
+        """Tarif, der dem Formular (Zusatzpositionen + Kostenvorschau) zugrunde liegt.
+
+        Die endgültige Tarifgruppe (Mitgliedsverband, Partner, kommerziell) ordnet die
+        Geschäftsstelle im Backend zu — im öffentlichen Formular wird bewusst konservativ
+        der Standardtarif angesetzt. Einrichtungsspezifische Tarife haben Vorrang vor
+        den übergreifenden Tarifen (facility_id leer)."""
+        Tariff = request.env['kjr.facility.tariff'].sudo()
+        for domain in (
+            [('facility_id', '=', facility.id), ('tariff_type', '=', 'standard')],
+            [('facility_id', '=', facility.id)],
+            [('facility_id', '=', False), ('tariff_type', '=', 'standard')],
+            [('facility_id', '=', False)],
+        ):
+            tariff = Tariff.search(domain, limit=1)
+            if tariff:
+                return tariff
+        return Tariff.browse()
+
+    def _facility_request_preview(self, facility, tariff, values):
+        """Kostenvorschau für das Formular — bewusst OHNE eigene Rechenlogik.
+
+        Es wird ein nicht gespeicherter Buchungssatz (`new()`) aufgebaut und dessen
+        Compute-Felder ausgelesen. Damit rechnet die Vorschau garantiert mit derselben
+        Logik wie das Modell (`_compute_amounts`); eine zweite Preisformel im Frontend
+        gibt es ausdrücklich nicht. Liefert None, wenn zu wenig Daten vorliegen."""
+        check_in = self._to_date(values.get('check_in'))
+        check_out = self._to_date(values.get('check_out'))
+        pax = self._to_int(values.get('participant_count'))
+        if not (tariff and check_in and check_out and check_out > check_in and pax > 0):
+            return None
+        meal = values.get('meal_option') if values.get('meal_option') in MEAL_OPTIONS else 'none'
+        try:
+            draft = request.env['kjr.facility.booking'].sudo().new({
+                'company_id': request.env.company.id,
+                'facility_id': facility.id,
+                'tariff_id': tariff.id,
+                'check_in': check_in,
+                'check_out': check_out,
+                'participant_count': pax,
+                'leader_count': self._to_int(values.get('leader_count')),
+                'meal_option': meal,
+                'visitor_tax_exempt_count': self._to_int(values.get('visitor_tax_exempt_count')),
+                'is_organized_group': self._to_bool(values.get('is_organized_group')),
+            })
+            return {
+                'nights': draft.nights,
+                'participant_count': draft.participant_count,
+                'accommodation': draft.amount_accommodation,
+                'meals': draft.amount_meals,
+                'cleaning': draft.amount_cleaning,
+                'visitor_tax': draft.amount_visitor_tax,
+                'untaxed': draft.amount_untaxed,
+                'tax': draft.amount_tax,
+                'total': draft.amount_total,
+                'occupancy_warning': draft.occupancy_warning,
+            }
+        except Exception as e:  # noqa: BLE001 - eine Vorschau darf das Formular nie blockieren
+            _logger.warning('Kostenvorschau für %s fehlgeschlagen: %s', facility.name, e)
+            return None
+
+    def _validate_facility_request(self, facility, post):
+        """Serverseitige Prüfung der Anfrage; liefert (errors, check_in, check_out).
+
+        Geprüft wird in Stufen — erst Pflichtfelder, dann das Datum, dann die
+        Belegungsregeln der Einrichtung und zuletzt die Verfügbarkeit. Dadurch entsteht
+        je Formularfeld immer nur eine Meldung, und die Meldungen bleiben eindeutig.
+        Die Schlüssel des Fehler-Dicts entsprechen den Feldnamen im Formular, damit das
+        Template das betroffene Feld markieren kann."""
+        errors = {}
+        for fname, label in (('check_in', _('Anreise')), ('check_out', _('Abreise')),
+                             ('participant_count', _('Teilnehmerzahl')),
+                             ('contact_person', _('Ansprechpartner/in'))):
+            if not str(post.get(fname) or '').strip():
+                errors[fname] = _('%s ist ein Pflichtfeld.') % label
+
+        check_in = self._to_date(post.get('check_in'))
+        check_out = self._to_date(post.get('check_out'))
+        if errors:
+            return errors, check_in, check_out
+        if not check_in or not check_out:
+            errors['check_in'] = _('Ungültiges Datum (JJJJ-MM-TT).')
+            return errors, check_in, check_out
+        if check_out <= check_in:
+            errors['check_out'] = _('Die Abreise muss nach der Anreise liegen.')
+            return errors, check_in, check_out
+
+        nights = (check_out - check_in).days
+        pax = self._to_int(post.get('participant_count'))
+        leaders = self._to_int(post.get('leader_count'))
+        persons = pax + leaders
+        today = date_cls.today()
+
+        # ── Buchungsvorlauf ──────────────────────────────────────────────────
+        if check_in < today:
+            errors['check_in'] = _('Die Anreise darf nicht in der Vergangenheit liegen.')
+        elif facility.max_advance_months:
+            # B2: Der Buchungsvorlauf ist im Backend nur ein weicher Hinweis (die
+            # Geschäftsstelle muss Ausnahmen erfassen können) — im öffentlichen
+            # Formular wird er dagegen hart durchgesetzt. 0 = unbegrenzt.
+            latest = today + relativedelta(months=facility.max_advance_months)
+            if check_in > latest:
+                errors['check_in'] = _(
+                    'Laut Vorstandsbeschluss vom 21.07.2026 nehmen wir Anfragen für %(fac)s '
+                    'höchstens %(m)d Monate im Voraus an. Die Anreise darf daher spätestens '
+                    'am %(d)s liegen. Für spätere Termine wenden Sie sich bitte an die '
+                    'Geschäftsstelle.'
+                ) % {'fac': facility.name, 'm': facility.max_advance_months,
+                     'd': latest.strftime('%d.%m.%Y')}
+
+        # ── Mindestbelegung / Kapazität ──────────────────────────────────────
+        if pax <= 0:
+            errors['participant_count'] = _('Bitte geben Sie mindestens eine teilnehmende Person an.')
+        elif facility.min_persons and persons < facility.min_persons:
+            errors['participant_count'] = _(
+                '%(fac)s wird erst ab einer Mindestbelegung von %(min)d Personen vergeben. '
+                'Ihre Anfrage umfasst %(cur)d Personen (%(pax)d Teilnehmende + %(led)d Betreuende). '
+                'Bitte erhöhen Sie die Personenzahl oder wenden Sie sich an die Geschäftsstelle.'
+            ) % {'fac': facility.name, 'min': facility.min_persons, 'cur': persons,
+                 'pax': pax, 'led': leaders}
+        elif facility.capacity and pax > facility.capacity:
+            errors['participant_count'] = _(
+                'Die Teilnehmerzahl (%(pax)d) übersteigt die Kapazität von %(fac)s '
+                '(max. %(cap)d Personen).'
+            ) % {'pax': pax, 'fac': facility.name, 'cap': facility.capacity}
+
+        # ── Mindestaufenthalt ────────────────────────────────────────────────
+        if facility.min_nights and nights < facility.min_nights:
+            errors['check_out'] = _(
+                'Für %(fac)s gilt ein Mindestaufenthalt von %(min)s. Ihr Zeitraum umfasst '
+                'nur %(cur)s. Bitte wählen Sie einen längeren Zeitraum.'
+            ) % {'fac': facility.name, 'min': self._nights_label(facility.min_nights),
+                 'cur': self._nights_label(nights)}
+
+        # ── Organisierte Jugend-/Bildungsgruppe ──────────────────────────────
+        if facility.requires_organized_group and not self._to_bool(post.get('is_organized_group')):
+            errors['is_organized_group'] = _(
+                '%s wird nur an organisierte Jugend- und Bildungsgruppen vergeben. Bitte '
+                'bestätigen Sie, dass Ihre Gruppe diese Voraussetzung erfüllt — andernfalls '
+                'wenden Sie sich bitte direkt an die Geschäftsstelle.'
+            ) % facility.name
+
+        # ── Befreiungen vom Fremdenverkehrsbeitrag ───────────────────────────
+        # B3: Betreuende sind als Begleitpersonen ohnehin beitragsfrei und gehen gar
+        # nicht erst in die Grundmenge ein (siehe _compute_amounts). Das Feld erfasst
+        # deshalb nur die WEITEREN Befreiungen unter den Teilnehmenden — die Obergrenze
+        # ist die Teilnehmerzahl, nicht die Gesamtpersonenzahl. Sonst würde doppelt
+        # abgezogen bzw. eine unplausible Zahl akzeptiert.
+        exempt = self._to_int(post.get('visitor_tax_exempt_count'))
+        if exempt < 0 or (pax > 0 and exempt > pax):
+            errors['visitor_tax_exempt_count'] = _(
+                'Es können höchstens %(p)d teilnehmende Personen vom Fremdenverkehrsbeitrag '
+                'befreit sein — so viele Teilnehmende umfasst Ihre Anfrage. Betreuende sind '
+                'als Begleitpersonen bereits automatisch befreit und hier nicht mitzuzählen.'
+            ) % {'p': pax}
+
+        # BUG-a / B1: Verfügbarkeit VOR dem Anlegen prüfen — aber gegen die KAPAZITÄT,
+        # nicht gegen die blosse Existenz einer Überschneidung. Ein Haus wie Diepolz
+        # (42 Betten) darf nicht durch eine einzige 8-Personen-Anfrage gesperrt werden.
+        #
+        # Zählweise bewusst identisch zu kjr.facility.booking._check_double_booking:
+        # dieselbe Hilfsmethode `_find_overlapping` (ohne Raumauswahl, da das Formular
+        # keine Räume anbietet) und dieselbe Summe aus Teilnehmenden + Betreuenden.
+        # ENTSCHEIDUNG: Auch noch unbestätigte Anfragen (Status "Anfrage"/"Reserviert")
+        # zählen mit — genau wie im Modell, das lediglich stornierte Buchungen ausnimmt.
+        # Würden wir sie hier schwächer gewichten, liesse das Formular eine Anfrage zu,
+        # die der harte Constraint beim anschliessenden create() sofort mit einem
+        # Fehler abweisen würde; der Gast bekäme statt einer Meldung einen Serverfehler.
+        # Die Geschäftsstelle kann abgelaufene Vormerkungen jederzeit stornieren und so
+        # Plätze wieder freigeben.
+        # TODO(KJR): Ohne gepflegte "Max. Personen" (capacity = 0) kann die Auslastung
+        # nicht bewertet werden — dann findet wie im Backend keine Prüfung statt. Die
+        # Kapazität je Einrichtung ist vom KJR zu bestätigen (Diepolz: 42 Betten).
+        if not errors and facility.capacity:
+            overlapping = request.env['kjr.facility.booking'].sudo()._find_overlapping(
+                facility.id, check_in, check_out)
+            occupied = sum(
+                (bk.participant_count or 0) + (bk.leader_count or 0) for bk in overlapping
+            )
+            free = facility.capacity - occupied
+            # Ohne Parallelbuchung greift bereits die Kapazitätsprüfung weiter oben —
+            # so bleibt es bei genau einer Meldung pro Sachverhalt (wie im Backend,
+            # das bei fehlender Überschneidung ebenfalls nicht eingreift).
+            if overlapping and persons > free:
+                if free > 0:
+                    errors['check_in'] = _(
+                        'Im gewählten Zeitraum sind in %(fac)s bereits %(occ)d von %(cap)d '
+                        'Plätzen belegt. Frei sind noch %(free)d Plätze, Ihre Anfrage umfasst '
+                        'aber %(cur)d Personen. Bitte wählen Sie einen anderen Zeitraum oder '
+                        'wenden Sie sich an die Geschäftsstelle.'
+                    ) % {'fac': facility.name, 'occ': occupied, 'cap': facility.capacity,
+                         'free': free, 'cur': persons}
+                else:
+                    errors['check_in'] = _(
+                        'Im gewählten Zeitraum ist %(fac)s mit %(occ)d von %(cap)d Plätzen '
+                        'ausgebucht — es sind derzeit keine Plätze frei. Bitte wählen Sie '
+                        'einen anderen Zeitraum oder wenden Sie sich an die Geschäftsstelle.'
+                    ) % {'fac': facility.name, 'occ': occupied, 'cap': facility.capacity}
+        return errors, check_in, check_out
+
+    def _render_facility_request(self, facility, values, errors, preview_requested=False):
+        """Formular rendern — inkl. bereits erfasster Eingaben, Tarif-Hinweisen und
+        (sofern berechenbar) der Kostenvorschau."""
+        tariff = self._website_tariff(facility)
+        return request.render('kjr_facility.website_facility_request', {
+            'facility': facility,
+            'page_name': 'kjr_facilities',
+            'errors': errors,
+            'values': values,
+            'tariff': tariff,
+            'preview': self._facility_request_preview(facility, tariff, values),
+            'preview_requested': preview_requested,
+        })
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # ANFRAGEFORMULAR — Route
+    # ══════════════════════════════════════════════════════════════════════════
+
+    # HINWEIS (offene Produktentscheidung): Die Anfrage setzt bewusst einen Login
+    # voraus (auth='user'), damit die Buchung einem Partner zugeordnet und im Portal
+    # nachverfolgt werden kann. Ob Anfragen auch ohne Konto möglich sein sollen, ist
+    # mit dem KJR noch zu klären — bis dahin NICHT auf auth='public' umstellen.
     @http.route('/service/einrichtung/<int:facility_id>/anfrage', type='http', auth='user',
                 website=True, methods=['GET', 'POST'])
     def facility_request(self, facility_id, **post):
@@ -41,66 +298,49 @@ class KjrFacilityWebsite(http.Controller):
             return request.redirect('/service/einrichtungen')
 
         if request.httprequest.method == 'POST':
-            errors = {}
-            values = dict(post)
-            for f, label in [('check_in', _('Anreise')), ('check_out', _('Abreise')),
-                             ('participant_count', _('Teilnehmer'))]:
-                if not post.get(f):
-                    errors[f] = _('%s ist ein Pflichtfeld.') % label
-            check_in = check_out = None
-            if not errors:
-                try:
-                    check_in = date_cls.fromisoformat(post['check_in'])
-                    check_out = date_cls.fromisoformat(post['check_out'])
-                except (ValueError, KeyError):
-                    errors['check_in'] = _('Ungültiges Datum (JJJJ-MM-TT).')
-                else:
-                    if check_out <= check_in:
-                        errors['check_out'] = _('Die Abreise muss nach der Anreise liegen.')
-            # BUG-a: Verfügbarkeit/Doppelbelegung VOR dem Anlegen prüfen.
-            if not errors and check_in and check_out:
-                conflict = request.env['kjr.facility.booking'].sudo()._find_overlapping(
-                    facility.id, check_in, check_out)
-                if conflict:
-                    errors['check_in'] = _(
-                        'Im gewählten Zeitraum ist %s bereits belegt. Bitte wählen Sie '
-                        'einen anderen Zeitraum.') % facility.name
-            if errors:
-                return request.render('kjr_facility.website_facility_request', {
-                    'facility': facility, 'page_name': 'kjr_facilities',
-                    'errors': errors, 'values': values,
-                })
+            # Eingaben für das erneute Rendern aufheben — niemand soll das Formular
+            # nach einer Fehlermeldung noch einmal ausfüllen müssen.
+            values = {k: v for k, v in post.items() if k not in ('csrf_token', 'action')}
 
-            def _i(key):
-                try:
-                    return int(post.get(key) or 0)
-                except (ValueError, TypeError):
-                    return 0
+            if post.get('action') == 'preview':
+                # Reine Kostenvorschau: es wird nichts angelegt und es werden bewusst
+                # keine Pflichtfeld-/Regelmeldungen erzeugt.
+                return self._render_facility_request(facility, values, {}, preview_requested=True)
+
+            errors, check_in, check_out = self._validate_facility_request(facility, post)
+            if errors:
+                return self._render_facility_request(facility, values, errors)
 
             partner = request.env.user.partner_id.commercial_partner_id
+            # @api.onchange feuert hier nicht — alle Werte explizit setzen.
+            # TODO(KJR): tariff_id wird bewusst NICHT vorbelegt; die Tarifgruppe
+            # (Mitgliedsverband/Partner/kommerziell) ordnet die Geschäftsstelle im
+            # Backend zu. Die Kostenvorschau im Formular rechnet mit dem Standardtarif.
             booking = request.env['kjr.facility.booking'].sudo().create({
                 'facility_id': facility.id,
                 'partner_id': partner.id,
                 'group_name': post.get('group_name', '').strip(),
+                'contact_person': post.get('contact_person', '').strip(),
                 'contact_email': post.get('contact_email') or request.env.user.email,
                 'contact_phone': post.get('contact_phone') or request.env.user.partner_id.phone,
                 'check_in': check_in,
                 'check_out': check_out,
-                'participant_count': _i('participant_count'),
-                'leader_count': _i('leader_count'),
+                'participant_count': self._to_int(post.get('participant_count')),
+                'leader_count': self._to_int(post.get('leader_count')),
+                'is_organized_group': self._to_bool(post.get('is_organized_group')),
+                'visitor_tax_exempt_count': self._to_int(post.get('visitor_tax_exempt_count')),
                 'meal_option': post.get('meal_option') if post.get('meal_option') in
-                ('none', 'breakfast', 'half', 'full') else 'none',
+                MEAL_OPTIONS else 'none',
                 'note': post.get('note', '').strip(),
             })
             return request.redirect('/my/einrichtungsbuchungen/%d' % booking.id)
 
-        return request.render('kjr_facility.website_facility_request', {
-            'facility': facility, 'page_name': 'kjr_facilities',
-            'errors': {}, 'values': {
-                'contact_email': request.env.user.email or '',
-                'contact_phone': request.env.user.partner_id.phone or '',
-            },
-        })
+        return self._render_facility_request(facility, {
+            'contact_person': request.env.user.partner_id.name or '',
+            'contact_email': request.env.user.email or '',
+            'contact_phone': request.env.user.partner_id.phone or '',
+            'meal_option': 'none',
+        }, {})
 
 
 class KjrFacilityPortal(CustomerPortal):

@@ -103,61 +103,217 @@
                         <t t-foreach="errors.values()" t-as="err"><li><t t-esc="err"/></li></t>
                     </ul></div>
                 </t>
+
+                <!-- Belegungsregeln der Einrichtung vorab transparent machen -->
+                <t t-if="facility.min_persons or facility.min_nights or facility.requires_organized_group or facility.max_advance_months">
+                    <div class="alert alert-secondary">
+                        <strong>Voraussetzungen für eine Buchung von <t t-esc="facility.name"/></strong>
+                        <ul class="mb-0 mt-2">
+                            <li t-if="facility.min_persons">Mindestbelegung:
+                                <strong><t t-esc="facility.min_persons"/> Personen</strong>
+                                (Teilnehmende und Betreuende zusammen).</li>
+                            <li t-if="facility.min_nights">Mindestaufenthalt:
+                                <strong><t t-esc="facility.min_nights"/></strong>
+                                <t t-if="facility.min_nights == 1"> Nacht</t><t t-else=""> Nächte</t>.</li>
+                            <li t-if="facility.requires_organized_group">Die Vergabe erfolgt nur an
+                                organisierte Jugend- und Bildungsgruppen.</li>
+                            <li t-if="facility.max_advance_months">Anfragen sind höchstens
+                                <strong><t t-esc="facility.max_advance_months"/> Monate</strong> im Voraus möglich.</li>
+                        </ul>
+                    </div>
+                </t>
+
+                <!-- Zusatzpositionen aus dem Tarif (keine Beträge im Template hartkodiert) -->
+                <t t-if="tariff and (tariff.final_cleaning_fee or tariff.visitor_tax_per_person_night)">
+                    <div class="alert alert-info">
+                        <strong>Diese Positionen kommen zu Unterkunft und Verpflegung hinzu</strong>
+                        <ul class="mb-0 mt-2">
+                            <li t-if="tariff.final_cleaning_fee">
+                                <strong>Endreinigung:</strong>
+                                <t t-esc="'%.2f €' % tariff.final_cleaning_fee"/> einmalig je Aufenthalt.
+                            </li>
+                            <li t-if="tariff.visitor_tax_per_person_night">
+                                <strong>Fremdenverkehrsbeitrag:</strong>
+                                <t t-esc="'%.2f €' % tariff.visitor_tax_per_person_night"/> pro
+                                teilnehmender Person und Nacht. Den Beitrag führen wir an die Gemeinde ab.
+                                Ihre Betreuungspersonen sind als Begleitpersonen befreit – sie rechnen wir
+                                automatisch heraus, Sie müssen dafür nichts angeben. Sind darüber hinaus
+                                einzelne Teilnehmende befreit (z. B. Einwohnerinnen und Einwohner der
+                                Standortgemeinde, Kinder unter 7 Jahren, Schwerbehinderte), tragen Sie
+                                deren Anzahl unten ein.
+                            </li>
+                        </ul>
+                    </div>
+                </t>
+
                 <form method="post" t-attf-action="/service/einrichtung/#{facility.id}/anfrage">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Anreise *</label>
-                            <input type="date" name="check_in" class="form-control"
+                            <input type="date" name="check_in"
+                                   t-attf-class="form-control#{' is-invalid' if errors.get('check_in') else ''}"
                                    t-att-value="values.get('check_in','')" required="required"/>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Abreise *</label>
-                            <input type="date" name="check_out" class="form-control"
+                            <input type="date" name="check_out"
+                                   t-attf-class="form-control#{' is-invalid' if errors.get('check_out') else ''}"
                                    t-att-value="values.get('check_out','')" required="required"/>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Teilnehmer *</label>
-                            <input type="number" name="participant_count" class="form-control" min="1"
-                                   t-att-value="values.get('participant_count','')" required="required"/>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Betreuer</label>
-                            <input type="number" name="leader_count" class="form-control" min="0"
-                                   t-att-value="values.get('leader_count','')"/>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Verpflegung</label>
-                            <select name="meal_option" class="form-select">
-                                <option value="none">Selbstverpflegung</option>
-                                <option value="breakfast">Frühstück</option>
-                                <option value="half">Halbpension</option>
-                                <option value="full">Vollpension</option>
-                            </select>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Ansprechpartner/in *</label>
+                            <input type="text" name="contact_person"
+                                   t-attf-class="form-control#{' is-invalid' if errors.get('contact_person') else ''}"
+                                   t-att-value="values.get('contact_person','')" required="required"/>
+                            <div class="form-text">Name der Person, die die Gruppe leitet und für uns vor
+                                und während des Aufenthalts erreichbar ist.</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Gruppenbezeichnung</label>
                             <input type="text" name="group_name" class="form-control"
                                    t-att-value="values.get('group_name','')"/>
+                            <div class="form-text">z. B. „Jugendgruppe St. Martin“ oder „Klasse 7b“.</div>
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Teilnehmende (Anzahl) *</label>
+                            <input type="number" name="participant_count" min="1"
+                                   t-attf-class="form-control#{' is-invalid' if errors.get('participant_count') else ''}"
+                                   t-att-value="values.get('participant_count','')" required="required"/>
+                            <div class="form-text">Anzahl der Personen in der Gruppe ohne Begleitpersonen.</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Betreuende (Anzahl)</label>
+                            <input type="number" name="leader_count" class="form-control" min="0"
+                                   t-att-value="values.get('leader_count','')"/>
+                            <div class="form-text">Anzahl der volljährigen Begleitpersonen – nicht zu
+                                verwechseln mit der Ansprechpartnerin bzw. dem Ansprechpartner oben.</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Verpflegung</label>
+                            <select name="meal_option" class="form-select">
+                                <option value="none"
+                                        t-att-selected="'selected' if values.get('meal_option','none') == 'none' else None">Selbstverpflegung</option>
+                                <option value="breakfast"
+                                        t-att-selected="'selected' if values.get('meal_option') == 'breakfast' else None">Frühstück</option>
+                                <option value="half"
+                                        t-att-selected="'selected' if values.get('meal_option') == 'half' else None">Halbpension</option>
+                                <option value="full"
+                                        t-att-selected="'selected' if values.get('meal_option') == 'full' else None">Vollpension</option>
+                            </select>
+                        </div>
+                        <t t-if="tariff and tariff.visitor_tax_per_person_night">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Weitere vom Fremdenverkehrsbeitrag befreite
+                                    Teilnehmende (Anzahl)</label>
+                                <input type="number" name="visitor_tax_exempt_count" min="0"
+                                       t-attf-class="form-control#{' is-invalid' if errors.get('visitor_tax_exempt_count') else ''}"
+                                       t-att-value="values.get('visitor_tax_exempt_count','')"/>
+                                <div class="form-text">Anzahl der <strong>Teilnehmenden</strong>, die nach
+                                    der Satzung der Gemeinde vom Beitrag befreit sind (Einwohnerinnen und
+                                    Einwohner der Standortgemeinde, Kinder unter 7 Jahren, Schwerbehinderte).
+                                    Ihre Betreuungspersonen bitte <strong>nicht</strong> mitzählen – sie sind
+                                    ohnehin befreit und werden automatisch herausgerechnet. Im Zweifel leer
+                                    lassen – wir prüfen das gemeinsam mit Ihnen.</div>
+                            </div>
+                        </t>
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">E-Mail</label>
                             <input type="email" name="contact_email" class="form-control"
                                    t-att-value="values.get('contact_email','')"/>
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Telefon</label>
                             <input type="tel" name="contact_phone" class="form-control"
                                    t-att-value="values.get('contact_phone','')"/>
                         </div>
+                        <t t-if="facility.requires_organized_group">
+                            <div class="col-12 mb-3">
+                                <div class="form-check">
+                                    <input type="checkbox" name="is_organized_group" value="1"
+                                           id="kjr_is_organized_group" required="required"
+                                           t-attf-class="form-check-input#{' is-invalid' if errors.get('is_organized_group') else ''}"
+                                           t-att-checked="'checked' if values.get('is_organized_group') else None"/>
+                                    <label class="form-check-label fw-bold" for="kjr_is_organized_group">
+                                        Wir sind eine organisierte Jugend- oder Bildungsgruppe *
+                                    </label>
+                                    <div class="form-text">Das sind Gruppen in Trägerschaft eines
+                                        Jugendverbands, Vereins, einer Schule, Kirchengemeinde, Kommune
+                                        oder eines anerkannten Trägers der freien Jugendhilfe, deren Aufenthalt
+                                        einen jugend- oder bildungsbezogenen Zweck verfolgt und die von
+                                        volljährigen Personen begleitet wird. Private Feiern und rein
+                                        touristische Aufenthalte fallen nicht darunter.</div>
+                                </div>
+                            </div>
+                        </t>
                         <div class="col-12 mb-3">
                             <label class="form-label">Anmerkungen</label>
                             <textarea name="note" class="form-control" rows="3"
                                       t-esc="values.get('note','')"/>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-lg">
+
+                    <!-- Kostenvorschau: serverseitig aus demselben Modell berechnet -->
+                    <t t-if="preview">
+                        <div class="card mb-3">
+                            <div class="card-header"><strong>Kostenvorschau (unverbindlich)</strong></div>
+                            <div class="card-body">
+                                <div t-if="preview.get('occupancy_warning')" class="alert alert-warning py-2">
+                                    <i class="fa fa-info-circle me-1"/><t t-esc="preview.get('occupancy_warning')"/>
+                                </div>
+                                <table class="table table-sm mb-2">
+                                    <tbody>
+                                        <tr>
+                                            <td>Unterkunft (<t t-esc="preview.get('nights')"/> Nächte,
+                                                <t t-esc="preview.get('participant_count')"/> Teilnehmende)</td>
+                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('accommodation')"/></td>
+                                        </tr>
+                                        <tr t-if="preview.get('meals')">
+                                            <td>Verpflegung</td>
+                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('meals')"/></td>
+                                        </tr>
+                                        <tr t-if="preview.get('cleaning')">
+                                            <td>Endreinigung (einmalig)</td>
+                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('cleaning')"/></td>
+                                        </tr>
+                                        <tr t-if="preview.get('visitor_tax')">
+                                            <td>Fremdenverkehrsbeitrag</td>
+                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('visitor_tax')"/></td>
+                                        </tr>
+                                        <tr t-if="preview.get('tax')">
+                                            <td>zzgl. Umsatzsteuer</td>
+                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('tax')"/></td>
+                                        </tr>
+                                        <tr class="fw-bold border-top">
+                                            <td>Gesamt (brutto)</td>
+                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('total')"/></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <p class="small text-muted mb-0">
+                                    Berechnet auf Basis des Tarifs „<t t-esc="tariff.name"/>“. Welcher Tarif
+                                    für Ihre Gruppe gilt, legt die Geschäftsstelle bei der Bearbeitung Ihrer
+                                    Anfrage fest – der endgültige Betrag kann davon abweichen.
+                                </p>
+                            </div>
+                        </div>
+                    </t>
+                    <t t-if="preview_requested and not preview">
+                        <div class="alert alert-warning">
+                            Für die Kostenvorschau benötigen wir Anreise, Abreise und die Anzahl der
+                            Teilnehmenden.
+                            <t t-if="not tariff"> Für diese Einrichtung ist derzeit kein Tarif
+                                hinterlegt – bitte senden Sie die Anfrage ab, wir melden uns mit einem
+                                Angebot bei Ihnen.</t>
+                        </div>
+                    </t>
+
+                    <button type="submit" name="action" value="submit" class="btn btn-primary btn-lg">
                         <i class="fa fa-paper-plane me-1"/>Anfrage senden
+                    </button>
+                    <button type="submit" name="action" value="preview" formnovalidate="formnovalidate"
+                            class="btn btn-outline-primary btn-lg">
+                        <i class="fa fa-calculator me-1"/>Kosten berechnen
                     </button>
                     <a t-attf-href="/service/einrichtung/#{facility.id}" class="btn btn-outline-secondary btn-lg">Abbrechen</a>
                 </form>

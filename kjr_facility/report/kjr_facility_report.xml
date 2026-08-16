@@ -57,6 +57,12 @@
                             <tr><td>Unterkunft</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_accommodation"/></td></tr>
                             <tr><td>Verpflegung</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_meals"/></td></tr>
                             <tr><td>Ausstattung</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_equipment"/></td></tr>
+                            <!-- Endreinigung und Fremdenverkehrsbeitrag sind in Netto/Gesamt
+                                 enthalten und müssen deshalb auch als eigene Positionen im
+                                 Vertrag stehen — sonst ergibt die Aufstellung nicht die
+                                 ausgewiesene Summe. Nur anzeigen, wenn sie anfallen. -->
+                            <tr t-if="o.amount_cleaning"><td>Endreinigung (einmalig)</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_cleaning"/></td></tr>
+                            <tr t-if="o.amount_visitor_tax"><td>Fremdenverkehrsbeitrag</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_visitor_tax"/></td></tr>
                             <tr><td>Netto</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_untaxed"/></td></tr>
                             <tr><td>USt</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_tax"/></td></tr>
                             <tr class="fw-bold table-light"><td>Gesamt (brutto)</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_total"/></td></tr>
