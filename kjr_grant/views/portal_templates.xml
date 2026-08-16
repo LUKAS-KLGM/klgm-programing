@@ -130,7 +130,7 @@
                                     <dl class="row mb-0">
                                         <dt class="col-7">TN gesamt</dt>
                                         <dd class="col-5"><t t-esc="grant.tn_count"/></dd>
-                                        <dt class="col-7">Jugendleiter</dt>
+                                        <dt class="col-7">Gruppenleitung</dt>
                                         <dd class="col-5"><t t-esc="grant.tn_leader_count"/></dd>
                                         <dt class="col-7">Mit Juleica</dt>
                                         <dd class="col-5"><t t-esc="grant.tn_leader_juleica"/></dd>
@@ -180,26 +180,36 @@
                                       method="post" enctype="multipart/form-data">
                                     <input type="hidden" name="csrf_token"
                                            t-att-value="request.csrf_token()"/>
+                                    <!-- accept spiegelt ALLOWED_EXTENSIONS aus
+                                         controllers/portal.py bzw. website.py. Engere
+                                         Listen blenden im Dateidialog genau die Dateien
+                                         aus, die der Server annehmen würde (z. B. ein
+                                         abfotografierter Beleg). -->
                                     <div class="row">
                                         <div class="col-md-6 mb-3">
-                                            <label class="form-label">Teilnehmerliste (PDF/XLSX)</label>
+                                            <label class="form-label">Teilnahmeliste</label>
                                             <input type="file" name="tn_list_file" class="form-control"
-                                                   accept=".pdf,.xlsx,.xls,.csv"/>
+                                                   accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png"/>
+                                            <div class="form-text">PDF, Word, Excel/CSV oder Bild (JPG/PNG), max. 10 MB</div>
                                         </div>
                                         <div class="col-md-6 mb-3">
-                                            <label class="form-label">Bericht (PDF)</label>
+                                            <label class="form-label">Bericht</label>
                                             <input type="file" name="report_file" class="form-control"
-                                                   accept=".pdf,.docx"/>
+                                                   accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png"/>
+                                            <div class="form-text">PDF, Word, Excel/CSV oder Bild (JPG/PNG), max. 10 MB</div>
                                         </div>
                                         <div class="col-md-6 mb-3">
-                                            <label class="form-label">Belegliste (PDF/XLSX)</label>
+                                            <label class="form-label">Belegliste</label>
                                             <input type="file" name="receipt_file" class="form-control"
-                                                   accept=".pdf,.xlsx,.xls"/>
+                                                   accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png"/>
+                                            <div class="form-text">PDF, Word, Excel/CSV oder Bild (JPG/PNG), max. 10 MB</div>
                                         </div>
                                         <div class="col-md-6 mb-3">
                                             <label class="form-label">Weitere Dokumente</label>
                                             <input type="file" name="other_file_1" class="form-control"
+                                                   accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png"
                                                    multiple="1"/>
+                                            <div class="form-text">PDF, Word, Excel/CSV oder Bild (JPG/PNG), max. 10 MB</div>
                                         </div>
                                     </div>
                                     <button type="submit" class="btn btn-secondary">
@@ -302,6 +312,11 @@
                             jeweils eigene Zugangsdaten erstellen. Die Anträge werden dem gewählten
                             Mitgliedsverband zugeordnet.
                         </div>
+                        <div class="text-center mb-3">
+                            <a href="/service/zuschuss-hilfe" class="btn btn-outline-primary">
+                                <i class="fa fa-question-circle me-1"/>Wie stelle ich einen Zuschussantrag?
+                            </a>
+                        </div>
                         <div class="text-center text-muted small">
                             Bei Fragen wenden Sie sich an:<br/>
                             <t t-if="res_company.phone">Tel. <t t-out="res_company.phone"/></t>
@@ -324,9 +339,23 @@
                     </ol>
                 </nav>
                 <h1 class="mb-2">Zuschussantrag stellen</h1>
-                <p class="text-muted mb-4">
+                <p class="text-muted mb-3">
                     Antrag bei <t t-out="res_company.name"/>. Felder mit * sind Pflichtfelder.
                 </p>
+
+                <!-- Einstieg in die Hilfeseite — bewusst vor dem Formular, damit
+                     Erstantragsteller die Anleitung finden, bevor sie ausfüllen. -->
+                <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center mb-4">
+                    <div class="me-3">
+                        <i class="fa fa-info-circle me-1"/>
+                        <strong>Zum ersten Mal hier?</strong>
+                        In der Anleitung finden Sie, wer antragsberechtigt ist, welche
+                        Förderart passt, welche Unterlagen nötig sind und welche Fristen gelten.
+                    </div>
+                    <a href="/service/zuschuss-hilfe" class="btn btn-outline-primary mt-2 mt-md-0">
+                        <i class="fa fa-question-circle me-1"/>Anleitung öffnen
+                    </a>
+                </div>
 
                 <t t-if="errors">
                     <div class="alert alert-danger">
@@ -346,7 +375,7 @@
                     <!-- 1. Maßnahme -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Maßnahme</h5>
+                            <h5 class="mb-0">1. Maßnahme</h5>
                         </div>
                         <div class="card-body">
                             <div class="row">
@@ -354,58 +383,69 @@
                                     <label class="form-label fw-bold">Bezeichnung der Maßnahme *</label>
                                     <input type="text" name="measure_name" class="form-control"
                                            t-att-value="values.get('measure_name','')"
-                                           placeholder="z. B. Sommerfreizeit Jungschar 2026"
+                                           placeholder="z. B. Sommerausflug Skylinepark"
                                            required="required"/>
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-md-3 mb-3">
-                                    <label class="form-label fw-bold">Beginn Datum *</label>
+                                    <label class="form-label fw-bold">Beginn der Maßnahme Datum *</label>
                                     <input type="date" name="measure_start" class="form-control"
                                            t-att-value="values.get('measure_start','')" required="required"/>
                                 </div>
                                 <div class="col-md-3 mb-3">
-                                    <label class="form-label">Uhrzeit</label>
+                                    <label class="form-label fw-bold">Uhrzeit *</label>
                                     <input type="time" name="measure_start_time" class="form-control"
-                                           t-att-value="values.get('measure_start_time','')"/>
+                                           t-att-value="values.get('measure_start_time','')" required="required"/>
                                 </div>
                                 <div class="col-md-3 mb-3">
-                                    <label class="form-label fw-bold">Ende Datum *</label>
+                                    <label class="form-label fw-bold">Ende der Maßnahme Datum *</label>
                                     <input type="date" name="measure_end" class="form-control"
                                            t-att-value="values.get('measure_end','')" required="required"/>
                                 </div>
                                 <div class="col-md-3 mb-3">
-                                    <label class="form-label">Uhrzeit</label>
+                                    <label class="form-label fw-bold">Uhrzeit *</label>
                                     <input type="time" name="measure_end_time" class="form-control"
-                                           t-att-value="values.get('measure_end_time','')"/>
+                                           t-att-value="values.get('measure_end_time','')" required="required"/>
+                                </div>
+                            </div>
+                            <!-- TODO: PLZ/Ort des Skylineparks mit Bora gegenprüfen. -->
+                            <div class="row">
+                                <div class="col-md-2 mb-3">
+                                    <label class="form-label fw-bold">PLZ *</label>
+                                    <input type="text" name="measure_zip" class="form-control"
+                                           t-att-value="values.get('measure_zip','')"
+                                           placeholder="86871" required="required"/>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Ort der Maßnahme *</label>
+                                    <input type="text" name="measure_location" class="form-control"
+                                           t-att-value="values.get('measure_location','')"
+                                           placeholder="Skylinepark, Rammingen" required="required"/>
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label">Ort der Maßnahme</label>
-                                    <input type="text" name="measure_location" class="form-control"
-                                           t-att-value="values.get('measure_location','')"
-                                           placeholder="z. B. Jugendzeltplatz NiSo"/>
-                                </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label fw-bold">Anzahl der Teilnehmer *</label>
                                     <input type="number" name="tn_count" class="form-control"
                                            t-att-value="values.get('tn_count',0)" min="1" required="required"/>
+                                    <div class="form-text">ohne Gruppenleitung</div>
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">Anzahl der Gruppenleitung</label>
+                                    <label class="form-label fw-bold">Anzahl der Gruppenleitung *</label>
                                     <input type="number" name="tn_leader_count" class="form-control"
-                                           t-att-value="values.get('tn_leader_count',0)" min="0"/>
+                                           t-att-value="values.get('tn_leader_count',0)" min="0"
+                                           required="required"/>
                                 </div>
-                            </div>
-                            <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label">Davon mit Juleica</label>
                                     <input type="number" name="tn_leader_juleica" class="form-control"
                                            t-att-value="values.get('tn_leader_juleica',0)" min="0"/>
                                 </div>
+                            </div>
+                            <div class="row">
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">TN aus anderen Regionen
+                                    <label class="form-label">davon Teilnehmer aus anderen Regionen
                                         <small class="text-muted">(max. 25 %)</small>
                                     </label>
                                     <input type="number" name="tn_external_count" class="form-control"
@@ -418,7 +458,7 @@
                     <!-- 2. Antragsteller -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Antragsteller/in (Organisation)</h5>
+                            <h5 class="mb-0">2. Antragsteller/in (Organisation)</h5>
                         </div>
                         <div class="card-body">
                             <div class="row">
@@ -443,31 +483,36 @@
                                            required="required"/>
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">E-Mail</label>
+                                    <label class="form-label">E-Mail *</label>
                                     <input type="email" name="contact_email" class="form-control"
-                                           t-att-value="values.get('contact_email','')"/>
+                                           t-att-value="values.get('contact_email','')"
+                                           required="required"/>
+                                    <div class="form-text">
+                                        An diese Adresse geht die Bestätigung zu Ihrem Antrag.
+                                    </div>
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">Telefon</label>
+                                    <label class="form-label">Telefon *</label>
                                     <input type="tel" name="contact_phone" class="form-control"
-                                           t-att-value="values.get('contact_phone','')"/>
+                                           t-att-value="values.get('contact_phone','')"
+                                           required="required"/>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 3. Teilnehmerliste -->
+                    <!-- 3. Teilnahmeliste -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Teilnehmerliste</h5>
+                            <h5 class="mb-0">3. Teilnahmeliste</h5>
                             <button type="button" class="btn btn-light btn-sm" onclick="addParticipantRow()">
                                 <i class="fa fa-plus me-1"/>Teilnehmer hinzufügen
                             </button>
                         </div>
                         <div class="card-body">
                             <p class="text-muted small">
-                                Lt. KJR OA ist die Teilnehmerliste bei Maßnahmen mit Teilnehmern Pflicht.
-                                Bitte alle Teilnehmer hier eintragen.
+                                Laut Zuschussrichtlinien ist die Teilnahmeliste bei Maßnahmen mit
+                                Teilnehmenden Pflicht. Bitte alle Teilnehmer/innen eintragen.
                             </p>
                             <div class="table-responsive">
                                 <table class="table table-sm" id="tn_table">
@@ -475,10 +520,11 @@
                                         <tr>
                                             <th>Nr.</th>
                                             <th>Name, Vorname *</th>
-                                            <th>Geburtsdatum</th>
+                                            <th>Alter *</th>
+                                            <th>Geschlecht</th>
                                             <th>PLZ</th>
                                             <th>Wohnort</th>
-                                            <th>Leitung</th>
+                                            <th>Kennziffer</th>
                                             <th>Juleica</th>
                                             <th></th>
                                         </tr>
@@ -486,17 +532,39 @@
                                     <tbody id="tn_rows">
                                         <tr class="tn-row">
                                             <td class="tn-nr">1</td>
-                                            <td><input type="text" name="tn_name_1" class="form-control form-control-sm" required="required"/></td>
-                                            <td><input type="date" name="tn_birth_1" class="form-control form-control-sm"/></td>
-                                            <td><input type="text" name="tn_zip_1" class="form-control form-control-sm" style="width:80px"/></td>
-                                            <td><input type="text" name="tn_city_1" class="form-control form-control-sm"/></td>
-                                            <td class="text-center"><input type="checkbox" name="tn_leader_1" class="form-check-input"/></td>
-                                            <td class="text-center"><input type="checkbox" name="tn_juleica_1" class="form-check-input"/></td>
+                                            <td><input type="text" name="tn_name_1" class="form-control form-control-sm" t-att-value="values.get('tn_name_1','')" required="required"/></td>
+                                            <td><input type="number" name="tn_age_1" class="form-control form-control-sm" style="width:80px" min="0" max="120" t-att-value="values.get('tn_age_1','')" required="required"/></td>
+                                            <td>
+                                                <select name="tn_gender_1" class="form-select form-select-sm">
+                                                    <option value="">—</option>
+                                                    <option value="male"    t-att-selected="values.get('tn_gender_1') == 'male'">männlich</option>
+                                                    <option value="female"  t-att-selected="values.get('tn_gender_1') == 'female'">weiblich</option>
+                                                    <option value="diverse" t-att-selected="values.get('tn_gender_1') == 'diverse'">divers</option>
+                                                </select>
+                                            </td>
+                                            <td><input type="text" name="tn_zip_1" class="form-control form-control-sm" style="width:80px" t-att-value="values.get('tn_zip_1','')"/></td>
+                                            <td><input type="text" name="tn_city_1" class="form-control form-control-sm" t-att-value="values.get('tn_city_1','')"/></td>
+                                            <td>
+                                                <select name="tn_role_1" class="form-select form-select-sm">
+                                                    <option value="">—</option>
+                                                    <option value="EA" t-att-selected="values.get('tn_role_1') == 'EA'">EA</option>
+                                                    <option value="HA" t-att-selected="values.get('tn_role_1') == 'HA'">HA</option>
+                                                    <option value="HO" t-att-selected="values.get('tn_role_1') == 'HO'">HO</option>
+                                                    <option value="PR" t-att-selected="values.get('tn_role_1') == 'PR'">PR</option>
+                                                    <option value="SO" t-att-selected="values.get('tn_role_1') == 'SO'">SO</option>
+                                                </select>
+                                            </td>
+                                            <td class="text-center"><input type="checkbox" name="tn_juleica_1" class="form-check-input" t-att-checked="values.get('tn_juleica_1') and 'checked' or None"/></td>
                                             <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeParticipantRow(this)"><i class="fa fa-trash"/></button></td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
+                            <p class="text-muted small mb-0">
+                                Kennziffer: EA = ehrenamtliche/r Mitarbeiter/in,
+                                HA = haupt-/nebenberufliche/r Mitarbeiter/in,
+                                HO = Honorarkraft, PR = Praktikant/in, SO = sonstige
+                            </p>
                             <script type="text/javascript">
                                 function addParticipantRow() {
                                     var tbody = document.getElementById('tn_rows');
@@ -507,10 +575,23 @@
                                     row.innerHTML =
                                         '&lt;td class="tn-nr"&gt;' + nr + '&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;input type="text" name="tn_name_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;input type="date" name="tn_birth_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="number" name="tn_age_' + nr + '" class="form-control form-control-sm" style="width:80px" min="0" max="120"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;select name="tn_gender_' + nr + '" class="form-select form-select-sm"&gt;' +
+                                        '&lt;option value=""&gt;—&lt;/option&gt;' +
+                                        '&lt;option value="male"&gt;männlich&lt;/option&gt;' +
+                                        '&lt;option value="female"&gt;weiblich&lt;/option&gt;' +
+                                        '&lt;option value="diverse"&gt;divers&lt;/option&gt;' +
+                                        '&lt;/select&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;input type="text" name="tn_zip_' + nr + '" class="form-control form-control-sm" style="width:80px"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;input type="text" name="tn_city_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
-                                        '&lt;td class="text-center"&gt;&lt;input type="checkbox" name="tn_leader_' + nr + '" class="form-check-input"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;select name="tn_role_' + nr + '" class="form-select form-select-sm"&gt;' +
+                                        '&lt;option value=""&gt;—&lt;/option&gt;' +
+                                        '&lt;option value="EA"&gt;EA&lt;/option&gt;' +
+                                        '&lt;option value="HA"&gt;HA&lt;/option&gt;' +
+                                        '&lt;option value="HO"&gt;HO&lt;/option&gt;' +
+                                        '&lt;option value="PR"&gt;PR&lt;/option&gt;' +
+                                        '&lt;option value="SO"&gt;SO&lt;/option&gt;' +
+                                        '&lt;/select&gt;&lt;/td&gt;' +
                                         '&lt;td class="text-center"&gt;&lt;input type="checkbox" name="tn_juleica_' + nr + '" class="form-check-input"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;button type="button" class="btn btn-sm btn-outline-danger" onclick="removeParticipantRow(this)"&gt;&lt;i class="fa fa-trash"&gt;&lt;/i&gt;&lt;/button&gt;&lt;/td&gt;';
                                     tbody.appendChild(row);
@@ -518,8 +599,16 @@
                                 function removeParticipantRow(btn) {
                                     var row = btn.closest('tr');
                                     row.remove();
+                                    // Nummer UND Feldnamen neu vergeben – der Controller liest tn_name_1..n
+                                    // fortlaufend und bricht bei der ersten Lücke ab.
                                     var rows = document.querySelectorAll('#tn_rows .tn-row');
-                                    rows.forEach(function(r, i) { r.querySelector('.tn-nr').textContent = i + 1; });
+                                    rows.forEach(function(r, i) {
+                                        var nr = i + 1;
+                                        r.querySelector('.tn-nr').textContent = nr;
+                                        r.querySelectorAll('[name]').forEach(function(el) {
+                                            el.name = el.name.replace(/_\d+$/, '_' + nr);
+                                        });
+                                    });
                                 }
                             </script>
                         </div>
@@ -528,7 +617,7 @@
                     <!-- 4. Bankverbindung -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Überweisung des Zuschusses soll erfolgen auf:</h5>
+                            <h5 class="mb-0">4. Überweisung des Zuschusses soll erfolgen auf:</h5>
                         </div>
                         <div class="card-body">
                             <div class="alert alert-info">
@@ -561,17 +650,22 @@
                         </div>
                     </div>
 
-                    <!-- 4. Maßnahmenart -->
+                    <!-- 5. Maßnahmenart -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Maßnahme <small>(zutreffendes ankreuzen)</small></h5>
+                            <h5 class="mb-0">5. Maßnahme <small>(zutreffendes ankreuzen)</small></h5>
                         </div>
                         <div class="card-body">
                             <label for="grant_type_id" class="form-label fw-bold">Förderart *</label>
+                            <!-- data-requires-receipt steuert, ob die Belegliste (Block 7 bzw.
+                                 Datei-Upload in Block 8) Pflicht ist. Ohne Auswahl wird
+                                 konservativ „Pflicht" angenommen — genauso prüft der Server. -->
                             <select name="grant_type_id" id="grant_type_id" class="form-select" required="required">
-                                <option value="">— Bitte wählen —</option>
+                                <option value="" data-code="" data-requires-receipt="1">— Bitte wählen —</option>
                                 <t t-foreach="grant_types" t-as="gt">
                                     <option t-att-value="gt.id"
+                                            t-att-data-code="gt.code"
+                                            t-att-data-requires-receipt="gt.requires_receipt and '1' or '0'"
                                             t-att-selected="values.get('grant_type_id') and int(values.get('grant_type_id',0)) == gt.id">
                                         <t t-esc="gt.name"/>
                                     </option>
@@ -583,7 +677,7 @@
                         </div>
                     </div>
 
-                    <!-- 4b. Delegiertenförderung § 4.9 (nur bei Bedarf ausfüllen) -->
+                    <!-- 5b. Delegiertenförderung § 4.9 (nur bei Bedarf ausfüllen) -->
                     <div class="card mb-4">
                         <div class="card-header bg-light">
                             <h6 class="mb-0">Nur bei Delegiertenförderung (§ 4.9 – Fahrtkosten n. BayRKG)</h6>
@@ -619,10 +713,10 @@
                         </div>
                     </div>
 
-                    <!-- 5. Kostenaufstellung -->
+                    <!-- 6. Kostenaufstellung -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">Kostenaufstellung</h5>
+                            <h5 class="mb-0">6. Kostenaufstellung</h5>
                         </div>
                         <div class="card-body">
                             <p class="text-muted small">Belege bitte in der Belegliste auflisten.</p>
@@ -679,16 +773,213 @@
                         </div>
                     </div>
 
-                    <!-- 6. Dokumente -->
+                    <!-- 7. Belegliste -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">7. Belegliste</h5>
+                            <button type="button" class="btn btn-light btn-sm d-none" id="rc_add_btn"
+                                    onclick="addReceiptRow()">
+                                <i class="fa fa-plus me-1"/>Beleg hinzufügen
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" value="1"
+                                       name="use_digital_receipts" id="use_digital_receipts"
+                                       onchange="toggleDigitalReceipts()"
+                                       t-att-checked="values.get('use_digital_receipts') and 'checked' or None"/>
+                                <label class="form-check-label fw-bold" for="use_digital_receipts">
+                                    Belegliste hier digital ausfüllen
+                                </label>
+                                <div class="form-text">
+                                    Ohne Häkchen laden Sie Ihre Belegliste unter „8. Dokumente“ als Datei hoch.
+                                </div>
+                            </div>
+                            <p class="text-muted small">
+                                Diese Belege sind vom Antragsteller zum Zwecke der Nachprüfung
+                                5 Jahre im Original aufzubewahren.
+                            </p>
+                            <!-- Papierweg: gleiche Spalten wie die digitale Belegliste. -->
+                            <p class="small mb-3">
+                                <i class="fa fa-print me-1"/>
+                                Lieber auf Papier sammeln?
+                                <a href="/service/zuschuss/belegliste-vorlage" target="_blank">
+                                    Vorlage zum Ausdrucken
+                                </a>
+                                — ausgefüllt und unterschrieben können Sie sie unter
+                                „8. Dokumente“ als Scan hochladen.
+                            </p>
+                            <div id="rc_wrapper" class="d-none">
+                                <div class="table-responsive">
+                                    <table class="table table-sm" id="rc_table">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Nr.</th>
+                                                <th>Datum *</th>
+                                                <th>Beleg-Nr.</th>
+                                                <th>Empfänger / Einzahler *</th>
+                                                <th>Bezeichnung *</th>
+                                                <th>Art *</th>
+                                                <th>Position *</th>
+                                                <th>Betrag (€) *</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="rc_rows">
+                                            <tr class="rc-row">
+                                                <td class="rc-nr">1</td>
+                                                <td><input type="date" name="rc_date_1" class="form-control form-control-sm" t-att-value="values.get('rc_date_1','')"/></td>
+                                                <td><input type="text" name="rc_no_1" class="form-control form-control-sm" style="width:90px" t-att-value="values.get('rc_no_1','')"/></td>
+                                                <td><input type="text" name="rc_partner_1" class="form-control form-control-sm" t-att-value="values.get('rc_partner_1','')"/></td>
+                                                <td><input type="text" name="rc_desc_1" class="form-control form-control-sm" t-att-value="values.get('rc_desc_1','')"/></td>
+                                                <td>
+                                                    <select name="rc_direction_1" class="form-select form-select-sm">
+                                                        <option value="expense" t-att-selected="values.get('rc_direction_1','expense') == 'expense'">Ausgabe</option>
+                                                        <option value="income"  t-att-selected="values.get('rc_direction_1') == 'income'">Einnahme</option>
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <select name="rc_category_1" class="form-select form-select-sm" onchange="syncReceiptDirection(this)">
+                                                        <option value="">—</option>
+                                                        <option value="tn_fees"       t-att-selected="values.get('rc_category_1') == 'tn_fees'">Einnahme: Teilnehmerbeiträge</option>
+                                                        <option value="municipality"  t-att-selected="values.get('rc_category_1') == 'municipality'">Einnahme: Zuschuss Gemeinde</option>
+                                                        <option value="association"   t-att-selected="values.get('rc_category_1') == 'association'">Einnahme: Zuschuss Verband</option>
+                                                        <option value="bjr"           t-att-selected="values.get('rc_category_1') == 'bjr'">Einnahme: Zuschuss BJR/BezJR</option>
+                                                        <option value="income_other"  t-att-selected="values.get('rc_category_1') == 'income_other'">Einnahme: Sonstige Zuschüsse</option>
+                                                        <option value="accommodation" t-att-selected="values.get('rc_category_1') == 'accommodation'">Ausgabe: Unterkunft, Verpflegung, Miete</option>
+                                                        <option value="transport"     t-att-selected="values.get('rc_category_1') == 'transport'">Ausgabe: Fahrtkosten</option>
+                                                        <option value="referees"      t-att-selected="values.get('rc_category_1') == 'referees'">Ausgabe: Honorare Referenten</option>
+                                                        <option value="allowances"    t-att-selected="values.get('rc_category_1') == 'allowances'">Ausgabe: Aufwandsentschädigungen</option>
+                                                        <option value="materials"     t-att-selected="values.get('rc_category_1') == 'materials'">Ausgabe: Arbeits- und Hilfsmittel</option>
+                                                        <option value="jl_fees"       t-att-selected="values.get('rc_category_1') == 'jl_fees'">Ausgabe: Kursgebühren JL-Schulung</option>
+                                                        <option value="cost_other"    t-att-selected="values.get('rc_category_1') == 'cost_other'">Ausgabe: Sonstige Ausgaben</option>
+                                                    </select>
+                                                </td>
+                                                <td><input type="number" name="rc_amount_1" class="form-control form-control-sm" style="width:110px" min="0" step="0.01" t-att-value="values.get('rc_amount_1','')"/></td>
+                                                <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeReceiptRow(this)"><i class="fa fa-trash"/></button></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="text-muted small mb-0">
+                                    Die Position bestimmt die Art (Einnahme/Ausgabe) — sie wird bei der
+                                    Auswahl automatisch gesetzt.
+                                </p>
+                            </div>
+                            <script type="text/javascript">
+                                var RC_INCOME_CATEGORIES = ['tn_fees', 'municipality', 'association', 'bjr', 'income_other'];
+                                var RC_CATEGORY_OPTIONS =
+                                    '&lt;option value=""&gt;—&lt;/option&gt;' +
+                                    '&lt;option value="tn_fees"&gt;Einnahme: Teilnehmerbeiträge&lt;/option&gt;' +
+                                    '&lt;option value="municipality"&gt;Einnahme: Zuschuss Gemeinde&lt;/option&gt;' +
+                                    '&lt;option value="association"&gt;Einnahme: Zuschuss Verband&lt;/option&gt;' +
+                                    '&lt;option value="bjr"&gt;Einnahme: Zuschuss BJR/BezJR&lt;/option&gt;' +
+                                    '&lt;option value="income_other"&gt;Einnahme: Sonstige Zuschüsse&lt;/option&gt;' +
+                                    '&lt;option value="accommodation"&gt;Ausgabe: Unterkunft, Verpflegung, Miete&lt;/option&gt;' +
+                                    '&lt;option value="transport"&gt;Ausgabe: Fahrtkosten&lt;/option&gt;' +
+                                    '&lt;option value="referees"&gt;Ausgabe: Honorare Referenten&lt;/option&gt;' +
+                                    '&lt;option value="allowances"&gt;Ausgabe: Aufwandsentschädigungen&lt;/option&gt;' +
+                                    '&lt;option value="materials"&gt;Ausgabe: Arbeits- und Hilfsmittel&lt;/option&gt;' +
+                                    '&lt;option value="jl_fees"&gt;Ausgabe: Kursgebühren JL-Schulung&lt;/option&gt;' +
+                                    '&lt;option value="cost_other"&gt;Ausgabe: Sonstige Ausgaben&lt;/option&gt;';
+
+                                function addReceiptRow() {
+                                    var tbody = document.getElementById('rc_rows');
+                                    var rows = tbody.querySelectorAll('.rc-row');
+                                    var nr = rows.length + 1;
+                                    var row = document.createElement('tr');
+                                    row.className = 'rc-row';
+                                    row.innerHTML =
+                                        '&lt;td class="rc-nr"&gt;' + nr + '&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="date" name="rc_date_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="rc_no_' + nr + '" class="form-control form-control-sm" style="width:90px"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="rc_partner_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="rc_desc_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;select name="rc_direction_' + nr + '" class="form-select form-select-sm"&gt;' +
+                                        '&lt;option value="expense"&gt;Ausgabe&lt;/option&gt;' +
+                                        '&lt;option value="income"&gt;Einnahme&lt;/option&gt;' +
+                                        '&lt;/select&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;select name="rc_category_' + nr + '" class="form-select form-select-sm" onchange="syncReceiptDirection(this)"&gt;' +
+                                        RC_CATEGORY_OPTIONS +
+                                        '&lt;/select&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="number" name="rc_amount_' + nr + '" class="form-control form-control-sm" style="width:110px" min="0" step="0.01"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;button type="button" class="btn btn-sm btn-outline-danger" onclick="removeReceiptRow(this)"&gt;&lt;i class="fa fa-trash"&gt;&lt;/i&gt;&lt;/button&gt;&lt;/td&gt;';
+                                    tbody.appendChild(row);
+                                }
+                                function removeReceiptRow(btn) {
+                                    var row = btn.closest('tr');
+                                    row.remove();
+                                    // Nummer UND Feldnamen neu vergeben – der Controller liest rc_*_1..n
+                                    // fortlaufend und bricht bei der ersten Lücke ab.
+                                    var rows = document.querySelectorAll('#rc_rows .rc-row');
+                                    rows.forEach(function(r, i) {
+                                        var nr = i + 1;
+                                        r.querySelector('.rc-nr').textContent = nr;
+                                        r.querySelectorAll('[name]').forEach(function(el) {
+                                            el.name = el.name.replace(/_\d+$/, '_' + nr);
+                                        });
+                                    });
+                                }
+                                // Position (Kategorie) bestimmt die Art – verhindert unzulässige Kombinationen.
+                                function syncReceiptDirection(sel) {
+                                    if (!sel.value) { return; }
+                                    var row = sel.closest('tr');
+                                    if (!row) { return; }
+                                    var dir = row.querySelector('select[name^="rc_direction_"]');
+                                    if (!dir) { return; }
+                                    if (RC_INCOME_CATEGORIES.indexOf(sel.value) !== -1) {
+                                        dir.value = 'income';
+                                    } else {
+                                        dir.value = 'expense';
+                                    }
+                                }
+                                // Verlangt die gewählte Förderart überhaupt eine Belegliste?
+                                // Quelle ist requires_receipt der Förderart (data-Attribut der
+                                // Option) — § 4.4 Jugendleiterschulung braucht z. B. keine.
+                                // Ohne Auswahl konservativ Pflicht, wie serverseitig auch.
+                                function grantTypeRequiresReceipt() {
+                                    var sel = document.getElementById('grant_type_id');
+                                    if (!sel) { return true; }
+                                    var opt = sel.options[sel.selectedIndex];
+                                    if (!opt) { return true; }
+                                    var flag = opt.getAttribute('data-requires-receipt');
+                                    return flag === null ? true : flag === '1';
+                                }
+                                // Entweder-oder: digitale Belegliste ODER Datei-Upload im Dokumentenblock.
+                                function toggleDigitalReceipts() {
+                                    var box = document.getElementById('use_digital_receipts');
+                                    if (!box) { return; }
+                                    var on = box.checked;
+                                    var needed = grantTypeRequiresReceipt();
+                                    document.getElementById('rc_wrapper').classList.toggle('d-none', !on);
+                                    document.getElementById('rc_add_btn').classList.toggle('d-none', !on);
+                                    var grp = document.getElementById('receipt_file_group');
+                                    if (grp) { grp.classList.toggle('d-none', on); }
+                                    var inp = document.getElementById('receipt_file');
+                                    if (inp) { inp.required = !on &amp;&amp; needed; }
+                                    var badge = document.getElementById('receipt_file_badge');
+                                    if (badge) { badge.classList.toggle('d-none', !needed); }
+                                    var hint = document.getElementById('receipt_optional_hint');
+                                    if (hint) { hint.classList.toggle('d-none', needed || on); }
+                                }
+                            </script>
+                        </div>
+                    </div>
+
+                    <!-- 8. Dokumente -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">7. Dokumente</h5>
+                            <h5 class="mb-0">8. Dokumente</h5>
                         </div>
                         <div class="card-body">
                             <p class="text-muted">
                                 Pflichtdokumente je nach Förderart. Dokumente können auch
                                 nach Einreichung nachgereicht werden.
                             </p>
+                            <!-- accept spiegelt ALLOWED_EXTENSIONS aus controllers/website.py.
+                                 Eine engere Liste würde im Dateidialog genau die Dateien
+                                 ausblenden, die der Server annimmt (z. B. ein abfotografierter
+                                 Beleg) — die Fehlermeldungen nennen dieselben Formate. -->
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">
@@ -696,35 +987,94 @@
                                         <span class="badge bg-secondary">Pflicht</span>
                                     </label>
                                     <input type="file" name="report_file" class="form-control"
-                                           accept=".pdf,.docx,.doc"/>
+                                           accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png"/>
+                                    <div class="form-text">
+                                        Aus dem Bericht müssen Charakter, Inhalt und Ablauf der
+                                        Maßnahme hervorgehen.
+                                        PDF, Word, Excel/CSV oder Bild (JPG/PNG), max. 10 MB.
+                                    </div>
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-6 mb-3" id="receipt_file_group">
                                     <label class="form-label">
                                         Belegliste / Kostenaufstellung
+                                        <span class="badge bg-secondary" id="receipt_file_badge">Pflicht</span>
+                                    </label>
+                                    <input type="file" name="receipt_file" id="receipt_file" class="form-control"
+                                           accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png"
+                                           required="required"/>
+                                    <div class="form-text">
+                                        Entfällt, wenn Sie die Belegliste unter „7. Belegliste“ digital ausfüllen.
+                                        PDF, Word, Excel/CSV oder Bild (JPG/PNG), max. 10 MB.
+                                    </div>
+                                    <div class="form-text text-success d-none" id="receipt_optional_hint">
+                                        Bei der gewählten Förderart ist keine Belegliste nötig — das Feld
+                                        ist optional.
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3 d-none" id="foundation_file_group">
+                                    <label class="form-label">
+                                        Neugründungsformular *
                                         <span class="badge bg-secondary">Pflicht</span>
                                     </label>
-                                    <input type="file" name="receipt_file" class="form-control"
-                                           accept=".pdf,.xlsx,.xls"/>
+                                    <input type="file" name="foundation_file" id="foundation_file"
+                                           class="form-control"
+                                           accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png"/>
+                                    <div class="form-text">
+                                        Nur bei Förderart Gruppenstarthilfe (§ 4.7) erforderlich.
+                                        PDF, Word, Excel/CSV oder Bild (JPG/PNG), max. 10 MB.
+                                    </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Weitere Dokumente</label>
                                     <input type="file" name="other_file_1" class="form-control"
+                                           accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png"
                                            multiple="1"/>
                                     <div class="form-text">
-                                        Z. B. Juleica-Kopie, Programm-Vereinbarung, Neugründungsformular
+                                        Z. B. Juleica-Kopie.
+                                        PDF, Word, Excel/CSV oder Bild (JPG/PNG), max. 10 MB.
                                     </div>
                                 </div>
                             </div>
+                            <script type="text/javascript">
+                                // Neugründungsformular nur bei Gruppenstarthilfe (Code 4_7) einblenden.
+                                function toggleFoundationFile() {
+                                    var sel = document.getElementById('grant_type_id');
+                                    var grp = document.getElementById('foundation_file_group');
+                                    if (!sel) { return; }
+                                    if (!grp) { return; }
+                                    var opt = sel.options[sel.selectedIndex];
+                                    var code = opt ? opt.getAttribute('data-code') : '';
+                                    var on = code === '4_7';
+                                    grp.classList.toggle('d-none', !on);
+                                    var inp = document.getElementById('foundation_file');
+                                    if (inp) { inp.required = on; }
+                                }
+                                function kjrInitApplyForm() {
+                                    toggleDigitalReceipts();
+                                    toggleFoundationFile();
+                                    var sel = document.getElementById('grant_type_id');
+                                    if (sel) {
+                                        sel.addEventListener('change', toggleFoundationFile);
+                                        // Die Belegliste-Pflicht hängt ebenfalls an der Förderart.
+                                        sel.addEventListener('change', toggleDigitalReceipts);
+                                    }
+                                }
+                                if (document.readyState === 'loading') {
+                                    document.addEventListener('DOMContentLoaded', kjrInitApplyForm);
+                                } else {
+                                    kjrInitApplyForm();
+                                }
+                            </script>
                         </div>
                     </div>
 
-                    <!-- 8. Kurzbericht -->
+                    <!-- 9. Zusatzinformationen -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">8. Kurzbericht (optional)</h5>
+                            <h5 class="mb-0">9. Zusatzinformationen</h5>
                         </div>
                         <div class="card-body">
-                            <label class="form-label">Charakter, Inhalt und Ablauf der Maßnahme</label>
+                            <label class="form-label">Ihre Nachricht an uns (optional)</label>
                             <textarea name="measure_report" class="form-control" rows="4"
                                       placeholder="Kurze Beschreibung..."><t t-esc="values.get('measure_report','')"/></textarea>
                         </div>
@@ -740,13 +1090,45 @@
                         </small>
                     </div>
 
+                    <!-- Bestätigungen (alle vier Pflicht) -->
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" value="1"
+                               name="confirm_privacy" id="confirm_privacy" required="required"
+                               t-att-checked="values.get('confirm_privacy') and 'checked' or None"/>
+                        <label class="form-check-label" for="confirm_privacy">
+                            Ich habe die
+                            <a href="/datenschutz" target="_blank">Datenschutzhinweise</a>
+                            gelesen und bin damit einverstanden. *
+                        </label>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" value="1"
+                               name="confirm_guidelines" id="confirm_guidelines" required="required"
+                               t-att-checked="values.get('confirm_guidelines') and 'checked' or None"/>
+                        <label class="form-check-label" for="confirm_guidelines">
+                            Ich habe die Zuschussrichtlinien gelesen und erkenne sie an. *
+                        </label>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" value="1"
+                               name="confirm_truthful" id="confirm_truthful" required="required"
+                               t-att-checked="values.get('confirm_truthful') and 'checked' or None"/>
+                        <label class="form-check-label" for="confirm_truthful">
+                            Ich versichere, dass alle Angaben vollständig sind und der Wahrheit
+                            entsprechen. Mir ist bewusst, dass eventuell zu viel erhaltene Beträge
+                            unaufgefordert sofort mitzuteilen und zurückzuzahlen sind. *
+                        </label>
+                    </div>
+
                     <div class="form-check mb-4">
                         <input class="form-check-input" type="checkbox" value="1"
-                               name="participant_consent" id="participant_consent"
+                               name="participant_consent" id="participant_consent" required="required"
                                t-att-checked="values.get('participant_consent') and 'checked' or None"/>
                         <label class="form-check-label" for="participant_consent">
                             Ich bestätige, dass für alle minderjährigen Teilnehmer die Einwilligung
-                            der Erziehungsberechtigten zur Verarbeitung der angegebenen Daten vorliegt.
+                            der Erziehungsberechtigten zur Verarbeitung der angegebenen Daten vorliegt. *
                             <small class="text-muted d-block">Spätestens zur Einreichung des Antrags erforderlich.</small>
                         </label>
                     </div>
@@ -793,6 +1175,602 @@
                             </a>
                         </div>
                     </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ── Website: Hilfeseite „Wie stelle ich einen Zuschussantrag?" ──── -->
+    <!-- Öffentlich (ohne Login) erreichbar. Förderarten, Höchstbeträge und
+         Pflichtunterlagen werden aus den Stammdaten gelesen — nichts hartkodiert,
+         damit die Seite mit den im Backend gepflegten Sätzen mitläuft.
+         TODO: Mit Bora klären, ob die Anleitung zusätzlich als eigener Eintrag ins
+         Website-Hauptmenü soll (data/website_menu_data.xml). Bis dahin bewusst nur
+         von der Landingpage und vom Antragsformular aus verlinkt. -->
+    <template id="website_kjr_apply_help" name="KJR Zuschussantrag Hilfe">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-4 mb-5">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Start</a></li>
+                        <li class="breadcrumb-item"><a href="/service/zuschuss">Zuschuss</a></li>
+                        <li class="breadcrumb-item active">Anleitung</li>
+                    </ol>
+                </nav>
+
+                <h1 class="mb-2">Wie stelle ich einen Zuschussantrag?</h1>
+                <p class="text-muted mb-4">
+                    Schritt-für-Schritt-Anleitung zum Zuschussantrag bei
+                    <t t-out="res_company.name"/>. Maßgeblich sind in jedem Fall die
+                    Zuschussrichtlinien des KJR Oberallgäu.
+                </p>
+
+                <div class="d-flex flex-wrap gap-2 mb-4">
+                    <a href="/service/antrag-stellen" class="btn btn-primary">
+                        <i class="fa fa-paper-plane me-1"/>Zum Antragsformular
+                    </a>
+                    <a href="/service/zuschuss/belegliste-vorlage" class="btn btn-outline-secondary"
+                       target="_blank">
+                        <i class="fa fa-print me-1"/>Belegliste zum Ausdrucken
+                    </a>
+                </div>
+
+                <!-- Inhaltsübersicht -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <ol class="mb-0">
+                            <li><a href="#hilfe_berechtigt">Wer ist antragsberechtigt?</a></li>
+                            <li><a href="#hilfe_foerderart">Welche Förderart passt?</a></li>
+                            <li><a href="#hilfe_unterlagen">Welche Unterlagen brauche ich?</a></li>
+                            <li><a href="#hilfe_fristen">Welche Fristen gelten?</a></li>
+                            <li><a href="#hilfe_schritte">Schritt für Schritt zum Antrag</a></li>
+                            <li><a href="#hilfe_fehler">Häufige Fehler</a></li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- 1. Antragsberechtigung -->
+                <div class="card mb-4" id="hilfe_berechtigt">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">1. Wer ist antragsberechtigt?</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul>
+                            <li>
+                                Antragsberechtigt sind die <strong>Mitgliedsverbände des
+                                Kreisjugendrings Oberallgäu</strong>. Der Antrag wird immer
+                                für die Organisation gestellt, nicht für Einzelpersonen.
+                            </li>
+                            <li>
+                                Der Verband muss <strong>Vertretungsrecht in der
+                                Vollversammlung</strong> haben (§ 3.1 der Richtlinien).
+                                Fehlt das Vertretungsrecht, weist das System den Antrag beim
+                                Einreichen ab — bitte in diesem Fall vorab die
+                                Geschäftsstelle ansprechen.
+                            </li>
+                            <li>
+                                <strong>Mehrere Personen pro Verband</strong> können sich eigene
+                                Zugangsdaten anlegen. Jede/r sieht die Anträge des eigenen
+                                Verbandes.
+                            </li>
+                            <li>
+                                Im Antragsformular wählen Sie unter „2. Antragsteller/in" die
+                                Organisation aus. Erscheint Ihr Verband dort nicht, ist er
+                                noch nicht als Mitgliedsverband hinterlegt — bitte bei der
+                                Geschäftsstelle melden.
+                            </li>
+                        </ul>
+                        <p class="mb-0">
+                            <a href="/web/signup?redirect=/service/antrag-stellen">Konto erstellen</a>
+                            ·
+                            <a href="/web/login?redirect=/service/antrag-stellen">Anmelden</a>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 2. Förderarten (dynamisch aus den Stammdaten) -->
+                <div class="card mb-4" id="hilfe_foerderart">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">2. Welche Förderart passt?</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small">
+                            Pro Antrag wird genau eine Förderart gewählt (Block 5 im Formular).
+                            Sind Sie unsicher, hilft die Geschäftsstelle bei der Zuordnung.
+                        </p>
+                        <t t-if="not grant_types">
+                            <div class="alert alert-warning mb-0">
+                                Derzeit sind keine Förderarten freigeschaltet. Bitte wenden Sie
+                                sich an die KJR-Geschäftsstelle.
+                            </div>
+                        </t>
+                        <t t-if="grant_types">
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Förderart</th>
+                                            <th>Kurzbeschreibung</th>
+                                            <th class="text-nowrap">Höchstbetrag</th>
+                                            <th class="text-nowrap">Rahmenbedingungen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="grant_types" t-as="gt">
+                                            <tr>
+                                                <td>
+                                                    <strong><t t-esc="gt.name"/></strong>
+                                                    <div class="text-muted small">
+                                                        <t t-esc="dict(gt._fields['code'].selection).get(gt.code, gt.code)"/>
+                                                    </div>
+                                                </td>
+                                                <td class="small">
+                                                    <t t-if="gt.description"><t t-esc="gt.description"/></t>
+                                                    <t t-else="">—</t>
+                                                </td>
+                                                <td class="text-nowrap">
+                                                    <t t-if="gt.max_amount">
+                                                        <t t-esc="'%.2f €' % gt.max_amount"/>
+                                                    </t>
+                                                    <t t-else="">—</t>
+                                                </td>
+                                                <td class="small">
+                                                    <t t-if="gt.min_age or gt.max_age">
+                                                        <div>
+                                                            Alter der Teilnehmenden:
+                                                            <t t-esc="gt.min_age or 0"/>
+                                                            <t t-if="gt.max_age">
+                                                                bis <t t-esc="gt.max_age"/> Jahre
+                                                            </t>
+                                                            <t t-else="">Jahre und älter</t>
+                                                        </div>
+                                                    </t>
+                                                    <t t-if="gt.min_days">
+                                                        <div>Mindestdauer: <t t-esc="gt.min_days"/> Tage</div>
+                                                    </t>
+                                                    <t t-if="gt.max_days">
+                                                        <div>Höchstdauer: <t t-esc="gt.max_days"/> Tage</div>
+                                                    </t>
+                                                    <t t-if="gt.min_participants">
+                                                        <div>Mind. <t t-esc="gt.min_participants"/> Teilnehmende</div>
+                                                    </t>
+                                                    <!-- Förderarten mit derselben Jahreslimit-Gruppe
+                                                         teilen sich das Limit: die Anträge zählen
+                                                         zusammen. Dynamisch aus year_limit_group
+                                                         abgeleitet, damit die Seite bei einer
+                                                         Umstellung im Backend nicht falsch wird. -->
+                                                    <t t-if="gt.max_per_year">
+                                                        <t t-set="limit_siblings"
+                                                           t-value="gt.year_limit_group and grant_types.filtered_domain([
+                                                               ('year_limit_group', '=', gt.year_limit_group),
+                                                               ('id', '!=', gt.id)]) or None"/>
+                                                        <div>
+                                                            Max. <t t-esc="gt.max_per_year"/> Anträge pro Kalenderjahr
+                                                            <t t-if="limit_siblings">
+                                                                — gemeinsam mit:
+                                                                <t t-foreach="limit_siblings" t-as="sib"><t t-esc="sib.name"/><t t-if="not sib_last">, </t></t>
+                                                                (die Anträge zählen zusammen, nicht je Förderart einzeln)
+                                                            </t>
+                                                        </div>
+                                                    </t>
+                                                    <t t-if="gt.allow_private_account">
+                                                        <div>Auszahlung auch auf Privatkonto möglich</div>
+                                                    </t>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-muted small mb-0">
+                                Angaben aus der aktuell gepflegten Konfiguration der
+                                Geschäftsstelle. Zuschüsse werden nur bis zur Höhe des
+                                Fehlbetrags (Kosten abzüglich Einnahmen) gewährt.
+                            </p>
+                        </t>
+                    </div>
+                </div>
+
+                <!-- 3. Pflichtunterlagen (dynamisch je Förderart) -->
+                <div class="card mb-4" id="hilfe_unterlagen">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">3. Welche Unterlagen brauche ich?</h5>
+                    </div>
+                    <div class="card-body">
+                        <t t-if="grant_types">
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Förderart</th>
+                                            <th class="text-center">Teilnahmeliste</th>
+                                            <th class="text-center">Maßnahmenbericht</th>
+                                            <th class="text-center">Belegliste</th>
+                                            <th>Weitere Pflichtunterlagen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="grant_types" t-as="gt">
+                                            <tr>
+                                                <td><t t-esc="gt.name"/></td>
+                                                <td class="text-center">
+                                                    <t t-if="gt.requires_tn_list">
+                                                        <span class="badge bg-secondary">Pflicht</span>
+                                                    </t>
+                                                    <t t-else="">—</t>
+                                                </td>
+                                                <td class="text-center">
+                                                    <t t-if="gt.requires_report">
+                                                        <span class="badge bg-secondary">Pflicht</span>
+                                                    </t>
+                                                    <t t-else="">—</t>
+                                                </td>
+                                                <td class="text-center">
+                                                    <t t-if="gt.requires_receipt">
+                                                        <span class="badge bg-secondary">Pflicht</span>
+                                                    </t>
+                                                    <t t-else="">—</t>
+                                                </td>
+                                                <td class="small">
+                                                    <t t-if="gt.requires_other_docs">
+                                                        <t t-esc="gt.requires_other_docs"/>
+                                                    </t>
+                                                    <t t-else="">—</t>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </t>
+                        <h6 class="mt-3">Was hinter den Unterlagen steckt</h6>
+                        <ul class="mb-0">
+                            <li>
+                                <strong>Teilnahmeliste:</strong> alle Teilnehmenden mit Name,
+                                Alter und Wohnort. Sie können die Liste im Formular
+                                (Block 3) direkt erfassen oder als Datei hochladen.
+                                Mitarbeitende und Gruppenleitung erhalten die passende
+                                Kennziffer (EA, HA, HO, PR, SO).
+                            </li>
+                            <li>
+                                <strong>Maßnahmenbericht:</strong> aus dem Bericht müssen
+                                Charakter, Inhalt und Ablauf der Maßnahme hervorgehen.
+                                Kurze Berichte können direkt in Block 9 eingetragen werden.
+                            </li>
+                            <li>
+                                <strong>Belegliste:</strong> entweder digital im Formular
+                                (Block 7) oder als Datei — beides zusammen ist nicht nötig.
+                                Eine
+                                <a href="/service/zuschuss/belegliste-vorlage" target="_blank">Vorlage
+                                zum Ausdrucken</a>
+                                steht bereit. Die Originalbelege bleiben bei Ihnen und sind
+                                5 Jahre aufzubewahren. Bei Förderarten ohne Belegliste-Pflicht
+                                (siehe Tabelle oben) entfällt beides.
+                            </li>
+                            <li>
+                                <strong>Neugründungsformular:</strong> zusätzlich Pflicht bei
+                                der Gruppenstarthilfe (§ 4.7).
+                            </li>
+                            <li>
+                                <strong>Juleica-Nachweis:</strong> wenn Sie den Juleica-Zuschlag
+                                geltend machen, laden Sie die Kopie der Jugendleiter/in-Card
+                                unter „Weitere Dokumente" hoch.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 4. Fristen -->
+                <div class="card mb-4" id="hilfe_fristen">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">4. Welche Fristen gelten?</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul>
+                            <li>
+                                <strong>Einreichfrist:</strong> spätestens
+                                <strong><t t-esc="deadline_months"/> Monate nach dem Ende
+                                der Maßnahme</strong>. Das System berechnet das konkrete
+                                Datum je Antrag und zeigt es als „Einreichfrist" an.
+                            </li>
+                            <li>
+                                <strong>Erinnerung:</strong> Anträge, die
+                                <t t-esc="reminder_days"/> Tage vor Fristablauf noch im
+                                Entwurf liegen, werden der Geschäftsstelle zur Erinnerung
+                                vorgelegt. Verlassen Sie sich nicht darauf — maßgeblich ist
+                                Ihr rechtzeitiges Einreichen.
+                            </li>
+                            <li>
+                                <strong>Auszahlung:</strong> Anträge, die bis zum
+                                <strong><t t-esc="payout_cutoff_day"/>.<t t-esc="payout_cutoff_month"/>.</strong>
+                                eines Jahres eingehen, gelangen im selben Jahr zur Auszahlung.
+                                Später eingehende Anträge werden ab dem 1. Januar des
+                                Folgejahres ausgezahlt.
+                            </li>
+                            <li>
+                                <strong>Anzahl pro Jahr:</strong> für viele Förderarten gilt eine
+                                Höchstzahl an Anträgen pro Kalenderjahr (siehe Tabelle unter
+                                Punkt 2). Maßgeblich ist das Jahr des Maßnahmenbeginns.
+                                <strong>Achtung:</strong> Einige Förderarten teilen sich diese
+                                Höchstzahl — die Anträge zählen dann zusammen und nicht je
+                                Förderart einzeln. Die Tabelle unter Punkt 2 nennt in diesem
+                                Fall die beteiligten Förderarten hinter „gemeinsam mit".
+                            </li>
+                        </ul>
+                        <div class="alert alert-warning mb-0">
+                            <strong>Wichtig:</strong> Ein Entwurf ist noch kein Antrag. Erst
+                            mit dem Einreichen im Portal gilt der Antrag als gestellt.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Schritt für Schritt -->
+                <div class="card mb-4" id="hilfe_schritte">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">5. Schritt für Schritt zum Antrag</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol class="mb-3">
+                            <li class="mb-2">
+                                <strong>Anmelden oder registrieren.</strong>
+                                Ohne Konto können Sie das Formular nicht absenden.
+                            </li>
+                            <li class="mb-2">
+                                <strong>Formular ausfüllen.</strong> Maßnahme, Organisation,
+                                Teilnahmeliste, Bankverbindung, Förderart, Kostenaufstellung
+                                und Belegliste. Felder mit * sind Pflichtfelder.
+                            </li>
+                            <li class="mb-2">
+                                <strong>Als Entwurf speichern.</strong> Der Antrag erhält eine
+                                Nummer und erscheint unter
+                                <a href="/my/kjr-antraege">Meine Zuschussanträge</a>.
+                                Sie können ihn dort jederzeit wieder öffnen.
+                            </li>
+                            <li class="mb-2">
+                                <strong>Unterlagen ergänzen.</strong> Teilnahmeliste, Bericht,
+                                Belegliste und weitere Nachweise lassen sich auch nachträglich
+                                in der Antragsansicht hochladen.
+                            </li>
+                            <li class="mb-2">
+                                <strong>Antrag einreichen.</strong> Beim Einreichen prüft das
+                                System die Vollständigkeit und meldet fehlende Angaben. Sie
+                                erhalten eine Eingangsbestätigung per E-Mail an die im Antrag
+                                angegebene Adresse.
+                            </li>
+                            <li class="mb-2">
+                                <strong>Prüfung und Bescheid.</strong> Die Geschäftsstelle prüft
+                                den Antrag. Nach der Bewilligung können Sie den Bescheid im
+                                Portal herunterladen; anschließend erfolgt die Auszahlung.
+                            </li>
+                        </ol>
+                        <a href="/service/antrag-stellen" class="btn btn-primary">
+                            <i class="fa fa-paper-plane me-1"/>Jetzt Antrag stellen
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 6. Häufige Fehler -->
+                <div class="card mb-4" id="hilfe_fehler">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">6. Häufige Fehler</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            <div class="list-group-item">
+                                <strong>Unvollständige Teilnahmeliste.</strong>
+                                Fehlen Alter oder Wohnort, lassen sich Altersgrenzen und der
+                                Anteil auswärtiger Teilnehmender nicht prüfen — der Zuschuss
+                                kann dann nicht in voller Höhe anerkannt werden. Auch die
+                                Gruppenleitung gehört mit Kennziffer in die Liste; anerkannt
+                                wird nur eine begrenzte Zahl an Leitungspersonen im Verhältnis
+                                zu den Teilnehmenden.
+                            </div>
+                            <div class="list-group-item">
+                                <strong>Fehlende Belegliste.</strong>
+                                Häufigster Rückläufer: Kostenaufstellung ausgefüllt, aber weder
+                                digitale Belegliste erfasst noch Datei hochgeladen. Bei allen
+                                Förderarten mit Belegliste-Pflicht (siehe Tabelle unter Punkt 3)
+                                ist eines von beidem nötig — die Kostenaufstellung allein
+                                genügt nicht.
+                            </div>
+                            <div class="list-group-item">
+                                <strong>Privatkonto statt Organisationskonto.</strong>
+                                Der Zuschuss wird auf das Konto der Organisation überwiesen;
+                                der Kontoinhaber muss exakt angegeben werden.
+                                <t t-set="private_ok" t-value="grant_types.filtered('allow_private_account')"/>
+                                <t t-if="private_ok">
+                                    Ausnahme:
+                                    <t t-foreach="private_ok" t-as="pt">
+                                        <t t-esc="pt.name"/><t t-if="not pt_last">, </t>
+                                    </t>.
+                                </t>
+                            </div>
+                            <div class="list-group-item">
+                                <strong>Frist versäumt.</strong>
+                                Der Antrag bleibt bis zum Einreichen ein Entwurf. Reichen Sie
+                                ihn innerhalb von <t t-esc="deadline_months"/> Monaten nach
+                                Maßnahmenende ein.
+                            </div>
+                            <div class="list-group-item">
+                                <strong>Falsche Förderart.</strong>
+                                Passt die gewählte Förderart nicht zur Maßnahme, greifen falsche
+                                Sätze und Pflichtunterlagen. Im Zweifel vorab nachfragen.
+                            </div>
+                            <div class="list-group-item">
+                                <strong>Kosten ohne Einnahmen.</strong>
+                                Teilnehmerbeiträge und Zuschüsse Dritter (Gemeinde, Verband,
+                                BJR) gehören in die Kostenaufstellung. Der Zuschuss bemisst
+                                sich am verbleibenden Fehlbetrag.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-muted small">
+                    Noch Fragen? Die KJR-Geschäftsstelle hilft weiter:<br/>
+                    <t t-if="res_company.phone">Tel. <t t-out="res_company.phone"/></t>
+                    <t t-if="res_company.email"> · <a t-attf-href="mailto:{{ res_company.email }}"><t t-out="res_company.email"/></a></t>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ── Website: Belegliste-Vorlage zum Ausdrucken ──────────────────── -->
+    <!-- Blankoformular nach ANBest-P mit denselben Spalten wie die digitale
+         Belegliste im Antragsformular (Block 7). Bewusst kein QWeb-Report:
+         ein Report bräuchte einen Antragsdatensatz, hier soll ohne Antrag
+         gedruckt werden können. -->
+    <template id="website_kjr_belegliste_vorlage" name="KJR Belegliste Vorlage">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-4 mb-5 kjr-belegliste-vorlage">
+                <style>
+                    .kjr-belegliste-vorlage table.kjr-bl td { height: 1.9rem; }
+                    .kjr-belegliste-vorlage .kjr-fill { border-bottom: 1px solid #666; min-height: 1.4rem; }
+                    @media print {
+                        header, footer, nav, .navbar, .o_main_navbar,
+                        #oe_main_menu_navbar, .o_footer, .js_language_selector,
+                        .breadcrumb, .kjr-noprint { display: none !important; }
+                        #wrap { margin: 0 !important; padding: 0 !important; }
+                        .kjr-belegliste-vorlage { font-size: 10pt; }
+                        .kjr-belegliste-vorlage table.kjr-bl { page-break-inside: auto; }
+                        .kjr-belegliste-vorlage table.kjr-bl tr { page-break-inside: avoid; }
+                        @page { size: A4 landscape; margin: 12mm; }
+                    }
+                </style>
+
+                <div class="kjr-noprint">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/">Start</a></li>
+                            <li class="breadcrumb-item"><a href="/service/zuschuss-hilfe">Anleitung</a></li>
+                            <li class="breadcrumb-item active">Belegliste-Vorlage</li>
+                        </ol>
+                    </nav>
+                    <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center">
+                        <div class="me-3">
+                            Leere Belegliste zum Ausdrucken. Ausgefüllt und unterschrieben
+                            können Sie sie als Scan zum Antrag hochladen — oder Sie erfassen
+                            die Belege direkt im
+                            <a href="/service/antrag-stellen">Antragsformular</a>
+                            (Block 7 „Belegliste").
+                        </div>
+                        <button type="button" class="btn btn-primary mt-2 mt-md-0"
+                                onclick="window.print()">
+                            <i class="fa fa-print me-1"/>Drucken
+                        </button>
+                    </div>
+                </div>
+
+                <h2 class="mb-1">Belegliste zum Zuschussantrag</h2>
+                <p class="small text-muted">
+                    <t t-out="res_company.name"/> — Nachweis der Einnahmen und Ausgaben
+                    nach ANBest-P. Die Originalbelege sind vom Antragsteller 5 Jahre
+                    aufzubewahren und auf Verlangen vorzulegen.
+                </p>
+
+                <!-- Kopfbereich: Antragsteller und Maßnahme -->
+                <div class="row mb-3">
+                    <div class="col-md-6 mb-2">
+                        <div class="small text-muted">Antragsteller (Organisation)</div>
+                        <div class="kjr-fill"></div>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <div class="small text-muted">Antragsnummer (falls vorhanden)</div>
+                        <div class="kjr-fill"></div>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <div class="small text-muted">Bezeichnung der Maßnahme</div>
+                        <div class="kjr-fill"></div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="small text-muted">Beginn</div>
+                        <div class="kjr-fill"></div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="small text-muted">Ende</div>
+                        <div class="kjr-fill"></div>
+                    </div>
+                </div>
+
+                <!-- Belegtabelle: gleiche Spalten wie Block 7 des Antragsformulars -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm kjr-bl">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:3%;">Nr.</th>
+                                <th style="width:9%;">Datum</th>
+                                <th style="width:9%;">Beleg-Nr.</th>
+                                <th style="width:20%;">Empfänger / Einzahler</th>
+                                <th style="width:22%;">Bezeichnung</th>
+                                <th style="width:11%;">Art (Einnahme/Ausgabe)</th>
+                                <th style="width:15%;">Position</th>
+                                <th style="width:11%;" class="text-end">Betrag (€)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="blank_rows" t-as="row_nr">
+                                <tr>
+                                    <td class="text-center"><t t-esc="row_nr"/></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light">
+                                <td colspan="7" class="text-end fw-bold">Summe</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- Positionen: identisch zur Auswahl im Antragsformular -->
+                <div class="row small text-muted mb-4">
+                    <div class="col-md-6">
+                        <strong>Positionen Einnahmen:</strong>
+                        Teilnehmerbeiträge · Zuschuss Gemeinde · Zuschuss Verband ·
+                        Zuschuss BJR/BezJR · sonstige Zuschüsse
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Positionen Ausgaben:</strong>
+                        Unterkunft, Verpflegung, Miete · Fahrtkosten · Honorare Referenten ·
+                        Aufwandsentschädigungen · Arbeits- und Hilfsmittel ·
+                        Kursgebühren Jugendleiterschulung · sonstige Ausgaben
+                    </div>
+                </div>
+
+                <!-- Fußbereich: Unterschrift -->
+                <div class="row mt-5">
+                    <div class="col-md-5 mb-3">
+                        <div class="kjr-fill"></div>
+                        <div class="small text-muted">Ort, Datum</div>
+                    </div>
+                    <div class="col-md-2"></div>
+                    <div class="col-md-5 mb-3">
+                        <div class="kjr-fill"></div>
+                        <div class="small text-muted">
+                            Rechtsverbindliche Unterschrift (Organisation)
+                        </div>
+                    </div>
+                </div>
+                <p class="small text-muted">
+                    Die Richtigkeit und sachliche Notwendigkeit der aufgeführten Einnahmen
+                    und Ausgaben wird bestätigt. Alle Belege liegen im Original vor.
+                </p>
+
+                <div class="kjr-noprint mt-4 d-flex flex-wrap gap-2">
+                    <a href="/service/antrag-stellen" class="btn btn-outline-primary">
+                        <i class="fa fa-arrow-left me-1"/>Zurück zum Antragsformular
+                    </a>
+                    <a href="/service/zuschuss-hilfe" class="btn btn-outline-secondary">
+                        <i class="fa fa-question-circle me-1"/>Zur Anleitung
+                    </a>
                 </div>
             </div>
         </t>

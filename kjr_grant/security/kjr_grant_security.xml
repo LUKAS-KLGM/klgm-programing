@@ -131,6 +131,41 @@
             <field name="perm_unlink" eval="True"/>
         </record>
 
+        <!-- ── Record Rules: kjr.grant.receipt (Belege: Empfänger/Einzahler + Beträge) ─ -->
+
+        <record id="rule_kjr_receipt_applicant_own" model="ir.rule">
+            <field name="name">KJR: Antragsteller sieht nur eigene Belege</field>
+            <field name="model_id" ref="model_kjr_grant_receipt"/>
+            <field name="groups" eval="[(4, ref('group_kjr_applicant'))]"/>
+            <field name="domain_force">[('application_id.partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <record id="rule_kjr_receipt_portal_own" model="ir.rule">
+            <field name="name">KJR: Portal-User sieht nur eigene Belege</field>
+            <field name="model_id" ref="model_kjr_grant_receipt"/>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+            <field name="domain_force">[('application_id.partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_kjr_receipt_reviewer_all" model="ir.rule">
+            <field name="name">KJR: Sachbearbeiter sieht alle Belege</field>
+            <field name="model_id" ref="model_kjr_grant_receipt"/>
+            <field name="groups" eval="[(4, ref('group_kjr_reviewer'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
         <!-- ── Record Rules: kjr.juleica (DSGVO: personenbezogene Daten) ──────── -->
 
         <record id="rule_kjr_juleica_own" model="ir.rule">

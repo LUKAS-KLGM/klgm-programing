@@ -4,6 +4,7 @@ from . import kjr_grant_application
 from . import kjr_grant_settlement
 from . import kjr_grant_budget
 from . import kjr_grant_participant
+from . import kjr_grant_receipt
 from . import kjr_juleica
 from . import kjr_assembly
 from . import kjr_funding

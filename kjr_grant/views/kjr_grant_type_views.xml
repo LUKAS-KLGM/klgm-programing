@@ -1,6 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- Search -->
+    <record id="view_kjr_grant_type_search" model="ir.ui.view">
+        <field name="name">kjr.grant.type.search</field>
+        <field name="model">kjr.grant.type</field>
+        <field name="arch" type="xml">
+            <search string="Förderarten">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="rule_group"/>
+                <!-- Zeigt genau die Fassungen, die heute für neue Anträge greifen.
+                     Offene Grenzen (leer) zählen als unbegrenzt gültig. -->
+                <filter string="Aktuell gültig" name="currently_valid"
+                        domain="['&amp;',
+                                 '|', ('valid_from','=',False),
+                                      ('valid_from','&lt;=',context_today().strftime('%Y-%m-%d')),
+                                 '|', ('valid_to','=',False),
+                                      ('valid_to','&gt;=',context_today().strftime('%Y-%m-%d'))]"/>
+                <filter string="Ausgelaufen" name="expired"
+                        domain="[('valid_to','!=',False),
+                                 ('valid_to','&lt;',context_today().strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter string="Archiviert" name="inactive" domain="[('active','=',False)]"/>
+                <filter string="Regelgruppe" name="group_rule_group"
+                        context="{'group_by':'rule_group'}"/>
+                <filter string="Code" name="group_code" context="{'group_by':'code'}"/>
+            </search>
+        </field>
+    </record>
+
     <record id="view_kjr_grant_type_list" model="ir.ui.view">
         <field name="name">kjr.grant.type.list</field>
         <field name="model">kjr.grant.type</field>
@@ -14,6 +43,11 @@
                 <field name="max_amount" string="Max. (€)"/>
                 <field name="max_per_year" string="Max./Jahr"/>
                 <field name="juleica_bonus"/>
+                <!-- Richtlinienfassung: nur bei Bedarf einblenden, damit die
+                     Standardliste für den Alltag schlank bleibt. -->
+                <field name="rule_group" optional="hide"/>
+                <field name="valid_from" optional="hide"/>
+                <field name="valid_to" optional="hide"/>
                 <field name="active" widget="toggle_button"/>
                 <field name="application_count" string="Anträge"/>
             </list>
@@ -45,6 +79,21 @@
                             <field name="max_per_year"/>
                             <field name="year_limit_group"/>
                             <field name="juleica_bonus"/>
+                        </group>
+                    </group>
+                    <group string="Gültigkeit (Richtlinienfassung)">
+                        <group>
+                            <field name="valid_from"/>
+                            <field name="valid_to"/>
+                        </group>
+                        <group>
+                            <field name="rule_group"/>
+                            <div class="text-muted" colspan="2">
+                                Ändert sich die Zuschussrichtlinie, wird diese Fassung
+                                mit „Gültig bis" abgegrenzt und daneben eine neue Fassung
+                                mit gleicher Regelgruppe angelegt. Altanträge werden so
+                                weiterhin nach der damals gültigen Fassung berechnet.
+                            </div>
                         </group>
                     </group>
                     <group string="Förderregeln &amp; Schwellenwerte (KJR-OA)">

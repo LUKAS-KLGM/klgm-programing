@@ -63,7 +63,11 @@ class KjrJuleica(models.Model):
             elif not rec.expiry_date:
                 # Kein Ausstellungsdatum und (noch) kein manuell gesetztes Datum.
                 rec.expiry_date = False
-            # sonst: manuell gesetzten Wert unverändert lassen.
+            else:
+                # Manuell gesetzten Wert unverändert lassen. Selbstzuweisung statt
+                # leerem Zweig, damit im Loop JEDEM Record ein Wert zugewiesen ist
+                # (Odoo-Vorgabe für Compute-Methoden).
+                rec.expiry_date = rec.expiry_date
 
     @api.depends('expiry_date')
     def _compute_state(self):

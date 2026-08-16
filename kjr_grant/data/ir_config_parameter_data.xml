@@ -31,6 +31,14 @@
             <field name="value">0.03</field>
         </record>
 
+        <!-- Vier-Augen-Prinzip: '1' = an (Default, kassenrechtlich sauber).
+             Ein-Personen-Geschäftsstelle kann hier auf '0' stellen; der Code
+             nimmt bei fehlendem Parameter ebenfalls '1' an. -->
+        <record id="param_enforce_four_eyes" model="ir.config_parameter">
+            <field name="key">kjr_grant.enforce_four_eyes</field>
+            <field name="value">1</field>
+        </record>
+
         <!-- Auszahlungs-Stichtag (KJR-OA: 15.11.) – Anträge bis dahin im selben Jahr -->
         <record id="param_payout_cutoff_day" model="ir.config_parameter">
             <field name="key">kjr_grant.payout_cutoff_day</field>

@@ -19,10 +19,30 @@ class KjrGrantParticipant(models.Model):
     )
     sequence = fields.Integer(string='Nr.', default=10)
     name = fields.Char(string='Name, Vorname', required=True)
+    # Geburtsdatum wird im Website-Formular nicht mehr abgefragt (nur noch das Alter),
+    # bleibt im Backend aber erfassbar (abgetippte Papieranträge).
     birthdate = fields.Date(string='Geburtsdatum')
-    age = fields.Integer(string='Alter', compute='_compute_age')
+    age = fields.Integer(
+        string='Alter', compute='_compute_age', store=True, readonly=False,
+        help='Alter zu Beginn der Maßnahme. Wird aus dem Geburtsdatum berechnet, '
+             'sofern eines erfasst ist — sonst direkt eingeben.',
+    )
+    gender = fields.Selection([
+        ('male',    'männlich'),
+        ('female',  'weiblich'),
+        ('diverse', 'divers'),
+    ], string='Geschlecht')
     zip_code = fields.Char(string='PLZ')
     city = fields.Char(string='Wohnort')
+    role_code = fields.Selection([
+        ('EA', 'EA – ehrenamtliche/r Mitarbeiter/in'),
+        ('HA', 'HA – haupt-/nebenberufliche/r Mitarbeiter/in'),
+        ('HO', 'HO – Honorarkraft'),
+        ('PR', 'PR – Praktikant/in'),
+        ('SO', 'SO – sonstige'),
+    ], string='Kennziffer',
+        help='Kennziffer laut Teilnahmeliste des KJR Oberallgäu. '
+             'Nur für Mitarbeitende/Leitung — Teilnehmende bleiben leer.')
     is_leader = fields.Boolean(string='Gruppenleitung', default=False)
     has_juleica = fields.Boolean(string='Juleica', default=False)
     note = fields.Char(string='Bemerkung')
@@ -31,8 +51,13 @@ class KjrGrantParticipant(models.Model):
         help='Personenbezogene Daten wurden nach Ablauf der Aufbewahrungsfrist anonymisiert.',
     )
 
+    # ── Berechnungen / Onchange ──────────────────────────────────────────────
+
     @api.depends('birthdate', 'application_id.measure_start')
     def _compute_age(self):
+        """Alter aus dem Geburtsdatum ableiten, sofern eines erfasst ist.
+        Ohne Geburtsdatum bleibt der manuell eingegebene Wert stehen (age ist
+        store=True/readonly=False — im Website-Formular wird nur noch das Alter abgefragt)."""
         for rec in self:
             if rec.birthdate and rec.application_id.measure_start:
                 start = rec.application_id.measure_start
@@ -41,7 +66,18 @@ class KjrGrantParticipant(models.Model):
                     (start.month, start.day) < (bd.month, bd.day)
                 )
             else:
-                rec.age = 0
+                # Kein Geburtsdatum: erfassten Wert NICHT auf 0 überschreiben.
+                rec.age = rec.age or 0
+
+    @api.onchange('role_code')
+    def _onchange_role_code(self):
+        """Kennziffer gesetzt ⇒ Mitarbeitende/Leitung. is_leader trägt die gesamte
+        Förderlogik (Betreuungsschlüssel 1:5, Ausnahme vom Altersfenster) und bleibt
+        deshalb ein eigenes, manuell überschreibbares Feld."""
+        for rec in self:
+            rec.is_leader = bool(rec.role_code)
+
+    # ── DSGVO ────────────────────────────────────────────────────────────────
 
     @api.model
     def _cron_anonymize_expired(self):
@@ -58,6 +94,9 @@ class KjrGrantParticipant(models.Model):
             ('application_id.measure_end', '<', cutoff),
         ])
         for rec in stale:
+            # Bewusst NICHT anonymisiert: age, gender, role_code — reine Aggregatmerkmale
+            # ohne Personenbezug, werden für Statistik/Förderprüfung weiter benötigt.
+            # (age bleibt trotz Löschung des Geburtsdatums stehen, s. _compute_age.)
             rec.write({
                 'name': _('(anonymisiert)'),
                 'birthdate': False,
