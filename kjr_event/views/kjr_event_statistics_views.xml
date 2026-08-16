@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- E2: Assistent Statistik-Export je Maßnahme (Kinder- und Jugendhilfestatistik) -->
+    <record id="view_kjr_event_statistics_form" model="ir.ui.view">
+        <field name="name">kjr.event.statistics.wizard.form</field>
+        <field name="model">kjr.event.statistics.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Statistik-Export Maßnahmen">
+                <div class="alert alert-info" role="alert">
+                    Erzeugt die Auswertung als CSV-Datei (Semikolon-getrennt, für Excel
+                    vorbereitet). Ausgewertet werden alle Veranstaltungen, die als
+                    KJR-Veranstaltung markiert sind und deren Beginn im gewählten Zeitraum
+                    liegt. Die Altersverteilung zählt stornierte Anmeldungen nicht mit;
+                    Anmeldungen ohne Geburtsdatum erscheinen in einer eigenen Spalte.
+                </div>
+                <group>
+                    <group string="Zeitraum">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group string="Abgrenzung">
+                        <field name="kjr_event_type"/>
+                        <field name="group_by" widget="radio"/>
+                    </group>
+                </group>
+                <group string="Einzelne Veranstaltungen (optional)">
+                    <field name="event_ids" widget="many2many_tags" nolabel="1"
+                           placeholder="Leer = alle KJR-Veranstaltungen im Zeitraum"/>
+                </group>
+                <group string="Download" invisible="not export_file">
+                    <field name="export_filename" invisible="1"/>
+                    <field name="export_file" filename="export_filename" nolabel="1"/>
+                </group>
+                <footer>
+                    <button name="action_generate" type="object" string="Auswertung erzeugen"
+                            class="btn-primary" data-hotkey="q"/>
+                    <button string="Schließen" class="btn-secondary" special="cancel"
+                            data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kjr_event_statistics" model="ir.actions.act_window">
+        <field name="name">KJR-Statistik (Jugendhilfestatistik)</field>
+        <field name="res_model">kjr.event.statistics.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_kjr_event_statistics_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Menüpunkt im bestehenden Veranstaltungs-Ast, direkt neben den
+         KJR-Teilnehmer/innen (siehe views/event_views.xml). -->
+    <menuitem id="menu_kjr_event_statistics"
+              name="KJR-Statistik"
+              parent="event.menu_event_event"
+              action="action_kjr_event_statistics"
+              groups="event.group_event_user"
+              sequence="30"/>
+
+</odoo>

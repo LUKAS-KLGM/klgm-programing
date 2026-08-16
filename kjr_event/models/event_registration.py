@@ -131,6 +131,11 @@ class EventRegistration(models.Model):
                     base = (rec.event_id.date_begin.date()
                             if rec.event_id.date_begin else fields.Date.context_today(rec))
                     rec.juleica_valid_until = base + relativedelta(years=3)
+                else:
+                    # Manuell gesetztes Datum unverändert lassen. Selbstzuweisung statt
+                    # leerem Zweig, damit im Loop JEDEM Record ein Wert zugewiesen ist
+                    # (Odoo-Vorgabe für Compute-Methoden).
+                    rec.juleica_valid_until = rec.juleica_valid_until
             else:
                 # Keine ausgestellte Juleica -> kein Gültigkeitsdatum (verhindert Geisterwert
                 # in Report/Mail, wenn die Ausstellung wieder zurückgenommen wird).

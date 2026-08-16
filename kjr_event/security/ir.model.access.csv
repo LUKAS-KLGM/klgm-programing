@@ -5,3 +5,5 @@ access_kjr_event_document_public,kjr.event.document.public,model_kjr_event_docum
 access_kjr_event_document_portal,kjr.event.document.portal,model_kjr_event_document,base.group_portal,1,0,0,0
 access_kjr_event_document_user,kjr.event.document.user,model_kjr_event_document,event.group_event_user,1,1,1,0
 access_kjr_event_document_manager,kjr.event.document.manager,model_kjr_event_document,event.group_event_manager,1,1,1,1
+access_kjr_event_statistics_wizard_user,kjr.event.statistics.wizard.user,model_kjr_event_statistics_wizard,event.group_event_user,1,1,1,1
+access_kjr_event_statistics_wizard_manager,kjr.event.statistics.wizard.manager,model_kjr_event_statistics_wizard,event.group_event_manager,1,1,1,1
