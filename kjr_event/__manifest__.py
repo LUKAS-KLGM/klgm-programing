@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Ferienprogramm & Schulungen',
-    'version': '19.0.3.0.0',
+    'version': '19.0.4.0.0',
     'category': 'Custom/KJR',
     'summary': 'Erweiterung der Odoo-Veranstaltungen für KJR-Ferienprogramm und Schulungen '
                '(Juleica, Rettungsschwimmer): Altersgruppen, Einwilligung Minderjähriger, '
@@ -25,6 +25,8 @@
         # Seed-/Mail-Daten für den ersten Staging-Build deaktiviert (Build hatte
         # geskippt). Nach erfolgreicher Installation wieder aktivieren.
         'data/mail_templates.xml',
+        'data/ir_config_parameter_data.xml',
+        'data/ir_cron_data.xml',
         'views/event_views.xml',
         'views/kjr_event_statistics_views.xml',
         'views/website_event_templates.xml',

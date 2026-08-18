@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Assistent: vierteljährlicher Auszahlungslauf.
+         Weist bewilligte Anträge gebündelt zur Zahlung an; die Anweisung selbst
+         macht die vorhandene Workflow-Action am Antrag (Vier-Augen-Prinzip).
+         Vorbereitung und Ergebnis liegen im selben Formular und werden über
+         'state' umgeschaltet – die Sichtbarkeit hängt bewusst an jedem Element
+         einzeln (kein umschließendes <div>, das Gruppen und Reiter verschachtelt). -->
+    <record id="view_kjr_grant_payout_run_form" model="ir.ui.view">
+        <field name="name">kjr.grant.payout.run.form</field>
+        <field name="model">kjr.grant.payout.run</field>
+        <field name="arch" type="xml">
+            <form string="Auszahlungslauf">
+                <field name="state" invisible="1"/>
+
+                <!-- ── Vorbereitung ───────────────────────────────────────── -->
+                <div class="alert alert-info" role="alert" invisible="state == 'done'">
+                    Weist alle bewilligten Anträge des gewählten Zeitraums gebündelt
+                    zur Zahlung an. Anträge, die Sie selbst sachlich geprüft haben,
+                    werden übersprungen und im Reiter "Nicht einbezogen" mit Begründung
+                    aufgeführt (Vier-Augen-Prinzip). Es wird nichts gebucht – gesetzt
+                    wird derselbe Vermerk wie über die Schaltfläche
+                    "Zur Zahlung anweisen" am einzelnen Antrag.
+                </div>
+                <group invisible="state == 'done'">
+                    <group string="Zeitraum">
+                        <field name="fiscal_year"/>
+                        <field name="period_type"/>
+                        <field name="date_from" readonly="period_type != 'custom'"/>
+                        <field name="date_to" readonly="period_type != 'custom'"/>
+                        <field name="period_basis"/>
+                    </group>
+                    <group string="Abgrenzung (optional)">
+                        <field name="grant_type_ids" widget="many2many_tags"
+                               placeholder="Leer = alle Förderarten"/>
+                        <field name="partner_ids" widget="many2many_tags"
+                               placeholder="Leer = alle Verbände"/>
+                        <field name="enforce_cutoff"/>
+                        <field name="cutoff_info" readonly="1"/>
+                    </group>
+                </group>
+                <group invisible="state == 'done'">
+                    <group string="Summe">
+                        <field name="application_count" readonly="1"/>
+                        <field name="amount_total" readonly="1"/>
+                    </group>
+                </group>
+
+                <!-- ── Ergebnis ───────────────────────────────────────────── -->
+                <div class="alert alert-success" role="alert" invisible="state != 'done'">
+                    Der Auszahlungslauf ist ausgeführt. Der Bericht hält fest, was
+                    angewiesen und was übersprungen wurde; er steht zusätzlich im
+                    Serverprotokoll und im Chatter der angewiesenen Anträge.
+                </div>
+                <group invisible="state != 'done'">
+                    <group string="Ergebnis">
+                        <field name="ordered_count" readonly="1"/>
+                        <field name="ordered_amount" readonly="1"/>
+                        <field name="skipped_count" readonly="1"/>
+                    </group>
+                </group>
+                <group string="Ergebnisbericht" invisible="state != 'done'">
+                    <field name="result_text" nolabel="1" readonly="1"/>
+                </group>
+
+                <notebook>
+                    <page string="Einbezogene Anträge" name="included"
+                          invisible="state == 'done'">
+                        <field name="application_ids" nolabel="1">
+                            <list string="Einbezogene Anträge" create="false">
+                                <field name="name"/>
+                                <field name="partner_id"/>
+                                <field name="grant_type_id" optional="show"/>
+                                <field name="date_submitted" optional="show"/>
+                                <field name="date_approved" optional="show"/>
+                                <field name="payout_year" optional="hide"/>
+                                <field name="reviewed_by" optional="show"/>
+                                <field name="grant_approved" sum="Summe"/>
+                            </list>
+                        </field>
+                        <div class="text-muted">
+                            Nicht gewünschte Anträge hier entfernen – sie bleiben
+                            bewilligt und laufen im nächsten Lauf wieder mit.
+                        </div>
+                    </page>
+                    <page string="Nicht einbezogen" name="blocked"
+                          invisible="state == 'done'">
+                        <field name="blocked_info" nolabel="1" readonly="1"
+                               placeholder="Alle bewilligten Anträge des Zeitraums laufen mit."/>
+                        <field name="blocked_ids" nolabel="1" readonly="1">
+                            <list string="Nicht einbezogen" create="false">
+                                <field name="name"/>
+                                <field name="partner_id"/>
+                                <field name="date_submitted"/>
+                                <field name="date_approved"/>
+                                <field name="reviewed_by"/>
+                                <field name="grant_approved"/>
+                            </list>
+                        </field>
+                    </page>
+                    <page string="Angewiesen" name="ordered" invisible="state != 'done'">
+                        <field name="ordered_ids" nolabel="1" readonly="1">
+                            <list string="Angewiesen" create="false">
+                                <field name="name"/>
+                                <field name="partner_id"/>
+                                <field name="grant_approved" sum="Summe"/>
+                                <field name="payment_ordered_date"/>
+                            </list>
+                        </field>
+                    </page>
+                    <page string="Übersprungen" name="skipped" invisible="state != 'done'">
+                        <field name="skipped_ids" nolabel="1" readonly="1">
+                            <list string="Übersprungen" create="false">
+                                <field name="name"/>
+                                <field name="partner_id"/>
+                                <field name="grant_approved"/>
+                                <field name="reviewed_by"/>
+                            </list>
+                        </field>
+                    </page>
+                </notebook>
+
+                <footer>
+                    <button name="action_run" type="object" class="btn-primary"
+                            string="Zur Zahlung anweisen" data-hotkey="q"
+                            invisible="state == 'done'"
+                            confirm="Die aufgeführten Anträge werden gebündelt zur Zahlung angewiesen. Fortfahren?"/>
+                    <button name="action_refresh" type="object" class="btn-secondary"
+                            string="Vorschau aktualisieren"
+                            invisible="state == 'done'"/>
+                    <button name="action_open_ordered" type="object" class="btn-primary"
+                            string="Angewiesene Anträge öffnen"
+                            invisible="state != 'done' or ordered_count == 0"/>
+                    <button string="Schließen" class="btn-secondary" special="cancel"
+                            data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kjr_grant_payout_run" model="ir.actions.act_window">
+        <field name="name">Auszahlungslauf (quartalsweise)</field>
+        <field name="res_model">kjr.grant.payout.run</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_kjr_grant_payout_run_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Menüpunkt im bestehenden Ast "Anträge" (views/menu.xml), direkt hinter
+         den Abrechnungen. Diese Datei muss deshalb NACH views/menu.xml geladen
+         werden (siehe __manifest__.py). -->
+    <menuitem id="menu_kjr_payout_run"
+              name="Auszahlungslauf"
+              parent="menu_kjr_applications"
+              action="action_kjr_grant_payout_run"
+              groups="kjr_grant.group_kjr_reviewer"
+              sequence="30"/>
+
+</odoo>

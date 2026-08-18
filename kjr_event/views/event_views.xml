@@ -34,6 +34,27 @@
                         Mindestanzahl Teilnehmer/innen noch nicht erreicht (siehe Anzahl
                         angemeldeter Plätze oben) – Durchführung der Veranstaltung ggf. prüfen.
                     </div>
+                    <group string="Warteliste" invisible="not is_kjr">
+                        <group>
+                            <field name="kjr_waitlist_enabled"/>
+                            <field name="kjr_waitlist_count"
+                                   invisible="not kjr_waitlist_enabled"/>
+                            <field name="kjr_waitlist_ready" invisible="1"/>
+                        </group>
+                    </group>
+                    <div class="text-muted mb-2"
+                         invisible="not is_kjr or not kjr_waitlist_enabled">
+                        Wartelistenplätze belegen keinen Sitzplatz (sie zählen nicht auf die
+                        angemeldeten Plätze) und blockieren sich daher nicht gegenseitig.
+                        Nachgerückt wird bewusst manuell – so entscheidet die Geschäftsstelle
+                        selbst, wer den frei gewordenen Platz erhält.
+                    </div>
+                    <div class="alert alert-info" role="alert" invisible="not kjr_waitlist_ready">
+                        Es sind Plätze frei und es stehen Anmeldungen auf der Warteliste.
+                        <button name="action_kjr_promote_from_waitlist" type="object"
+                                string="Nächste/n nachrücken" class="btn-primary ms-2"
+                                groups="event.group_event_user"/>
+                    </div>
                     <group>
                         <group string="Zahlung" invisible="not is_kjr">
                             <field name="payment_required"/>
@@ -99,6 +120,10 @@
                 <button name="action_create_training_invoice" type="object" string="Rechnung erstellen"
                         class="btn-secondary" groups="event.group_event_user"
                         invisible="not event_payment_required"/>
+                <button name="action_kjr_promote_waitlist" type="object"
+                        string="Von Warteliste nachrücken" class="btn-primary"
+                        groups="event.group_event_user"
+                        invisible="not kjr_is_waitlist"/>
             </header>
             <sheet position="inside">
                 <div class="alert alert-warning" role="alert" invisible="not consent_missing">
@@ -107,6 +132,20 @@
                 <div class="alert alert-warning" role="alert" invisible="not age_out_of_range">
                     Teilnehmer/in liegt außerhalb der vorgesehenen Altersgruppe der Veranstaltung.
                 </div>
+                <div class="alert alert-info" role="alert" invisible="not kjr_is_waitlist">
+                    Diese Anmeldung steht auf der Warteliste und belegt noch keinen Platz.
+                    Sie bleibt unbestätigt, bis die Geschäftsstelle sie nachrückt.
+                </div>
+                <group string="KJR – Warteliste"
+                       invisible="not event_waitlist_enabled and not kjr_is_waitlist">
+                    <field name="event_waitlist_enabled" invisible="1"/>
+                    <group>
+                        <field name="kjr_is_waitlist"/>
+                    </group>
+                    <group>
+                        <field name="kjr_waitlist_position" invisible="not kjr_is_waitlist"/>
+                    </group>
+                </group>
                 <group string="KJR – Teilnehmer/in &amp; Einwilligung">
                     <group>
                         <field name="birthdate"/>
@@ -160,6 +199,8 @@
         <field name="arch" type="xml">
             <search position="inside">
                 <filter string="KJR-Veranstaltungen" name="kjr" domain="[('is_kjr','=',True)]"/>
+                <filter string="Warteliste aktiv" name="kjr_waitlist"
+                        domain="[('kjr_waitlist_enabled','=',True)]"/>
             </search>
         </field>
     </record>
@@ -169,9 +210,11 @@
         <field name="name">event.registration.list.kjr</field>
         <field name="model">event.registration</field>
         <field name="arch" type="xml">
-            <list string="KJR-Teilnehmer/innen">
+            <list string="KJR-Teilnehmer/innen" decoration-muted="kjr_is_waitlist">
                 <field name="name"/>
                 <field name="event_id"/>
+                <field name="kjr_is_waitlist" string="Warteliste"/>
+                <field name="kjr_waitlist_position" string="Platz" optional="show"/>
                 <field name="kjr_age" string="Alter"/>
                 <field name="has_birthdate" column_invisible="1"/>
                 <field name="dietary_requirements"/>
@@ -200,6 +243,11 @@
                 <filter string="Außerhalb Altersgruppe" name="age_out"
                         domain="[('age_out_of_range','=',True)]"/>
                 <separator/>
+                <filter string="Warteliste" name="waitlist"
+                        domain="[('kjr_is_waitlist','=',True)]"/>
+                <filter string="Ohne Warteliste" name="no_waitlist"
+                        domain="[('kjr_is_waitlist','=',False)]"/>
+                <separator/>
                 <filter string="Zahlung offen" name="pay_open"
                         domain="[('kjr_payment_state','=','open')]"/>
                 <filter string="Teilbezahlt" name="pay_partial"
@@ -211,6 +259,8 @@
                         context="{'group_by': 'event_id'}"/>
                 <filter string="Zahlungsstatus" name="group_payment"
                         context="{'group_by': 'kjr_payment_state'}"/>
+                <filter string="Warteliste" name="group_waitlist"
+                        context="{'group_by': 'kjr_is_waitlist'}"/>
             </search>
         </field>
     </record>

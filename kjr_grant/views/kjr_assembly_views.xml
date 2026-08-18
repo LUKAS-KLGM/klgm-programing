@@ -10,8 +10,102 @@
                 <field name="location"/>
                 <field name="attendee_count" string="Anwesend"/>
                 <field name="decision_count" string="Beschlüsse"/>
+                <field name="election_count" string="Wahlgänge" optional="show"/>
                 <field name="state" widget="badge"/>
             </list>
+        </field>
+    </record>
+    <!-- Eigenstaendiges Formular fuer einen Tagesordnungspunkt/Wahlgang.
+         Wird vom eingebetteten decision_ids-Feld (form_view_ref) und von
+         action_create_runoff verwendet, damit die Stichwahl nicht im
+         generierten Default-Formular mit allen technischen Feldern oeffnet. -->
+    <record id="view_kjr_assembly_decision_form" model="ir.ui.view">
+        <field name="name">kjr.assembly.decision.form</field>
+        <field name="model">kjr.assembly.decision</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <!-- Legt einen weiteren Wahlgang an. Setzt einen
+                         gespeicherten Datensatz voraus (Versammlung
+                         zuerst speichern). -->
+                    <button name="action_create_runoff" type="object"
+                            string="Stichwahl anlegen" class="btn-secondary"
+                            invisible="decision_type != 'election' or election_state != 'runoff'"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="decision_type" widget="radio" options="{'horizontal': true}"/>
+                            <field name="name"/>
+                            <field name="election_office" invisible="decision_type != 'election'"/>
+                            <field name="seats" invisible="decision_type != 'election'"/>
+                            <field name="ballot_round" invisible="decision_type != 'election'"/>
+                            <!-- Hilfswert: traegt die clientseitig auswertbare Domain
+                                 des Feldes "Stichwahl zu" (Wahlgaenge derselben
+                                 Vollversammlung). -->
+                            <field name="allowed_runoff_parent_ids" invisible="1"/>
+                            <field name="runoff_parent_id" invisible="decision_type != 'election'"
+                                   options="{'no_create': true}"/>
+                            <field name="majority_rule" invisible="decision_type != 'election'"/>
+                        </group>
+                        <group>
+                            <field name="vote_yes" invisible="decision_type == 'election'"/>
+                            <field name="vote_no" invisible="decision_type == 'election'"/>
+                            <field name="vote_abstain"/>
+                            <field name="vote_invalid"/>
+                            <field name="ballots_cast"/>
+                            <field name="result" invisible="decision_type == 'election'"/>
+                            <field name="election_valid_votes" invisible="decision_type != 'election'"/>
+                            <field name="election_majority_needed" invisible="decision_type != 'election'"/>
+                            <field name="election_state" invisible="decision_type != 'election'"/>
+                            <field name="elected_names" invisible="decision_type != 'election'"/>
+                        </group>
+                    </group>
+                    <!-- Projektstandard: im Backend nur Hinweise, keine Sperre.
+                         Die Geschäftsstelle muss auch strittige oder
+                         unvollständige Auszählungen erfassen können. -->
+                    <div class="alert alert-warning" role="status"
+                         invisible="not plausibility_hint">
+                        <field name="plausibility_hint" nolabel="1" readonly="1"/>
+                    </div>
+                    <notebook>
+                        <page string="Kandidat/innen" invisible="decision_type != 'election'">
+                            <div class="text-muted mb-2">
+                                Geheime Wahl nach § 34 Abs. 3 BJR-Satzung: Es werden
+                                ausschließlich die ausgezählten Stimmensummen je
+                                Kandidatur erfasst — nicht, wer wie gestimmt hat.
+                                Enthaltungen und ungültige Stimmen zählen nach
+                                § 33 Abs. 2 nicht zur Mehrheit.
+                            </div>
+                            <field name="candidate_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="partner_id"/>
+                                    <field name="name"/>
+                                    <field name="votes"/>
+                                    <field name="vote_share"/>
+                                    <field name="withdrawn"/>
+                                    <field name="is_elected" widget="boolean_toggle"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Details">
+                            <field name="description" nolabel="1"
+                                   placeholder="Wortlaut des Beschlusses, Wortmeldungen, Begründung..."/>
+                        </page>
+                        <page string="Weitere Wahlgänge" invisible="decision_type != 'election'">
+                            <field name="runoff_ids" nolabel="1" readonly="1">
+                                <list>
+                                    <field name="ballot_round"/>
+                                    <field name="name"/>
+                                    <field name="election_state"/>
+                                    <field name="elected_names"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
         </field>
     </record>
     <record id="view_kjr_assembly_form" model="ir.ui.view">
@@ -23,33 +117,63 @@
                     <button name="action_invite" string="Einladen" type="object" invisible="state != 'draft'"/>
                     <button name="action_done" string="Durchgeführt" type="object" class="btn-primary" invisible="state != 'invited'"/>
                     <button name="action_cancel" string="Absagen" type="object" invisible="state in ('done','cancelled')"/>
+                    <button name="action_print_protokoll" string="Protokoll drucken" type="object"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,invited,done"/>
                 </header>
                 <sheet>
                     <group>
-                        <group><field name="name"/><field name="date"/><field name="location"/></group>
+                        <group>
+                            <field name="name"/>
+                            <field name="date"/>
+                            <field name="location"/>
+                            <field name="invitation_date"/>
+                            <field name="chair_id"/>
+                            <field name="secretary_id"/>
+                        </group>
                         <group>
                             <field name="eligible_member_count" readonly="1"/>
                             <field name="invited_count" readonly="1"/>
                             <field name="attendee_count" readonly="1"/>
                             <field name="is_repeat_session"/>
                             <field name="quorum_reached" readonly="1"/>
+                            <field name="figures_locked_date" readonly="1"
+                                   invisible="not figures_locked_date"/>
                             <field name="decision_count" readonly="1"/>
+                            <field name="election_count" readonly="1"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Tagesordnung"><field name="agenda" nolabel="1"/></page>
                         <page string="Eingeladene Verbände"><field name="invited_member_ids" nolabel="1"/></page>
-                        <page string="Anwesenheit"><field name="attendee_ids" nolabel="1"/></page>
-                        <page string="Beschlüsse">
-                            <field name="decision_ids">
-                                <list editable="bottom">
+                        <page string="Anwesenheit">
+                            <div class="text-muted mb-2">
+                                Erfasst werden die anwesenden <strong>Mitgliedsverbände</strong>
+                                (§ 33 Abs. 1 BJR-Satzung: eine Stimme je Mitglied) — nicht
+                                einzelne Delegierte oder Gäste. Nur diese Liste trägt die
+                                Beschlussfähigkeit.
+                            </div>
+                            <field name="attendee_ids" nolabel="1"
+                                   domain="[('is_kjr_member', '=', True), ('is_company', '=', True), ('kjr_vr_right', '=', True)]"/>
+                        </page>
+                        <page string="Beschlüsse &amp; Wahlen">
+                            <group>
+                                <field name="teller_ids" widget="many2many_tags"/>
+                            </group>
+                            <field name="decision_ids"
+                                   context="{'form_view_ref': 'kjr_grant.view_kjr_assembly_decision_form'}">
+                                <list>
                                     <field name="sequence" widget="handle"/>
+                                    <field name="decision_type" widget="badge"/>
                                     <field name="name"/>
+                                    <field name="ballot_round" optional="hide"/>
                                     <field name="vote_yes"/>
                                     <field name="vote_no"/>
                                     <field name="vote_abstain"/>
+                                    <field name="vote_invalid" optional="hide"/>
                                     <field name="result"/>
+                                    <field name="election_state"/>
+                                    <field name="elected_names"/>
+                                    <field name="plausibility_hint" optional="hide"/>
                                 </list>
                             </field>
                         </page>

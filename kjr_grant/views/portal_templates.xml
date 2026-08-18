@@ -626,15 +626,20 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">IBAN</label>
+                                    <label class="form-label fw-bold">IBAN *</label>
                                     <input type="text" name="payment_iban" class="form-control"
                                            t-att-value="values.get('payment_iban','')"
+                                           required="required"
                                            placeholder="DE00 0000 0000 0000 0000 00"/>
+                                    <div class="form-text">
+                                        Ohne Konto kann der Zuschuss nicht ausgezahlt werden.
+                                    </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Kontoinhaber (exakter Name)</label>
+                                    <label class="form-label fw-bold">Kontoinhaber (exakter Name) *</label>
                                     <input type="text" name="payment_account_holder" class="form-control"
-                                           t-att-value="values.get('payment_account_holder','')"/>
+                                           t-att-value="values.get('payment_account_holder','')"
+                                           required="required"/>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">BIC</label>
@@ -1122,16 +1127,12 @@
                         </label>
                     </div>
 
-                    <div class="form-check mb-4">
-                        <input class="form-check-input" type="checkbox" value="1"
-                               name="participant_consent" id="participant_consent" required="required"
-                               t-att-checked="values.get('participant_consent') and 'checked' or None"/>
-                        <label class="form-check-label" for="participant_consent">
-                            Ich bestätige, dass für alle minderjährigen Teilnehmer die Einwilligung
-                            der Erziehungsberechtigten zur Verarbeitung der angegebenen Daten vorliegt. *
-                            <small class="text-muted d-block">Spätestens zur Einreichung des Antrags erforderlich.</small>
-                        </label>
-                    </div>
+                    <!-- Die frühere Checkbox "Einwilligung der Erziehungsberechtigten liegt vor"
+                         wurde auf Wunsch des KJR entfernt (Mail Bora Berlinger vom 31.07.2026):
+                         Der KJR ist für die Richtigkeit des Datenschutzes in den Vereinen nicht
+                         zuständig und darf sie nicht prüfen — eine Bestätigung einzuholen, die man
+                         nicht prüfen darf, erzeugt Scheinsicherheit. Das Feld participant_consent
+                         bleibt am Modell erhalten, damit Altanträge ihre Historie behalten. -->
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary btn-lg">

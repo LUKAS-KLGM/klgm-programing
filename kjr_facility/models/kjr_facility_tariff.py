@@ -34,16 +34,24 @@ class KjrFacilityTariff(models.Model):
     # Die Berechnung selbst liegt in kjr.facility.booking._compute_amounts.
     visitor_tax_per_person_night = fields.Float(
         string='Fremdenverkehrsbeitrag p. P./Nacht (€)', digits=(8, 2),
-        help='Kommunaler Fremdenverkehrsbeitrag je Person und Übernachtung '
-             '(Immenstadt: 1,10 €). ACHTUNG: Der Beitrag fällt NICHT pauschal für '
+        help='Kommunaler Beitrag je Person und Übernachtung, je Einrichtung zu pflegen.\n'
+             'TODO(KJR): Weder die Bezeichnung noch der Satz sind belegt. Die Auftritte '
+             'des KJR verwenden "Kurbeitrag" und "Fremdenverkehrsbeitrag" für dieselbe '
+             'Sache, der Preisblock nennt keinen Betrag, die Vertragsbedingungen einen '
+             'davon abweichenden. Begriff und Satz sind deshalb bei der Standortgemeinde '
+             'bzw. der Geschäftsstelle zu klären und erst danach hier einzutragen; '
+             'bis dahin bleibt das Feld bewusst auf 0. '
+             'ACHTUNG zur Berechnung: Der Beitrag fällt NICHT pauschal für '
              'alle Gäste an. Berechnet wird er nur auf die Teilnehmenden — '
              'Betreuende/Begleitpersonen sind als solche befreit und gehen gar nicht '
              'erst in die Grundmenge ein. Im Buchungsfeld "Von Fremdenverkehrsbeitrag '
              'befreit" werden ausschließlich die WEITEREN Befreiungen unter den '
-             'Teilnehmenden erfasst (Einwohner der Standortgemeinde, Kinder unter '
-             '7 Jahren, Schwerbehinderte); Betreuende dort NICHT mitzählen, sonst '
+             'Teilnehmenden erfasst (nach bisheriger Praxis z. B. Einwohner der '
+             'Standortgemeinde, kleine Kinder, Schwerbehinderte — welche Befreiungen die '
+             'Satzung der Standortgemeinde tatsächlich vorsieht, gehört zur selben '
+             'offenen Klärung); Betreuende dort NICHT mitzählen, sonst '
              'werden sie doppelt abgezogen. '
-             '0 = die Einrichtung erhebt keinen Fremdenverkehrsbeitrag.')
+             '0 = es wird kein solcher Beitrag berechnet.')
     final_cleaning_fee = fields.Float(
         string='Endreinigung (einmalig, €)', digits=(8, 2),
         help='Pauschale für die Endreinigung. Sie wird EINMALIG je Buchung berechnet — '
@@ -63,10 +71,12 @@ class KjrFacilityTariff(models.Model):
     tax_id = fields.Many2one(
         'account.tax', string='Umsatzsteuer',
         domain="[('type_tax_use', '=', 'sale')]",
-        help='STEUERLICH FINAL ZU PRÜFEN: Bei Jugendgruppen kommt regelmäßig die '
-             'USt-Befreiung nach § 4 Nr. 23 UStG bzw. der ermäßigte Satz (7 %, '
-             'Zweckbetrieb § 68 Nr. 8 AO) in Betracht; bei kommerzieller Nutzung 19 %. '
-             'Der passende Steuersatz ist hier je Tarifgruppe zu hinterlegen.',
+        help='TODO(KJR): Die umsatzsteuerliche Einordnung der Beherbergung ist noch '
+             'ungeklärt und kann sich je Tarifgruppe unterscheiden (Befreiung, '
+             'ermäßigter Satz oder Regelsatz). Sie ist mit der Steuerberatung des KJR '
+             'zu klären; der bestätigte Steuersatz wird anschließend hier je '
+             'Tarifgruppe hinterlegt. Solange das Feld leer ist, greift die '
+             'Vorgabesteuer der Gesellschaft.',
     )
 
     @api.constrains(

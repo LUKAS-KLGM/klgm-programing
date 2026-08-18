@@ -17,6 +17,7 @@
                 <field name="code" string="Inventarnummer"/>
                 <field name="category_id"/>
                 <field name="location_id"/>
+                <field name="pricing_model"/>
                 <separator/>
                 <filter string="Auf Website" name="published" domain="[('website_published','=',True)]"/>
                 <filter string="Ohne Barcode" name="no_barcode"
@@ -25,6 +26,9 @@
                 <separator/>
                 <filter string="Kategorie" name="group_category" context="{'group_by':'category_id'}"/>
                 <filter string="Lager" name="group_location" context="{'group_by':'location_id'}"/>
+                <!-- Gruppierung nach Preismodell: Grundlage für die Pflege der echten
+                     Preisliste ("welche Artikel rechnen noch nach Tagespreis?"). -->
+                <filter string="Preismodell" name="group_pricing_model" context="{'group_by':'pricing_model'}"/>
             </search>
         </field>
     </record>
@@ -48,8 +52,13 @@
                 <field name="category_id"/>
                 <field name="location_id"/>
                 <field name="quantity_total"/>
+                <field name="pricing_model"/>
                 <field name="price_per_day"/>
                 <field name="price_member_per_day"/>
+                <!-- Nur für Fahrzeuge relevant, deshalb standardmäßig ausgeblendet. -->
+                <field name="price_per_km" optional="hide"/>
+                <field name="price_member_per_km" optional="hide"/>
+                <field name="price_unit_label" optional="hide"/>
                 <field name="deposit"/>
                 <field name="book_value"/>
                 <field name="website_published"/>
@@ -84,9 +93,25 @@
                             <field name="website_published"/>
                         </group>
                         <group string="Tarife &amp; Kaution">
+                            <!-- Das Preismodell steuert, welche der folgenden Felder
+                                 überhaupt in die Berechnung eingehen; nicht benötigte
+                                 Felder werden ausgeblendet, damit niemand einen Wert
+                                 pflegt, der nie angewandt wird. -->
+                            <field name="pricing_model"/>
+                            <field name="price_unit_label"/>
+                            <field name="unit_label"
+                                   invisible="pricing_model not in ('per_unit', 'tiered')"
+                                   placeholder="z. B. Kiste, Satz, Garnitur"/>
+                            <field name="price_time_basis"
+                                   invisible="pricing_model not in ('per_km', 'tiered')"/>
                             <field name="price_per_day"/>
                             <field name="has_member_price"/>
                             <field name="price_member_per_day" invisible="not has_member_price"/>
+                            <field name="price_per_km" invisible="pricing_model != 'per_km'"/>
+                            <field name="price_member_per_km"
+                                   invisible="pricing_model != 'per_km' or not has_member_price"/>
+                            <field name="min_billable_units"
+                                   invisible="pricing_model == 'per_unit'"/>
                             <field name="deposit"/>
                         </group>
                     </group>
@@ -102,6 +127,23 @@
                         </group>
                     </group>
                     <notebook>
+                        <page string="Mengenstaffel" name="price_tiers"
+                              invisible="pricing_model != 'tiered'">
+                            <div class="text-muted mb-2">
+                                Es greift die Zeile mit der höchsten „Ab Menge", die die
+                                bestellte Menge nicht überschreitet; der Staffelpreis gilt
+                                dann für alle Stück der Position. Ohne passende Zeile bleibt
+                                es beim Grundpreis. Die Preise sind noch nicht befüllt —
+                                sie stammen aus der Preisliste des KJR.
+                            </div>
+                            <field name="tier_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="min_quantity"/>
+                                    <field name="price"/>
+                                    <field name="price_member"/>
+                                </list>
+                            </field>
+                        </page>
                         <page string="Beschreibung" name="description">
                             <field name="description" placeholder="Beschreibung..."/>
                         </page>

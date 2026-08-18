@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """KJR-spezifische Erweiterung der Veranstaltung (Ferienprogramm, Schulungen)."""
-from odoo import api, fields, models
+from markupsafe import Markup
+
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
 
 
 class EventEvent(models.Model):
@@ -28,6 +31,26 @@ class EventEvent(models.Model):
         help='True, wenn keine Mindestanzahl gesetzt ist oder die aktuellen Anmeldungen '
              '(Registrierte + bereits Erschienene, also seats_taken) die Mindestanzahl erreichen.',
     )
+    # E14 – Warteliste (Odoo kennt nativ nur ein Sitzplatz-Maximum, kein Nachrücken)
+    kjr_waitlist_enabled = fields.Boolean(
+        string='Warteliste aktiv',
+        help='Wenn aktiv, wird eine Anmeldung bei ausgebuchter Veranstaltung nicht abgewiesen, '
+             'sondern als Wartelistenplatz angelegt. Wartelistenplätze zählen NICHT auf die '
+             'belegten Plätze (seats_taken) und blockieren sich daher nicht gegenseitig. '
+             'Das Nachrücken löst die Geschäftsstelle bewusst manuell aus.',
+    )
+    kjr_waitlist_count = fields.Integer(
+        string='Wartende Anmeldungen',
+        compute='_compute_kjr_waitlist',
+        help='Anzahl der Anmeldungen auf der Warteliste (abgesagte und archivierte zählen nicht).',
+    )
+    kjr_waitlist_ready = fields.Boolean(
+        string='Nachrücken möglich',
+        compute='_compute_kjr_waitlist',
+        help='True, wenn mindestens ein regulärer Platz frei ist und mindestens eine Anmeldung '
+             'auf der Warteliste steht.',
+    )
+
     kjr_enforce_age_range = fields.Boolean(
         string='Altersgruppe erzwingen',
         help='Wenn aktiv, wird eine Anmeldung außerhalb der Altersgruppe hart abgewiesen '
@@ -109,3 +132,92 @@ class EventEvent(models.Model):
     def _compute_kjr_seats_min_reached(self):
         for event in self:
             event.kjr_seats_min_reached = not event.kjr_seats_min or event.seats_taken >= event.kjr_seats_min
+
+    # ------------------------------------------------------------------
+    # E14 – Warteliste
+    # ------------------------------------------------------------------
+    @api.depends('kjr_waitlist_enabled', 'seats_max', 'seats_taken',
+                 'registration_ids.kjr_is_waitlist', 'registration_ids.state',
+                 'registration_ids.active')
+    def _compute_kjr_waitlist(self):
+        """Zählt die wartenden Anmeldungen und prüft, ob nachgerückt werden kann."""
+        waiting_per_event = {}
+        origins = self._origin
+        if origins:
+            groups = self.env['event.registration']._read_group(
+                [('event_id', 'in', origins.ids),
+                 ('kjr_is_waitlist', '=', True),
+                 ('state', '!=', 'cancel')],
+                groupby=['event_id'],
+                aggregates=['__count'],
+            )
+            waiting_per_event = {event.id: count for event, count in groups}
+        for event in self:
+            waiting = waiting_per_event.get(event._origin.id, 0)
+            free = event._kjr_free_seats()
+            event.kjr_waitlist_count = waiting
+            # Hinweis nur, wenn die Warteliste überhaupt geführt wird, jemand wartet
+            # UND ein regulärer Platz frei ist (free is None = unbegrenzte Plätze).
+            event.kjr_waitlist_ready = bool(
+                event.kjr_waitlist_enabled and waiting and (free is None or free > 0)
+            )
+
+    def _kjr_free_seats(self):
+        """Freie reguläre Plätze laut Odoo-Kernrechnung; ``None`` = unbegrenzt.
+
+        Bewusst KEINE eigene Sitzplatzrechnung: Odoo führt die Belegung über
+        ``seats_taken`` (registrierte + erschienene Anmeldungen) und daraus
+        ``seats_available``. Wartelistenplätze werden im unbestätigten Status gehalten
+        (siehe ``event.registration._kjr_waitlist_state``) und zählen dort nicht mit –
+        deshalb kann hier direkt der Kernwert verwendet werden.
+
+        Die Feldnamen werden defensiv geprüft (gleiches Muster wie im
+        Statistik-Wizard), damit das Modul auch bei abweichenden Odoo-Editionen lädt.
+        """
+        self.ensure_one()
+        limited = self.seats_limited if 'seats_limited' in self._fields else bool(self.seats_max)
+        if not limited or not self.seats_max:
+            return None
+        if 'seats_available' in self._fields:
+            return max(self.seats_available, 0)
+        return max(self.seats_max - self.seats_taken, 0)
+
+    def _kjr_waitlist_registrations(self):
+        """Wartende Anmeldungen in Reihenfolge des Anmeldezeitpunkts (FIFO)."""
+        self.ensure_one()
+        if not self._origin.id:
+            return self.env['event.registration']
+        return self.env['event.registration'].search(
+            [('event_id', '=', self._origin.id),
+             ('kjr_is_waitlist', '=', True),
+             ('state', '!=', 'cancel')],
+            order='create_date asc, id asc',
+        )
+
+    def action_kjr_promote_from_waitlist(self):
+        """Zieht die nächste wartende Anmeldung auf einen frei gewordenen Platz nach.
+
+        BEWUSST MANUELL und nicht automatisch (kein Cron, kein Trigger beim Absagen):
+        Die Geschäftsstelle will selbst entscheiden, WEN sie nachrückt – z. B. weil ein
+        Geschwisterkind, eine Altersgruppe oder eine Zusage am Telefon Vorrang hat. Ein
+        automatisches Nachrücken würde außerdem Absagen mit sofortigen Zusagemails
+        beantworten, die sich nicht mehr zurücknehmen lassen.
+
+        Diese Methode nimmt den ersten Platz der Warteliste (FIFO). Soll jemand anderes
+        nachrücken, wird die Anmeldung direkt über
+        ``event.registration.action_kjr_promote_waitlist()`` nachgezogen.
+        """
+        self.ensure_one()
+        free = self._kjr_free_seats()
+        if free is not None and free <= 0:
+            raise UserError(_(
+                'Für "%s" ist derzeit kein regulärer Platz frei. Bitte zuerst einen Platz '
+                'freigeben (Anmeldung absagen) oder die maximale Teilnehmerzahl erhöhen.',
+                self.name))
+        registration = self._kjr_waitlist_registrations()[:1]
+        if not registration:
+            raise UserError(_('Für "%s" steht niemand auf der Warteliste.', self.name))
+        registration.action_kjr_promote_waitlist()
+        self.message_post(body=Markup('<p>%s</p>') % _(
+            'Von der Warteliste nachgerückt: %s', registration.name or registration.display_name))
+        return True

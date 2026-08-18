@@ -39,35 +39,66 @@
             <field name="value">False</field>
         </record>
 
+        <!-- ── Beispiel-Verleihartikel ────────────────────────────────────
+             ACHTUNG PREISE: Für die folgenden Artikel ist in den Unterlagen des KJR
+             KEIN Preis belegt. Geprüft am 18.08.2026 gegen den Vault:
+             "08 Kundenprojekte/01 KJR Oberallgäu/KJR-Website-Inhalte/04d_Verleih/
+             INHALT.md" (die vollständige Verleih-Preisliste der Live-Seite) und
+             "KJR Website - Ist-Zustand 2026-08-17.md", Abschnitt 5 ("Verleih") —
+             dort steht ausdrücklich, dass 9-Sitzer Bus, Gruppenzelt, Feldküche,
+             Sportgeräte-Set und PA-Anlage gegenüber der Live-Seite ZUSÄTZLICH
+             angelegt wurden. Auch Großspielgeräte (Kubb, Twister XXL) kommen in der
+             Preisliste nicht vor, und Kautionen nennt keine der Quellen.
+             Die früher hier hinterlegten Tages-, Mitglieds- und Kautionsbeträge waren
+             also frei erfunden und stehen jetzt auf 0,00 €. Ein Preis von 0,00 € fällt
+             in der Pflege auf, eine erfundene Zahl von 60,00 € nicht.
+             Zusätzlich stehen die Artikel auf website_published=False (Feld-Default
+             wäre True): es sind Beispieldaten, die ohne bestätigte Preise nicht im
+             öffentlichen Katalog unter /service/verleih erscheinen dürfen.
+             TODO(KJR): echte Preise und Kautionen eintragen, danach "Auf Website"
+             aktivieren. -->
+        <!-- TODO(KJR): Die Preisliste (04d_Verleih/INHALT.md, Abschnitt "Fahrzeuge")
+             kennt einen "Kleinbus 9-Sitzer" zu "bis 100 km: 35 € · ab 100 km:
+             0,35 €/km". Dieser Staffeltarif lässt sich mit den vorhandenen Feldern
+             NICHT korrekt abbilden: das Preismodell "Grundgebühr + Kilometerpreis"
+             rechnet den Kilometersatz ab dem ersten Kilometer, ein Freikilometer-
+             Kontingent gibt es nicht. Die Zahlen sind deshalb bewusst NICHT
+             eingetragen, damit keine zu hohe Rechnung entsteht. Mitgliedspreis und
+             Kaution sind für das Fahrzeug ohnehin nirgends belegt. -->
         <record id="item_bus" model="kjr.rental.item">
             <field name="name">9-Sitzer Bus</field><field name="category_id" ref="cat_vehicle"/>
             <field name="location_id" ref="loc_sonthofen"/><field name="quantity_total">1</field>
-            <field name="price_per_day">60.0</field><field name="price_member_per_day">40.0</field>
-            <field name="deposit">300.0</field><field name="icon">fa-bus</field>
+            <field name="price_per_day">0.0</field><field name="price_member_per_day">0.0</field>
+            <field name="deposit">0.0</field><field name="icon">fa-bus</field>
+            <field name="website_published" eval="False"/>
         </record>
         <record id="item_tent" model="kjr.rental.item">
             <field name="name">Gruppenzelt (10 Pers.)</field><field name="category_id" ref="cat_tent"/>
             <field name="location_id" ref="loc_sonthofen"/><field name="quantity_total">4</field>
-            <field name="price_per_day">15.0</field><field name="price_member_per_day">8.0</field>
-            <field name="deposit">50.0</field><field name="icon">fa-home</field>
+            <field name="price_per_day">0.0</field><field name="price_member_per_day">0.0</field>
+            <field name="deposit">0.0</field><field name="icon">fa-home</field>
+            <field name="website_published" eval="False"/>
         </record>
         <record id="item_pa" model="kjr.rental.item">
             <field name="name">PA-Anlage</field><field name="category_id" ref="cat_tech"/>
             <field name="location_id" ref="loc_immenstadt"/><field name="quantity_total">2</field>
-            <field name="price_per_day">25.0</field><field name="price_member_per_day">15.0</field>
-            <field name="deposit">100.0</field><field name="icon">fa-volume-up</field>
+            <field name="price_per_day">0.0</field><field name="price_member_per_day">0.0</field>
+            <field name="deposit">0.0</field><field name="icon">fa-volume-up</field>
+            <field name="website_published" eval="False"/>
         </record>
         <record id="item_balls" model="kjr.rental.item">
             <field name="name">Sportgeräte-Set</field><field name="category_id" ref="cat_sport"/>
             <field name="location_id" ref="loc_oberstdorf"/><field name="quantity_total">6</field>
-            <field name="price_per_day">5.0</field><field name="price_member_per_day">2.0</field>
-            <field name="deposit">20.0</field><field name="icon">fa-futbol-o</field>
+            <field name="price_per_day">0.0</field><field name="price_member_per_day">0.0</field>
+            <field name="deposit">0.0</field><field name="icon">fa-futbol-o</field>
+            <field name="website_published" eval="False"/>
         </record>
         <record id="item_kitchen" model="kjr.rental.item">
             <field name="name">Feldküche</field><field name="category_id" ref="cat_kitchen"/>
             <field name="location_id" ref="loc_sonthofen"/><field name="quantity_total">2</field>
-            <field name="price_per_day">20.0</field><field name="price_member_per_day">12.0</field>
-            <field name="deposit">80.0</field><field name="icon">fa-cutlery</field>
+            <field name="price_per_day">0.0</field><field name="price_member_per_day">0.0</field>
+            <field name="deposit">0.0</field><field name="icon">fa-cutlery</field>
+            <field name="website_published" eval="False"/>
         </record>
         <!-- Spielmobil: eigenes Angebot mit eigener Landingpage (/service/spielmobil).
              Steht wie alle Seed-Daten unter noupdate="1" - der Datensatz wird beim
@@ -97,8 +128,9 @@
         <record id="item_games" model="kjr.rental.item">
             <field name="name">Großspielgeräte (Kubb, Twister XXL)</field><field name="category_id" ref="cat_games"/>
             <field name="location_id" ref="loc_immenstadt"/><field name="quantity_total">5</field>
-            <field name="price_per_day">8.0</field><field name="price_member_per_day">4.0</field>
-            <field name="deposit">30.0</field><field name="icon">fa-puzzle-piece</field>
+            <field name="price_per_day">0.0</field><field name="price_member_per_day">0.0</field>
+            <field name="deposit">0.0</field><field name="icon">fa-puzzle-piece</field>
+            <field name="website_published" eval="False"/>
         </record>
     </data>
 </odoo>

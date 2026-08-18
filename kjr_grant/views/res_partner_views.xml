@@ -28,7 +28,10 @@
                     <group invisible="not is_kjr_member">
                         <group string="Vertretungsrecht (Vollversammlung)">
                             <field name="kjr_vr_right"/>
-                            <field name="kjr_vr_votes" invisible="not kjr_vr_right"/>
+                            <!-- kjr_vr_votes bewusst NICHT im Formular:
+                                 § 33 Abs. 1 — jedes Mitglied hat genau eine
+                                 Stimme, kein numerisches Stimmgewicht. Das Feld
+                                 existiert nur noch fuer Altdaten. -->
                             <field name="kjr_vr_delegate_count" readonly="1" invisible="not kjr_vr_right"/>
                         </group>
                     </group>

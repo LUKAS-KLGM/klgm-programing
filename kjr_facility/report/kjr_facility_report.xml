@@ -91,4 +91,196 @@
         </t>
     </template>
 
+    <!-- Übergabeprotokoll Haus/Zeltplatz — Struktur der Report-Action bewusst
+         identisch zur Vertrags-Action oben (gleiche Felder, gleiche Gruppe). -->
+    <record id="action_report_booking_handover" model="ir.actions.report">
+        <field name="name">Übergabeprotokoll</field>
+        <field name="model">kjr.facility.booking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">kjr_facility.booking_handover_template</field>
+        <field name="report_file">kjr_facility.booking_handover_template</field>
+        <field name="print_report_name">'Uebergabeprotokoll_%s' % (object.name or '').replace('/', '-')</field>
+        <field name="binding_model_id" ref="model_kjr_facility_booking"/>
+        <field name="binding_type">report</field>
+        <field name="group_ids" eval="[(4, ref('kjr_facility.group_kjr_facility_user'))]"/>
+    </record>
+
+    <template id="booking_handover_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div class="row mb-3">
+                            <div class="col-8">
+                                <h3 class="text-primary"><span t-field="o.company_id.name"/></h3>
+                                <p class="mb-0"><t t-esc="o.facility_id.name"/></p>
+                            </div>
+                            <div class="col-4 text-end">
+                                <p class="mb-0 text-muted">Buchung <t t-esc="o.name"/></p>
+                            </div>
+                        </div>
+                        <hr/>
+                        <h4 class="text-center mb-4">Übergabeprotokoll</h4>
+                        <table class="table table-sm table-bordered">
+                            <tr><td>Einrichtung</td><td><t t-esc="o.facility_id.name"/></td></tr>
+                            <tr>
+                                <td>Gruppe / Mieter</td>
+                                <td>
+                                    <t t-esc="o.partner_id.name"/>
+                                    <t t-if="o.group_name"> (<t t-esc="o.group_name"/>)</t>
+                                </td>
+                            </tr>
+                            <tr t-if="o.contact_person"><td>Ansprechpartner/in</td><td><t t-esc="o.contact_person"/></td></tr>
+                            <tr>
+                                <td>Zeitraum</td>
+                                <td>
+                                    <span t-field="o.check_in" t-options='{"format":"dd.MM.yyyy"}'/>
+                                    bis
+                                    <span t-field="o.check_out" t-options='{"format":"dd.MM.yyyy"}'/>
+                                    (<t t-esc="o.nights"/> Nächte)
+                                </td>
+                            </tr>
+                            <tr><td>Teilnehmer / Betreuer</td><td><t t-esc="o.participant_count"/> / <t t-esc="o.leader_count"/></td></tr>
+                            <tr t-if="o.room_ids"><td>Räume</td><td><t t-esc="', '.join(o.room_ids.mapped('name'))"/></td></tr>
+                        </table>
+
+                        <!-- Leere Felder bleiben als Linie stehen, damit das Protokoll auch
+                             handschriftlich vor Ort ausgefüllt und danach nachgetragen
+                             werden kann. -->
+                        <h5 class="mt-4">1. Anreise — Übergabe an die Gruppe</h5>
+                        <table class="table table-sm table-bordered">
+                            <tr>
+                                <td style="width:40%">Übergabe am</td>
+                                <td><span t-if="o.handover_in_date" t-field="o.handover_in_date" t-options='{"format":"dd.MM.yyyy"}'/><t t-if="not o.handover_in_date">__________________</t></td>
+                            </tr>
+                            <tr>
+                                <td>Übergeben durch (KJR)</td>
+                                <td><t t-esc="o.handover_in_user_id.name or '__________________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Übernommen durch (Gruppe)</td>
+                                <td><t t-esc="o.handover_in_received_by or '__________________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Zustand bei Übergabe</td>
+                                <td><t t-esc="dict(o._fields['handover_in_condition'].selection).get(o.handover_in_condition) or '__________________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Schlüssel übergeben (Anzahl)</td>
+                                <td><t t-esc="o.handover_in_keys or '________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Zählerstand Strom (kWh)</td>
+                                <td><t t-esc="('%.2f' % o.handover_in_meter_electricity) if o.handover_in_meter_electricity else '__________________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Zählerstand Wasser (m³)</td>
+                                <td><t t-esc="('%.2f' % o.handover_in_meter_water) if o.handover_in_meter_water else '__________________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Zählerstand Gas/Heizung</td>
+                                <td><t t-esc="('%.2f' % o.handover_in_meter_gas) if o.handover_in_meter_gas else '__________________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Schaden festgestellt</td>
+                                <td><t t-esc="'ja' if o.handover_in_damage else 'nein'"/></td>
+                            </tr>
+                            <tr t-if="o.handover_in_damage or o.handover_in_damage_note">
+                                <td>Schadensbeschreibung</td>
+                                <td><t t-esc="o.handover_in_damage_note or '—'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Vermerk</td>
+                                <td><t t-esc="o.handover_in_note or '—'"/></td>
+                            </tr>
+                        </table>
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px;">
+                                    <small>Übergabe <span t-field="o.company_id.name"/> (Datum, Unterschrift)</small>
+                                </div>
+                            </div>
+                            <div class="col-6 text-end">
+                                <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px; margin-left:auto;">
+                                    <small>Übernahme Gruppe (Datum, Unterschrift)</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 class="mt-4">2. Abreise — Rücknahme von der Gruppe</h5>
+                        <table class="table table-sm table-bordered">
+                            <tr>
+                                <td style="width:40%">Rücknahme am</td>
+                                <td><span t-if="o.handover_out_date" t-field="o.handover_out_date" t-options='{"format":"dd.MM.yyyy"}'/><t t-if="not o.handover_out_date">__________________</t></td>
+                            </tr>
+                            <tr>
+                                <td>Zurückgenommen durch (KJR)</td>
+                                <td><t t-esc="o.handover_out_user_id.name or '__________________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Übergeben durch (Gruppe)</td>
+                                <td><t t-esc="o.handover_out_handed_by or '__________________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Zustand bei Rücknahme</td>
+                                <td><t t-esc="dict(o._fields['handover_out_condition'].selection).get(o.handover_out_condition) or '__________________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Schlüssel zurück (Anzahl)</td>
+                                <td><t t-esc="o.handover_out_keys or '________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Gereinigt übergeben</td>
+                                <td><t t-esc="'ja' if o.handover_out_cleaning_ok else 'nein'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Zählerstand Strom (kWh)</td>
+                                <td><t t-esc="('%.2f' % o.handover_out_meter_electricity) if o.handover_out_meter_electricity else '__________________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Zählerstand Wasser (m³)</td>
+                                <td><t t-esc="('%.2f' % o.handover_out_meter_water) if o.handover_out_meter_water else '__________________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Zählerstand Gas/Heizung</td>
+                                <td><t t-esc="('%.2f' % o.handover_out_meter_gas) if o.handover_out_meter_gas else '__________________'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Schaden festgestellt</td>
+                                <td><t t-esc="'ja' if o.handover_out_damage else 'nein'"/></td>
+                            </tr>
+                            <tr t-if="o.handover_out_damage or o.handover_out_damage_note">
+                                <td>Schadensbeschreibung</td>
+                                <td><t t-esc="o.handover_out_damage_note or '—'"/></td>
+                            </tr>
+                            <tr>
+                                <td>Vermerk</td>
+                                <td><t t-esc="o.handover_out_note or '—'"/></td>
+                            </tr>
+                        </table>
+                        <div class="row">
+                            <div class="col-6">
+                                <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px;">
+                                    <small>Rücknahme <span t-field="o.company_id.name"/> (Datum, Unterschrift)</small>
+                                </div>
+                            </div>
+                            <div class="col-6 text-end">
+                                <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px; margin-left:auto;">
+                                    <small>Übergabe Gruppe (Datum, Unterschrift)</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p class="mt-4 small text-muted">
+                            Das Protokoll hält den festgestellten Zustand fest. Über etwaige Folgen
+                            eines Schadens (Instandsetzung, Nachbelastung) entscheidet die
+                            Geschäftsstelle gesondert; aus diesem Protokoll ergibt sich noch keine
+                            Forderung.
+                        </p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
 </odoo>

@@ -25,9 +25,19 @@ class ResPartner(models.Model):
         ('open',           'Offene Jugendeinrichtung'),
     ], string='Verbandstyp')
     kjr_member_number = fields.Char(string='Mitgliedsnummer KJR', copy=False)
+    # TODO(KJR): Die Gap-Analyse (Vault, "KJR Funktions-Gap-Analyse 2026-06.md",
+    # Abschnitt Antragsberechtigung) haelt fest, dass Antragsberechtigung und
+    # Stimmrecht in der Vollversammlung zu TRENNEN sind — massgeblich ist die
+    # Mitgliedschaft im KJR, nicht das Vertretungsrecht. Der Vollstaendigkeits-
+    # check in kjr_grant_application.py (_check_completeness) sperrt derzeit
+    # jedoch Antraege ohne kjr_vr_right. Vor Umbau (eigenes Feld
+    # member_status / Pruefung je Foerderlinie) Kundenentscheidung einholen und
+    # gegen die gueltige KJR-Richtlinie § 3.1 verifizieren.
     kjr_vr_right = fields.Boolean(
         string='Vertretungsrecht in Vollversammlung', default=False,
-        help='Nur Verbände mit VR sind antragsberechtigt (§ 3.1 Richtlinien).',
+        help='Kennzeichnet Verbände mit Sitz und Stimme in der KJR-Vollversammlung. '
+             'Dient derzeit zusätzlich als Prüfkriterium der Antragsberechtigung '
+             '(§ 3.1 Richtlinien) — siehe TODO(KJR) im Code.',
     )
     kjr_vr_delegate_ids = fields.Many2many(
         'res.partner', 'kjr_partner_delegate_rel', 'partner_id', 'delegate_id',
@@ -38,9 +48,19 @@ class ResPartner(models.Model):
     kjr_vr_delegate_count = fields.Integer(
         string='Anzahl Vertreter', compute='_compute_delegate_count',
     )
+    # HISTORISCH — nicht mehr verwenden.
+    # Nach § 33 Abs. 1 der Satzung hat jedes Mitglied in der Vollversammlung
+    # genau EINE Stimme; ein numerisches Stimmgewicht je Verbandstyp existiert
+    # nicht. Quorum und Abstimmungen in kjr.assembly zaehlen entsprechend je
+    # stimmberechtigtem Mitgliedsverband eine Stimme und lesen dieses Feld
+    # nirgends aus. Das Feld bleibt nur erhalten, weil es bereits gepflegte
+    # Altdaten enthalten kann; es ist aus dem Kontaktformular entfernt.
     kjr_vr_votes = fields.Integer(
-        string='Stimmen in Vollversammlung', default=0,
-        help='Anzahl Stimmen lt. § 30 BJR-Satzung (abhängig von Verbandstyp).',
+        string='Stimmen in Vollversammlung (historisch)', default=0,
+        help='Historisches Feld ohne fachliche Wirkung. Nach § 33 Abs. 1 der '
+             'Satzung hat jedes Mitglied in der Vollversammlung genau EINE '
+             'Stimme; ein numerisches Stimmgewicht gibt es nicht. Der Wert wird '
+             'in keiner Berechnung, Auswertung oder Abstimmung verwendet.',
     )
     kjr_active_since = fields.Date(string='Mitglied seit')
     kjr_grant_ids = fields.One2many(

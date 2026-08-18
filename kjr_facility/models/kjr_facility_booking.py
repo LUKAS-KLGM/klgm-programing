@@ -5,6 +5,7 @@ import logging
 from datetime import timedelta
 
 from dateutil.relativedelta import relativedelta
+from markupsafe import Markup
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
@@ -170,6 +171,126 @@ class KjrFacilityBooking(models.Model):
     internal_note = fields.Text(
         string='Interne Notiz', groups='kjr_facility.group_kjr_facility_user',
         help='Nur für Mitarbeiter sichtbar (nicht im Portal).')
+
+    # ── Übergabeprotokoll (F: Haus/Zeltplatz, beide Richtungen) ──────────────
+    #
+    # Übergabe und Schadensfeststellung liefen bisher auf Papier und waren am
+    # Vorgang nicht auffindbar. Fachliche Leitplanke (übernommen aus dem
+    # Rückgabeprotokoll in kjr_rental, siehe _check_handover_protocol): Das
+    # Protokoll dokumentiert den ZUSTAND, es ist KEINE Freigabebedingung. Ein
+    # Mangel darf den Abschluss der Buchung nicht verhindern — er verlangt nur
+    # einen Vermerk. Andernfalls kreuzt das Personal wahrheitswidrig „in Ordnung"
+    # an und das Protokoll verliert genau den Nachweiswert, für den es gebaut wird.
+    #
+    # Zählerstände sind bewusst freie Zahlenfelder ohne Vorbelegung und ohne
+    # Verbrauchs-/Preislogik.
+    # TODO(KJR): Ob und wie Mehrverbrauch (Strom/Wasser/Gas) abgerechnet wird, ist
+    # nicht entschieden. Es gibt dafür weder einen belegten Arbeitspreis noch eine
+    # belegte Freimenge, deshalb wird hier ausschließlich dokumentiert.
+
+    _HANDOVER_CONDITIONS = [
+        ('ok', 'Ordnungsgemäß'),
+        ('minor', 'Kleinere Mängel'),
+        ('major', 'Erhebliche Mängel'),
+    ]
+
+    # ── Anreise: Übergabe an die Gruppe ──────────────────────────────────────
+    handover_in_date = fields.Date(
+        string='Übergabe am (Anreise)', tracking=True, copy=False,
+        help='Tag der Übergabe an die Gruppe. Wird beim Erfassen des Anreiseprotokolls '
+             'automatisch auf heute gesetzt, falls leer, und kann nachgetragen werden.')
+    handover_in_user_id = fields.Many2one(
+        'res.users', string='Übergeben durch (KJR)', copy=False,
+        help='Person der Geschäftsstelle/Hausbetreuung, die das Haus bzw. den Zeltplatz '
+             'übergeben hat.')
+    handover_in_received_by = fields.Char(
+        string='Übernommen durch (Gruppe)', copy=False,
+        help='Name der Person der Gruppe, die das Objekt übernommen hat (in der Regel die '
+             'verantwortliche Ansprechperson).')
+    handover_in_condition = fields.Selection(
+        _HANDOVER_CONDITIONS, string='Zustand bei Übergabe', tracking=True, copy=False,
+        help='Festgestellter Zustand bei der Übergabe an die Gruppe. Leer = noch nicht '
+             'erfasst. Der Eintrag dokumentiert den Zustand und verhindert nichts; '
+             'Mängel verlangen nur einen Vermerk.')
+    handover_in_keys = fields.Integer(
+        string='Schlüssel übergeben (Anzahl)', default=0, copy=False,
+        help='Anzahl der bei der Anreise ausgehändigten Schlüssel/Transponder. 0 = nicht '
+             'erfasst oder keine Schlüsselübergabe.')
+    handover_in_meter_electricity = fields.Float(
+        string='Zählerstand Strom Anreise (kWh)', digits=(12, 2), copy=False,
+        help='Ablesewert bei der Übergabe. Reine Dokumentation, es wird nichts daraus '
+             'berechnet (siehe TODO(KJR) zur Verbrauchsabrechnung).')
+    handover_in_meter_water = fields.Float(
+        string='Zählerstand Wasser Anreise (m³)', digits=(12, 2), copy=False,
+        help='Ablesewert bei der Übergabe. Reine Dokumentation.')
+    handover_in_meter_gas = fields.Float(
+        string='Zählerstand Gas/Heizung Anreise', digits=(12, 2), copy=False,
+        help='Ablesewert bei der Übergabe (Einheit je nach Zähler: m³ oder kWh). '
+             'Reine Dokumentation.')
+    handover_in_damage = fields.Boolean(
+        string='Schaden festgestellt (Anreise)', tracking=True, copy=False,
+        help='Bei der Übergabe wurde ein Schaden oder Mangel festgestellt — z. B. ein '
+             'Vorschaden, den die Gruppe nicht zu vertreten hat. Dann ist die '
+             'Schadensbeschreibung Pflicht.')
+    handover_in_damage_note = fields.Text(
+        string='Schadensbeschreibung (Anreise)', copy=False,
+        help='Was genau ist beschädigt oder mangelhaft? Pflicht, sobald „Schaden '
+             'festgestellt (Anreise)" gesetzt ist. Bitte das Kennzeichen NICHT '
+             'wahrheitswidrig entfernen, um die Erfassung abzukürzen.')
+    handover_in_note = fields.Text(
+        string='Vermerk (Anreise)', copy=False,
+        help='Freitext zur Übergabe: Einweisung, Absprachen, Besonderheiten, fehlende '
+             'Ausstattung.')
+
+    # ── Abreise: Rücknahme von der Gruppe ────────────────────────────────────
+    handover_out_date = fields.Date(
+        string='Rücknahme am (Abreise)', tracking=True, copy=False,
+        help='Tag der Rücknahme von der Gruppe. Wird beim Erfassen des Abreiseprotokolls '
+             'automatisch auf heute gesetzt, falls leer.')
+    handover_out_user_id = fields.Many2one(
+        'res.users', string='Zurückgenommen durch (KJR)', copy=False,
+        help='Person der Geschäftsstelle/Hausbetreuung, die das Objekt zurückgenommen hat.')
+    handover_out_handed_by = fields.Char(
+        string='Übergeben durch (Gruppe)', copy=False,
+        help='Name der Person der Gruppe, die das Objekt zurückgegeben hat.')
+    handover_out_condition = fields.Selection(
+        _HANDOVER_CONDITIONS, string='Zustand bei Rücknahme', tracking=True, copy=False,
+        help='Festgestellter Zustand bei der Rücknahme. Leer = noch nicht erfasst. '
+             'Auch „Erhebliche Mängel" hindert den Abschluss der Buchung nicht — es '
+             'verlangt einen Vermerk.')
+    handover_out_keys = fields.Integer(
+        string='Schlüssel zurück (Anzahl)', default=0, copy=False,
+        help='Anzahl der bei der Abreise zurückgegebenen Schlüssel/Transponder. Weicht die '
+             'Zahl von der Ausgabe ab, bitte im Vermerk festhalten.')
+    handover_out_cleaning_ok = fields.Boolean(
+        string='Gereinigt übergeben', copy=False,
+        help='Das Objekt wurde im vereinbarten Reinigungszustand zurückgegeben. Das '
+             'Häkchen dokumentiert nur den Zustand; bleibt es leer, ist die Rücknahme '
+             'trotzdem abschließbar — dann bitte mit Vermerk. Unabhängig davon werden '
+             'die Räume der Buchung beim Abschluss auf „Zu reinigen" gesetzt.')
+    handover_out_meter_electricity = fields.Float(
+        string='Zählerstand Strom Abreise (kWh)', digits=(12, 2), copy=False,
+        help='Ablesewert bei der Rücknahme. Reine Dokumentation.')
+    handover_out_meter_water = fields.Float(
+        string='Zählerstand Wasser Abreise (m³)', digits=(12, 2), copy=False,
+        help='Ablesewert bei der Rücknahme. Reine Dokumentation.')
+    handover_out_meter_gas = fields.Float(
+        string='Zählerstand Gas/Heizung Abreise', digits=(12, 2), copy=False,
+        help='Ablesewert bei der Rücknahme (Einheit je nach Zähler). Reine Dokumentation.')
+    handover_out_damage = fields.Boolean(
+        string='Schaden festgestellt (Abreise)', tracking=True, copy=False,
+        help='Bei der Rücknahme wurde ein Schaden oder Verlust festgestellt. Dann ist die '
+             'Schadensbeschreibung Pflicht. Ob daraus eine Forderung entsteht, entscheidet '
+             'die Geschäftsstelle — automatisch passiert nichts.')
+    handover_out_damage_note = fields.Text(
+        string='Schadensbeschreibung (Abreise)', copy=False,
+        help='Was genau ist beschädigt, fehlt oder wurde vereinbart? Pflicht, sobald '
+             '„Schaden festgestellt (Abreise)" gesetzt ist. Der Text ist die dokumentierte '
+             'Feststellung und zugleich die Begründung für eine mögliche Nachbelastung.')
+    handover_out_note = fields.Text(
+        string='Vermerk (Abreise)', copy=False,
+        help='Freitext zur Rücknahme: Reinigungszustand, Absprachen, offene Punkte, '
+             'abweichende Schlüsselzahl.')
 
     # ══════════════════════════════════════════════════════════════════════════
     # COMPUTED
@@ -815,10 +936,26 @@ class KjrFacilityBooking(models.Model):
                     'Bitte zuerst die Rechnung erstellen, bevor die Buchung abgeschlossen wird '
                     '(berechenbarer Betrag vorhanden).'
                 ))
+            # Übergabeprotokoll Abreise: Ein festgestellter Mangel hindert den Abschluss
+            # NICHT — verlangt wird nur, dass jede Feststellung beschrieben ist. Ein gar
+            # nicht erfasstes Protokoll blockiert ebenfalls nicht (Nacherfassung,
+            # Papierprotokoll); darauf wird unten lediglich im Chatter hingewiesen.
+            recorded = rec._handover_recorded('out')
+            if recorded:
+                rec._check_handover_protocol('out')
             rec.state = 'done'
-            # Belegte Räume zur Reinigung markieren.
+            # Belegte Räume zur Reinigung markieren (action_handover_departure macht das
+            # bereits bei der Rücknahme; hier bleibt es als Auffangnetz für Buchungen
+            # ohne erfasstes Abreiseprotokoll).
             rec.room_ids.filtered(lambda r: r.housekeeping_state != 'blocked').write(
                 {'housekeeping_state': 'dirty'})
+            if not recorded:
+                rec.message_post(
+                    body=_('Die Buchung wurde abgeschlossen, ohne dass ein '
+                           'Übergabeprotokoll für die Abreise erfasst wurde. Bitte im '
+                           'Reiter „Übergabe" nachtragen, falls ein Papierprotokoll '
+                           'vorliegt.'),
+                    subtype_xmlid='mail.mt_note')
 
     def action_cancel(self):
         for rec in self:
@@ -845,6 +982,186 @@ class KjrFacilityBooking(models.Model):
             'view_mode': 'form',
         }
 
+    # ══════════════════════════════════════════════════════════════════════════
+    # ÜBERGABEPROTOKOLL (Anreise / Abreise)
+    # ══════════════════════════════════════════════════════════════════════════
+    #
+    # Aufbau bewusst analog zum Rückgabeprotokoll in kjr_rental
+    # (kjr.rental.order._return_findings / _check_return_checklist / action_return),
+    # inklusive der dort gezogenen Lehre: Die Checkliste hält den ZUSTAND fest und
+    # ist KEINE Freigabebedingung. Ein Mangel darf den Abschluss der Buchung nicht
+    # verhindern, er verlangt nur einen Vermerk.
+
+    def _handover_field(self, direction, suffix):
+        """Feldwert des Protokollteils ``direction`` ('in' = Anreise, 'out' = Abreise)."""
+        self.ensure_one()
+        return getattr(self, 'handover_%s_%s' % (direction, suffix))
+
+    def _handover_label(self, direction):
+        return _('Anreise') if direction == 'in' else _('Abreise')
+
+    def _handover_recorded(self, direction):
+        """Wurde der Protokollteil überhaupt angefasst?
+
+        Wichtig für ``action_done``: Ein NICHT erfasstes Protokoll darf den Abschluss
+        nicht blockieren (Nacherfassung von Altvorgängen, Papierprotokoll). Erst wenn
+        etwas erfasst wurde, wird die Vollständigkeit des Vermerks eingefordert.
+        """
+        self.ensure_one()
+        return bool(
+            self._handover_field(direction, 'date')
+            or self._handover_field(direction, 'condition')
+            or self._handover_field(direction, 'damage')
+            or (self._handover_field(direction, 'note') or '').strip()
+            or (self._handover_field(direction, 'damage_note') or '').strip()
+        )
+
+    def _handover_findings(self, direction):
+        """Abweichungen des Protokollteils als Klartextliste (leer = alles in Ordnung)."""
+        self.ensure_one()
+        findings = []
+        condition = self._handover_field(direction, 'condition')
+        if condition == 'minor':
+            findings.append(_('kleinere Mängel festgestellt'))
+        elif condition == 'major':
+            findings.append(_('erhebliche Mängel festgestellt'))
+        if self._handover_field(direction, 'damage'):
+            findings.append(_('Schaden festgestellt'))
+        if direction == 'out' and not self.handover_out_cleaning_ok:
+            findings.append(_('nicht als gereinigt übergeben markiert'))
+        return findings
+
+    def _check_handover_protocol(self, direction):
+        """Prüft NUR, ob jede Feststellung auch beschrieben ist.
+
+        Der Zustand selbst (Mängel, Schaden, ungereinigt) hindert weder die Erfassung
+        noch den Abschluss der Buchung — genau dafür ist das Protokoll da. Verlangt
+        wird ausschließlich:
+
+        * „Schaden festgestellt" gesetzt  -> Schadensbeschreibung ausfüllen,
+        * sonstige Abweichung             -> irgendein Vermerk, der sie beschreibt.
+
+        Die Häkchen dürfen NICHT wahrheitswidrig gesetzt werden, um die Erfassung
+        abzukürzen; sonst verliert das Protokoll den Nachweiswert (siehe kjr_rental).
+        """
+        for rec in self:
+            label = rec._handover_label(direction)
+            damage_note = (rec._handover_field(direction, 'damage_note') or '').strip()
+            if rec._handover_field(direction, 'damage') and not damage_note:
+                raise UserError(_(
+                    'Im Übergabeprotokoll %(dir)s von %(name)s ist „Schaden festgestellt" '
+                    'angekreuzt. Bitte die Schadensbeschreibung ausfüllen: was ist '
+                    'beschädigt, seit wann, wer hat es festgestellt. Das Kennzeichen bitte '
+                    'nicht entfernen, um die Erfassung abzukürzen — es hält den '
+                    'tatsächlichen Zustand fest.',
+                    dir=label, name=rec.name,
+                ))
+            findings = rec._handover_findings(direction)
+            free_text = damage_note or (rec._handover_field(direction, 'note') or '').strip()
+            if findings and not free_text:
+                raise UserError(_(
+                    'Das Übergabeprotokoll %(dir)s von %(name)s weist Abweichungen auf '
+                    '(%(findings)s). Bitte den Vermerk im Reiter „Übergabe" ausfüllen: was '
+                    'wurde festgestellt, was wurde vereinbart. War alles in Ordnung, bitte '
+                    'den Zustand entsprechend setzen (bei der Abreise auch „Gereinigt '
+                    'übergeben") — nur wahrheitsgemäß.',
+                    dir=label, name=rec.name, findings=', '.join(findings),
+                ))
+
+    def _handover_message(self, direction):
+        """Protokollteil als Chatter-Notiz (spätere Nachvollziehbarkeit am Vorgang).
+
+        Markup ist zwingend: message_post escapt einfache Zeichenketten, sonst stünden
+        die <ul>/<li>-Tags als Text im Chatter. Die eingesetzten Werte (u. a. die frei
+        erfassten Vermerke) werden von Markup.__mod__ weiterhin escaped.
+        """
+        self.ensure_one()
+        conditions = dict(self._HANDOVER_CONDITIONS)
+        condition = self._handover_field(direction, 'condition')
+        date = self._handover_field(direction, 'date')
+        dash = _('–')
+        rows = [
+            (_('Datum'), date.strftime('%d.%m.%Y') if date else dash),
+            (_('Zustand'), conditions.get(condition, dash)),
+        ]
+        if direction == 'in':
+            rows += [
+                (_('Übergeben durch (KJR)'), self.handover_in_user_id.display_name or dash),
+                (_('Übernommen durch (Gruppe)'), self.handover_in_received_by or dash),
+                (_('Schlüssel übergeben'), str(self.handover_in_keys or 0)),
+            ]
+        else:
+            rows += [
+                (_('Zurückgenommen durch (KJR)'), self.handover_out_user_id.display_name or dash),
+                (_('Übergeben durch (Gruppe)'), self.handover_out_handed_by or dash),
+                (_('Schlüssel zurück'), str(self.handover_out_keys or 0)),
+                (_('Gereinigt übergeben'),
+                 _('ja') if self.handover_out_cleaning_ok else _('nein')),
+            ]
+        # Zählerstände nur aufnehmen, wenn tatsächlich abgelesen wurde (0 = nicht erfasst).
+        for suffix, meter_label in (
+            ('meter_electricity', _('Zählerstand Strom')),
+            ('meter_water', _('Zählerstand Wasser')),
+            ('meter_gas', _('Zählerstand Gas/Heizung')),
+        ):
+            value = self._handover_field(direction, suffix)
+            if value:
+                rows.append((meter_label, '%.2f' % value))
+        rows += [
+            # Der Chatter hält den TATSÄCHLICHEN Zustand fest (ja/nein), nicht den
+            # Prüffortschritt: ein „ja" beim Schaden ist ein gültiges Ergebnis.
+            (_('Schaden festgestellt'),
+             _('ja') if self._handover_field(direction, 'damage') else _('nein')),
+            (_('Schadensbeschreibung'),
+             (self._handover_field(direction, 'damage_note') or '').strip() or dash),
+            (_('Vermerk'), (self._handover_field(direction, 'note') or '').strip() or dash),
+        ]
+        items = Markup('').join(
+            Markup('<li>%s: %s</li>') % (label, value) for label, value in rows
+        )
+        head = Markup('%s') % (_(
+            'Übergabeprotokoll %s dokumentiert:') % self._handover_label(direction))
+        return head + Markup('<ul>%s</ul>') % items
+
+    def action_handover_arrival(self):
+        """Anreiseteil des Übergabeprotokolls festschreiben und im Chatter ablegen."""
+        for rec in self:
+            if not rec.is_booked:
+                raise UserError(_(
+                    'Das Übergabeprotokoll kann erst ab der verbindlichen Buchung '
+                    '(Status „Gebucht") erfasst werden.'))
+            rec._check_handover_protocol('in')
+            if not rec.handover_in_date:
+                rec.handover_in_date = fields.Date.today()
+            if not rec.handover_in_user_id:
+                rec.handover_in_user_id = self.env.user
+            rec.message_post(body=rec._handover_message('in'), subtype_xmlid='mail.mt_note')
+
+    def action_handover_departure(self):
+        """Abreiseteil des Übergabeprotokolls festschreiben und im Chatter ablegen.
+
+        Setzt außerdem die Räume der Buchung auf „Zu reinigen" — die Abreise ist der
+        Zeitpunkt, ab dem gereinigt werden muss, und der Abschluss der Buchung
+        (action_done) kann deutlich später erfolgen. Gesperrte Räume bleiben
+        unangetastet, genau wie in action_done; das doppelte Setzen ist unschädlich.
+        """
+        for rec in self:
+            if rec.state not in ('checked_in', 'invoiced', 'done'):
+                raise UserError(_(
+                    'Das Abreiseprotokoll kann erst nach der Anreise erfasst werden.'))
+            rec._check_handover_protocol('out')
+            if not rec.handover_out_date:
+                rec.handover_out_date = fields.Date.today()
+            if not rec.handover_out_user_id:
+                rec.handover_out_user_id = self.env.user
+            rec.message_post(body=rec._handover_message('out'), subtype_xmlid='mail.mt_note')
+            rec.room_ids.filtered(lambda r: r.housekeeping_state != 'blocked').write(
+                {'housekeeping_state': 'dirty'})
+
+    def action_print_handover(self):
+        self.ensure_one()
+        return self.env.ref('kjr_facility.action_report_booking_handover').report_action(self)
+
     def action_print_contract(self):
         self.ensure_one()
         return self.env.ref('kjr_facility.action_report_booking_contract').report_action(self)
@@ -859,6 +1176,68 @@ class KjrFacilityBooking(models.Model):
         self.ensure_one()
         return bool(self.activity_ids.filtered(lambda a: a.summary == summary))
 
+    # ──────────────────────────────────────────────────────────────────────
+    # Sicherung gegen Massenversand beim ersten Cron-Lauf
+    #
+    # Die Merker-Felder (reminder_sent, contract_followup_sent,
+    # deposit_reminder_sent) stehen bei übernommenen bzw. importierten Buchungen
+    # auf False. Ohne zusätzliche Bremse würde der erste Lauf nach Go-live den
+    # kompletten Bestand anschreiben. Gleiches Muster wie in kjr_event:
+    #   • kjr_facility.automation_active_from  – wird beim ERSTEN Lauf selbst
+    #     geschrieben; danach zählen nur Buchungen, die NACH diesem Zeitpunkt
+    #     angelegt wurden. Soll der Altbestand doch einbezogen werden, kann der
+    #     Parameter von Hand auf ein früheres Datum gesetzt werden.
+    #   • kjr_facility.automation_batch_limit – technische Obergrenze je Lauf
+    #     (Default 50, kein fachlicher Wert). Was übrig bleibt, kommt beim
+    #     nächsten Lauf dran.
+    # Beides sind bewusst KEINE Seed-Datensätze: der erste Lauf legt sie an.
+    # ──────────────────────────────────────────────────────────────────────
+    _AUTOMATION_ACTIVE_FROM = 'kjr_facility.automation_active_from'
+    _AUTOMATION_BATCH_LIMIT = 'kjr_facility.automation_batch_limit'
+    _AUTOMATION_DEFAULT_LIMIT = 50
+
+    @api.model
+    def _automation_active_from(self):
+        """Zeitpunkt, ab dem angelegte Buchungen automatisiert werden."""
+        params = self.env['ir.config_parameter'].sudo()
+        raw = params.get_param(self._AUTOMATION_ACTIVE_FROM)
+        if raw in (None, False, ''):
+            now = fields.Datetime.now()
+            params.set_param(self._AUTOMATION_ACTIVE_FROM, fields.Datetime.to_string(now))
+            _logger.info(
+                'KJR-Einrichtungsautomatik aktiviert: es werden nur Buchungen '
+                'berücksichtigt, die nach %s angelegt wurden (%s).',
+                now, self._AUTOMATION_ACTIVE_FROM)
+            return now
+        try:
+            active_from = fields.Datetime.to_datetime(raw)
+        except (TypeError, ValueError):
+            active_from = False
+        if not active_from:
+            _logger.warning(
+                'Systemparameter %s enthält kein gültiges Datum (%r) – Automatik pausiert.',
+                self._AUTOMATION_ACTIVE_FROM, raw)
+        return active_from
+
+    @api.model
+    def _automation_batch_limit(self):
+        raw = self.env['ir.config_parameter'].sudo().get_param(self._AUTOMATION_BATCH_LIMIT)
+        try:
+            limit = int(raw)
+        except (TypeError, ValueError):
+            limit = 0
+        return limit if limit > 0 else self._AUTOMATION_DEFAULT_LIMIT
+
+    @api.model
+    def _automation_search(self, domain):
+        """Suche für die Automatik: Aktivierungszeitpunkt + Mengenbegrenzung."""
+        active_from = self._automation_active_from()
+        if not active_from:
+            return self.browse()
+        return self.search(
+            domain + [('create_date', '>=', active_from)],
+            limit=self._automation_batch_limit(), order='id')
+
     @api.model
     def _cron_booking_reminder(self):
         """Erinnerung ~14 Tage vor Anreise an aktive Buchungen.
@@ -868,7 +1247,7 @@ class KjrFacilityBooking(models.Model):
         today = fields.Date.today()
         window_start = today + timedelta(days=13)
         window_end = today + timedelta(days=15)
-        bookings = self.search([
+        bookings = self._automation_search([
             ('state', 'in', ('confirmed', 'deposit', 'checked_in')),
             ('reminder_sent', '=', False),
             ('check_in', '>=', window_start),
@@ -899,7 +1278,7 @@ class KjrFacilityBooking(models.Model):
         -> Activity + Mahn-Mail (idempotent über Dedup)."""
         followup_days = 10
         cutoff = fields.Date.today() - timedelta(days=followup_days)
-        bookings = self.search([
+        bookings = self._automation_search([
             ('state', 'in', ('confirmed', 'deposit', 'checked_in')),
             ('contract_signed', '=', False),
             ('contract_followup_sent', '=', False),
@@ -929,7 +1308,7 @@ class KjrFacilityBooking(models.Model):
     def _cron_deposit_overdue(self):
         """F5: Anzahlung überfällig (deposit_due_date < heute & nicht bezahlt)."""
         today = fields.Date.today()
-        bookings = self.search([
+        bookings = self._automation_search([
             ('state', 'in', ('confirmed', 'deposit', 'checked_in')),
             ('deposit_paid', '=', False),
             ('deposit_reminder_sent', '=', False),
@@ -961,7 +1340,7 @@ class KjrFacilityBooking(models.Model):
         """F5: Reservierung abgelaufen (reservation_expiry < heute, state=reserved)
         -> Activity/Hinweis (idempotent)."""
         today = fields.Date.today()
-        bookings = self.search([
+        bookings = self._automation_search([
             ('state', '=', 'reserved'),
             ('reservation_expiry', '!=', False),
             ('reservation_expiry', '<', today),

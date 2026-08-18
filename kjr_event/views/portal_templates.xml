@@ -69,6 +69,7 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Alter</th>
+                                <th>Einwilligung</th>
                                 <th>Ernährung</th>
                                 <th>Bemerkung</th>
                                 <th>Status</th>
@@ -79,6 +80,26 @@
                                 <td><t t-esc="reg.name or (reg.partner_id.name or '')"/></td>
                                 <td>
                                     <t t-if="reg.has_birthdate"><t t-esc="reg.kjr_age"/></t>
+                                </td>
+                                <!-- E7: Stand der Einwilligung inkl. Hinweis, ob die
+                                     Erinnerung bereits hinausgegangen ist. Bewusst ohne
+                                     Angaben zu den Erziehungsberechtigten. -->
+                                <td>
+                                    <t t-if="reg.consent_missing">
+                                        <span class="badge text-bg-warning">fehlt</span>
+                                        <small t-if="reg.kjr_consent_reminder_sent"
+                                               class="d-block text-muted">
+                                            Erinnerung am
+                                            <span t-field="reg.kjr_consent_reminder_date"
+                                                  t-options='{"format": "dd.MM.yyyy"}'/>
+                                        </small>
+                                    </t>
+                                    <t t-elif="reg.event_id.requires_parental_consent and reg.is_minor">
+                                        <span class="badge text-bg-success">liegt vor</span>
+                                    </t>
+                                    <t t-else="">
+                                        <span class="text-muted">–</span>
+                                    </t>
                                 </td>
                                 <td>
                                     <t t-esc="dict(reg._fields['dietary_requirements'].selection).get(reg.dietary_requirements, '')"/>

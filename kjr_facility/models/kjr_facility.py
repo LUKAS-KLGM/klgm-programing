@@ -75,9 +75,25 @@ class KjrFacility(models.Model):
     room_ids = fields.One2many('kjr.facility.room', 'facility_id', string='Räume')
     equipment_ids = fields.One2many('kjr.facility.equipment', 'facility_id', string='Ausstattung')
     bed_total = fields.Integer(string='Betten gesamt', compute='_compute_bed_total')
+    # Ein Zeltplatz hat keine Betten. Ohne diese Unterscheidung warb NiSo auf der
+    # Website mit „40 Betten" (Befund Marvin Gutknecht, 17.08.2026). Die Zahl stimmt,
+    # nur die Beschriftung war falsch.
+    capacity_label = fields.Char(
+        string='Bezeichnung der Kapazität', compute='_compute_capacity_label',
+        help='„Betten" bei Häusern, „Plätze" bei Zeltplätzen — für Website und Listen.',
+    )
     booking_count = fields.Integer(string='Buchungen', compute='_compute_booking_count')
     website_published = fields.Boolean(string='Auf Website veröffentlicht', default=True)
 
+    @api.depends('facility_type')
+    def _compute_capacity_label(self):
+        for rec in self:
+            rec.capacity_label = _('Plätze') if rec.facility_type == 'campsite' else _('Betten')
+
+    # Die Abhängigkeit gehört an DIESE Methode: gestapelte @api.depends überschreiben
+    # sich gegenseitig (attrsetter '_depends'), dadurch hing 'room_ids.capacity'
+    # fälschlich an _compute_capacity_label und 'bed_total' wurde bei einer
+    # Kapazitätsänderung nicht neu berechnet.
     @api.depends('room_ids.capacity')
     def _compute_bed_total(self):
         for rec in self:

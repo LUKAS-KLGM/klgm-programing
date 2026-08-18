@@ -87,17 +87,50 @@ class KjrFacilityWebsite(http.Controller):
                 return tariff
         return Tariff.browse()
 
+    @staticmethod
+    def _tariff_rate_maintained(tariff):
+        """Ist am Tarif überhaupt ein Übernachtungssatz gepflegt?
+
+        Ein Betrag von 0,00 € ist KEINE Preisaussage, solange er auch schlicht der
+        Startwert eines nie gepflegten Feldes sein kann: Die Tarife der Stammdaten
+        stehen bewusst auf 0,00 € (siehe TODO(KJR) in
+        data/kjr_facility_data.xml — die Sätze der Live-Seite sind nicht belegt).
+        Ohne diese Prüfung rechnet die Kostenvorschau daraus eine vollständige
+        Aufstellung mit „Unterkunft 0,00 €" und „Gesamt (brutto) 0,00 €" — für die
+        anfragende Gruppe liest sich das als kostenloser Aufenthalt und ist schlimmer
+        als gar keine Angabe, weil es plausibel wirkt.
+
+        Anker ist der Übernachtungssatz (Personenpreis, Mo–Fr-Preis oder Pauschale
+        je Nacht) — dieselbe Regel wie im Materialverleih, wo der Standardbetrag
+        derselben Betragsart darüber entscheidet, ob eine Zahl genannt werden darf.
+        Verpflegung, Endreinigung und Fremdenverkehrsbeitrag taugen NICHT als Anker:
+        ohne Übernachtungssatz stünde in der Aufstellung weiterhin „Unterkunft
+        0,00 €".
+        """
+        if not tariff:
+            return False
+        return any((getattr(tariff, name, 0.0) or 0.0) > 0 for name in (
+            'price_per_person_night',
+            'weekday_price_per_person_night',
+            'price_flat_per_night',
+        ))
+
     def _facility_request_preview(self, facility, tariff, values):
         """Kostenvorschau für das Formular — bewusst OHNE eigene Rechenlogik.
 
         Es wird ein nicht gespeicherter Buchungssatz (`new()`) aufgebaut und dessen
         Compute-Felder ausgelesen. Damit rechnet die Vorschau garantiert mit derselben
         Logik wie das Modell (`_compute_amounts`); eine zweite Preisformel im Frontend
-        gibt es ausdrücklich nicht. Liefert None, wenn zu wenig Daten vorliegen."""
+        gibt es ausdrücklich nicht. Liefert None, wenn zu wenig Daten vorliegen ODER
+        der Tarif noch keinen gepflegten Übernachtungssatz hat (siehe
+        _tariff_rate_maintained) — eine Aufstellung aus lauter Nullbeträgen wäre eine
+        falsche Preisauskunft."""
         check_in = self._to_date(values.get('check_in'))
         check_out = self._to_date(values.get('check_out'))
         pax = self._to_int(values.get('participant_count'))
         if not (tariff and check_in and check_out and check_out > check_in and pax > 0):
+            return None
+        if not self._tariff_rate_maintained(tariff):
             return None
         meal = values.get('meal_option') if values.get('meal_option') in MEAL_OPTIONS else 'none'
         try:
@@ -280,6 +313,11 @@ class KjrFacilityWebsite(http.Controller):
             'tariff': tariff,
             'preview': self._facility_request_preview(facility, tariff, values),
             'preview_requested': preview_requested,
+            # Tarif vorhanden, aber ohne gepflegten Übernachtungssatz: Die Vorschau
+            # bleibt aus (siehe _tariff_rate_maintained). Das Template braucht die
+            # Unterscheidung, damit es nicht fälschlich fehlende Formulareingaben
+            # bemängelt, obwohl die Eingaben vollständig sind.
+            'tariff_unpriced': bool(tariff) and not self._tariff_rate_maintained(tariff),
         })
 
     # ══════════════════════════════════════════════════════════════════════════

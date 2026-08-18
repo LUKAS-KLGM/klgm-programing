@@ -30,7 +30,7 @@
                                     <p class="card-text text-muted flex-grow-1"><t t-esc="facility.description_short"/></p>
                                     <div class="small text-muted mb-2">
                                         <i class="fa fa-map-marker me-1"/><t t-esc="facility.city"/>
-                                        · <i class="fa fa-bed me-1"/><t t-esc="facility.bed_total"/> Betten
+                                        · <i t-attf-class="fa me-1 #{'fa-street-view' if facility.facility_type == 'campsite' else 'fa-bed'}"/><t t-esc="facility.bed_total"/> <t t-esc="facility.capacity_label"/>
                                         · max. <t t-esc="facility.capacity"/> Pers.
                                     </div>
                                     <a t-attf-href="/service/einrichtung/#{facility.id}" class="btn btn-primary mt-auto">Details &amp; Anfrage</a>
@@ -71,7 +71,7 @@
                                 <ul class="list-unstyled">
                                     <li><i class="fa fa-map-marker me-2"/><t t-esc="facility.city"/></li>
                                     <li><i class="fa fa-users me-2"/>max. <t t-esc="facility.capacity"/> Personen</li>
-                                    <li><i class="fa fa-bed me-2"/><t t-esc="facility.bed_total"/> Betten</li>
+                                    <li><i t-attf-class="fa me-2 #{'fa-street-view' if facility.facility_type == 'campsite' else 'fa-bed'}"/><t t-esc="facility.bed_total"/> <t t-esc="facility.capacity_label"/></li>
                                 </ul>
                                 <t t-if="facility.equipment_ids">
                                     <h6 class="mt-3">Ausstattung</h6>
@@ -299,7 +299,20 @@
                         </div>
                     </t>
                     <t t-if="preview_requested and not preview">
-                        <div class="alert alert-warning">
+                        <!-- Zwei verschiedene Gründe, aus denen keine Vorschau erscheint:
+                             (1) die Eingaben reichen nicht aus, (2) am Tarif ist noch kein
+                             Übernachtungssatz gepflegt (tariff_unpriced, siehe
+                             KjrFacilityWebsite._tariff_rate_maintained). Im Fall (2) sind die
+                             Eingaben vollständig — dort fehlende Angaben zu bemängeln wäre
+                             falsch, und eine Aufstellung mit 0,00 € wäre eine falsche
+                             Preisauskunft. -->
+                        <div t-if="tariff_unpriced" class="alert alert-info">
+                            Für <strong><t t-esc="facility.name"/></strong> sind die Preise derzeit
+                            noch nicht hinterlegt – deshalb können wir Ihnen hier keine
+                            Kostenvorschau anzeigen. Bitte senden Sie die Anfrage ab: Die
+                            Geschäftsstelle nennt Ihnen die Kosten mit dem Angebot.
+                        </div>
+                        <div t-else="" class="alert alert-warning">
                             Für die Kostenvorschau benötigen wir Anreise, Abreise und die Anzahl der
                             Teilnehmenden.
                             <t t-if="not tariff"> Für diese Einrichtung ist derzeit kein Tarif

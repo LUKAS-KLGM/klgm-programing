@@ -105,32 +105,75 @@
                             <span t-field="o.date_to" t-options='{"format":"dd.MM.yyyy"}'/>
                             (<t t-esc="o.rental_days"/> Tage)
                         </p>
+                        <!-- Der Vertrag wird vom Entleiher unterschrieben und muss deshalb
+                             betraglich exakt dem Vorgang entsprechen.
+                             * Beschriftung neutral "Einzelpreis": die Bezugsgröße hängt am
+                               Preismodell des Artikels (Tag, Nacht, Stück, Grundgebühr,
+                               Mengenstaffel) und steht je Zeile als Klartext darunter
+                               (item.price_base_unit_label — NICHT price_unit_label: das
+                               beschreibt beim Kilometermodell zwei Beträge auf einmal und
+                               ist damit keine Einheit für die eine gedruckte Zahl).
+                             * Gedruckt wird price_unit_effective — der TATSÄCHLICH angesetzte
+                               Preis. price_per_day ist nur der Grundpreis und weicht bei der
+                               Mengenstaffel vom berechneten Wert ab; der Vertrag hätte dort
+                               eine andere Zahl ausgewiesen als die Summe. -->
                         <table class="table table-sm table-bordered">
                             <thead class="table-light">
-                                <tr><th>Artikel</th><th class="text-end">Menge</th><th class="text-end">Tagespreis</th><th class="text-end">Summe</th><th class="text-end">Kaution</th></tr>
+                                <tr><th>Artikel</th><th class="text-end">Menge</th><th class="text-end">Berechnete Einheiten</th><th class="text-end">Einzelpreis</th><th class="text-end">Summe</th><th class="text-end">Kaution</th></tr>
                             </thead>
                             <tbody>
                                 <t t-foreach="o.line_ids" t-as="line">
                                     <tr>
-                                        <td><t t-esc="line.item_id.name"/></td>
+                                        <td>
+                                            <t t-esc="line.item_id.name"/>
+                                            <!-- Kilometermodell: die Fahrleistung wird erst bei der
+                                                 Rückgabe abgelesen. Der Vertrag muss deshalb sagen,
+                                                 dass zur Grundgebühr noch die gefahrenen Kilometer
+                                                 kommen — sonst unterschreibt der Entleiher einen
+                                                 Betrag, der noch steigen wird. -->
+                                            <div t-if="line.pricing_model == 'per_km'" class="small text-muted">
+                                                Zusätzlich wird nach gefahrenen Kilometern abgerechnet
+                                                (<t t-esc="'%.2f €' % line.price_per_km"/> je km).
+                                                <t t-if="line.distance_km">
+                                                    Erfasst: <t t-esc="'%.1f' % line.distance_km"/> km
+                                                    = <t t-esc="'%.2f €' % (line.price_per_km * line.distance_km)"/>.
+                                                </t>
+                                                <t t-else="">
+                                                    Der Kilometerstand wird bei der Rückgabe abgelesen; die
+                                                    Summe unten enthält bisher nur die Grundgebühr.
+                                                </t>
+                                            </div>
+                                        </td>
                                         <td class="text-end"><t t-esc="line.quantity"/></td>
-                                        <td class="text-end"><t t-esc="'%.2f €' % line.price_per_day"/></td>
+                                        <td class="text-end"><t t-esc="line.billable_units"/></td>
+                                        <td class="text-end">
+                                            <t t-esc="'%.2f €' % line.price_unit_effective"/>
+                                            <div t-if="line.item_id.price_base_unit_label" class="small text-muted">
+                                                <t t-esc="line.item_id.price_base_unit_label"/>
+                                            </div>
+                                        </td>
                                         <td class="text-end"><t t-esc="'%.2f €' % line.subtotal"/></td>
                                         <td class="text-end"><t t-esc="'%.2f €' % line.deposit_subtotal"/></td>
                                     </tr>
                                 </t>
                             </tbody>
                             <tfoot>
-                                <tr class="fw-bold"><td colspan="3">Summe</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_total"/></td><td class="text-end"><t t-esc="'%.2f €' % o.deposit_total"/></td></tr>
+                                <!-- Der Vertrag wird unterschrieben, die Rechnung entsteht separat.
+                                     Deshalb muss hier stehen, worauf sich die Summe bezieht: Die
+                                     Zeilenpreise sind ohne Umsatzsteuer erfasst; welcher Satz
+                                     hinzukommt, entscheidet erst die Rechnung. -->
+                                <tr class="fw-bold"><td colspan="4">Summe (ohne Umsatzsteuer)</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_total"/></td><td class="text-end"><t t-esc="'%.2f €' % o.deposit_total"/></td></tr>
                             </tfoot>
                         </table>
                         <p class="small text-muted mt-3">
                             Der Entleiher haftet für Beschädigung/Verlust. Die Kaution wird bei
-                            ordnungsgemäßer Rückgabe erstattet. Rückgabe spätestens am vereinbarten Datum.
+                            ordnungsgemäßer Rückgabe erstattet. Rückgabe spätestens am vereinbarten Datum.<br/>
+                            Die oben ausgewiesene Summe versteht sich ohne Umsatzsteuer; ob und in
+                            welcher Höhe Umsatzsteuer hinzukommt, ergibt sich aus der Rechnung.
                         </p>
                         <div class="row mt-5">
                             <div class="col-6"><div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px;"><small>Entleiher (Datum, Unterschrift)</small></div></div>
-                            <div class="col-6 text-end"><div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px; margin-left:auto;"><small>Kreisjugendring Oberallgäu</small></div></div>
+                            <div class="col-6 text-end"><div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px; margin-left:auto;"><small><span t-field="o.company_id.name"/></small></div></div>
                         </div>
                     </div>
                 </t>

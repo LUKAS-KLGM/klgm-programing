@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """KJR-Erweiterung der Veranstaltungsanmeldung: Minderjährige, Einwilligung, Juleica."""
+from collections import defaultdict
+
 from dateutil.relativedelta import relativedelta
+from markupsafe import Markup
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
@@ -43,6 +46,23 @@ class EventRegistration(models.Model):
         store=True, search='_search_age_out_of_range')
 
     event_payment_required = fields.Boolean(related='event_id.payment_required')
+
+    # E14 – Warteliste
+    kjr_is_waitlist = fields.Boolean(
+        string='Warteliste',
+        help='Diese Anmeldung steht auf der Warteliste und belegt KEINEN regulären Platz. '
+             'Sie wird dazu im unbestätigten Status gehalten, damit sie nicht auf die '
+             'belegten Plätze (seats_taken) zählt. Das Nachrücken löst die Geschäftsstelle '
+             'bewusst manuell aus (Schaltfläche "Von Warteliste nachrücken").',
+    )
+    kjr_waitlist_position = fields.Integer(
+        string='Wartelistenplatz',
+        compute='_compute_kjr_waitlist_position',
+        help='Position auf der Warteliste der Veranstaltung, lückenlos ab 1 nach '
+             'Anmeldezeitpunkt. 0 = steht nicht auf der Warteliste.',
+    )
+    event_waitlist_enabled = fields.Boolean(
+        related='event_id.kjr_waitlist_enabled', string='Warteliste am Event aktiv')
 
     # Juleica-Ausstellung (nur bei Juleica-Schulungen)
     event_is_juleica = fields.Boolean(related='event_id.is_juleica_course')
@@ -258,3 +278,152 @@ class EventRegistration(models.Model):
             'view_mode': 'list,form',
             'domain': [('id', 'in', invoices.ids)],
         }
+
+    # ------------------------------------------------------------------
+    # E14 – Warteliste
+    # ------------------------------------------------------------------
+    def _kjr_waitlist_state(self):
+        """Status, in dem Wartelisten-Anmeldungen gehalten werden (oder ``None``).
+
+        Odoo 19 rechnet die Platzbelegung (seats_taken -> seats_available) nur über
+        registrierte ('open') und erschienene ('done') Anmeldungen; der unbestätigte
+        Status ('draft') zählt NICHT mit. Genau dort werden Wartelistenplätze geparkt –
+        so blockieren sie weder sich gegenseitig noch reguläre Anmeldungen, und die
+        Kern-Platzprüfung (Constraint auf den verfügbaren Plätzen) schlägt gar nicht
+        erst an. Wir umgehen die Kernlogik damit nicht, sondern nutzen sie.
+
+        Der Status wird zur Laufzeit aus der Selection gelesen: fehlt 'draft' in einer
+        Odoo-Variante, wird der Status nicht angefasst (Fallback ``None``).
+        """
+        # TODO(KJR): Gegen den Community-Quellcode von `event` (Odoo 19) gegenprüfen –
+        # der Klon unter ~/odoo-src enthält nur odoo/ und die Enterprise-Module, das
+        # Community-Addon `event` liegt lokal nicht vor. Sollte Odoo 19 die belegten
+        # Plätze anders zählen (z. B. unbestätigte Anmeldungen mitzählen), muss hier ein
+        # anderer Status bzw. eine Erweiterung von _compute_seats gewählt werden.
+        selection = self._fields['state'].selection
+        if isinstance(selection, str):
+            selection = getattr(self, selection)()
+        elif callable(selection):
+            selection = selection(self)
+        keys = [key for key, _label in selection or []]
+        return 'draft' if 'draft' in keys else None
+
+    def _kjr_dispatch_waitlist(self, vals_list):
+        """Verteilt neue Anmeldungen auf reguläre Plätze bzw. auf die Warteliste.
+
+        Läuft VOR ``super().create()``: Ist die Veranstaltung voll und die Warteliste
+        aktiv, wird die Anmeldung als Wartelistenplatz im unbestätigten Status angelegt,
+        statt an der Platzprüfung des Kerns zu scheitern. Ohne aktive Warteliste bleibt
+        der Odoo-Standard unverändert (Abweisung bzw. keine Bestätigung).
+        """
+        waitlist_state = self._kjr_waitlist_state()
+        by_event = defaultdict(list)
+        for vals in vals_list:
+            if vals.get('state') == 'cancel':
+                continue  # abgesagte Anmeldungen belegen keinen Platz
+            if vals.get('kjr_is_waitlist'):
+                # Manuell als Warteliste angelegt -> ebenfalls keinen Platz belegen.
+                if waitlist_state:
+                    vals['state'] = waitlist_state
+                continue
+            if vals.get('event_id'):
+                by_event[vals['event_id']].append(vals)
+        for event in self.env['event.event'].browse(list(by_event)).exists():
+            if not event.kjr_waitlist_enabled:
+                continue
+            free = event._kjr_free_seats()
+            if free is None:
+                continue  # unbegrenzte Plätze -> keine Warteliste nötig
+            for vals in by_event[event.id]:
+                if free > 0:
+                    free -= 1
+                    continue
+                vals['kjr_is_waitlist'] = True
+                if waitlist_state:
+                    vals['state'] = waitlist_state
+        return vals_list
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        self._kjr_dispatch_waitlist(vals_list)
+        registrations = super().create(vals_list)
+        # Sicherheitsnetz: Odoo bestätigt neue Anmeldungen je nach Konfiguration
+        # automatisch. Wartelistenplätze dürfen danach keinen Platz belegen.
+        waitlist_state = self._kjr_waitlist_state()
+        if waitlist_state:
+            wrong = registrations.filtered(
+                lambda r: r.kjr_is_waitlist and r.state not in ('cancel', waitlist_state))
+            if wrong:
+                wrong.write({'state': waitlist_state})
+        return registrations
+
+    def write(self, vals):
+        if vals.get('state') == 'open' and 'kjr_is_waitlist' not in vals:
+            # Wer regulär registriert wird, belegt einen echten Platz und ist damit
+            # kein Wartelistenplatz mehr (sonst würde seats_taken doppeldeutig).
+            vals = dict(vals, kjr_is_waitlist=False)
+        elif vals.get('kjr_is_waitlist') and 'state' not in vals:
+            # Zurück auf die Warteliste -> Platz sofort wieder freigeben.
+            waitlist_state = self._kjr_waitlist_state()
+            if waitlist_state:
+                vals = dict(vals, state=waitlist_state)
+        return super().write(vals)
+
+    @api.depends('kjr_is_waitlist', 'state', 'event_id', 'create_date')
+    def _compute_kjr_waitlist_position(self):
+        """Lückenlose Position je Veranstaltung nach Anmeldezeitpunkt (FIFO).
+
+        Bewusst nicht gespeichert: die Position verschiebt sich, sobald jemand
+        nachrückt oder absagt – ein gespeicherter Wert wäre reihenweise veraltet.
+        """
+        positions = {}
+        events = self.mapped('event_id')._origin
+        if events:
+            # Eine Abfrage für alle betroffenen Veranstaltungen, danach je
+            # Veranstaltung lückenlos durchnummerieren.
+            waiting = self.env['event.registration'].search(
+                [('event_id', 'in', events.ids),
+                 ('kjr_is_waitlist', '=', True),
+                 ('state', '!=', 'cancel')],
+                order='create_date asc, id asc',
+            )
+            counters = defaultdict(int)
+            for reg in waiting:
+                counters[reg.event_id.id] += 1
+                positions[reg.id] = counters[reg.event_id.id]
+        for rec in self:
+            # Noch nicht gespeicherte Anmeldungen (NewId) haben keine Position.
+            rec.kjr_waitlist_position = positions.get(rec._origin.id, 0) if rec.kjr_is_waitlist else 0
+
+    def action_kjr_promote_waitlist(self):
+        """Rückt die gewählte Wartelisten-Anmeldung auf einen freien Platz nach.
+
+        Bewusst manuell: die Geschäftsstelle entscheidet, wer nachrückt (siehe
+        ``event.event.action_kjr_promote_from_waitlist``).
+        """
+        # TODO(KJR): Mailvorlage `mail_template_waitlist_promoted` wird von der
+        # Vorlagen-/Website-Zuständigkeit angelegt. Offen ist außerdem, ob Nachrücker
+        # eine Zusagefrist erhalten sollen (KJR-Entscheidung, keine Zahl erfunden).
+        template = self.env.ref('kjr_event.mail_template_waitlist_promoted',
+                                raise_if_not_found=False)
+        for rec in self:
+            if not rec.kjr_is_waitlist:
+                raise UserError(_(
+                    'Die Anmeldung "%s" steht nicht auf der Warteliste.',
+                    rec.name or rec.display_name))
+            free = rec.event_id._kjr_free_seats()
+            if free is not None and free <= 0:
+                raise UserError(_(
+                    'Für "%s" ist derzeit kein regulärer Platz frei. Bitte zuerst einen Platz '
+                    'freigeben (Anmeldung absagen) oder die maximale Teilnehmerzahl erhöhen.',
+                    rec.event_id.name))
+            # kjr_is_waitlist und Status gemeinsam schreiben, damit die Sonderlogik in
+            # write() nicht greift und der Platz sauber belegt wird.
+            rec.write({'kjr_is_waitlist': False, 'state': 'open'})
+            rec.message_post(body=Markup('<p>%s</p>') % _(
+                'Von der Warteliste auf einen regulären Platz nachgerückt.'))
+            if template:
+                # Die Mailvorlage wird von der Geschäftsstelle gepflegt; fehlt sie,
+                # wird nur protokolliert (kein harter Fehler beim Nachrücken).
+                template.send_mail(rec.id, force_send=False)
+        return True

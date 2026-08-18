@@ -17,6 +17,41 @@ CART_KEY = 'kjr_rental_cart'
 # R3: Seed-Artikel für die Spielmobil-Anfrage (wird über die Stammdaten geliefert).
 SPIELMOBIL_XMLID = 'kjr_rental.item_spielmobil'
 
+# ══════════════════════════════════════════════════════════════════════════
+# Preismodelle (pro Tag / pro Nacht / pro Stück / pro Kilometer / Mengenstaffel)
+#
+# Der Artikelstamm bekommt ein Preismodell-Feld. Solange dessen endgültige
+# Feldnamen nicht feststehen, wird die Preisaussage der Website DEFENSIV
+# ermittelt (Prüfung über _fields) — statt einer harten Kopplung, die beim
+# kleinsten Umbenennen die öffentliche Preisauskunft zerlegt.
+#
+# Reihenfolge der Auswertung:
+#   1. Der Artikel liefert seine Preisaussage selbst: price_label(is_member)
+#      -> VERTRAG für das Artikelmodell. Wer diese Methode implementiert,
+#         bestimmt den Website-Text vollständig selbst; alles Weitere entfällt.
+#   2. Preismodell-Feld (Selection) am Artikel: Abrechnungsart aus dem Wert
+#      ableiten, Beschriftung aus der Selection ÜBERNEHMEN (deutsche Bezeichnung
+#      des Artikelmodells statt einer zweiten, abweichenden Formulierung) und den
+#      dazu passenden Betrag über den Feldnamen finden.
+#   3. Kein Preismodell-Feld vorhanden (Stand heute): unverändertes Verhalten,
+#      Tagespreis aus price_per_day / price_member_per_day.
+#
+# Lässt sich zu einer Abrechnungsart KEIN Betrag zuordnen, wird bewusst KEINE
+# Zahl ausgegeben, sondern "Konditionen auf Anfrage". Eine mit der falschen
+# Einheit beschriftete Zahl (z. B. "0,35 €/Tag" statt "0,35 €/km") wäre eine
+# falsche öffentliche Preisauskunft — daran würde sich ein Entleiher festhalten.
+# ══════════════════════════════════════════════════════════════════════════
+
+# Text, wenn zu einer Abrechnungsart kein belastbarer Betrag ermittelbar ist.
+PRICE_ON_REQUEST = (
+    'Konditionen auf Anfrage – den Preis für diesen Artikel nennt Ihnen die '
+    'Geschäftsstelle mit der Bestätigung.')
+PRICE_TIER_NOTICE = (
+    'Preis nach Mengenstaffel – der Betrag richtet sich nach der bestellten Menge '
+    'und wird von der Geschäftsstelle bestätigt.')
+PRICE_KM_NOTICE = (
+    'Die Endabrechnung erfolgt nach den tatsächlich gefahrenen Kilometern.')
+
 
 class KjrRentalWebsite(http.Controller):
 
@@ -66,6 +101,175 @@ class KjrRentalWebsite(http.Controller):
         Fotos automatisch auch nicht angemeldeten Besuchern.
         """
         return request.env['kjr.rental.item'].browse().has_access('read')
+
+    # ------------------------------------------------------------------
+    # Preisaussage je Artikel (siehe Modulkopf)
+    # ------------------------------------------------------------------
+
+    # Preismodell des Artikels -> Anzeigeart für die Templates. Schlüssel sind die
+    # Selection-Werte von kjr.rental.item.pricing_model; 'day' ist der Rückfall für
+    # Altdaten, die den Feld-Default beim Upgrade nicht abbekommen haben.
+    PRICE_MODEL_KIND = {
+        'per_day': 'day',
+        'per_night': 'night',
+        'per_unit': 'unit',
+        'per_km': 'km',
+        'tiered': 'tier',
+    }
+
+    def _price_info_map(self, items, is_member=False):
+        """Preisinfo je Artikel-ID: {id: info} für ein Recordset oder einen Artikel.
+
+        Die Templates greifen über price_info[item.id] zu; ein fehlender Eintrag
+        würde dort einen KeyError auslösen und die ganze Seite mitnehmen. Deshalb
+        wird hier für JEDEN übergebenen Artikel ein vollständiges Dict erzeugt.
+        """
+        if not items:
+            return {}
+        return {item.id: self._item_price_info(item, is_member) for item in items}
+
+    def _item_price_info(self, item, is_member=False):
+        """Alles, was die Website über den Preis EINES Artikels sagen darf.
+
+        Die Beträge kommen AUSSCHLIESSLICH aus der Preis-API des Modells
+        (price_for / price_km_for / price_base_unit_label / price_km_unit_label). Eine eigene Preislogik im
+        Controller wäre die Quelle der nächsten falschen Preisauskunft: Der
+        Grundpreis liegt bei ALLEN Preismodellen bewusst in price_per_day
+        (Feldname aus Bestandsgründen beibehalten, siehe kjr_rental_item.py).
+        Eine Zuordnung über Feldnamen — etwa die Suche nach einem Feld mit
+        „night“ im Namen für das Modell „pro Nacht“ — findet dort schlicht nichts
+        und hätte auf der öffentlichen Katalogseite „auf Anfrage“ statt des
+        gepflegten Preises ausgegeben.
+
+        Kilometermodell: Es gibt ZWEI Beträge (Grundgebühr und Kilometersatz), die
+        NIE zu einer Zahl verschmolzen werden dürfen. Früher stand der Kilometersatz
+        in 'standard', beschriftet mit der Einheit des gesamten Modells — öffentlich
+        las sich das als „Standard: 0,30 € Grundgebühr pauschal je Ausleihe zuzüglich
+        Kilometerpreis", während die Grundgebühr tatsächlich 25,00 € betrug. Deshalb
+        gilt jetzt durchgängig: 'standard'/'member'/'own' sind IMMER der Grundpreis
+        mit der Einheit 'unit'; der Kilometersatz steht in 'km_standard'/'km_member'/
+        'km_own' mit der Einheit 'km_unit'. Beide Einheiten liefert das Artikelmodell
+        (price_base_unit_label / price_km_unit_label).
+
+        Ungepflegt oder bewusst kostenlos — die Regel für 0,00 €:
+        Ein Betrag von 0,00 € ist KEINE Preisaussage, solange er auch schlicht der
+        Startwert eines nie gepflegten Feldes sein kann. „Standard: 0,00 €" auf der
+        öffentlichen Katalogseite liest sich als kostenlos und ist schlimmer als eine
+        erfundene Zahl, weil sie plausibel wirkt (Vault: „Bei rund 30 Artikeln steht
+        Mitglied: 0,00 €"). Anker ist deshalb IMMER der Standardbetrag DERSELBEN
+        Betragsart:
+          * Standardbetrag 0,00 (oder nicht ermittelbar) -> die Betragsart ist
+            ungepflegt. Alle Beträge dieser Art (Standard, Mitglied, eigener Tarif)
+            werden auf None gesetzt; die Website nennt dann keine Zahl, sondern
+            „auf Anfrage" bzw. — wenn der Artikel überhaupt keinen gepflegten Betrag
+            hat — den vollständigen Text PRICE_ON_REQUEST in 'statement'.
+          * Standardbetrag > 0, Mitgliedsbetrag 0,00 -> der Mitgliedstarif ist
+            gepflegt und ausdrücklich kostenlos (has_member_price ist aktiv, die
+            Feldhilfe nennt „auch 0 € = gratis"). Die 0,00 bleibt erhalten und wird
+            als „kostenlos" ausgegeben, NICHT als „auf Anfrage".
+        Grundpreis und Kilometersatz werden getrennt bewertet: ein Fahrzeug ohne
+        gepflegte Grundgebühr, aber mit echtem Kilometersatz nennt den Kilometersatz
+        und lässt die Grundgebühr offen.
+
+        Rückgabe (immer alle Schlüssel gesetzt, damit QWeb nie auf None läuft):
+          kind        'day' | 'night' | 'unit' | 'km' | 'tier'
+          unit        Einheit des Grundpreises, z. B. 'pro Tag' /
+                      'Grundgebühr pauschal je Ausleihe'
+          standard    Grundpreis Standardtarif als float oder None (None = ungepflegt)
+          member      Grundpreis Mitgliedstarif als float oder None (None = kein
+                      Mitgliedstarif oder ungepflegt; 0.0 = bewusst kostenlos)
+          own         Grundpreis des angemeldeten Kontakts als float oder None
+          km_unit     Einheit des Kilometersatzes ('je gefahrenem Kilometer'),
+                      nur bei kind == 'km' gefüllt, sonst None
+          km_standard Kilometersatz Standardtarif als float oder None (None =
+                      ungepflegt)
+          km_member   Kilometersatz Mitgliedstarif als float oder None
+          km_own      Kilometersatz des angemeldeten Kontakts als float oder None
+          has_member  Mitgliedstarif am Artikel überhaupt aktiviert
+          deposit     Kaution
+          km_notice   Hinweis auf Abrechnung nach gefahrenen Kilometern anzeigen
+          statement   vollständiger Ersatztext statt Zahlen (oder None); gesetzt bei
+                      der Mengenstaffel und bei Artikeln ohne jeden gepflegten Betrag
+        """
+        info = {
+            'kind': 'day', 'unit': 'pro Tag', 'standard': None, 'member': None,
+            'own': None, 'has_member': False, 'deposit': 0.0,
+            'km_unit': None, 'km_standard': None, 'km_member': None, 'km_own': None,
+            'km_notice': False, 'statement': None,
+        }
+        if not item:
+            return info
+        info['deposit'] = item.deposit or 0.0
+        info['has_member'] = bool(item.has_member_price)
+
+        model = item.pricing_model or 'per_day'
+        info['kind'] = self.PRICE_MODEL_KIND.get(model, 'day')
+        # price_base_unit_label statt price_unit_label: Letzteres beschreibt beim
+        # Kilometermodell BEIDE Beträge und wäre als Beschriftung einer einzelnen
+        # Zahl falsch. Bei allen anderen Modellen sind beide Texte identisch.
+        info['unit'] = item.price_base_unit_label or item.price_unit_label or 'pro Tag'
+
+        # Mengenstaffel: der Preis hängt an der bestellten Menge, ein einzelner
+        # Betrag wäre irreführend. Bewusst nur ein Hinweis statt einer Zahl.
+        if model == 'tiered':
+            info['statement'] = PRICE_TIER_NOTICE
+            return info
+
+        info['standard'] = item.price_for(False)
+        if info['has_member']:
+            info['member'] = item.price_for(True)
+        info['own'] = info['member'] if (is_member and info['member'] is not None) \
+            else info['standard']
+
+        if model == 'per_km':
+            info['km_notice'] = True
+            info['km_unit'] = item.price_km_unit_label or None
+            info['km_standard'] = item.price_km_for(False)
+            if info['has_member']:
+                info['km_member'] = item.price_km_for(True)
+            info['km_own'] = info['km_member'] \
+                if (is_member and info['km_member'] is not None) else info['km_standard']
+        return self._drop_unmaintained_prices(info)
+
+    # Beträge, die zusammengehören: erster Eintrag ist der Anker (Standardbetrag),
+    # an dem entschieden wird, ob die Betragsart überhaupt gepflegt ist.
+    BASE_PRICE_KEYS = ('standard', 'member', 'own')
+    KM_PRICE_KEYS = ('km_standard', 'km_member', 'km_own')
+
+    @classmethod
+    def _drop_unmaintained_prices(cls, info):
+        """Nicht gepflegte Beträge aus der Preisinfo entfernen.
+
+        Setzt die Regel aus _item_price_info um: Ist der Standardbetrag einer
+        Betragsart 0,00 (bzw. nicht ermittelbar), gibt es zu dieser Art keine
+        belastbare Zahl — alle ihre Beträge werden auf None gesetzt, damit die
+        Templates „auf Anfrage" statt „0,00 €" zeigen. Ein Mitgliedsbetrag von 0,00
+        neben einem gepflegten Standardbetrag bleibt dagegen erhalten und erscheint
+        als „kostenlos".
+
+        Bleibt am Ende gar kein Betrag übrig, tritt PRICE_ON_REQUEST an die Stelle
+        der Zahlen (ein bereits gesetzter Text — etwa der Staffelhinweis — bleibt
+        unangetastet).
+        """
+        for keys in (cls.BASE_PRICE_KEYS, cls.KM_PRICE_KEYS):
+            if not (info.get(keys[0]) or 0) > 0:
+                for key in keys:
+                    info[key] = None
+        if not info.get('statement') and all(
+                info.get(key) is None for key in cls.BASE_PRICE_KEYS + cls.KM_PRICE_KEYS):
+            info['statement'] = PRICE_ON_REQUEST
+        return info
+
+    @staticmethod
+    def _pricing_flags(price_info):
+        """Seitenweite Hinweise: nicht alles wird pro Tag abgerechnet."""
+        infos = list(price_info.values())
+        return {
+            # Zeitraum-unabhängige Modelle: die Anfrage nennt Von/Bis, der Preis
+            # hängt aber nicht (nur) daran.
+            'pricing_hint': any(i['kind'] != 'day' for i in infos),
+            'has_km_items': any(i['km_notice'] for i in infos),
+        }
 
     @staticmethod
     def _is_checked(raw):
@@ -130,14 +334,21 @@ class KjrRentalWebsite(http.Controller):
             by_cat[item.category_id] |= item
         is_public_user = request.env.user._is_public()
         partner = self._website_partner() if not is_public_user else None
-        return request.render('kjr_rental.website_rental_catalog', {
+        is_member = self._partner_is_member(partner)
+        # Preisaussage passend zum Preismodell des Artikels (pro Tag, pro Nacht,
+        # pro Stück, pro Kilometer, Mengenstaffel) – siehe Modulkopf.
+        price_info = self._price_info_map(items, is_member)
+        values = {
             'items_by_category': by_cat, 'page_name': 'kjr_rental',
             'cart_count': self._cart_count(),
             'is_public_user': is_public_user,
             'partner': partner,
-            'is_member': self._partner_is_member(partner),
+            'is_member': is_member,
             'show_images': self._can_stream_item_images(),
-        })
+            'price_info': price_info,
+        }
+        values.update(self._pricing_flags(price_info))
+        return request.render('kjr_rental.website_rental_catalog', values)
 
     # ------------------------------------------------------------------
     # R1: Warenkorb / Sammelbestellung
@@ -187,18 +398,29 @@ class KjrRentalWebsite(http.Controller):
         Checkout-Fehlerfall) – so bleiben Tarifanzeige und Nutzungshinweise überall gleich."""
         lines = self._cart_lines(date_from, date_to)
         partner = self._website_partner()
-        usage_items = self._usage_warning_items([line['item'] for line in lines])
-        return {
+        cart_items = [line['item'] for line in lines]
+        usage_items = self._usage_warning_items(cart_items)
+        is_member = self._partner_is_member(partner)
+        price_info = self._price_info_map(cart_items, is_member)
+        values = {
             'lines': lines, 'errors': errors, 'values': dict(post),
             'cart_count': self._cart_count(), 'page_name': 'kjr_rental',
             'date_from': post.get('date_from', ''), 'date_to': post.get('date_to', ''),
             'partner': partner,
-            'is_member': self._partner_is_member(partner),
+            'is_member': is_member,
             'usage_items': usage_items,
             # Pflicht-Checkbox: im Warenkorb ist die Artikelmenge serverseitig bekannt,
             # das Attribut kann deshalb hart gesetzt werden.
             'usage_required': bool(usage_items),
+            'price_info': price_info,
+            # Die Preisspalten sind ein gemeinsamer Block mit dem Katalog; dort
+            # entscheidet is_public_user über die Zeile "Ihr Tarif". Der Warenkorb
+            # ist auth='user', der Wert ist deshalb immer False – er muss aber
+            # gesetzt sein, sonst läuft QWeb auf eine undefinierte Variable.
+            'is_public_user': False,
         }
+        values.update(self._pricing_flags(price_info))
+        return values
 
     @http.route('/service/verleih/warenkorb', type='http', auth='user', website=True,
                 methods=['GET', 'POST'])
@@ -321,6 +543,22 @@ class KjrRentalWebsite(http.Controller):
         # TODO: Wenn der KJR eine dynamische Einblendung wünscht, dafür ein eigenes
         # Frontend-Asset vorsehen (bewusst kein Inline-Script in diesem Template).
         all_usage_items = self._usage_warning_items(items)
+        price_info = self._price_info_map(items, is_member)
+
+        def _render_values(values, errors):
+            """Renderwerte der Direktanfrage – einmal definiert, damit GET- und
+            Fehlerfall dieselbe Preisaussage zeigen."""
+            vals = {
+                'items': items, 'errors': errors, 'values': values,
+                'page_name': 'kjr_rental',
+                'partner': partner, 'is_member': is_member,
+                'usage_items': all_usage_items, 'usage_required': False,
+                'price_info': price_info,
+                # auth='user' – siehe Warenkorb.
+                'is_public_user': False,
+            }
+            vals.update(self._pricing_flags(price_info))
+            return vals
 
         if request.httprequest.method == 'POST':
             errors = {}
@@ -350,11 +588,8 @@ class KjrRentalWebsite(http.Controller):
             terms_accepted = self._validate_usage_terms(warn_items, post, errors)
 
             if errors:
-                return request.render('kjr_rental.website_rental_request', {
-                    'items': items, 'errors': errors, 'values': values, 'page_name': 'kjr_rental',
-                    'partner': partner, 'is_member': is_member,
-                    'usage_items': all_usage_items, 'usage_required': False,
-                })
+                return request.render('kjr_rental.website_rental_request',
+                                      _render_values(values, errors))
 
             order = request.env['kjr.rental.order'].sudo().create({
                 'partner_id': partner.id,
@@ -372,14 +607,10 @@ class KjrRentalWebsite(http.Controller):
             })
             return request.redirect('/my/ausleihen/%d' % order.id)
 
-        return request.render('kjr_rental.website_rental_request', {
-            'items': items, 'errors': {}, 'values': {
-                'contact_email': request.env.user.email or '',
-                'contact_phone': request.env.user.partner_id.phone or '',
-            }, 'page_name': 'kjr_rental',
-            'partner': partner, 'is_member': is_member,
-            'usage_items': all_usage_items, 'usage_required': False,
-        })
+        return request.render('kjr_rental.website_rental_request', _render_values({
+            'contact_email': request.env.user.email or '',
+            'contact_phone': request.env.user.partner_id.phone or '',
+        }, {}))
 
     # ------------------------------------------------------------------
     # R3: Spielmobil – Infoseite mit Anfrageformular
@@ -513,7 +744,7 @@ class KjrRentalWebsite(http.Controller):
             _logger.exception('Spielmobil-Anfrage %s: Benachrichtigung fehlgeschlagen.',
                               order.name)
 
-    def _spielmobil_prices_confirmed(self, item):
+    def _spielmobil_prices_confirmed(self, item, price_info=None):
         """Dürfen auf der öffentlichen Spielmobil-Seite Preise genannt werden?
 
         Die Seite ist auth='public', der Seed-Artikel steht dagegen mit 0,00 € und
@@ -523,19 +754,33 @@ class KjrRentalWebsite(http.Controller):
         würden. Preise werden deshalb NUR genannt, wenn die Geschäftsstelle sie
         freigegeben hat:
         - website_published: bewusstes Veröffentlichen durch die Geschäftsstelle,
-        - mindestens ein Tagespreis > 0: gepflegter, kein Platzhalterwert.
+        - mindestens ein Betrag > 0 IN DER ABRECHNUNGSART DES ARTIKELS: gepflegter,
+          kein Platzhalterwert.
         Die Kaution allein genügt nicht – sonst stünde neben ihr wieder
-        „Standardtarif: 0,00 € pro Tag".
+        „Standardtarif: 0,00 €".
+
+        Preismodell-fest: geprüft wird der über _item_price_info ermittelte Betrag,
+        nicht mehr fix der Tagespreis. Beim Kilometermodell zählt auch ein gepflegter
+        Kilometersatz als Freigabe – sonst bliebe ein Fahrzeug ohne Grundgebühr, aber
+        mit echtem Kilometerpreis stumm. Bei Mengenstaffel oder unbekannter Einheit
+        liefert die Preisinfo gar keinen Betrag – dann bleibt die Seite bewusst
+        ohne Preisangabe (konservative Variante).
         """
         if not item:
             return False
-        return bool(item.website_published) and (
-            item.price_per_day > 0 or item.price_member_per_day > 0)
+        if not item.website_published:
+            return False
+        info = price_info if price_info is not None else self._item_price_info(item)
+        return any((info.get(key) or 0) > 0
+                   for key in ('standard', 'member', 'km_standard', 'km_member'))
 
     def _spielmobil_values(self, item, values=None, errors=None, order=None):
         usage_items = self._usage_warning_items(item) if item else []
         partner = None if request.env.user._is_public() else self._website_partner()
-        return {
+        is_member = self._partner_is_member(partner)
+        price_info = self._price_info_map(item, is_member) if item else {}
+        info = price_info.get(item.id) if item else {}
+        vals = {
             'page_name': 'kjr_rental',
             'item': item,
             'values': values or {},
@@ -543,13 +788,16 @@ class KjrRentalWebsite(http.Controller):
             'order': order,
             'is_public_user': request.env.user._is_public(),
             'partner': partner,
-            'is_member': self._partner_is_member(partner),
+            'is_member': is_member,
             'usage_items': usage_items,
             'usage_required': bool(usage_items),
             'cart_count': self._cart_count(),
             'show_images': self._can_stream_item_images(),
-            'show_prices': self._spielmobil_prices_confirmed(item),
+            'price_info': price_info,
+            'show_prices': self._spielmobil_prices_confirmed(item, info),
         }
+        vals.update(self._pricing_flags(price_info))
+        return vals
 
     @http.route('/service/spielmobil', type='http', auth='public', website=True,
                 sitemap=True, methods=['GET', 'POST'])
@@ -682,12 +930,39 @@ class KjrRentalPortal(CustomerPortal):
             'default_url': '/my/ausleihen',
         })
 
+    def _portal_deposit_values(self, order):
+        """Kautionsangaben für die Portalansicht.
+
+        Der Entleiher muss im Portal nachvollziehen können, was mit seiner Kaution
+        passiert ist – ob sie angefordert, erhalten, erstattet oder (mit welcher
+        Begründung) einbehalten wurde. Ohne diese Anzeige ist der Kautionsvorgang
+        für ihn eine Blackbox und jede Rückfrage landet telefonisch in der
+        Geschäftsstelle.
+
+        Zur Kaution selbst gibt es im System KEINEN Beleg – sie ist ausschließlich
+        ein Status mit Datum (siehe portal_rental_detail). Ausgegeben werden deshalb
+        nur der Klartext des Status und die Gebührenrechnung.
+
+        `order` kommt aus _document_check_access und ist bereits sudo; die
+        verknüpften Belege gehören demselben Kontakt. Verlinkt wird trotzdem nur
+        auf /my/invoices/<id> – diese Route prüft den Zugriff selbst.
+        """
+        state_label = dict(
+            order._fields['deposit_state']._description_selection(request.env)
+        ).get(order.deposit_state, order.deposit_state or '')
+        return {
+            'deposit_state_label': state_label,
+            # Nur GEBUCHTE Belege verlinken: ein Entwurf ist noch nicht verbindlich
+            # und für den Entleiher über das Portal ohnehin nicht lesbar.
+            'fee_invoice': order.invoice_id.filtered(lambda m: m.state == 'posted'),
+        }
+
     @http.route('/my/ausleihen/<int:order_id>', type='http', auth='user', website=True)
     def portal_rental_detail(self, order_id, **kw):
         try:
             order = self._document_check_access('kjr.rental.order', order_id)
         except (AccessError, MissingError):
             return request.redirect('/my')
-        return request.render('kjr_rental.portal_rental_detail', {
-            'order': order, 'page_name': 'kjr_rental',
-        })
+        values = {'order': order, 'page_name': 'kjr_rental'}
+        values.update(self._portal_deposit_values(order))
+        return request.render('kjr_rental.portal_rental_detail', values)

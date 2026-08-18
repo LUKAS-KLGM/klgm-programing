@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ──────────────────────────────────────────────────────────────────────
+         Protokoll der Vollversammlung.
+         Nachweis der ordnungsgemäßen Ladung, der Beschlussfähigkeit (§ 33
+         BJR-Satzung) sowie der gefassten Beschlüsse und Wahlergebnisse.
+         Wahlen werden bewusst nur mit Stimmensummen ausgewiesen — geheime Wahl
+         nach § 34 Abs. 3 BJR-Satzung, es wird nicht festgehalten, wer wie
+         gestimmt hat.
+         ────────────────────────────────────────────────────────────────────── -->
+    <!-- Druck-Aktion zur Vorlage. Wird von kjr.assembly.action_print_protokoll
+         über env.ref('kjr_grant.action_report_kjr_assembly_protokoll') aufgerufen —
+         ohne diesen Datensatz bricht die Schaltfläche "Protokoll drucken" ab. -->
+    <record id="action_report_kjr_assembly_protokoll" model="ir.actions.report">
+        <field name="name">Protokoll der Vollversammlung</field>
+        <field name="model">kjr.assembly</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">kjr_grant.kjr_assembly_protokoll_template</field>
+        <field name="report_file">kjr_grant.kjr_assembly_protokoll_template</field>
+        <field name="print_report_name">'Protokoll_%s' % (object.name or '').replace('/', '-')</field>
+        <field name="binding_model_id" ref="model_kjr_assembly"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="kjr_assembly_protokoll_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <!-- Lesbare Labels statt Selection-Keys; bewusst als Literal
+                         gehalten (kein Zugriff auf _fields), analog Teilnahmeliste. -->
+                    <t t-set="result_labels" t-value="{'accepted': 'Angenommen', 'rejected': 'Abgelehnt', 'tabled': 'Vertagt'}"/>
+                    <t t-set="election_labels" t-value="{'open': 'Offen / nicht ausgezählt', 'elected': 'Gewählt', 'runoff': 'Stichwahl erforderlich', 'failed': 'Keine Wahl zustande gekommen'}"/>
+                    <t t-set="majority_labels" t-value="{'absolute': 'absolute Mehrheit der gültigen Stimmen', 'relative': 'einfache (relative) Mehrheit'}"/>
+                    <!-- Tagesordnungsreihenfolge: Sachbeschlüsse und Wahlgänge in
+                         einer gemeinsamen Sequenz, so wie sie behandelt wurden. -->
+                    <t t-set="points" t-value="o.decision_ids.sorted(lambda d: (d.sequence, d.id))"/>
+                    <div class="page">
+
+                        <!-- ── Kopf ──────────────────────────────────────────── -->
+                        <div class="row mb-3">
+                            <div class="col-8">
+                                <h3 class="text-primary"><span t-field="o.env.company.name"/></h3>
+                                <p class="mb-0"><span t-field="o.env.company.street"/> · <span t-field="o.env.company.zip"/> <span t-field="o.env.company.city"/></p>
+                            </div>
+                            <div class="col-4 text-end">
+                                <p class="mb-0 text-muted">Protokoll</p>
+                                <p class="text-muted">
+                                    <span t-field="o.date" t-options='{"format":"dd.MM.yyyy"}'/>
+                                </p>
+                            </div>
+                        </div>
+                        <hr/>
+
+                        <h4 class="text-center mb-1">Protokoll der Vollversammlung</h4>
+                        <p class="text-center text-muted mb-4"><t t-esc="o.name"/></p>
+
+                        <!-- ── Rahmendaten, Ladung, Beschlussfähigkeit ───────── -->
+                        <table class="table table-sm table-borderless mb-3">
+                            <tbody>
+                                <tr>
+                                    <td style="width:34%;" class="text-muted">Datum, Beginn</td>
+                                    <td><strong><span t-field="o.date" t-options='{"format":"dd.MM.yyyy, HH:mm"}'/> Uhr</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Ort</td>
+                                    <td><t t-esc="o.location or '—'"/></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Einladung versandt am</td>
+                                    <td>
+                                        <!-- Kein Text als Tail hinter t-else: QWeb verwirft
+                                             den Tail des uebersprungenen Knotens. -->
+                                        <t t-if="o.invitation_date">
+                                            <span t-field="o.invitation_date" t-options='{"format":"dd.MM.yyyy"}'/>
+                                            <span> an <t t-esc="o.invited_count"/> Mitgliedsverbände</span>
+                                        </t>
+                                        <t t-else="">
+                                            <span>— (nicht erfasst), <t t-esc="o.invited_count"/> Mitgliedsverbände eingeladen</span>
+                                        </t>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Versammlungsleitung</td>
+                                    <td><t t-esc="o.chair_id.name or '—'"/></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Protokollführung</td>
+                                    <td><t t-esc="o.secretary_id.name or '—'"/></td>
+                                </tr>
+                                <tr t-if="o.teller_ids">
+                                    <td class="text-muted">Wahlausschuss / Stimmzähler</td>
+                                    <td><t t-esc="', '.join(o.teller_ids.mapped('name'))"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table class="table table-sm table-bordered mb-3">
+                            <tbody>
+                                <tr>
+                                    <td style="width:60%;">Stimmberechtigte Mitgliedsverbände (Vertretungsrecht)</td>
+                                    <td class="text-end"><t t-esc="o.eligible_member_count"/></td>
+                                </tr>
+                                <tr>
+                                    <td>Eingeladen</td>
+                                    <td class="text-end"><t t-esc="o.invited_count"/></td>
+                                </tr>
+                                <tr>
+                                    <td>Anwesend</td>
+                                    <td class="text-end"><strong><t t-esc="o.attendee_count"/></strong></td>
+                                </tr>
+                                <tr t-attf-class="fw-bold #{o.quorum_reached and 'table-success' or 'table-danger'}">
+                                    <td>
+                                        Beschlussfähigkeit (§ 33 BJR-Satzung)
+                                        <t t-if="o.is_repeat_session">
+                                            <br/>
+                                            <small class="fw-normal">Wiederholte Sitzung nach § 33 Abs. 3: ohne
+                                            Rücksicht auf die Zahl der Anwesenden beschlussfähig.</small>
+                                        </t>
+                                    </td>
+                                    <td class="text-end">
+                                        <t t-if="o.quorum_reached">Ja — beschlussfähig</t>
+                                        <t t-else="">Nein — nicht beschlussfähig</t>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- ── Tagesordnung ──────────────────────────────────── -->
+                        <t t-if="o.agenda">
+                            <h6 class="mt-4">Tagesordnung</h6>
+                            <div t-field="o.agenda"/>
+                        </t>
+
+                        <!-- ── Anwesenheitsliste ─────────────────────────────── -->
+                        <t t-if="o.attendee_ids">
+                            <h6 class="mt-4">Anwesende (<t t-esc="o.attendee_count"/>)</h6>
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width:6%;">Nr.</th>
+                                        <th>Mitglied / Vertretung</th>
+                                        <th style="width:28%;">Ort</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="o.attendee_ids" t-as="att">
+                                        <td><t t-esc="att_index + 1"/></td>
+                                        <td><t t-esc="att.name"/></td>
+                                        <td><t t-esc="att.zip"/> <t t-esc="att.city"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+
+                        <!-- ── Beschlüsse und Wahlen ─────────────────────────── -->
+                        <h6 class="mt-4">Beschlüsse und Wahlen</h6>
+                        <t t-if="not points">
+                            <p class="text-muted">Es wurden keine Beschlüsse gefasst.</p>
+                        </t>
+
+                        <t t-foreach="points" t-as="d">
+                            <div class="mt-3" style="page-break-inside:avoid;">
+
+                                <!-- ── Sachbeschluss ─────────────────────────── -->
+                                <t t-if="d.decision_type != 'election'">
+                                    <p class="mb-1">
+                                        <strong>TOP <t t-esc="d_index + 1"/>: <t t-esc="d.name"/></strong>
+                                    </p>
+                                    <p t-if="d.description" style="white-space:pre-line;" class="mb-2">
+                                        <t t-esc="d.description"/>
+                                    </p>
+                                    <table class="table table-sm table-bordered mb-1">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Ja</th>
+                                                <th>Nein</th>
+                                                <th>Enthaltungen</th>
+                                                <th>Ungültig</th>
+                                                <th>Ergebnis</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><t t-esc="d.vote_yes"/></td>
+                                                <td><t t-esc="d.vote_no"/></td>
+                                                <td><t t-esc="d.vote_abstain"/></td>
+                                                <td><t t-esc="d.vote_invalid"/></td>
+                                                <td class="fw-bold">
+                                                    <t t-esc="result_labels.get(d.result, 'ohne Ergebnisvermerk')"/>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <p class="small text-muted mb-0">
+                                        Enthaltungen und ungültige Stimmen zählen nach § 33 Abs. 2
+                                        BJR-Satzung nicht mit.
+                                    </p>
+                                </t>
+
+                                <!-- ── Wahlgang (geheim, § 34 Abs. 3) ────────── -->
+                                <t t-else="">
+                                    <p class="mb-1">
+                                        <strong>TOP <t t-esc="d_index + 1"/>: <t t-esc="d.name"/></strong>
+                                    </p>
+                                    <p class="small text-muted mb-2">
+                                        Geheime Wahl nach § 34 Abs. 3 BJR-Satzung.
+                                        <t t-if="d.election_office">Amt: <t t-esc="d.election_office"/>. </t>
+                                        Zu vergebende Sitze: <t t-esc="d.seats"/>.
+                                        <t t-if="d.ballot_round and d.ballot_round &gt; 1">
+                                            <t t-esc="d.ballot_round"/>. Wahlgang (Stichwahl).
+                                        </t>
+                                        Erforderlich: <t t-esc="majority_labels.get(d.majority_rule, '')"/>.
+                                    </p>
+                                    <p t-if="d.description" style="white-space:pre-line;" class="mb-2">
+                                        <t t-esc="d.description"/>
+                                    </p>
+                                    <table class="table table-sm table-bordered mb-1">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Kandidat/in</th>
+                                                <th class="text-end" style="width:16%;">Stimmen</th>
+                                                <th class="text-end" style="width:16%;">Anteil</th>
+                                                <th style="width:22%;">Ergebnis</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr t-foreach="d.candidate_ids.sorted(lambda c: (-c.votes, c.sequence, c.id))" t-as="c">
+                                                <td>
+                                                    <t t-esc="c.name"/>
+                                                    <t t-if="c.withdrawn"> <span class="text-muted">(Kandidatur zurückgezogen)</span></t>
+                                                </td>
+                                                <td class="text-end"><t t-esc="c.votes"/></td>
+                                                <td class="text-end"><t t-esc="'%.1f %%' % c.vote_share"/></td>
+                                                <td>
+                                                    <t t-if="c.is_elected"><strong>gewählt</strong></t>
+                                                    <t t-elif="c.withdrawn">—</t>
+                                                    <t t-else="">nicht gewählt</t>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Enthaltungen</td>
+                                                <td class="text-end"><t t-esc="d.vote_abstain"/></td>
+                                                <td colspan="2"/>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Ungültige Stimmen</td>
+                                                <td class="text-end"><t t-esc="d.vote_invalid"/></td>
+                                                <td colspan="2"/>
+                                            </tr>
+                                            <tr t-if="d.ballots_cast">
+                                                <td class="text-muted">Abgegebene Stimmzettel</td>
+                                                <td class="text-end"><t t-esc="d.ballots_cast"/></td>
+                                                <td colspan="2"/>
+                                            </tr>
+                                            <tr class="fw-bold">
+                                                <td>Gültige Stimmen (Berechnungsgrundlage)</td>
+                                                <td class="text-end"><t t-esc="d.election_valid_votes"/></td>
+                                                <td colspan="2">
+                                                    <t t-if="d.election_majority_needed">
+                                                        erforderlich: <t t-esc="d.election_majority_needed"/> Stimmen
+                                                    </t>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <p class="mb-0">
+                                        <strong>Ergebnis:
+                                            <t t-esc="election_labels.get(d.election_state, '—')"/>
+                                        </strong>
+                                        <t t-if="d.elected_names">
+                                            — <t t-esc="d.elected_names"/>
+                                        </t>
+                                    </p>
+                                    <p class="small text-muted mb-0">
+                                        Auszählung als Summen: Es wird nicht festgehalten, wer wie
+                                        gestimmt hat (Wahlgeheimnis). Enthaltungen und ungültige
+                                        Stimmen bleiben nach § 33 Abs. 2 BJR-Satzung außer Betracht;
+                                        jedes Mitglied hat eine Stimme (§ 33 Abs. 1).
+                                    </p>
+                                </t>
+                            </div>
+                        </t>
+
+                        <!-- ── Freies Protokoll / Verlauf ────────────────────── -->
+                        <t t-if="o.protocol">
+                            <h6 class="mt-4">Verlauf</h6>
+                            <div t-field="o.protocol"/>
+                        </t>
+
+                        <t t-if="o.note">
+                            <h6 class="mt-4">Anmerkungen</h6>
+                            <p style="white-space:pre-line;"><t t-esc="o.note"/></p>
+                        </t>
+
+                        <!-- ── Unterschriften ────────────────────────────────── -->
+                        <div class="row mt-5" style="page-break-inside:avoid;">
+                            <div class="col-6">
+                                <p class="mb-0 text-muted small">
+                                    <t t-esc="o.location or ''"/><t t-if="o.location">, den </t>
+                                    <span t-field="o.date" t-options='{"format":"dd.MM.yyyy"}'/>
+                                </p>
+                                <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px;">
+                                    <small>
+                                        Versammlungsleitung<t t-if="o.chair_id"> · <t t-esc="o.chair_id.name"/></t>
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-6 text-end">
+                                <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px; margin-left:auto;">
+                                    <small>
+                                        Protokollführung<t t-if="o.secretary_id"> · <t t-esc="o.secretary_id.name"/></t>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

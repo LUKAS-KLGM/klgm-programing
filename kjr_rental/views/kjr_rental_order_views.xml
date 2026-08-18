@@ -101,7 +101,24 @@
                             <field name="item_id"/>
                             <field name="quantity"/>
                             <field name="available_in_period"/>
+                            <!-- Preismodell als (nicht gespeichertes) related-Feld: nur damit
+                                 die kilometerabhängigen Spalten zeilenweise ein-/ausblenden.
+                                 price_per_day ist der GRUNDPREIS, price_unit_effective der
+                                 tatsächlich angesetzte Preis (Mengenstaffel!) — beide
+                                 nebeneinander, weil Vertrag, Portal und Rechnung mit
+                                 price_unit_effective rechnen und die Geschäftsstelle die
+                                 Abweichung sonst nicht sieht. -->
+                            <field name="pricing_model" optional="show"/>
                             <field name="price_per_day"/>
+                            <field name="price_unit_effective" optional="show"/>
+                            <field name="billable_units" optional="hide"/>
+                            <!-- Ohne diese Spalte ist der abgelesene Kilometerstand nirgends
+                                 erfassbar; die Rechnung enthielte dann nur die Grundgebühr
+                                 (siehe Hinweis in action_return). -->
+                            <field name="price_per_km" optional="hide"
+                                   invisible="pricing_model != 'per_km'"/>
+                            <field name="distance_km" optional="show"
+                                   invisible="pricing_model != 'per_km'"/>
                             <field name="deposit_unit"/>
                             <field name="subtotal"/>
                             <field name="deposit_subtotal"/>

@@ -121,4 +121,100 @@
         <field name="code">records.action_send_certificate()</field>
     </record>
 
+    <!-- E9: Schulungsrechnung (Versand über action_kjr_send_training_invoice).
+         Das Rechnungs-PDF wird beim Versand defensiv angehängt (siehe
+         account.move._kjr_invoice_pdf_attachment) und NICHT über
+         report_template_ids verdrahtet: fehlt der Standard-Report auf der
+         Instanz, geht die Mail trotzdem hinaus, statt den Modul-Import zu
+         zerlegen. -->
+    <record id="mail_template_training_invoice" model="mail.template">
+        <field name="name">KJR: Schulungsrechnung</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="subject">Rechnung {{ object.name }}</field>
+        <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+        <field name="email_to">{{ object.partner_id.email or '' }}</field>
+        <field name="body_html" type="html">
+            <div style="margin:0px;padding:0px;font-size:13px;">
+                <p>Hallo <t t-out="object.partner_id.name or ''"/>,</p>
+                <p>anbei erhalten Sie unsere Rechnung
+                    <strong><t t-out="object.name or ''"/></strong><t t-if="object.invoice_origin">
+                    zu <t t-out="object.invoice_origin"/></t>.</p>
+                <p>Rechnungsbetrag:
+                    <strong><t t-out="format_amount(object.amount_total, object.currency_id)"/></strong></p>
+                <p t-if="object.invoice_date_due">Zahlbar bis
+                    <t t-out="format_date(object.invoice_date_due, date_format='dd.MM.yyyy')"/>.</p>
+                <p>Bei Rückfragen zur Rechnung wenden Sie sich bitte an die Geschäftsstelle.</p>
+                <p>Mit freundlichen Grüßen<br/>{{ object.company_id.name }}</p>
+            </div>
+        </field>
+        <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
+        <field name="auto_delete" eval="False"/>
+    </record>
+
+    <!-- ==================================================================
+         Auslöser: jede Vorlage oben hat entweder einen Cron
+         (data/ir_cron_data.xml) oder eine Server-Action im Kontextmenü
+         "Aktionen" der Anmeldungen (Liste + Formular).
+         ================================================================== -->
+
+    <!-- E7: Anmeldebestätigung nachträglich versenden -->
+    <record id="action_server_send_registration_confirm" model="ir.actions.server">
+        <field name="name">KJR: Anmeldebestätigung senden</field>
+        <field name="model_id" ref="event.model_event_registration"/>
+        <field name="binding_model_id" ref="event.model_event_registration"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_kjr_send_registration_confirm()</field>
+    </record>
+
+    <!-- E7: Einwilligungs-Erinnerung manuell (der Cron erledigt den Regelfall) -->
+    <record id="action_server_send_consent_reminder" model="ir.actions.server">
+        <field name="name">KJR: Einwilligungs-Erinnerung senden</field>
+        <field name="model_id" ref="event.model_event_registration"/>
+        <field name="binding_model_id" ref="event.model_event_registration"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_kjr_send_consent_reminder()</field>
+    </record>
+
+    <!-- E7: Packliste manuell (der Cron erledigt den Regelfall) -->
+    <record id="action_server_send_packing_list" model="ir.actions.server">
+        <field name="name">KJR: Packliste senden</field>
+        <field name="model_id" ref="event.model_event_registration"/>
+        <field name="binding_model_id" ref="event.model_event_registration"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_kjr_send_packing_list()</field>
+    </record>
+
+    <!-- E7: Absage – bewusste Entscheidung, deshalb ausschließlich manuell -->
+    <record id="action_server_send_cancellation" model="ir.actions.server">
+        <field name="name">KJR: Absage senden</field>
+        <field name="model_id" ref="event.model_event_registration"/>
+        <field name="binding_model_id" ref="event.model_event_registration"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_kjr_send_cancellation()</field>
+    </record>
+
+    <!-- E9: Sammelaktion Schulungsrechnung (mehrere Anmeldungen auf einmal) -->
+    <record id="action_server_create_training_invoices" model="ir.actions.server">
+        <field name="name">KJR: Schulungsrechnung(en) erzeugen</field>
+        <field name="model_id" ref="event.model_event_registration"/>
+        <field name="binding_model_id" ref="event.model_event_registration"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_kjr_create_training_invoices()</field>
+    </record>
+
+    <!-- E9: Rechnungsversand per Mail-Vorlage (nur gebuchte Rechnungen) -->
+    <record id="action_server_send_training_invoice" model="ir.actions.server">
+        <field name="name">KJR: Schulungsrechnung versenden</field>
+        <field name="model_id" ref="event.model_event_registration"/>
+        <field name="binding_model_id" ref="event.model_event_registration"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_kjr_send_training_invoice()</field>
+    </record>
+
 </odoo>

@@ -28,11 +28,15 @@ access_kjr_juleica_reviewer,kjr.juleica reviewer,model_kjr_juleica,kjr_grant.gro
 access_kjr_juleica_applicant,kjr.juleica applicant,model_kjr_juleica,kjr_grant.group_kjr_applicant,1,0,0,0
 access_kjr_juleica_portal,kjr.juleica portal,model_kjr_juleica,base.group_portal,1,0,0,0
 access_kjr_assembly_manager,kjr.assembly manager,model_kjr_assembly,kjr_grant.group_kjr_manager,1,1,1,1
-access_kjr_assembly_reviewer,kjr.assembly reviewer,model_kjr_assembly,kjr_grant.group_kjr_reviewer,1,1,0,0
+access_kjr_assembly_reviewer,kjr.assembly reviewer (nur Lesen - Wahlprotokoll pflegt der Administrator),model_kjr_assembly,kjr_grant.group_kjr_reviewer,1,0,0,0
 access_kjr_assembly_decision_manager,kjr.assembly.decision manager,model_kjr_assembly_decision,kjr_grant.group_kjr_manager,1,1,1,1
-access_kjr_assembly_decision_reviewer,kjr.assembly.decision reviewer,model_kjr_assembly_decision,kjr_grant.group_kjr_reviewer,1,1,1,0
+access_kjr_assembly_decision_reviewer,kjr.assembly.decision reviewer (nur Lesen - ausgezaehlte Stimmen bleiben unveraendert),model_kjr_assembly_decision,kjr_grant.group_kjr_reviewer,1,0,0,0
 access_kjr_funding_manager,kjr.funding manager,model_kjr_funding,kjr_grant.group_kjr_manager,1,1,1,1
 access_kjr_funding_reviewer,kjr.funding reviewer,model_kjr_funding,kjr_grant.group_kjr_reviewer,1,1,0,0
 access_kjr_volunteer_log_manager,kjr.volunteer.log manager,model_kjr_volunteer_log,kjr_grant.group_kjr_manager,1,1,1,1
 access_kjr_volunteer_log_reviewer,kjr.volunteer.log reviewer,model_kjr_volunteer_log,kjr_grant.group_kjr_reviewer,1,1,1,0
 access_kjr_volunteer_log_applicant,kjr.volunteer.log applicant,model_kjr_volunteer_log,kjr_grant.group_kjr_applicant,1,0,0,0
+access_kjr_grant_payout_run_manager,kjr.grant.payout.run manager,model_kjr_grant_payout_run,kjr_grant.group_kjr_manager,1,1,1,1
+access_kjr_grant_payout_run_reviewer,kjr.grant.payout.run reviewer,model_kjr_grant_payout_run,kjr_grant.group_kjr_reviewer,1,1,1,1
+access_kjr_assembly_candidate_manager,kjr.assembly.candidate manager,model_kjr_assembly_candidate,kjr_grant.group_kjr_manager,1,1,1,1
+access_kjr_assembly_candidate_reviewer,kjr.assembly.candidate reviewer (nur Lesen - ausgezaehlte Stimmen bleiben unveraendert),model_kjr_assembly_candidate,kjr_grant.group_kjr_reviewer,1,0,0,0

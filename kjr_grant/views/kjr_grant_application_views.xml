@@ -281,8 +281,11 @@
                                 <group>
                                     <field name="participant_count" string="Einträge in TN-Liste"/>
                                     <field name="tn_count" string="Gemeldete TN-Anzahl"/>
-                                    <field name="participant_consent"
-                                           readonly="state not in ('draft','submitted')"/>
+                                    <!-- Historisch: seit 31.07.2026 auf Wunsch des KJR nicht
+                                         mehr erhoben. Nur noch sichtbar, wenn ein Altantrag den
+                                         Vermerk trägt. -->
+                                    <field name="participant_consent" readonly="1"
+                                           invisible="not participant_consent"/>
                                 </group>
                             </group>
                         </page>
@@ -419,7 +422,7 @@
                                     <field name="confirm_privacy"     readonly="1"/>
                                     <field name="confirm_guidelines"  readonly="1"/>
                                     <field name="confirm_truthful"    readonly="1"/>
-                                    <field name="participant_consent" readonly="1"/>
+                                    <field name="participant_consent" readonly="1" invisible="not participant_consent"/>
                                 </group>
                                 <group string="Ablehnung" invisible="state != 'rejected'">
                                     <field name="rejection_reason"/>

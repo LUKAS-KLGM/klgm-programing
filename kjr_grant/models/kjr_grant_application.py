@@ -153,11 +153,17 @@ class KjrGrantApplication(models.Model):
     tn_external_pct = fields.Float(
         string='Anteil externer TN (%)', compute='_compute_tn_external_pct', digits=(5, 1),
     )
+    # HISTORISCH — nicht mehr erheben. Der KJR hat die Bestätigung am 31.07.2026
+    # abgelehnt: Er ist für die Richtigkeit des Datenschutzes in den Vereinen nicht
+    # zuständig und darf sie nicht prüfen; eine Bestätigung, die man nicht prüfen
+    # darf, erzeugt Scheinsicherheit. Das Feld bleibt erhalten, weil Anträge aus der
+    # Zeit davor den Vermerk tragen und ihre Historie behalten sollen — es wird aber
+    # weder im Website-Formular abgefragt noch beim Einreichen geprüft.
     participant_consent = fields.Boolean(
-        string='Einwilligung Erziehungsberechtigte liegt vor', tracking=True,
-        help='Bestätigung, dass für minderjährige Teilnehmer die Einwilligung der '
-             'Erziehungsberechtigten zur Verarbeitung der Teilnehmerdaten vorliegt '
-             '(Art. 6 Abs. 1 / Art. 8 DSGVO).',
+        string='Einwilligung Erziehungsberechtigte (historisch)', tracking=True,
+        help='Nur für Altanträge: Bestätigung, dass für minderjährige Teilnehmer die '
+             'Einwilligung der Erziehungsberechtigten vorliegt. Seit 31.07.2026 auf '
+             'Wunsch des KJR nicht mehr erhoben.',
     )
 
     # ── Bestätigungen Antragsteller ──────────────────────────────────────────
@@ -1719,10 +1725,6 @@ class KjrGrantApplication(models.Model):
         no_tn_codes = ('4_6', '4_7', '4_9', 'invest')
         if t.code not in no_tn_codes and self.tn_count <= 0:
             errors.append(_('Anzahl Teilnehmer muss > 0 sein.'))
-        if self.participant_ids and not self.participant_consent:
-            errors.append(_('Bitte bestätigen Sie, dass die Einwilligung der '
-                           'Erziehungsberechtigten zur Verarbeitung der '
-                           'Teilnehmerdaten vorliegt (Datenschutz).'))
         if t.min_participants and self.tn_count < t.min_participants:
             errors.append(_('Mindestens %d Teilnehmer erforderlich für "%s".')
                          % (t.min_participants, t.name))

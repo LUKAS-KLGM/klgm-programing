@@ -6,6 +6,7 @@ from markupsafe import Markup
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools import float_compare
 
 _logger = logging.getLogger(__name__)
 
@@ -338,7 +339,32 @@ class KjrRentalOrder(models.Model):
                            'Einbehalt ab.',
                            findings=', '.join(findings), amount=rec.deposit_total),
                     subtype_xmlid='mail.mt_note')
-            if auto_invoice and not rec.invoice_id and rec.amount_total > 0:
+            # R4: Kilometerpreise lassen sich erst mit dem abgelesenen Stand bilden.
+            # PROJEKTSTANDARD: im Backend nur ein Hinweis, KEINE harte Sperre — die
+            # Geschäftsstelle muss eine Rücknahme auch dann abschließen können, wenn
+            # der Kilometerstand nachgereicht wird.
+            km_missing = rec.line_ids.filtered(
+                lambda l: l.item_id.pricing_model == 'per_km' and not l.distance_km)
+            if km_missing:
+                rec.message_post(
+                    body=_('Bei folgenden Positionen wird nach Kilometern abgerechnet, es '
+                           'sind aber noch keine gefahrenen Kilometer erfasst: %(items)s. '
+                           'Bitte den abgelesenen Stand in der Position nachtragen — sonst '
+                           'enthält die Rechnung nur die Grundgebühr.',
+                           items=', '.join(km_missing.mapped('item_id.name'))),
+                    subtype_xmlid='mail.mt_note')
+            if auto_invoice and km_missing and not rec.invoice_id:
+                # Eine automatische Rechnung ohne erfassten Kilometerstand wäre
+                # nachweislich zu niedrig und müsste storniert werden. Deshalb hier
+                # bewusst zurückgestellt — die Rechnung bleibt jederzeit manuell über
+                # "Rechnung erstellen" auslösbar.
+                rec.message_post(
+                    body=_('Die automatische Rechnung wurde zurückgestellt, weil bei '
+                           'kilometerabhängigen Positionen noch keine gefahrenen '
+                           'Kilometer erfasst sind. Nach dem Nachtragen bitte '
+                           '"Rechnung erstellen" verwenden.'),
+                    subtype_xmlid='mail.mt_note')
+            elif auto_invoice and not rec.invoice_id and rec.amount_total > 0:
                 # Auto-Rechnung darf die Rückgabe nicht blockieren: schlägt das Buchen fehl
                 # (z. B. fehlende Kontenfindung), bleibt die Rechnung als Entwurf bestehen
                 # und die Rücknahme ist trotzdem abgeschlossen.
@@ -372,6 +398,13 @@ class KjrRentalOrder(models.Model):
         Jede Position bekommt das Service-Produkt 'Verleihgebühr'; quantity*price_unit
         ergibt den Positionsbetrag, sodass Steuer- und Kontenfindung über das Produkt
         greifen (statt einer Zeile ohne product_id/Steuer).
+
+        R4: Die Menge der Rechnungszeile folgt dem Preismodell des Artikels
+        (Tage, Nächte, Stück/Pauschale, Staffel). Für 'Pro Tag' — und damit für alle
+        Bestandsdaten — ergibt das unverändert Menge × Tage zum Zeilen-Grundpreis.
+        Der Kilometeranteil bekommt eine EIGENE Rechnungszeile, damit auf der Rechnung
+        erkennbar ist, was Grundgebühr und was Fahrleistung ist; in Summe entspricht
+        beides zusammen weiterhin genau line.subtotal.
         """
         self.ensure_one()
         if self.invoice_id:
@@ -383,15 +416,28 @@ class KjrRentalOrder(models.Model):
         for line in self.line_ids:
             if not line.subtotal:
                 continue
-            vals = {
-                'name': _('%(item)s (%(q)d × %(d)d Tage)') % {
-                    'item': line.item_id.name, 'q': line.quantity, 'd': self.rental_days},
-                'quantity': float(line.quantity) * float(self.rental_days or 1),
-                'price_unit': line.price_per_day,
-            }
-            if fee_product:
-                vals['product_id'] = fee_product.id
-            line_vals.append((0, 0, vals))
+            units = line._billable_units()
+            base_amount = line.price_unit_effective * line.quantity * units
+            if base_amount:
+                vals = {
+                    'name': line._invoice_line_name(units),
+                    'quantity': float(line.quantity) * float(units or 1),
+                    'price_unit': line.price_unit_effective,
+                }
+                if fee_product:
+                    vals['product_id'] = fee_product.id
+                line_vals.append((0, 0, vals))
+            km_amount = line._km_amount()
+            if km_amount:
+                vals = {
+                    'name': _('%(item)s (gefahrene Kilometer: %(km).1f)') % {
+                        'item': line.item_id.name, 'km': line.distance_km},
+                    'quantity': line.distance_km,
+                    'price_unit': line.price_per_km,
+                }
+                if fee_product:
+                    vals['product_id'] = fee_product.id
+                line_vals.append((0, 0, vals))
         move = self.env['account.move'].create({
             'move_type': 'out_invoice',
             'partner_id': self.partner_id.id,
@@ -497,10 +543,47 @@ class KjrRentalOrderLine(models.Model):
     item_id = fields.Many2one('kjr.rental.item', string='Artikel', required=True)
     quantity = fields.Integer(string='Menge', default=1)
     price_per_day = fields.Float(
-        string='Tagespreis (€)', digits=(8, 2),
+        string='Grundpreis je Einheit (€)', digits=(8, 2),
         compute='_compute_price', store=True, readonly=False,
+        help='Grundpreis, der beim Anlegen der Position aus dem Artikel übernommen und '
+             'ab Rechnung/Ausgabe eingefroren wird. Die Bezugsgröße (Tag, Nacht, Stück, '
+             'Grundgebühr) ergibt sich aus dem Preismodell des Artikels. Der Feldname '
+             'bleibt aus Bestandsgründen price_per_day.',
     )
     deposit_unit = fields.Float(string='Kaution/Stück (€)', digits=(8, 2), compute='_compute_price', store=True, readonly=False)
+    # R4: Preismodell des Artikels als related-Feld, damit Formular- und Listensichten
+    # die kilometer-/staffelspezifischen Spalten ein- und ausblenden können, ohne den
+    # Artikel nachzuladen. Nicht gespeichert — die Wahrheit steht am Artikel.
+    pricing_model = fields.Selection(
+        related='item_id.pricing_model', string='Preismodell', readonly=True)
+    price_per_km = fields.Float(
+        string='Kilometerpreis (€/km)', digits=(8, 2),
+        compute='_compute_price', store=True, readonly=False,
+        help='Kilometersatz, der beim Anlegen der Position aus dem Artikel übernommen '
+             'wird (0,00 € bei allen anderen Preismodellen). Wie der Grundpreis ab '
+             'Rechnung/Ausgabe eingefroren.',
+    )
+    distance_km = fields.Float(
+        string='Gefahrene Kilometer', digits=(10, 1),
+        help='Nur beim Preismodell "Grundgebühr + Kilometerpreis": die bei DIESER '
+             'Position insgesamt gefahrenen Kilometer über alle Stück, abgelesen bei '
+             'der Rückgabe. Der Kilometeranteil wird deshalb NICHT zusätzlich mit der '
+             'Menge multipliziert. Nachtragen ist auch nach der Rücknahme möglich — '
+             'nach einer bereits erstellten Rechnung erscheint dazu ein Hinweis im '
+             'Protokoll.',
+    )
+    price_unit_effective = fields.Float(
+        string='Effektivpreis je Einheit (€)', digits=(8, 2),
+        compute='_compute_price_unit_effective', store=True,
+        help='Tatsächlich berechneter Preis je Einheit. Entspricht dem Grundpreis der '
+             'Position; nur beim Preismodell "Mengenstaffel" tritt der mengenabhängige '
+             'Staffelpreis an dessen Stelle.',
+    )
+    billable_units = fields.Integer(
+        string='Berechnete Einheiten', compute='_compute_billable_units', store=False,
+        help='Zahl der berechneten Tage, Nächte bzw. Pauschalen laut Preismodell des '
+             'Artikels. Bei "Pro Tag" sind das die angefangenen Tage des Zeitraums.',
+    )
     currency_id = fields.Many2one(related='order_id.currency_id')
     subtotal = fields.Monetary(string='Zwischensumme', compute='_compute_subtotal', store=True)
     deposit_subtotal = fields.Monetary(string='Kaution', compute='_compute_subtotal', store=True)
@@ -544,27 +627,158 @@ class KjrRentalOrderLine(models.Model):
             # hinzugefügte Zeile hat noch keinen abgerechneten Preis. Ohne Zuweisung
             # fällt Odoo bei ihr auf den Nullwert zurück – die Position stünde dann
             # still mit 0,00 € Tagespreis und 0,00 € Kaution in Rechnung und Vertrag.
-            frozen = bool(rec.order_id.invoice_id) or rec.order_id.state in ('issued', 'returned', 'cancelled')
+            frozen = rec._prices_frozen()
             if frozen and rec._origin:
                 # Selbstzuweisung statt blankem 'continue': so ist JEDEM Record im
                 # Loop ein Wert zugewiesen (Odoo-Vorgabe für Compute-Methoden), und
                 # der bestehende Preis bleibt erhalten.
                 rec.price_per_day = rec.price_per_day
                 rec.deposit_unit = rec.deposit_unit
+                rec.price_per_km = rec.price_per_km
                 continue
             if rec.item_id:
                 rec.price_per_day = rec.item_id.price_for(rec.order_id.is_member)
                 rec.deposit_unit = rec.item_id.deposit
+                # Der Kilometersatz wird NUR beim Kilometermodell übernommen: ein am
+                # Artikel gepflegter, aber nicht aktivierter Satz darf keine zusätzliche
+                # Gebühr erzeugen. Für alle Bestandsartikel bleibt der Wert damit 0,00 €.
+                rec.price_per_km = (
+                    rec.item_id.price_km_for(rec.order_id.is_member)
+                    if rec.item_id.pricing_model == 'per_km' else 0.0)
             else:
                 rec.price_per_day = 0.0
                 rec.deposit_unit = 0.0
+                rec.price_per_km = 0.0
 
-    @api.depends('price_per_day', 'quantity', 'deposit_unit', 'order_id.rental_days')
-    def _compute_subtotal(self):
+    def _prices_frozen(self):
+        """Sind die Preise dieser Position eingefroren?
+
+        Unverändert die bisherige Regel (B2): sobald eine Rechnung existiert ODER der
+        Vorgang ausgegeben/zurückgegeben/storniert ist, dürfen sich übernommene Preise
+        nicht mehr nachträglich ändern. Als eigene Methode, damit die neuen Computes
+        exakt dieselbe Regel verwenden statt sie zu kopieren.
+        """
+        self.ensure_one()
+        return bool(self.order_id.invoice_id) or self.order_id.state in (
+            'issued', 'returned', 'cancelled')
+
+    # R4: Der Staffelpreis hängt an der MENGE — 'quantity' gehört deshalb in die
+    # depends dieses Feldes, nicht in die von _compute_price. Käme die Menge dort
+    # hinein, würde jede Mengenänderung auch bei ganz normalen Tagespreis-Positionen
+    # den (readonly=False) von Hand übersteuerten Zeilenpreis überschreiben — genau
+    # das Verhalten, das sich für Bestandsdaten NICHT ändern darf.
+    @api.depends('price_per_day', 'quantity', 'order_id.is_member',
+                 'item_id.pricing_model', 'item_id.price_per_day',
+                 'item_id.price_member_per_day', 'item_id.has_member_price',
+                 'item_id.tier_ids.min_quantity', 'item_id.tier_ids.price',
+                 'item_id.tier_ids.price_member')
+    def _compute_price_unit_effective(self):
         for rec in self:
-            days = rec.order_id.rental_days or 0
-            rec.subtotal = rec.price_per_day * rec.quantity * days
+            item = rec.item_id
+            if not item or item.pricing_model != 'tiered':
+                # Alle übrigen Modelle (und damit sämtliche Bestandsdaten): der
+                # Effektivpreis IST der Zeilen-Grundpreis, inklusive Einfrierschutz und
+                # manueller Übersteuerung, die beide an price_per_day hängen.
+                rec.price_unit_effective = rec.price_per_day
+                continue
+            # Eingefrorene Staffelposition: bereits berechneten Preis behalten.
+            # Die zusätzliche Prüfung auf einen vorhandenen Wert ist wichtig, weil das
+            # Feld beim Modul-Upgrade neu befüllt wird — ohne sie blieben eingefrorene
+            # Altpositionen mit 0,00 € stehen.
+            if rec._prices_frozen() and rec._origin and rec.price_unit_effective:
+                rec.price_unit_effective = rec.price_unit_effective
+                continue
+            base = item.price_for(rec.order_id.is_member)
+            if float_compare(rec.price_per_day, base, precision_digits=2) != 0:
+                # Von Hand gesetzter Zeilenpreis hat Vorrang vor der Staffel.
+                rec.price_unit_effective = rec.price_per_day
+                continue
+            rec.price_unit_effective = item.unit_price_for(
+                rec.quantity, rec.order_id.is_member)
+
+    def _billable_units(self):
+        """Berechnete Einheiten laut Preismodell (Tage, Nächte, Pauschale)."""
+        self.ensure_one()
+        days = self.order_id.rental_days or 0
+        if not self.item_id:
+            return days
+        return self.item_id.billable_units(days)
+
+    def _km_amount(self):
+        """Kilometeranteil der Position (0,00 € außerhalb des Kilometermodells).
+
+        Bewusst OHNE Multiplikation mit der Menge: distance_km ist der insgesamt für
+        diese Position gefahrene Weg (siehe Feldhilfe).
+        """
+        self.ensure_one()
+        if not self.item_id or self.item_id.pricing_model != 'per_km':
+            return 0.0
+        return (self.price_per_km or 0.0) * (self.distance_km or 0.0)
+
+    @api.depends('item_id.pricing_model', 'item_id.price_time_basis',
+                 'item_id.min_billable_units', 'order_id.rental_days')
+    def _compute_billable_units(self):
+        for rec in self:
+            rec.billable_units = rec._billable_units()
+
+    @api.depends('price_unit_effective', 'quantity', 'deposit_unit',
+                 'order_id.rental_days', 'item_id.pricing_model',
+                 'item_id.price_time_basis', 'item_id.min_billable_units',
+                 'price_per_km', 'distance_km')
+    def _compute_subtotal(self):
+        """Zwischensumme = Effektivpreis × Menge × berechnete Einheiten + Kilometeranteil.
+
+        Für das Modell 'Pro Tag' (Default und damit alle Bestandsartikel) ist das
+        rechnerisch identisch zur bisherigen Formel Tagespreis × Menge × Tage:
+        price_unit_effective entspricht dort dem Zeilen-Grundpreis, billable_units den
+        angefangenen Tagen und der Kilometeranteil ist 0,00 €.
+        """
+        for rec in self:
+            units = rec._billable_units()
+            rec.subtotal = rec.price_unit_effective * rec.quantity * units + rec._km_amount()
             rec.deposit_subtotal = rec.deposit_unit * rec.quantity
+
+    def _invoice_line_name(self, units=None):
+        """Bezeichnung der Rechnungszeile passend zum Preismodell."""
+        self.ensure_one()
+        if units is None:
+            units = self._billable_units()
+        item = self.item_id
+        model = item.pricing_model or 'per_day'
+        unit_word = (item.unit_label or '').strip() or _('Stück')
+        values = {'item': item.name, 'q': self.quantity, 'u': units, 'unit': unit_word}
+        if model == 'per_day':
+            # Wortlaut unverändert zur bisherigen Fassung.
+            return _('%(item)s (%(q)d × %(u)d Tage)') % values
+        if model == 'per_night':
+            return _('%(item)s (%(q)d × %(u)d Nächte)') % values
+        if model == 'per_unit':
+            return _('%(item)s (%(q)d %(unit)s, Pauschale)') % values
+        values['kind'] = _('Grundgebühr') if model == 'per_km' else _('Mengenstaffel')
+        basis = item.price_time_basis or 'flat'
+        if basis == 'day':
+            return _('%(item)s – %(kind)s (%(q)d × %(u)d Tage)') % values
+        if basis == 'night':
+            return _('%(item)s – %(kind)s (%(q)d × %(u)d Nächte)') % values
+        return _('%(item)s – %(kind)s (%(q)d %(unit)s)') % values
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'distance_km' in vals:
+            # Der Kilometerstand wird typischerweise bei der Rücknahme nachgetragen —
+            # also möglicherweise NACH einer bereits erstellten Rechnung. Die
+            # Zwischensumme ändert sich dann, die Rechnung nicht. Kein harter Guard
+            # (die Erfassung muss möglich bleiben), aber ein Protokolleintrag, damit
+            # die Abweichung nicht unbemerkt bleibt.
+            for rec in self:
+                if rec.order_id.invoice_id:
+                    rec.order_id.message_post(
+                        body=_('Gefahrene Kilometer der Position "%(item)s" wurden nach '
+                               'der Rechnungsstellung auf %(km).1f km geändert. Bitte '
+                               'prüfen, ob die Rechnung angepasst werden muss.',
+                               item=rec.item_id.name, km=rec.distance_km or 0.0),
+                        subtype_xmlid='mail.mt_note')
+        return res
 
     @api.constrains('quantity')
     def _check_quantity(self):

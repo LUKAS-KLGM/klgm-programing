@@ -220,10 +220,6 @@ class KjrWebsiteController(http.Controller):
                 'Bitte bestätigen Sie, dass alle Angaben vollständig sind und der '
                 'Wahrheit entsprechen.'
             )),
-            ('participant_consent', _(
-                'Bitte bestätigen Sie, dass für alle minderjährigen Teilnehmer die '
-                'Einwilligung der Erziehungsberechtigten vorliegt.'
-            )),
         ]:
             if not post.get(field):
                 errors[field] = message
@@ -334,7 +330,6 @@ class KjrWebsiteController(http.Controller):
                 'income_bjr':              _f('income_bjr'),
                 'income_other':            _f('income_other'),
                 'measure_report':          post.get('measure_report', '').strip(),
-                'participant_consent':     bool(post.get('participant_consent')),
                 'confirm_privacy':         bool(post.get('confirm_privacy')),
                 'confirm_guidelines':      bool(post.get('confirm_guidelines')),
                 'confirm_truthful':        bool(post.get('confirm_truthful')),
@@ -380,12 +375,29 @@ class KjrWebsiteController(http.Controller):
 
         Verwendet die Hilfsfunktionen und Formatmuster des Modells
         (_normalize_bank_code / _iban_is_valid, IBAN_LENGTHS, BIC_RE), damit
-        Formular und Constraint dieselbe Regel anwenden. Leere Angaben bleiben
-        erlaubt — ob eine IBAN Pflicht ist, entscheidet erst das Einreichen bzw.
-        die Förderart (allow_private_account).
+        Formular und Constraint dieselbe Regel anwenden.
+
+        Konto ist im Website-Formular PFLICHT (Entscheidung 18.08.2026): ohne
+        Bankverbindung lässt sich der Zuschuss nicht auszahlen, und die
+        Geschäftsstelle müsste sie hinterhertelefonieren. Das gilt bewusst für
+        ALLE Förderarten — allow_private_account entscheidet nur, ob es ein
+        Organisations- oder ein Privatkonto sein darf, nicht ob überhaupt eines
+        nötig ist. Im Backend bleibt das Feld optional (Projektstandard:
+        Papieranträge müssen unvollständig erfassbar sein).
         """
         app_model = request.env['kjr.grant.application']
         raw_iban = (post.get('payment_iban') or '').strip()
+        if not raw_iban:
+            errors['payment_iban'] = _(
+                'Bitte geben Sie die IBAN des Kontos an, auf das der Zuschuss '
+                'überwiesen werden soll. Ohne Bankverbindung kann der Antrag nicht '
+                'ausgezahlt werden.'
+            )
+        if not (post.get('payment_account_holder') or '').strip():
+            errors['payment_account_holder'] = _(
+                'Bitte geben Sie den Kontoinhaber genau so an, wie er bei der Bank '
+                'hinterlegt ist.'
+            )
         if raw_iban:
             iban = app_model._normalize_bank_code(raw_iban)
             expected_len = IBAN_LENGTHS.get(iban[:2])

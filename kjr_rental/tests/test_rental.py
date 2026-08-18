@@ -69,3 +69,27 @@ class TestKjrRental(TransactionCase):
             'name': 'Neu', 'category_id': self.category.id, 'purchase_value': 500.0,
         })
         self.assertEqual(item.book_value, 500.0)
+
+    # ── Mengenstaffel (kjr.rental.price.tier) ────────────────────────────────
+    # Regressionstest zur technischen Abnahme: das Staffelmodell hatte keinen
+    # Eintrag in security/ir.model.access.csv. Ohne ACL scheitert schon das
+    # Anlegen einer Staffelzeile mit AccessError – dieser Test deckt das ab und
+    # prüft gleichzeitig, dass die greifende Stufe den Grundpreis ersetzt.
+    def test_price_tier_replaces_base_price(self):
+        """Ab der Staffelmenge gilt der Staffelpreis für ALLE Stück der Position."""
+        item = self.env['kjr.rental.item'].create({
+            'name': 'Bierzeltgarnitur', 'category_id': self.category.id,
+            'pricing_model': 'tiered', 'quantity_total': 50,
+            'price_per_day': 4.0, 'has_member_price': True, 'price_member_per_day': 2.0,
+        })
+        self.env['kjr.rental.price.tier'].create([
+            {'item_id': item.id, 'min_quantity': 10, 'price': 3.0, 'price_member': 1.5},
+            {'item_id': item.id, 'min_quantity': 20, 'price': 2.0, 'price_member': 1.0},
+        ])
+        # Unterhalb der ersten Stufe bleibt der Grundpreis stehen.
+        self.assertEqual(item.unit_price_for(5, False), 4.0)
+        # Es greift die höchste Stufe, die die Menge nicht überschreitet.
+        self.assertEqual(item.unit_price_for(10, False), 3.0)
+        self.assertEqual(item.unit_price_for(25, False), 2.0)
+        # Mitgliedstarif gilt auch in der Staffel.
+        self.assertEqual(item.unit_price_for(25, True), 1.0)
