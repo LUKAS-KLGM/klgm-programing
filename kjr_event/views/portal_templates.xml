@@ -4,18 +4,18 @@
     <!-- E4: Übersicht der zugeordneten KJR-Veranstaltungen -->
     <!-- Kachel auf der Portalseite „Mein Konto" (/my).
          Ohne sie war die Kooperationspartner-Ansicht nur über die direkte URL
-         erreichbar. Bewusst mit t-if auf den Zähler: ein Portalnutzer, der kein
-         Kooperationspartner ist (z. B. ein Mitgliedsverband mit Zuschussanträgen),
-         soll keine leere Rubrik „KJR-Veranstaltungen 0" sehen. -->
+         erreichbar.
+         Wird wie die Kacheln der drei übrigen KJR-Module IMMER angezeigt, auch
+         bei Zähler 0 — so sieht jede Person im Portal auf einen Blick, welche
+         Bereiche es gibt, statt sie erst bei der ersten Buchung zu entdecken
+         (Entscheidung 21.08.2026). -->
     <template id="portal_my_home_kjr_event" name="Portal: KJR-Veranstaltungen"
               inherit_id="portal.portal_my_home" customize_show="True" priority="44">
         <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
-            <t t-if="kjr_event_count">
-                <t t-call="portal.portal_docs_entry">
-                    <t t-set="title">KJR-Veranstaltungen</t>
-                    <t t-set="url" t-value="'/my/kjr-events'"/>
-                    <t t-set="placeholder_count" t-value="'kjr_event_count'"/>
-                </t>
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">KJR-Veranstaltungen</t>
+                <t t-set="url" t-value="'/my/kjr-events'"/>
+                <t t-set="placeholder_count" t-value="'kjr_event_count'"/>
             </t>
         </xpath>
     </template>
