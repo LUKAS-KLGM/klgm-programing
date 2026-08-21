@@ -13,6 +13,9 @@
                 <field name="capacity"/>
                 <field name="bed_total" string="Betten"/>
                 <field name="booking_count" string="Buchungen"/>
+                <!-- F-Verpflegung: nur bei Bedarf einblendbar, beide KJR-Einrichtungen
+                     sind Selbstversorgerhäuser. -->
+                <field name="offers_catering" optional="hide"/>
                 <field name="website_published"/>
             </list>
         </field>
@@ -61,6 +64,9 @@
                             <field name="min_persons"/>
                             <field name="min_nights"/>
                             <field name="requires_organized_group"/>
+                            <!-- F-Verpflegung: steuert, ob Verpflegung überhaupt
+                                 gewählt werden kann (Backend, Website, Vertrag). -->
+                            <field name="offers_catering"/>
                         </group>
                     </group>
                     <field name="description_short" placeholder="Kurzbeschreibung für die Liste/Website"/>

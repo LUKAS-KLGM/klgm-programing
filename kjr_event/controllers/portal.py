@@ -37,6 +37,26 @@ class KjrCooperationPortal(CustomerPortal):
             ('cooperation_user_ids', 'in', request.env.user.id),
         ]
 
+    def _prepare_home_portal_values(self, counters):
+        """Kachel „KJR-Veranstaltungen“ auf der Portalseite „Mein Konto“ (/my).
+
+        Ohne diesen Eintrag ist die Kooperationspartner-Ansicht zwar erreichbar,
+        aber nirgends verlinkt — ein Partner musste die URL kennen. Die drei
+        übrigen KJR-Module registrieren ihre Kachel seit jeher hier; kjr_event
+        war die Lücke.
+
+        Gezählt wird ueber dieselbe Domain wie die Portalroute selbst
+        (_kjr_cooperation_events_domain), damit Kachel und Liste nicht
+        auseinanderlaufen. Wer kein Kooperationspartner ist, bekommt 0 — die
+        Kachel wird dann im Template ausgeblendet, statt jedem Portalnutzer eine
+        leere Rubrik anzuzeigen.
+        """
+        values = super()._prepare_home_portal_values(counters)
+        if 'kjr_event_count' in counters:
+            values['kjr_event_count'] = request.env['event.event'].search_count(
+                self._kjr_cooperation_events_domain())
+        return values
+
     # ------------------------------------------------------------------
     # Hilfsfunktionen
     # ------------------------------------------------------------------

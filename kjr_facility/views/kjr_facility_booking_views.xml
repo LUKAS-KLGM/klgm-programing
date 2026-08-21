@@ -147,6 +147,9 @@
                             <field name="departure_time" widget="float_time"/>
                             <field name="nights"/>
                             <field name="is_booked"/>
+                            <!-- Nur fuer die Sichtbarkeitssteuerung der
+                                 Verpflegungsangaben (related auf die Einrichtung). -->
+                            <field name="facility_offers_catering" invisible="1"/>
                         </group>
                     </group>
                     <group>
@@ -169,7 +172,16 @@
                                 </group>
                                 <group string="Leistungen">
                                     <field name="tariff_id"/>
-                                    <field name="meal_option"/>
+                                    <!-- Verpflegung ausblenden, wenn die Einrichtung
+                                         keine anbietet (Selbstversorgerhaus). Altvorgaenge
+                                         mit bereits erfasster Verpflegung bleiben sichtbar,
+                                         damit keine berechnete Position aus der Ansicht
+                                         verschwindet. Das Feld ist required mit Default
+                                         'none'; ein ausgeblendetes Feld wird in Odoo 19
+                                         nicht gesendet und nicht als Pflichtfeld geprueft,
+                                         das Speichern bleibt also moeglich. -->
+                                    <field name="meal_option"
+                                           invisible="not facility_offers_catering and not amount_meals and meal_option == 'none'"/>
                                     <field name="equipment_ids" widget="many2many_tags"
                                            domain="[('facility_id','=',facility_id)]"/>
                                     <field name="is_grant_funded"/>
@@ -182,7 +194,8 @@
                             <group>
                                 <group>
                                     <field name="amount_accommodation"/>
-                                    <field name="amount_meals"/>
+                                    <field name="amount_meals"
+                                           invisible="not facility_offers_catering and not amount_meals and meal_option == 'none'"/>
                                     <field name="amount_equipment"/>
                                     <field name="amount_cleaning"/>
                                     <field name="visitor_tax_exempt_count"/>
@@ -206,6 +219,12 @@
                                 </group>
                             </group>
                             <field name="currency_id" invisible="1"/>
+                            <!-- Technische Hilfsfelder: invoice_id steuert die Schaltflaechen
+                                 "Rechnung erstellen" (Kopfzeile) und "Rechnung" (Statistik-
+                                 Schaltflaeche). Ein invisible-Ausdruck kann in Odoo 19 nur
+                                 Felder auswerten, die im Arch stehen — ohne diese Zeile
+                                 blieben beide Bedingungen wirkungslos. -->
+                            <field name="invoice_id" invisible="1"/>
                         </page>
                         <!-- Übergabeprotokoll: erst ab der verbindlichen Buchung sichtbar
                              (is_booked = gebucht/Anzahlung/angereist/berechnet/abgeschlossen). -->

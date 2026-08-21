@@ -23,6 +23,13 @@
             <field name="zip">87509</field>
             <field name="city">Immenstadt</field>
             <field name="description_short">Selbstversorgerhaus für Gruppen, 42 Betten in 12 Zimmern.</field>
+            <!-- Keine Verpflegung: Diepolz ist ein reines Selbstversorgerhaus, die
+                 Gruppe kocht selbst in der Großküche (Quelle: Kundenaussage KJR vom
+                 21.08.2026; deckt sich mit der Kurzbeschreibung und dem
+                 Ausstattungseintrag "Großküche"). Das Buchungsformular bot bis dahin
+                 Frühstück/Halb-/Vollpension an — Leistungen, die der KJR nicht
+                 erbringt. -->
+            <field name="offers_catering" eval="False"/>
         </record>
         <!-- 12 Schlafräume, zusammen 42 Betten: 1. OG 24 (Zimmer 11-14 je 4, 15 und 16
              je 3, 17 mit 2), DG 18 (Zimmer 21 und 22 je 4, 23 und 24 je 3, 25 mit 4).
@@ -126,6 +133,9 @@
             <field name="zip">87448</field>
             <field name="city">Waltenhofen</field>
             <field name="description_short">Naturnaher Zeltplatz (Naturschutzgebiet) für max. 40 Personen.</field>
+            <!-- Keine Verpflegung: auch der Zeltplatz ist reine Selbstversorgung
+                 (Quelle: Kundenaussage KJR vom 21.08.2026). -->
+            <field name="offers_catering" eval="False"/>
         </record>
         <record id="room_niso_area" model="kjr.facility.room">
             <field name="facility_id" ref="facility_niso"/>
@@ -153,6 +163,11 @@
              bestätigen lassen und eintragen. Unterscheiden sich die Preise je
              Einrichtung, kann je Einrichtung ein eigener Tarif mit gesetztem
              facility_id angelegt werden (leeres Feld = gilt für alle Einrichtungen).
+             Zur Verpflegung: Beide Einrichtungen des KJR sind Selbstversorger
+             (offers_catering = False), die Verpflegungssätze der Tarife bleiben
+             deshalb ungenutzt auf 0,00 € und werden in der Tarifmaske gar nicht
+             erst angezeigt. Für einen Jugendring MIT Verpflegung wird der Schalter
+             an der Einrichtung aktiviert; erst dann sind die Sätze zu pflegen.
              Offen bleiben ebenso Verpflegungssätze, Endreinigung und der
              Fremdenverkehrs-/Kurbeitrag — auch dazu widerspricht sich die
              Live-Seite (siehe Abschnitt 10 derselben Notiz). -->

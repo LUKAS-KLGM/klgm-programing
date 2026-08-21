@@ -50,12 +50,35 @@
                             </tr>
                             <tr><td>Teilnehmer / Betreuer</td><td><t t-esc="o.participant_count"/> / <t t-esc="o.leader_count"/></td></tr>
                             <tr><td>Tarif</td><td><t t-esc="o.tariff_id.name or '—'"/></td></tr>
-                            <tr><td>Verpflegung</td><td><t t-esc="dict(o._fields['meal_option'].selection).get(o.meal_option)"/></td></tr>
+                            <!-- Verpflegung: Bei Einrichtungen ohne Verpflegungsangebot
+                                 (kjr.facility.offers_catering) ist die Selbstverpflegung eine
+                                 vertraglich relevante Angabe und wird deshalb ausdrücklich
+                                 vermerkt — das erspart Rückfragen der Gruppe.
+                                 Bestandsverträge bleiben unberührt: Sobald eine Verpflegung
+                                 gewählt wurde oder ein Betrag anfällt, wird die gebuchte
+                                 Leistung weiterhin genannt, auch wenn die Einrichtung heute
+                                 keine Verpflegung mehr anbietet. -->
+                            <tr>
+                                <td>Verpflegung</td>
+                                <td>
+                                    <t t-if="o.facility_offers_catering or o.meal_option != 'none' or o.amount_meals">
+                                        <t t-esc="dict(o._fields['meal_option'].selection).get(o.meal_option)"/>
+                                    </t>
+                                    <t t-else="">Selbstverpflegung — die Einrichtung ist ein
+                                        Selbstversorgerhaus und stellt keine Verpflegung; die
+                                        Gruppe verpflegt sich selbst.</t>
+                                </td>
+                            </tr>
                         </table>
 
                         <table class="table table-sm table-bordered">
                             <tr><td>Unterkunft</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_accommodation"/></td></tr>
-                            <tr><td>Verpflegung</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_meals"/></td></tr>
+                            <!-- Verpflegung nur als Position ausweisen, wenn ein Betrag
+                                 anfällt — gleiche Regel wie bei Endreinigung und
+                                 Fremdenverkehrsbeitrag. Altverträge mit Verpflegung drucken
+                                 unverändert weiter, weil deren amount_meals gespeichert
+                                 bleibt und hier nur gelesen wird. -->
+                            <tr t-if="o.amount_meals"><td>Verpflegung</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_meals"/></td></tr>
                             <tr><td>Ausstattung</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_equipment"/></td></tr>
                             <!-- Endreinigung und Fremdenverkehrsbeitrag sind in Netto/Gesamt
                                  enthalten und müssen deshalb auch als eigene Positionen im
