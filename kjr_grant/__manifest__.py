@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR App',
-    'version': '19.0.12.0.0',
+    'version': '19.0.13.0.0',
     'category': 'Custom/KJR',
     'summary': 'Zuschussverwaltung, Juleica, Vollversammlung, Fördermittel-Akquise und Verwendungsnachweis für Kreisjugendringe (Odoo 19)',
     'author': 'KLGM UG (haftungsbeschränkt)',
@@ -54,6 +54,9 @@
         ],
     },
     'images': ['static/description/icon.png'],
+    # Blendet bei der Installation die nicht benötigten Standardrubriken
+    # auf der Portalseite „Mein Konto" aus (siehe hooks.py).
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': True,
     'auto_install': False,

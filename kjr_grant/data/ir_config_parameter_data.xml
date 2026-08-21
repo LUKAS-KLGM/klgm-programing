@@ -89,5 +89,17 @@
             <field name="value">11</field>
         </record>
 
+
+        <!-- Rubriken, die bei der Installation auf der Portalseite „Mein Konto"
+             ausgeblendet werden (kommagetrennte External IDs). Leer = die im
+             Code hinterlegte Vorgabe gilt, siehe hooks.py.
+             Greift nur bei der INSTALLATION; eine später von Hand wieder
+             eingeblendete Rubrik bleibt sichtbar.
+             TODO(KJR): nach dem ersten Deployment im Log prüfen, welche
+             Einträge tatsächlich gefunden wurden, und die Liste bereinigen. -->
+        <record id="param_portal_hidden_entries" model="ir.config_parameter">
+            <field name="key">kjr_grant.portal_hidden_entries</field>
+            <field name="value"></field>
+        </record>
     </data>
 </odoo>
