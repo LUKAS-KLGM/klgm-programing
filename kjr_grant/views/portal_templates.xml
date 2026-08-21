@@ -13,6 +13,40 @@
         </xpath>
     </template>
 
+    <!-- ── Portal Home Eintrag: Mein Verband ───────────────────────────── -->
+    <!-- ABWEICHUNG von den übrigen vier KJR-Kacheln, bewusst und begründet:
+         Diese Rubrik erscheint NUR, wenn die angemeldete Person tatsächlich zu
+         einem KJR-Mitgliedsverband gehört. Die Seite pflegt die Stammdaten
+         genau eines Verbands — wer keinem zugeordnet ist (Einzelperson,
+         Kooperationspartner, Mieterin einer Einrichtung), bekäme eine Rubrik
+         ohne jeden Inhalt. Die anderen Kacheln zeigen in diesem Fall wenigstens
+         eine leere Liste ("noch keine Anträge vorhanden"); hier gäbe es nicht
+         einmal das, nur eine Sackgasse.
+
+         Zur Sichtbarkeitsprüfung: portal.portal_docs_entry lädt den über
+         placeholder_count benannten Zähler erst nachträglich per JS
+         (/my/counters) nach — beim Rendern von /my steht kjr_verband_count also
+         normalerweise noch nicht im Kontext (unbekannte Namen sind in QWeb
+         None). Deshalb der Rückfall auf die Session: gehört das kaufmännische
+         Hauptkonto der angemeldeten Person zu einem Mitgliedsverband, ist die
+         Kachel sichtbar. Liefert der Controller kjr_verband_count schon mit den
+         Layout-Werten, gilt dessen Wert. Gelesen wird ausschliesslich der
+         eigene Partner aus der Session, nie eine ID von aussen. -->
+    <template id="portal_my_home_kjr_verband" name="KJR Mein Verband"
+              customize_show="True" inherit_id="portal.portal_my_home" priority="32">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <t t-set="kjr_verband_count"
+               t-value="kjr_verband_count or (request.env.user.partner_id.commercial_partner_id.is_kjr_member and 1 or 0)"/>
+            <t t-if="kjr_verband_count">
+                <t t-call="portal.portal_docs_entry">
+                    <t t-set="title">Mein Verband</t>
+                    <t t-set="url" t-value="'/my/verband'"/>
+                    <t t-set="placeholder_count" t-value="'kjr_verband_count'"/>
+                </t>
+            </t>
+        </xpath>
+    </template>
+
     <!-- ── Portal: Antrags-Liste ──────────────────────────────────────── -->
     <template id="portal_my_kjr_grants" name="Meine KJR-Zuschussanträge">
         <t t-call="portal.portal_layout">
@@ -81,6 +115,1056 @@
                 </div>
             </t>
         </t>
+    </template>
+
+
+    <!-- ── Portal: Mein Verband (Stammdatenpflege durch den Verband) ────
+         Backlog seit Juni 2026: "Delegierte tragen ihre Daten selbst ein".
+
+         ════════════════════════════════════════════════════════════════════
+         KONTRAKT ZWISCHEN DIESEM TEMPLATE UND
+         controllers/portal.py → KjrPortalController.portal_my_verband
+         ════════════════════════════════════════════════════════════════════
+         Diese Seite ist einmal auseinandergelaufen — Controller und Template
+         waren gegen zwei verschiedene Namenssätze gebaut, die Seite endete für
+         jeden Portalnutzer mit HTTP 500 und die Kontaktformulare taten wortlos
+         nichts. Deshalb steht die Vereinbarung hier UND wortgleich im
+         Docstring der Route. Wer einen Namen ändert, ändert beide.
+
+         KONTEXT, den der Controller liefert (jede Renderstelle, immer alle):
+           verband      res.partner oder False — False nur auf der
+                        Hinweisseite für Nutzer ohne Mitgliedsverband. Genau
+                        daran entscheidet die Seite, welchen Teil sie zeigt.
+                        IMMER
+                        request.env.user.partner_id.commercial_partner_id und
+                        nur gesetzt, wenn dieser is_kjr_member trägt. Niemals
+                        aus einem POST-Parameter abgeleitet.
+           member_info  dict — die vom KJR festgestellten Angaben, fertig
+                        aufbereitet: name, member_type, member_number,
+                        active_since (Text tt.mm.jjjj), vr_right (bool),
+                        vr_votes (int).
+                        WICHTIG: Diese Angaben NUR aus member_info ausgeben,
+                        NIEMALS über den Record (verband.kjr_member_number …).
+                        Die vier Felder tragen in models/res_partner.py
+                        groups='base.group_user'; Odoo 19 prüft das schon beim
+                        LESEN und wirft für einen Portal-Nutzer einen
+                        AccessError — mitten im Rendern, also HTTP 500 für die
+                        gesamte Seite. Der Controller liest sie mit sudo und
+                        reicht bewusst nur Text und Ja/Nein weiter, damit hier
+                        gar nichts Falsches möglich ist.
+           office       dict — name, phone, email der Geschäftsstelle. Kommt
+                        ausdrücklich aus dem Controller und NICHT aus
+                        res_company, damit die Verweise auf "melden Sie es der
+                        Geschäftsstelle" nicht ins Leere zeigen.
+           contacts     res.partner-Recordset der Ansprechpersonen: Kontakte,
+                        deren commercial_partner_id der eigene Verband IST
+                        (ohne den Verbandssatz selbst).
+           locked_contact_ids  Liste von IDs — Ansprechpersonen MIT
+                        Portalzugang. An ihnen sind Name und E-Mail gesperrt
+                        (siehe Begründung am Formular unten).
+           delegates    res.partner-Recordset der gemeldeten Delegierten.
+           required_fields  Feldnamen, die als Pflicht zu kennzeichnen sind —
+                        dieselbe Liste, die der Controller serverseitig prüft.
+           values       dict der zuletzt abgeschickten Formularwerte; nach
+                        einem Fehler wird daraus das Formular neu befüllt.
+                        Enthält immer 'action', bei Kontaktvorgängen zusätzlich
+                        'contact_id', 'contact_is_delegate' und bei der
+                        Rückfrage vor dem Entfernen 'archive_warning' (Liste
+                        fertiger Sätze).
+           errors       dict {feldname: meldung}; zusätzlich der Schlüssel
+                        'global' für formularübergreifende Meldungen.
+           success      optionaler Bestätigungstext nach dem Speichern.
+           warning      optionaler Hinweistext (Rückfrage, kein Fehler).
+
+         VIER FORMULARE, alle POST auf /my/verband, unterschieden durch das
+         versteckte Feld action — genau diese vier Namen, keine Synonyme:
+           verband_save    Anschrift und Kontaktdaten des Verbands.
+                           Whitelist: street, street2, zip, city, phone,
+                           email, website — mehr steht in keinem Formular.
+                           `mobile` gibt es nicht: Odoo 19 hat das Feld an
+                           res.partner entfernt.
+           contact_create  contact_name, contact_function, contact_email,
+                           contact_phone, contact_is_delegate
+           contact_save    dieselben Felder + contact_id
+           contact_delete  contact_id, bei der Rückfrage zusätzlich
+                           contact_delete_confirm
+         Der Zielsatz ergibt sich serverseitig aus der Session; contact_id ist
+         ein Vorschlag des Browsers und vor jedem Schreiben daraufhin zu prüfen,
+         ob der Kontakt zum eigenen Verband gehört.
+
+         BEWUSST NICHT AUF DIESER SEITE: der Chatter des Verbands
+         (portal.message_thread). Im Verlauf eines Mitgliedsverbands stehen
+         interne Notizen der Geschäftsstelle; die gehören nicht ins Portal. Die
+         Protokollierung der Änderungen läuft trotzdem dorthin — sie ist der
+         Nachweis FÜR die Geschäftsstelle, nicht für den Verband. -->
+    <template id="portal_my_verband" name="Mein Verband">
+        <t t-call="portal.portal_layout">
+            <!-- Nur zwei Vorbelegungen, und bewusst nur diese beiden: sie
+                 können nichts verdecken, weil auf leeren dicts ohnehin nur
+                 .get() steht. Für verband, member_info, contacts, delegates
+                 und office gibt es KEINE Rückfälle mehr — genau so ein
+                 Rückfall ("verband_ro or verband") hat die Seite vorher für
+                 jeden Portalnutzer mit einem AccessError beendet, statt den
+                 fehlenden Kontextwert sichtbar zu machen. Der Kontrakt oben
+                 verpflichtet den Controller, alle Werte zu liefern. -->
+            <t t-set="values" t-value="values or {}"/>
+            <t t-set="errors" t-value="errors or {}"/>
+            <t t-set="posted_action" t-value="values.get('action') or ''"/>
+
+            <t t-if="not verband">
+                <div class="alert alert-info mt-3" role="alert">
+                    <h5 class="alert-heading h6">Kein Verband hinterlegt</h5>
+                    <p class="mb-0">
+                        Ihr Zugang ist derzeit keinem KJR-Mitgliedsverband zugeordnet.
+                        Deshalb gibt es hier nichts zu pflegen. Wenn Sie für einen
+                        Mitgliedsverband tätig sind, meldet die Geschäftsstelle des
+                        Kreisjugendrings Ihren Zugang beim Verband an.
+                    </p>
+                </div>
+            </t>
+
+            <t t-if="verband">
+                <div class="row mt-3">
+                    <div class="col-lg-9">
+
+                        <h3 class="mb-1">Mein Verband</h3>
+                        <p class="text-muted">
+                            Hier pflegen Sie Anschrift, Kontaktdaten und Ansprechpersonen
+                            von <strong><t t-esc="verband.name"/></strong> selbst<t
+                            t-if="member_info.get('vr_right')"> und melden, wer Ihren Verband
+                            in der Vollversammlung vertritt</t>.
+                            Bisher lief das über die Geschäftsstelle — was Sie hier ändern,
+                            gilt sofort.
+                        </p>
+                        <div class="alert alert-light border small" role="note">
+                            <i class="fa fa-history me-1" aria-hidden="true"/>
+                            Jede Änderung wird im Verlauf Ihres Verbands protokolliert:
+                            wer sie vorgenommen hat, wann, und welcher Wert vorher dort
+                            stand. Die Geschäftsstelle kann damit jederzeit nachvollziehen,
+                            wie die Daten zustande gekommen sind.
+                        </div>
+
+                        <t t-if="success">
+                            <div class="alert alert-success" role="status">
+                                <i class="fa fa-check me-1" aria-hidden="true"/>
+                                <t t-esc="success"/>
+                            </div>
+                        </t>
+
+                        <!-- Rückfrage, kein Fehler: steht z. B. vor dem Entfernen
+                             einer Ansprechperson, an der noch etwas hängt. Die
+                             Einzelheiten stehen unten am betroffenen Abschnitt,
+                             der dann aufgeklappt ist. -->
+                        <t t-if="warning">
+                            <div class="alert alert-warning" role="alert">
+                                <i class="fa fa-info-circle me-1" aria-hidden="true"/>
+                                <t t-esc="warning"/>
+                            </div>
+                        </t>
+
+                        <!-- Sammelmeldung oben, zusätzlich steht jede Meldung noch
+                             einmal an ihrem Feld (siehe unten). -->
+                        <t t-if="errors">
+                            <div class="alert alert-danger" role="alert">
+                                <strong>Bitte prüfen Sie Ihre Eingaben:</strong>
+                                <ul class="mb-0 mt-1">
+                                    <t t-foreach="errors.values()" t-as="err">
+                                        <li><t t-esc="err"/></li>
+                                    </t>
+                                </ul>
+                            </div>
+                        </t>
+
+                        <!-- ── a1) Bearbeitbar: Anschrift und Kontaktdaten ───── -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h4 class="mb-0 h5">Anschrift und Kontaktdaten</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">
+                                    Diese Angaben nutzt der Kreisjugendring für Post,
+                                    Einladungen und Rückfragen. Änderungen können Sie
+                                    selbst vornehmen. Mit <span class="text-danger">*</span>
+                                    gekennzeichnete Felder sind Pflichtangaben — ohne
+                                    Anschrift und E-Mail kann die Geschäftsstelle Ihrem
+                                    Verband weder Bescheide zustellen noch Rückfragen
+                                    stellen.
+                                </p>
+                                <form method="post" action="/my/verband" novalidate="novalidate">
+                                    <input type="hidden" name="csrf_token"
+                                           t-att-value="request.csrf_token()"/>
+                                    <input type="hidden" name="action" value="verband_save"/>
+                                    <div class="row">
+                                        <div class="col-md-8 mb-3">
+                                            <label for="v_street" class="form-label">Straße und Hausnummer<t t-if="'street' in required_fields"><span class="text-danger" aria-hidden="true"> *</span></t></label>
+                                            <input type="text" id="v_street" name="street"
+                                                   t-att-required="'street' in required_fields and 'required' or None"
+                                                   t-attf-class="form-control #{errors.get('street') and 'is-invalid' or ''}"
+                                                   t-att-value="values.get('street', verband.street or '')"
+                                                   t-att-aria-describedby="errors.get('street') and 'v_street_err' or None"/>
+                                            <div t-if="errors.get('street')" id="v_street_err"
+                                                 class="invalid-feedback d-block" role="alert">
+                                                <t t-esc="errors.get('street')"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label for="v_street2" class="form-label">Adresszusatz</label>
+                                            <input type="text" id="v_street2" name="street2"
+                                                   t-attf-class="form-control #{errors.get('street2') and 'is-invalid' or ''}"
+                                                   t-att-value="values.get('street2', verband.street2 or '')"
+                                                   t-att-aria-describedby="errors.get('street2') and 'v_street2_help v_street2_err' or 'v_street2_help'"/>
+                                            <div id="v_street2_help" class="form-text">
+                                                z. B. Postfach oder "c/o"
+                                            </div>
+                                            <div t-if="errors.get('street2')" id="v_street2_err"
+                                                 class="invalid-feedback d-block" role="alert">
+                                                <t t-esc="errors.get('street2')"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <label for="v_zip" class="form-label">PLZ<t t-if="'zip' in required_fields"><span class="text-danger" aria-hidden="true"> *</span></t></label>
+                                            <input type="text" id="v_zip" name="zip" inputmode="numeric"
+                                                   t-att-required="'zip' in required_fields and 'required' or None"
+                                                   t-attf-class="form-control #{errors.get('zip') and 'is-invalid' or ''}"
+                                                   t-att-value="values.get('zip', verband.zip or '')"
+                                                   t-att-aria-describedby="errors.get('zip') and 'v_zip_err' or None"/>
+                                            <div t-if="errors.get('zip')" id="v_zip_err"
+                                                 class="invalid-feedback d-block" role="alert">
+                                                <t t-esc="errors.get('zip')"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-9 mb-3">
+                                            <label for="v_city" class="form-label">Ort<t t-if="'city' in required_fields"><span class="text-danger" aria-hidden="true"> *</span></t></label>
+                                            <input type="text" id="v_city" name="city"
+                                                   t-att-required="'city' in required_fields and 'required' or None"
+                                                   t-attf-class="form-control #{errors.get('city') and 'is-invalid' or ''}"
+                                                   t-att-value="values.get('city', verband.city or '')"
+                                                   t-att-aria-describedby="errors.get('city') and 'v_city_err' or None"/>
+                                            <div t-if="errors.get('city')" id="v_city_err"
+                                                 class="invalid-feedback d-block" role="alert">
+                                                <t t-esc="errors.get('city')"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="v_phone" class="form-label">Telefon</label>
+                                            <input type="tel" id="v_phone" name="phone"
+                                                   t-attf-class="form-control #{errors.get('phone') and 'is-invalid' or ''}"
+                                                   t-att-value="values.get('phone', verband.phone or '')"
+                                                   t-att-aria-describedby="errors.get('phone') and 'v_phone_help v_phone_err' or 'v_phone_help'"/>
+                                            <div id="v_phone_help" class="form-text">
+                                                Nummer des Verbands, nicht die private Nummer
+                                                einer einzelnen Person.
+                                            </div>
+                                            <div t-if="errors.get('phone')" id="v_phone_err"
+                                                 class="invalid-feedback d-block" role="alert">
+                                                <t t-esc="errors.get('phone')"/>
+                                            </div>
+                                        </div>
+                                        <!-- KEIN Feld "Mobil": Odoo 19 hat `mobile` an
+                                             res.partner ersatzlos entfernt, es gibt nur
+                                             noch `phone`. Jeder Zugriff auf
+                                             verband.mobile bräche hier mit einem
+                                             AttributeError ab und nähme die ganze Seite
+                                             mit. Die Whitelist des Controllers
+                                             (VERBAND_WRITABLE_FIELDS) führt es aus
+                                             demselben Grund nicht mehr. -->
+                                        <div class="col-md-6 mb-3">
+                                            <label for="v_email" class="form-label">E-Mail<t t-if="'email' in required_fields"><span class="text-danger" aria-hidden="true"> *</span></t></label>
+                                            <!-- Liegt der Portalzugang direkt auf der Organisation,
+                                                 ist die Adresse gesperrt: über „Passwort vergessen"
+                                                 ginge die Reset-Mail sonst an die neue Adresse und
+                                                 damit das Konto verloren. Das readonly-Attribut ist
+                                                 nur Anzeige — durchgesetzt wird es serverseitig. -->
+                                            <input type="email" id="v_email" name="email"
+                                                   t-att-required="'email' in required_fields and 'required' or None"
+                                                   t-att-readonly="'email' in locked_fields and 'readonly' or None"
+                                                   t-attf-class="form-control #{errors.get('email') and 'is-invalid' or ''}"
+                                                   t-att-value="values.get('email', verband.email or '')"
+                                                   t-att-aria-describedby="errors.get('email') and 'v_email_help v_email_err' or 'v_email_help'"/>
+                                            <div t-if="'email' in locked_fields" class="form-text text-warning">
+                                                An dieser Adresse hängt Ihr Portalzugang. Sie lässt
+                                                sich deshalb hier nicht ändern — bitte wenden Sie sich
+                                                an die Geschäftsstelle.
+                                            </div>
+                                            <div id="v_email_help" class="form-text">
+                                                An diese Adresse gehen Einladungen und
+                                                Schreiben des Kreisjugendrings.
+                                            </div>
+                                            <div t-if="errors.get('email')" id="v_email_err"
+                                                 class="invalid-feedback d-block" role="alert">
+                                                <t t-esc="errors.get('email')"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="v_website" class="form-label">Website</label>
+                                            <input type="url" id="v_website" name="website"
+                                                   t-attf-class="form-control #{errors.get('website') and 'is-invalid' or ''}"
+                                                   t-att-value="values.get('website', verband.website or '')"
+                                                   placeholder="https://"
+                                                   t-att-aria-describedby="errors.get('website') and 'v_website_err' or None"/>
+                                            <div t-if="errors.get('website')" id="v_website_err"
+                                                 class="invalid-feedback d-block" role="alert">
+                                                <t t-esc="errors.get('website')"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fa fa-save me-1" aria-hidden="true"/>Anschrift und Kontaktdaten speichern
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- ── a2) Nur Anzeige: Feststellungen des KJR ───────── -->
+                        <!-- Diese Felder stehen bewusst NICHT in einem Formular —
+                             und das ist hier nur die dritte Verteidigungslinie:
+                             der Controller schreibt ausschliesslich die Whitelist
+                             oben (street, street2, zip, city, phone, email,
+                             website), und in models/res_partner.py hängt
+                             am Feld selbst groups= bzw. der Wächter
+                             _kjr_assert_member_status_writable(). Ein
+                             readonly-Attribut im HTML wäre reine Anzeige und
+                             würde gegen einen direkten Request nichts
+                             ausrichten.
+
+                             AUSGEGEBEN WIRD AUSSCHLIESSLICH member_info: die
+                             vier Felder tragen groups='base.group_user' und
+                             sind für einen Portal-Nutzer schon beim Lesen
+                             gesperrt. Ein direkter Record-Zugriff (etwa
+                             verband.kjr_member_number) beendet die Seite mit
+                             HTTP 500 — genau daran ist sie in der Abnahme
+                             gescheitert. Siehe Kopfkommentar. -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h4 class="mb-0 h5">Mitgliedschaft im Kreisjugendring</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-secondary small" role="note">
+                                    <i class="fa fa-lock me-1" aria-hidden="true"/>
+                                    <strong>Diese Angaben können Sie hier nicht ändern — und das
+                                    hat einen Grund:</strong>
+                                    Sie sind keine Selbstauskunft des Verbands, sondern
+                                    Feststellungen des Kreisjugendrings. Aus ihnen ergibt
+                                    sich, wer Zuschüsse beantragen und wer in der
+                                    Vollversammlung abstimmen darf. Sie folgen aus der
+                                    Aufnahme in den KJR und aus der Satzung, nicht aus einer
+                                    Eintragung im Portal — deshalb pflegt sie ausschliesslich
+                                    die Geschäftsstelle. Stimmt etwas davon nicht, melden Sie
+                                    es bitte dort (Kontakt am Ende dieses Abschnitts).
+                                </div>
+                                <dl class="row mb-0">
+                                    <dt class="col-sm-4">Name des Verbands</dt>
+                                    <dd class="col-sm-8"><t t-esc="member_info.get('name') or '—'"/></dd>
+
+                                    <dt class="col-sm-4">Mitgliedsnummer</dt>
+                                    <dd class="col-sm-8"><t t-esc="member_info.get('member_number') or '—'"/></dd>
+
+                                    <dt class="col-sm-4">Verbandstyp</dt>
+                                    <dd class="col-sm-8"><t t-esc="member_info.get('member_type') or '—'"/></dd>
+
+                                    <dt class="col-sm-4">Vertretungsrecht in der Vollversammlung</dt>
+                                    <dd class="col-sm-8">
+                                        <t t-if="member_info.get('vr_right')">
+                                            <span class="badge text-bg-success">ja</span>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="badge text-bg-secondary">nein</span>
+                                        </t>
+                                        <span class="d-block text-muted small">
+                                            Nach § 33 Abs. 1 BJR-Satzung hat jeder
+                                            stimmberechtigte Mitgliedsverband in der
+                                            Vollversammlung genau eine Stimme — unabhängig
+                                            davon, wie viele Delegierte er meldet.
+                                        </span>
+                                    </dd>
+
+                                    <!-- kjr_vr_votes ist laut Modell historisch und ohne
+                                         fachliche Wirkung (§ 33 Abs. 1 BJR-Satzung: eine
+                                         Stimme je Mitglied). Es wird deshalb nur dann
+                                         gezeigt, wenn tatsächlich ein Altwert darin steht —
+                                         sonst würde eine Zeile "Stimmen: 0" den Eindruck
+                                         erwecken, der Verband habe kein Stimmrecht.
+                                         TODO(KJR): entscheiden, ob die Altwerte bereinigt
+                                         und das Feld entfernt wird; dann fällt diese Zeile
+                                         ersatzlos weg. -->
+                                    <t t-if="member_info.get('vr_votes')">
+                                        <dt class="col-sm-4">Stimmen (historischer Eintrag)</dt>
+                                        <dd class="col-sm-8">
+                                            <t t-esc="member_info.get('vr_votes')"/>
+                                            <span class="d-block text-muted small">
+                                                Altbestand aus der früheren Mitgliederliste.
+                                                Der Wert wird in keiner Abstimmung und keiner
+                                                Auswertung verwendet.
+                                            </span>
+                                        </dd>
+                                    </t>
+
+                                    <dt class="col-sm-4">Mitglied seit</dt>
+                                    <dd class="col-sm-8"><t t-esc="member_info.get('active_since') or '—'"/></dd>
+
+                                    <!-- Die Bankverbindung ist bewusst weder hier noch im
+                                         Formular oben zu finden: über sie laufen
+                                         Zuschussauszahlungen, eine Änderung im Portal wäre
+                                         ein Einfallstor. Der Hinweis steht trotzdem da —
+                                         nach einem Kassenwechsel ist die IBAN das Erste,
+                                         was ein Vorstand hier sucht, und ohne diesen Satz
+                                         nähme er an, es gäbe nichts zu ändern. -->
+                                    <dt class="col-sm-4">Bankverbindung</dt>
+                                    <dd class="col-sm-8">
+                                        <span class="text-muted">wird nicht im Portal gepflegt</span>
+                                        <span class="d-block text-muted small">
+                                            Über die Bankverbindung laufen die
+                                            Zuschussauszahlungen. Sie wird deshalb nicht hier
+                                            geändert: Bitte melden Sie eine neue
+                                            Kontoverbindung — etwa nach einem Kassenwechsel —
+                                            der Geschäftsstelle.
+                                        </span>
+                                    </dd>
+                                </dl>
+                                <!-- Kontaktzeile aus dem Controller-Kontext (office), nicht
+                                     aus res_company: die Seite verweist an mehreren Stellen
+                                     auf die Geschäftsstelle, und ein Verweis ohne Kontakt
+                                     ist keine Hilfe. Nicht gepflegte Angaben werden sichtbar
+                                     als offen gekennzeichnet, statt etwas zu erfinden. -->
+                                <p class="small text-muted mb-0 mt-3">
+                                    <i class="fa fa-building-o me-1" aria-hidden="true"/>
+                                    Geschäftsstelle<t t-if="office.get('name')"> <t t-esc="office.get('name')"/></t>:
+                                    <t t-if="office.get('phone')">Tel. <t t-esc="office.get('phone')"/></t>
+                                    <t t-if="office.get('email')">
+                                        <t t-if="office.get('phone')"> · </t>
+                                        <a t-attf-href="mailto:{{ office.get('email') }}"><t t-esc="office.get('email')"/></a>
+                                    </t>
+                                    <t t-if="not office.get('phone') and not office.get('email')">
+                                        <span class="badge text-bg-warning">Kontaktdaten werden vom KJR ergänzt</span>
+                                    </t>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- ── b) Ansprechpersonen ──────────────────────────── -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h4 class="mb-0 h5">Ansprechpersonen</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">
+                                    Personen, über die der Kreisjugendring Ihren Verband
+                                    erreicht — Vorstand, Jugendleitung, Kassenführung. Die
+                                    Angaben gehören zum Verband; jede eingetragene Person
+                                    sollte davon wissen.
+                                    <span class="d-block mt-1">Für einen einzelnen
+                                        Zuschussantrag können Sie im Antragsformular eine
+                                        abweichende Ansprechperson angeben — diese Liste
+                                        hier ändert daran nichts, und eine Änderung hier
+                                        wirkt nicht auf bereits gestellte Anträge.</span>
+                                </p>
+
+                                <t t-if="not contacts">
+                                    <div class="alert alert-info" role="status">
+                                        Für Ihren Verband ist noch keine Ansprechperson
+                                        hinterlegt. Legen Sie unten die erste an.
+                                    </div>
+                                </t>
+
+                                <t t-if="contacts">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle">
+                                            <caption class="visually-hidden">
+                                                Ansprechpersonen Ihres Verbands mit Funktion und Kontaktdaten
+                                            </caption>
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th scope="col">Name</th>
+                                                    <th scope="col">Funktion</th>
+                                                    <th scope="col">E-Mail</th>
+                                                    <th scope="col">Telefon</th>
+                                                    <!-- Ohne Vertretungsrecht gibt es fuer diesen
+                                                         Verband in der Vollversammlung keine
+                                                         Delegierten; dann entfaellt die Spalte
+                                                         ganz, statt eine leere Rubrik zu zeigen.
+                                                         Die Spaltenzahl unten (colspan) haengt
+                                                         an derselben Bedingung. -->
+                                                    <th scope="col" t-if="member_info.get('vr_right')">Vollversammlung</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="contacts" t-as="contact">
+                                                    <!-- Werte nur dann aus dem POST zurückschreiben,
+                                                         wenn GENAU diese Zeile den Fehler ausgelöst
+                                                         hat — sonst stünden die Eingaben einer Person
+                                                         im Formular einer anderen. -->
+                                                    <t t-set="cvals"
+                                                       t-value="values if (posted_action == 'contact_save' and str(values.get('contact_id') or '') == str(contact.id)) else {}"/>
+                                                    <t t-set="cerr"
+                                                       t-value="errors if cvals else {}"/>
+                                                    <!-- dvals: dasselbe Prinzip fuer die Rueckfrage
+                                                         vor dem Entfernen — nur die betroffene
+                                                         Zeile klappt auf und zeigt die Hinweise. -->
+                                                    <t t-set="dvals"
+                                                       t-value="values if (posted_action == 'contact_delete' and str(values.get('contact_id') or '') == str(contact.id)) else {}"/>
+                                                    <!-- Haengt an dieser Person ein Portalzugang,
+                                                         sind Name und E-Mail gesperrt. Die Sperre
+                                                         wirkt serverseitig (siehe Controller,
+                                                         CONTACT_WRITABLE_FIELDS_WITH_PORTAL_ACCESS);
+                                                         hier wird sie nur sichtbar gemacht und
+                                                         begruendet. -->
+                                                    <t t-set="contact_locked"
+                                                       t-value="contact.id in locked_contact_ids"/>
+                                                    <tr t-attf-id="kontakt_#{contact.id}">
+                                                        <th scope="row" class="fw-normal"><t t-esc="contact.name"/></th>
+                                                        <td><t t-esc="contact.function or '—'"/></td>
+                                                        <td>
+                                                            <t t-if="contact.email">
+                                                                <a t-attf-href="mailto:{{ contact.email }}"><t t-esc="contact.email"/></a>
+                                                            </t>
+                                                            <t t-else="">—</t>
+                                                        </td>
+                                                        <td><t t-esc="contact.phone or '—'"/></td>
+                                                        <td t-if="member_info.get('vr_right')">
+                                                            <t t-if="contact in delegates">
+                                                                <span class="badge text-bg-info">Delegierte/r</span>
+                                                            </t>
+                                                            <t t-else="">
+                                                                <span class="text-muted">—</span>
+                                                            </t>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td t-att-colspan="member_info.get('vr_right') and 5 or 4" class="bg-light">
+                                                            <!-- Aufklappbar statt Modal: funktioniert
+                                                                 ohne JavaScript und ist für
+                                                                 Screenreader und Tastatur von Haus
+                                                                 aus bedienbar. Nach einem Fehler ist
+                                                                 die betroffene Zeile offen. -->
+                                                            <details t-att-open="(cvals or dvals) and 'open' or None">
+                                                                <summary>
+                                                                    Daten von <t t-esc="contact.name"/> ändern
+                                                                </summary>
+                                                                <form method="post" action="/my/verband"
+                                                                      novalidate="novalidate" class="mt-3">
+                                                                    <input type="hidden" name="csrf_token"
+                                                                           t-att-value="request.csrf_token()"/>
+                                                                    <input type="hidden" name="action" value="contact_save"/>
+                                                                    <input type="hidden" name="contact_id" t-att-value="contact.id"/>
+                                                                    <div class="row">
+                                                                        <div class="col-md-6 mb-2">
+                                                                            <label t-attf-for="c#{contact.id}_name" class="form-label">
+                                                                                Name <span class="text-danger" aria-hidden="true">*</span>
+                                                                            </label>
+                                                                            <input type="text" t-attf-id="c#{contact.id}_name" name="contact_name"
+                                                                                   t-attf-class="form-control form-control-sm #{cerr.get('contact_name') and 'is-invalid' or ''}"
+                                                                                   t-att-value="cvals.get('contact_name', contact.name or '')"
+                                                                                   t-att-readonly="contact_locked and 'readonly' or None"
+                                                                                   t-att-aria-describedby="contact_locked and ('c%s_locked' % contact.id) or (cerr.get('contact_name') and ('c%s_name_err' % contact.id) or None)"
+                                                                                   required="required"/>
+                                                                            <div t-if="cerr.get('contact_name')" t-attf-id="c#{contact.id}_name_err"
+                                                                                 class="invalid-feedback d-block" role="alert">
+                                                                                <t t-esc="cerr.get('contact_name')"/>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="col-md-6 mb-2">
+                                                                            <label t-attf-for="c#{contact.id}_function" class="form-label">Funktion im Verband</label>
+                                                                            <input type="text" t-attf-id="c#{contact.id}_function" name="contact_function"
+                                                                                   t-attf-class="form-control form-control-sm #{cerr.get('contact_function') and 'is-invalid' or ''}"
+                                                                                   t-att-value="cvals.get('contact_function', contact.function or '')"
+                                                                                   placeholder="z. B. 1. Vorsitzende"
+                                                                                   t-att-aria-describedby="cerr.get('contact_function') and ('c%s_function_err' % contact.id) or None"/>
+                                                                            <div t-if="cerr.get('contact_function')" t-attf-id="c#{contact.id}_function_err"
+                                                                                 class="invalid-feedback d-block" role="alert">
+                                                                                <t t-esc="cerr.get('contact_function')"/>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="col-md-4 mb-2">
+                                                                            <label t-attf-for="c#{contact.id}_email" class="form-label">E-Mail</label>
+                                                                            <input type="email" t-attf-id="c#{contact.id}_email" name="contact_email"
+                                                                                   t-attf-class="form-control form-control-sm #{cerr.get('contact_email') and 'is-invalid' or ''}"
+                                                                                   t-att-value="cvals.get('contact_email', contact.email or '')"
+                                                                                   t-att-readonly="contact_locked and 'readonly' or None"
+                                                                                   t-att-aria-describedby="contact_locked and ('c%s_locked' % contact.id) or (cerr.get('contact_email') and ('c%s_email_err' % contact.id) or None)"/>
+                                                                            <div t-if="cerr.get('contact_email')" t-attf-id="c#{contact.id}_email_err"
+                                                                                 class="invalid-feedback d-block" role="alert">
+                                                                                <t t-esc="cerr.get('contact_email')"/>
+                                                                            </div>
+                                                                        </div>
+                                                                        <t t-if="contact_locked">
+                                                                            <div class="col-12 mb-2">
+                                                                                <div class="alert alert-secondary small mb-0"
+                                                                                     t-attf-id="c#{contact.id}_locked" role="note">
+                                                                                    <i class="fa fa-lock me-1" aria-hidden="true"/>
+                                                                                    <strong>Name und E-Mail-Adresse sind hier gesperrt.</strong>
+                                                                                    Diese Person hat einen eigenen Portalzugang, und beide
+                                                                                    Angaben gehören zu diesem Zugang: Über die
+                                                                                    E-Mail-Adresse läuft das Zurücksetzen des Passworts.
+                                                                                    Könnte man sie hier ändern, ließe sich der Zugang
+                                                                                    einer anderen Person übernehmen — deshalb ändert die
+                                                                                    Geschäftsstelle beides, nicht der Verband.
+                                                                                    Funktion und Telefon pflegen Sie wie gewohnt selbst.
+                                                                                </div>
+                                                                            </div>
+                                                                        </t>
+                                                                        <div class="col-md-4 mb-2">
+                                                                            <label t-attf-for="c#{contact.id}_phone" class="form-label">Telefon</label>
+                                                                            <input type="tel" t-attf-id="c#{contact.id}_phone" name="contact_phone"
+                                                                                   t-attf-class="form-control form-control-sm #{cerr.get('contact_phone') and 'is-invalid' or ''}"
+                                                                                   t-att-value="cvals.get('contact_phone', contact.phone or '')"
+                                                                                   t-att-aria-describedby="cerr.get('contact_phone') and ('c%s_phone_err' % contact.id) or None"/>
+                                                                            <div t-if="cerr.get('contact_phone')" t-attf-id="c#{contact.id}_phone_err"
+                                                                                 class="invalid-feedback d-block" role="alert">
+                                                                                <t t-esc="cerr.get('contact_phone')"/>
+                                                                            </div>
+                                                                        </div>
+                                                                        <!-- Nur Verbände mit Vertretungsrecht melden
+                                                                             Delegierte. Ohne dieses Recht faellt das
+                                                                             Haekchen weg — und der Controller nimmt eine
+                                                                             solche Meldung auch dann nicht an, wenn
+                                                                             jemand das Formular umgeht (_set_delegate). -->
+                                                                        <div class="col-12 mb-2" t-if="member_info.get('vr_right')">
+                                                                            <div class="form-check">
+                                                                                <input type="checkbox" value="1"
+                                                                                       class="form-check-input"
+                                                                                       t-attf-id="c#{contact.id}_delegate"
+                                                                                       name="contact_is_delegate"
+                                                                                       t-att-checked="(cvals.get('contact_is_delegate') if cvals else (contact in delegates)) and 'checked' or None"
+                                                                                       t-attf-aria-describedby="c#{contact.id}_delegate_help"/>
+                                                                                <label class="form-check-label" t-attf-for="c#{contact.id}_delegate">
+                                                                                    Delegierte/r für die Vollversammlung
+                                                                                </label>
+                                                                                <div t-attf-id="c#{contact.id}_delegate_help" class="form-text">
+                                                                                    Soll die Person Ihren Verband in der
+                                                                                    Vollversammlung vertreten? Die
+                                                                                    Geschäftsstelle nimmt diese Liste als
+                                                                                    Grundlage für die Einladung.
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <button type="submit" class="btn btn-primary btn-sm">
+                                                                        <i class="fa fa-save me-1" aria-hidden="true"/>Änderungen speichern
+                                                                    </button>
+                                                                </form>
+                                                                <!-- Zweistufig statt confirm(): der Name der Person
+                                                                     müsste sonst in eine JavaScript-Zeichenkette
+                                                                     eingebettet werden — ein Apostroph im Namen
+                                                                     ("O'Brien") zerlegt die Zeile. Das zusätzliche
+                                                                     Aufklappen verhindert denselben Fehlklick, ohne
+                                                                     JavaScript und ohne Escaping-Falle. -->
+                                                                <details class="mt-3" t-att-open="dvals and 'open' or None">
+                                                                    <summary>
+                                                                        Diese Ansprechperson aus der Liste nehmen
+                                                                    </summary>
+                                                                    <form method="post" action="/my/verband" class="mt-2">
+                                                                        <input type="hidden" name="csrf_token"
+                                                                               t-att-value="request.csrf_token()"/>
+                                                                        <input type="hidden" name="action" value="contact_delete"/>
+                                                                        <input type="hidden" name="contact_id" t-att-value="contact.id"/>
+                                                                        <!-- Der Knopf hiess einmal "Endgueltig aus der Liste
+                                                                             entfernen" und trug eine Muelltonne. Beides war
+                                                                             falsch: der Controller archiviert nur
+                                                                             (active=False), die Geschaeftsstelle kann die
+                                                                             Person jederzeit wieder aufnehmen. Ein
+                                                                             Vereinsvorstand liest "endgueltig" + Muelltonne
+                                                                             als Loeschen und zoegert, wo er nicht muesste. -->
+                                                                        <p class="form-text mt-0">
+                                                                            <t t-esc="contact.name"/> wird aus der Liste Ihres
+                                                                            Verbands genommen und erhält keine Post des
+                                                                            Kreisjugendrings mehr. Gelöscht wird dabei nichts:
+                                                                            Der Eintrag wird nur stillgelegt. Bereits gestellte
+                                                                            Anträge und Protokolle der Vollversammlung bleiben
+                                                                            unverändert, und die Geschäftsstelle kann die Person
+                                                                            jederzeit wieder aufnehmen — melden Sie sich einfach
+                                                                            dort, wenn Sie sich vertan haben.
+                                                                        </p>
+                                                                        <!-- Abweisung (z. B. Portalzugang an dieser Person):
+                                                                             die Meldung steht oben in der Sammelbox und hier
+                                                                             noch einmal an der Stelle, an der geklickt wurde. -->
+                                                                        <t t-if="dvals and errors.get('contact_id')">
+                                                                            <div class="alert alert-danger small" role="alert">
+                                                                                <t t-esc="errors.get('contact_id')"/>
+                                                                            </div>
+                                                                        </t>
+                                                                        <!-- Rueckfrage-Schritt: der Controller hat festgestellt,
+                                                                             dass an dieser Person noch etwas haengt, und
+                                                                             benennt es. Gesperrt wird nicht — die Liste gehoert
+                                                                             dem Verband —, aber er soll wissen, was er tut. -->
+                                                                        <t t-if="dvals.get('archive_warning')">
+                                                                            <div class="alert alert-warning small" role="alert">
+                                                                                <strong>An <t t-esc="contact.name"/> hängt noch
+                                                                                etwas:</strong>
+                                                                                <ul class="mb-1 mt-1">
+                                                                                    <t t-foreach="dvals.get('archive_warning')" t-as="hinweis">
+                                                                                        <li><t t-esc="hinweis"/></li>
+                                                                                    </t>
+                                                                                </ul>
+                                                                                Diese Einträge bleiben alle erhalten. Die Person
+                                                                                verschwindet aber aus den Listen und
+                                                                                Auswahlfeldern des Kreisjugendrings. Wenn das so
+                                                                                gewollt ist, bestätigen Sie bitte:
+                                                                            </div>
+                                                                            <input type="hidden" name="contact_delete_confirm" value="1"/>
+                                                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                                                <i class="fa fa-archive me-1" aria-hidden="true"/>Trotzdem aus der Liste nehmen
+                                                                            </button>
+                                                                        </t>
+                                                                        <t t-else="">
+                                                                            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                                                                <i class="fa fa-archive me-1" aria-hidden="true"/>Aus der Liste nehmen
+                                                                            </button>
+                                                                        </t>
+                                                                    </form>
+                                                                </details>
+                                                            </details>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </t>
+
+                                <!-- Neue Ansprechperson -->
+                                <t t-set="nvals" t-value="values if posted_action == 'contact_create' else {}"/>
+                                <t t-set="nerr" t-value="errors if nvals else {}"/>
+                                <details class="mt-3" t-att-open="nvals and 'open' or None">
+                                    <summary class="fw-bold">Neue Ansprechperson hinzufügen</summary>
+                                    <form method="post" action="/my/verband" novalidate="novalidate" class="mt-3">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <input type="hidden" name="action" value="contact_create"/>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-2">
+                                                <label for="new_contact_name" class="form-label">
+                                                    Name <span class="text-danger" aria-hidden="true">*</span>
+                                                </label>
+                                                <input type="text" id="new_contact_name" name="contact_name"
+                                                       t-attf-class="form-control #{nerr.get('contact_name') and 'is-invalid' or ''}"
+                                                       t-att-value="nvals.get('contact_name', '')"
+                                                       t-att-aria-describedby="nerr.get('contact_name') and 'new_contact_name_err' or None"
+                                                       required="required"/>
+                                                <div t-if="nerr.get('contact_name')" id="new_contact_name_err"
+                                                     class="invalid-feedback d-block" role="alert">
+                                                    <t t-esc="nerr.get('contact_name')"/>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6 mb-2">
+                                                <label for="new_contact_function" class="form-label">Funktion im Verband</label>
+                                                <input type="text" id="new_contact_function" name="contact_function"
+                                                       t-attf-class="form-control #{nerr.get('contact_function') and 'is-invalid' or ''}"
+                                                       t-att-value="nvals.get('contact_function', '')"
+                                                       placeholder="z. B. Kassenführung"
+                                                       t-att-aria-describedby="nerr.get('contact_function') and 'new_contact_function_err' or None"/>
+                                                <div t-if="nerr.get('contact_function')" id="new_contact_function_err"
+                                                     class="invalid-feedback d-block" role="alert">
+                                                    <t t-esc="nerr.get('contact_function')"/>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 mb-2">
+                                                <label for="new_contact_email" class="form-label">E-Mail</label>
+                                                <input type="email" id="new_contact_email" name="contact_email"
+                                                       t-attf-class="form-control #{nerr.get('contact_email') and 'is-invalid' or ''}"
+                                                       t-att-value="nvals.get('contact_email', '')"
+                                                       t-att-aria-describedby="nerr.get('contact_email') and 'new_contact_email_err' or None"/>
+                                                <div t-if="nerr.get('contact_email')" id="new_contact_email_err"
+                                                     class="invalid-feedback d-block" role="alert">
+                                                    <t t-esc="nerr.get('contact_email')"/>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 mb-2">
+                                                <label for="new_contact_phone" class="form-label">Telefon</label>
+                                                <input type="tel" id="new_contact_phone" name="contact_phone"
+                                                       t-attf-class="form-control #{nerr.get('contact_phone') and 'is-invalid' or ''}"
+                                                       t-att-value="nvals.get('contact_phone', '')"
+                                                       t-att-aria-describedby="nerr.get('contact_phone') and 'new_contact_phone_err' or None"/>
+                                                <div t-if="nerr.get('contact_phone')" id="new_contact_phone_err"
+                                                     class="invalid-feedback d-block" role="alert">
+                                                    <t t-esc="nerr.get('contact_phone')"/>
+                                                </div>
+                                            </div>
+                                            <!-- Siehe oben: nur mit Vertretungsrecht, und der
+                                                 Controller prueft es serverseitig nach. -->
+                                            <div class="col-12 mb-2" t-if="member_info.get('vr_right')">
+                                                <div class="form-check">
+                                                    <input type="checkbox" value="1" class="form-check-input"
+                                                           id="new_contact_delegate" name="contact_is_delegate"
+                                                           t-att-checked="nvals.get('contact_is_delegate') and 'checked' or None"
+                                                           aria-describedby="new_contact_delegate_help"/>
+                                                    <label class="form-check-label" for="new_contact_delegate">
+                                                        Delegierte/r für die Vollversammlung
+                                                    </label>
+                                                    <div id="new_contact_delegate_help" class="form-text">
+                                                        Kann später jederzeit geändert werden.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn-secondary">
+                                            <i class="fa fa-plus me-1" aria-hidden="true"/>Ansprechperson anlegen
+                                        </button>
+                                    </form>
+                                </details>
+                            </div>
+                        </div>
+
+                        <!-- ── c) Delegierte für die Vollversammlung ───────────
+                             Die ganze Karte haengt an member_info['vr_right']. Ein
+                             Verband ohne Vertretungsrecht entsendet niemanden in die
+                             Vollversammlung; ihm hier eine Rubrik anzubieten, weckt
+                             eine Erwartung, die die Geschaeftsstelle danach abraeumen
+                             muss. Serverseitig haelt _set_delegate im Controller
+                             dieselbe Bedingung ein.
+
+                             Wortlaut bewusst zurueckgenommen: kjr_vr_delegate_ids
+                             wird ausserhalb dieser Seite in keinem Modell des Moduls
+                             ausgewertet — Einladung, Quorum und Abstimmung in
+                             kjr.assembly haengen an kjr_vr_right des Verbands und an
+                             invited_member_ids. Die Seite darf deshalb nicht
+                             behaupten, die Geschaeftsstelle lade "genau diese
+                             Personen" automatisch ein.
+                             TODO(KJR): Entscheiden, ob die Delegiertenliste an die
+                             Einladung in kjr.assembly angebunden werden soll — dann
+                             kann dieser Text wieder verbindlicher werden. -->
+                        <t t-if="member_info.get('vr_right')">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h4 class="mb-0 h5">Delegierte für die Vollversammlung</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">
+                                    Delegierte vertreten Ihren Verband in der Vollversammlung des
+                                    Kreisjugendrings. Diese Liste nutzt die Geschäftsstelle als
+                                    Grundlage für die Einladung und für das Protokoll — halten Sie
+                                    sie deshalb aktuell. Nach § 33 Abs. 1 BJR-Satzung hat Ihr
+                                    Verband dabei eine Stimme, gleich wie viele Delegierte Sie
+                                    melden.
+                                </p>
+                                <t t-if="not delegates">
+                                    <div class="alert alert-warning" role="status">
+                                        Für Ihren Verband ist noch niemand als Delegierte/r gemeldet.
+                                        Setzen Sie das Kennzeichen oben bei der Person, die den Verband
+                                        vertreten soll.
+                                    </div>
+                                </t>
+                                <t t-if="delegates">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle">
+                                            <caption class="visually-hidden">
+                                                Gemeldete Delegierte Ihres Verbands
+                                            </caption>
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th scope="col">Name</th>
+                                                    <th scope="col">Funktion</th>
+                                                    <th scope="col">E-Mail</th>
+                                                    <th scope="col">Telefon</th>
+                                                    <th scope="col">Kennzeichen</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="delegates" t-as="delegate">
+                                                    <tr>
+                                                        <th scope="row" class="fw-normal">
+                                                            <a t-attf-href="#kontakt_#{delegate.id}"><t t-esc="delegate.name"/></a>
+                                                        </th>
+                                                        <td><t t-esc="delegate.function or '—'"/></td>
+                                                        <td>
+                                                            <t t-if="delegate.email">
+                                                                <a t-attf-href="mailto:{{ delegate.email }}"><t t-esc="delegate.email"/></a>
+                                                            </t>
+                                                            <t t-else="">—</t>
+                                                        </td>
+                                                        <td><t t-esc="delegate.phone or '—'"/></td>
+                                                        <td><span class="badge text-bg-info">Delegierte/r</span></td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <p class="form-text mb-0">
+                                        Das Kennzeichen setzen und entfernen Sie oben bei der jeweiligen
+                                        Person unter „Ansprechpersonen“ — bewusst an einer einzigen
+                                        Stelle, damit die beiden Listen nicht auseinanderlaufen.
+                                    </p>
+                                </t>
+                            </div>
+                        </div>
+                        </t>
+                        <t t-else="">
+                            <!-- Ohne Vertretungsrecht gibt es die Rubrik nicht — der
+                                 Verband soll aber wissen, warum, statt sie nur zu
+                                 vermissen. Bewusst ohne Begruendung im Einzelfall:
+                                 warum ein Verband kein Vertretungsrecht hat, steht
+                                 dem Portal nicht zu, das klaert die Geschaeftsstelle. -->
+                            <div class="alert alert-light border small" role="note">
+                                <i class="fa fa-info-circle me-1" aria-hidden="true"/>
+                                <strong>Delegierte für die Vollversammlung:</strong>
+                                Für Ihren Verband ist derzeit kein Vertretungsrecht in der
+                                Vollversammlung hinterlegt (siehe oben unter „Mitgliedschaft
+                                im Kreisjugendring“). Deshalb gibt es hier nichts zu melden.
+                                Halten Sie das für einen Fehler, wenden Sie sich bitte an die
+                                Geschäftsstelle — das Vertretungsrecht stellt der
+                                Kreisjugendring fest, es lässt sich im Portal nicht setzen.
+                            </div>
+                        </t>
+
+                        <!-- ── d) Datenschutzhinweis ────────────────────────────
+                             Ohne Artikelangabe: Ob dieser Block Art. 13 DSGVO
+                             vollstaendig erfuellt, hat niemand geprueft — und
+                             solange Rechtsgrundlage und Loeschfrist offen sind
+                             (siehe die Platzhalter im Block), waere die Berufung
+                             auf eine Norm eine Behauptung. Der Block beschreibt
+                             das tatsaechliche Verhalten des Systems.
+                             TODO(KJR/DSB): Vor dem Go-live pruefen und die
+                             Artikelangabe dann wieder aufnehmen, wenn sie traegt. -->
+                        <!-- Bewusst NICHT kjr_grant.grant_privacy_notice: der Block
+                             dort beschreibt den Zuschussantrag — Teilnahmeliste,
+                             Bankverbindung, Verwendungsnachweis. Nichts davon wird
+                             auf dieser Seite erhoben, und die hier erhobenen Daten
+                             (Kontaktdaten der Ansprechpersonen und Delegierten,
+                             dazu das Änderungsprotokoll) kommen dort nicht vor. Ein
+                             t-call wäre also an beiden Enden falsch. Aufbau,
+                             Reihenfolge und Platzhalter sind absichtlich identisch,
+                             damit die Blöcke des Moduls nicht auseinanderlaufen. -->
+                        <t t-call="kjr_grant.verband_privacy_notice"/>
+
+                        <div class="mb-5">
+                            <a href="/my" class="btn btn-link ps-0">
+                                <i class="fa fa-arrow-left me-1" aria-hidden="true"/>Zurück zu „Mein Konto“
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <!-- ── Datenschutzhinweis: Verbandsdaten ────────────────────────────
+         Eigener Block statt eines t-call auf kjr_grant.grant_privacy_notice:
+         jener beschreibt die Erhebung im Zuschussantrag (Teilnahmeliste,
+         Bankverbindung, Verwendungsnachweis). Auf /my/verband wird nichts
+         davon erhoben; erhoben werden Kontaktdaten der Ansprechpersonen und
+         Delegierten — also Daten Dritter, die der Verband einträgt — und es
+         entsteht ein Änderungsprotokoll im Verlauf des Verbands. Beides steht
+         im Antragsblock nicht. Aufbau, Reihenfolge und Wortwahl sind bewusst
+         identisch zu kjr_grant.grant_privacy_notice, kjr_rental.rental_privacy_notice
+         und dem Block in kjr_event, damit die Module nicht auseinanderlaufen.
+
+         Bewusst eingeblendeter Abschnitt, kein Popup, und bewusst OHNE eigene
+         Bestätigungs-Checkbox: hier wird informiert, nicht eingewilligt.
+
+         TODO(KJR/DSB): Wer informiert die eingetragene Ansprechperson bzw.
+         Delegierte darueber, dass ihre Daten hier erfasst wurden? Der Block
+         bittet den Verband darum ("bitte nur mit deren Wissen") — erfuellt wird
+         die Pflicht damit von niemandem nachweislich. Naheliegend waere eine
+         automatische Info-Mail an die eingetragene Adresse; das ist eine
+         Entscheidung des KJR, keine des Moduls, und deshalb hier NICHT
+         vorweggenommen.
+
+         TODO(KJR): Die mit "wird vom KJR ergänzt" markierten Angaben füllen
+         Geschäftsstelle bzw. Datenschutzbeauftragte VOR dem Go-live aus. Sie
+         sind absichtlich nicht vorbelegt, weil sie noch nicht festgelegt sind:
+           - Verantwortlicher (Name, Anschrift, Kontakt)
+           - Kontakt der/des Datenschutzbeauftragten
+           - Rechtsgrundlage der Verarbeitung (Audit-Befund K1, offen)
+           - Aufbewahrungs-/Löschfrist (nicht entschieden)
+           - technischer Betrieb / Auftragsverarbeiter (Hosting)
+           - zuständige Aufsichtsbehörde
+         Alles übrige beschreibt ausschliesslich das tatsächliche Verhalten des
+         Systems und ist KEINE rechtliche Bewertung. -->
+    <template id="verband_privacy_notice" name="KJR Verbandsdaten: Datenschutzhinweis">
+        <section class="o_kjr_privacy_notice alert alert-light border mt-4 mb-3"
+                 role="region" aria-labelledby="kjr_privacy_verband_heading">
+            <h2 class="alert-heading h6" id="kjr_privacy_verband_heading">
+                <i class="fa fa-lock me-2" aria-hidden="true"/>Datenschutz – was mit diesen Angaben passiert
+            </h2>
+            <p class="small mb-3">
+                Kurz und ohne Fachsprache: Hier steht, was wir speichern, wofür wir es
+                brauchen und wer es sehen kann. Ausführlich steht das in der
+                <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
+            </p>
+            <dl class="row small mb-0">
+                <dt class="col-sm-4">Was wir speichern</dt>
+                <dd class="col-sm-8">Anschrift und Kontaktdaten Ihres Verbands sowie zu
+                    jeder Ansprechperson und jeder/jedem Delegierten Name, Funktion im
+                    Verband, E-Mail-Adresse und Telefonnummer. Dazu das
+                    Kennzeichen, ob die Person den Verband in der Vollversammlung
+                    vertritt.
+                    <span class="d-block mt-1">Sie tragen hier Daten anderer Personen ein.
+                        Bitte nur die Kontaktdaten, unter denen die Person für den Verband
+                        erreichbar sein soll, und bitte nur mit deren Wissen – keine
+                        Angaben zu Gesundheit, Herkunft, Religion oder Ähnlichem.</span>
+                </dd>
+
+                <dt class="col-sm-4">Änderungsprotokoll</dt>
+                <dd class="col-sm-8">Jede Änderung auf dieser Seite wird im Verlauf Ihres
+                    Verbands festgehalten: welches Feld geändert wurde, welcher Wert vorher
+                    dort stand, wer die Änderung vorgenommen hat und wann. Die
+                    Geschäftsstelle kann damit nachvollziehen, wie die Daten zustande
+                    gekommen sind – das ersetzt die Rückfrage und den Aktenvermerk auf
+                    Papier.</dd>
+
+                <dt class="col-sm-4">Wofür wir sie nutzen</dt>
+                <dd class="col-sm-8">Um Ihren Verband zu erreichen: für Post und E-Mail des
+                    Kreisjugendrings, für Rückfragen zu Zuschussanträgen und Abrechnungen
+                    sowie für die Einladung zur Vollversammlung und die Feststellung, wer
+                    dort für Ihren Verband auftritt.</dd>
+
+                <!-- TODO(KJR): Der Satz "Daten anderer Mitgliedsverbaende sind
+                     fuer Sie nicht einsehbar" ist eine Zusage ueber
+                     Systemverhalten und haengt vollstaendig an der
+                     res.partner-Datensatzregel fuer Portalnutzer. Vor dem
+                     Go-live auf der Zielinstanz gegen beide Faelle testen:
+                     Kontakte des eigenen Verbands lesbar, Kontakt eines fremden
+                     Verbands per ID nicht. Fuer /my/verband gibt es bisher
+                     keinen Test. -->
+                <dt class="col-sm-4">Wer sie sehen kann</dt>
+                <dd class="col-sm-8">Die Geschäftsstelle des Kreisjugendrings Oberallgäu und
+                    die Personen, die Mitgliederverwaltung, Vollversammlung und
+                    Zuschussanträge bearbeiten. Über Ihren Portalzugang sehen Sie die Daten
+                    Ihres eigenen Verbands; Daten anderer Mitgliedsverbände sind für Sie
+                    nicht einsehbar.
+                    <span class="d-block mt-1">Technischer Betrieb der Website:
+                        <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    </span>
+                </dd>
+
+                <dt class="col-sm-4">Verantwortlich</dt>
+                <dd class="col-sm-8">
+                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <span class="d-block text-muted">Name, Anschrift und Kontakt der
+                        verantwortlichen Stelle.</span>
+                </dd>
+
+                <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
+                <dd class="col-sm-8">
+                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
+                </dd>
+
+                <dt class="col-sm-4">Rechtsgrundlage</dt>
+                <dd class="col-sm-8">
+                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <span class="d-block text-muted">Legt der Kreisjugendring gemeinsam mit
+                        der Datenschutzbeauftragten fest.</span>
+                </dd>
+
+                <dt class="col-sm-4">Wie lange wir speichern</dt>
+                <dd class="col-sm-8">
+                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <span class="d-block text-muted">Die Aufbewahrungsdauer legt der
+                        Kreisjugendring fest und trägt sie hier ein. Wenn Sie eine
+                        Ansprechperson aus der Liste nehmen, verschwindet sie aus dieser
+                        Seite; im Änderungsprotokoll bleibt die Änderung vermerkt.</span>
+                </dd>
+
+                <dt class="col-sm-4">Ihre Rechte</dt>
+                <dd class="col-sm-8">Welche Rechte Sie haben – zum Beispiel Auskunft,
+                    Berichtigung, Löschung oder Einschränkung – und wie Sie sie geltend
+                    machen, steht in der
+                    <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
+                    <span class="d-block mt-1">Zuständige Aufsichtsbehörde:
+                        <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    </span>
+                </dd>
+            </dl>
+        </section>
     </template>
 
     <!-- ── Datenschutzhinweis nach Art. 13 DSGVO ────────────────── -->

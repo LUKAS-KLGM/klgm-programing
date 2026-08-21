@@ -190,5 +190,59 @@
             <field name="perm_unlink" eval="False"/>
         </record>
 
+        <!-- ══════════════════════════════════════════════════════════════════
+             res.partner — BEWUSST KEINE Rechteerweiterung
+             ══════════════════════════════════════════════════════════════════
+             Für die Portalseite /my/verband (ein Mitgliedsverband pflegt seine
+             eigenen Kontakt- und Adressdaten) wird hier absichtlich WEDER ein
+             ir.model.access-Eintrag NOCH eine ir.rule auf res.partner angelegt.
+             Die Prüfung im Einzelnen:
+
+             1. WAS EIN PORTAL-NUTZER HEUTE DARF (Odoo-19-Basis, geprüft):
+                * base.access_res_partner_portal (base/security/ir.model.access.csv)
+                  gibt base.group_portal auf res.partner 1,0,0,0 — NUR LESEN.
+                * base.res_partner_portal_public_rule (base/security/base_security.xml)
+                  begrenzt dieses Lesen auf
+                      [('id', 'child_of', user.commercial_partner_id.id)]
+                  mit perm_write / perm_create / perm_unlink = False.
+                Ein Portal-Nutzer sieht also genau seinen eigenen commercial-
+                partner-Baum (Verband + dessen Unterkontakte) und sonst nichts.
+                Da res.users.partner_id ein einzelner Many2one ist, gibt es
+                genau EINEN commercial_partner_id je Nutzer; die Regel hält auch
+                dann, wenn mehrere Nutzer an demselben Kontakt hängen.
+
+             2. BEFUND ZU FRAGE „gibt es in kjr_grant Record Rules auf res.partner?":
+                Nein — und es fehlt auch keine. Die Basisregel aus (1) deckt den
+                Fall vollständig ab; ein Portal-Nutzer kann heute KEINE fremden
+                Kontakte lesen. Eine zusätzliche ir.rule wäre hier sogar
+                schädlich: Regeln derselben Gruppe werden mit ODER verknüpft,
+                eine weitere Leseregel könnte den Zugriff nur AUSWEITEN, nie
+                einengen.
+
+             3. WARUM KEIN SCHREIBRECHT VERGEBEN WIRD:
+                ir.model.access wirkt auf Modellebene und ir.rule auf Zeilen-,
+                nie auf Feldebene. Ein perm_write=1 für base.group_portal auf
+                res.partner erlaubte einem Verband, auf JEDEM Kontakt seines
+                Baums JEDES Feld zu setzen — name, vat, parent_id, user_ids,
+                is_kjr_member, kjr_vr_right. Genau das soll die Seite verhindern.
+                Eine Feld-Whitelist ist mit Odoo-Rechten nicht formulierbar.
+                Deshalb schreibt der Controller /my/verband mit sudo() gegen eine
+                explizite Whitelist (street, street2, zip, city, phone, mobile,
+                email, website) — dasselbe Vorgehen, das Odoo in seiner eigenen
+                Portalseite /my/account verwendet (portal/controllers/portal.py:
+                `partner.sudo().write(values)`). sudo() ist hier also nicht die
+                bequeme, sondern die engere Variante.
+
+             4. ZWEITE VERTEIDIGUNGSLINIE IM MODELL:
+                Damit ein Portal-Nutzer die Mitgliedschaftsdaten auch an jedem
+                Controller vorbei (direkter RPC) nicht setzen kann, tragen
+                kjr_member_type, kjr_member_number, kjr_active_since und
+                kjr_vr_votes ein groups="base.group_user", und
+                res.partner.write()/create() prüfen zusätzlich
+                KJR_MEMBER_STATUS_FIELDS. Begründung und die Gründe, warum
+                is_kjr_member und kjr_vr_right kein groups= bekommen dürfen,
+                stehen im Docstring von models/res_partner.py.
+        -->
+
     </data>
 </odoo>

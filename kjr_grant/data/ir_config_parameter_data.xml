@@ -90,16 +90,42 @@
         </record>
 
 
-        <!-- Rubriken, die bei der Installation auf der Portalseite „Mein Konto"
-             ausgeblendet werden (kommagetrennte External IDs). Leer = die im
-             Code hinterlegte Vorgabe gilt, siehe hooks.py.
-             Greift nur bei der INSTALLATION; eine später von Hand wieder
-             eingeblendete Rubrik bleibt sichtbar.
-             TODO(KJR): nach dem ersten Deployment im Log prüfen, welche
-             Einträge tatsächlich gefunden wurden, und die Liste bereinigen. -->
-        <record id="param_portal_hidden_entries" model="ir.config_parameter">
-            <field name="key">kjr_grant.portal_hidden_entries</field>
+        <!-- Module, deren Rubriken auf der Portalseite „Mein Konto" BLEIBEN
+             (kommagetrennt). Alles andere, was portal.portal_my_home erweitert,
+             wird ausgeblendet. Leer = die Vorgabe aus hooks.py gilt:
+             die vier KJR-Module, portal (Kontaktdaten/Sicherheit) und account
+             (Rechnungen betreffen Mieter und Entleiher).
+             Bewusst eine Positivliste: welche Apps auf einer Instanz liegen,
+             weiß das Modul nicht — eine Liste auszublendender IDs wäre geraten. -->
+        <record id="param_portal_keep_modules" model="ir.config_parameter">
+            <field name="key">kjr_grant.portal_keep_modules</field>
             <field name="value"></field>
+        </record>
+
+        <!-- Von Hand ausloesbar unter Einstellungen ▸ Technisch ▸ Aktionen ▸
+             Server-Aktionen. Der einzige Weg, der auf einer BEREITS installierten
+             Instanz funktioniert: post_init_hook laeuft nur bei Neuinstallation,
+             das Migrationsskript nur beim Versionssprung. -->
+        <record id="action_cleanup_portal_home" model="ir.actions.server">
+            <field name="name">Portalseite „Mein Konto" aufräumen</field>
+            <field name="model_id" ref="base.model_ir_ui_view"/>
+            <field name="state">code</field>
+            <field name="code">
+from odoo.addons.kjr_grant.hooks import cleanup_portal_home
+count = cleanup_portal_home(env)
+action = {
+    'type': 'ir.actions.client',
+    'tag': 'display_notification',
+    'params': {
+        'title': 'Portalseite „Mein Konto"',
+        'message': (
+            '%d nicht benötigte Rubrik(en) ausgeblendet.' % count
+            if count else 'Es gab nichts auszublenden.'),
+        'type': 'success',
+        'sticky': False,
+    },
+}
+            </field>
         </record>
     </data>
 </odoo>
