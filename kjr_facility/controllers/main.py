@@ -64,6 +64,29 @@ class KjrFacilityWebsite(http.Controller):
         return str(value or '').strip().lower() in CHECKBOX_TRUE
 
     @staticmethod
+    def _meal_option_for(facility, value):
+        """Verpflegungsauswahl serverseitig auf das Angebot der Einrichtung begrenzen.
+
+        Erbringt die Einrichtung keine Verpflegung (`kjr.facility.offers_catering`
+        ist nicht gesetzt — beide Häuser des KJR sind Selbstversorgerhäuser), wird ein
+        trotzdem übermittelter Wert VERWORFEN und 'none' (Selbstverpflegung) gesetzt.
+
+        Bewusst OHNE Fehlermeldung: Das Formular bietet die Auswahl bei
+        Selbstverpflegung gar nicht erst an (siehe website_facility_request). Ein
+        gesendeter Wert kann deshalb nur aus einem veralteten, zwischengespeicherten
+        oder manipulierten Formular stammen — also aus einem Umstand, den die
+        anfragende Gruppe nicht zu verantworten hat. Daran soll ihre Anfrage nicht
+        scheitern; die Angabe wird still auf den einzig zutreffenden Wert korrigiert.
+
+        Gilt ausschließlich für NEUE bzw. hier erfasste Vorgänge. Bereits
+        gespeicherte Buchungen rührt das nicht an — deren `amount_meals` bleibt
+        unverändert, damit fakturierte Beträge nicht nachträglich abweichen.
+        """
+        if not facility.offers_catering:
+            return 'none'
+        return value if value in MEAL_OPTIONS else 'none'
+
+    @staticmethod
     def _nights_label(count):
         """Deutsche Ein-/Mehrzahl für Nächte — für gut lesbare Fehlermeldungen."""
         return _('1 Nacht') if count == 1 else _('%d Nächte') % count
@@ -132,7 +155,10 @@ class KjrFacilityWebsite(http.Controller):
             return None
         if not self._tariff_rate_maintained(tariff):
             return None
-        meal = values.get('meal_option') if values.get('meal_option') in MEAL_OPTIONS else 'none'
+        # Ohne Verpflegungsangebot der Einrichtung rechnet die Vorschau mit
+        # 'none' — die Verpflegungszeile bleibt dadurch bei 0,00 € und wird im
+        # Template nicht ausgegeben.
+        meal = self._meal_option_for(facility, values.get('meal_option'))
         try:
             draft = request.env['kjr.facility.booking'].sudo().new({
                 'company_id': request.env.company.id,
@@ -367,8 +393,9 @@ class KjrFacilityWebsite(http.Controller):
                 'leader_count': self._to_int(post.get('leader_count')),
                 'is_organized_group': self._to_bool(post.get('is_organized_group')),
                 'visitor_tax_exempt_count': self._to_int(post.get('visitor_tax_exempt_count')),
-                'meal_option': post.get('meal_option') if post.get('meal_option') in
-                MEAL_OPTIONS else 'none',
+                # Siehe _meal_option_for: bei Selbstversorgerhäusern wird ein
+                # mitgeschickter Wert still verworfen statt abgewiesen.
+                'meal_option': self._meal_option_for(facility, post.get('meal_option')),
                 'note': post.get('note', '').strip(),
             })
             return request.redirect('/my/einrichtungsbuchungen/%d' % booking.id)

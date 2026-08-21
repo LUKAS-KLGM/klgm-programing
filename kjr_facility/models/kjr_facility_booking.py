@@ -142,6 +142,21 @@ class KjrFacilityBooking(models.Model):
         ('half', 'Halbpension'),
         ('full', 'Vollpension'),
     ], string='Verpflegung', default='none', required=True)
+    # Verpflegung je Einrichtung abschaltbar (Kundenwunsch vom 21.08.2026):
+    # Beide KJR-Einrichtungen sind reine Selbstversorgerhaeuser. Das Modul bleibt
+    # White-Label, deshalb wird die Verpflegung je Einrichtung geschaltet
+    # (kjr.facility.offers_catering) statt entfernt. Dieses Hilfsfeld spiegelt den
+    # Schalter an die Buchung, damit Formular, Website-Formular und Vertrag die
+    # Sichtbarkeit steuern koennen.
+    # Bewusst NICHT gespeichert und bewusst NICHT in den @api.depends von
+    # _compute_amounts: Ein Umlegen des Schalters darf die gespeicherten
+    # Verpflegungsbetraege bestehender (auch bereits fakturierter) Buchungen
+    # nicht neu berechnen.
+    facility_offers_catering = fields.Boolean(
+        string='Einrichtung bietet Verpflegung', related='facility_id.offers_catering',
+        readonly=True,
+        help='Technisches Hilfsfeld aus den Stammdaten der Einrichtung. Steuert, ob '
+             'Verpflegungsangaben in Formular, Website-Anfrage und Vertrag erscheinen.')
     equipment_ids = fields.Many2many(
         'kjr.facility.equipment', 'kjr_booking_equipment_rel', 'booking_id', 'equipment_id',
         string='Zusatzausstattung',
@@ -767,6 +782,17 @@ class KjrFacilityBooking(models.Model):
                     vals['arrival_time'] = facility.check_in_default_time
                 if 'departure_time' not in vals and facility.check_out_default_time:
                     vals['departure_time'] = facility.check_out_default_time
+                # Verpflegung nur, wenn die Einrichtung sie anbietet. Bei NEUEN
+                # Vorgaengen wird still auf 'none' normalisiert statt zu blockieren:
+                # der Weg fuehrt sonst beim Duplizieren einer Altbuchung und bei
+                # Anlage ueber Controller/Import in eine Sackgasse. Ein neuer Satz
+                # hat noch keinen fakturierten Betrag, die Normalisierung kann also
+                # keine historischen Werte veraendern.
+                if vals.get('meal_option', 'none') != 'none' and not facility.offers_catering:
+                    _logger.info(
+                        'Verpflegung %s verworfen: Einrichtung %s bietet keine Verpflegung an.',
+                        vals.get('meal_option'), facility.display_name)
+                    vals['meal_option'] = 'none'
         return super().create(vals_list)
 
     def write(self, vals):
@@ -777,7 +803,52 @@ class KjrFacilityBooking(models.Model):
             vals.setdefault('contract_followup_sent', False)
         if vals.get('deposit_paid'):
             vals.setdefault('deposit_reminder_sent', False)
+        # Verpflegung nur pruefen, wenn sie in diesem Schreibvorgang tatsaechlich
+        # beruehrt wird (siehe _check_catering_allowed).
+        if 'meal_option' in vals or 'facility_id' in vals:
+            self._check_catering_allowed(vals)
         return super().write(vals)
+
+    def _check_catering_allowed(self, vals):
+        """Verpflegung nur zulassen, wenn die Einrichtung sie anbietet.
+
+        Bewusst KEIN @api.constrains: Ein Constraint wuerde bei jedem Speichern
+        greifen und damit auch Altbuchungen erfassen, die vor dem Umlegen des
+        Schalters mit Verpflegung erfasst wurden. Die Geschaeftsstelle koennte
+        solche Vorgaenge dann gar nicht mehr bearbeiten (nicht einmal die
+        Telefonnummer nachtragen) — und ein erzwungenes Zuruecksetzen auf 'none'
+        wuerde ueber das gespeicherte Compute-Feld amount_meals rueckwirkend den
+        Rechnungsbetrag aendern.
+
+        Geprueft wird deshalb nur, wenn dieser Schreibvorgang die Verpflegung oder
+        die Einrichtung selbst anfasst — also genau dann, wenn jemand aktiv eine
+        unzulaessige Kombination herstellt. Ein Statuswechsel loest die Pruefung
+        absichtlich nicht aus, damit Altvorgaenge weiterhin bestaetigt, berechnet
+        und abgeschlossen werden koennen.
+
+        TODO(KJR): Ob Altbuchungen auf den beiden Selbstversorgerhaeusern, die noch
+        eine Verpflegung tragen, nachtraeglich bereinigt werden sollen, ist nicht
+        entschieden. Eine Bereinigung wuerde ueber das gespeicherte Compute-Feld
+        amount_meals die Betraege dieser Vorgaenge aendern und darf deshalb nur nach
+        ausdruecklicher Freigabe und nur fuer noch nicht fakturierte Buchungen
+        erfolgen.
+        """
+        Facility = self.env['kjr.facility']
+        for rec in self:
+            meal = vals.get('meal_option', rec.meal_option)
+            if not meal or meal == 'none':
+                continue
+            facility = rec.facility_id
+            if vals.get('facility_id'):
+                facility = Facility.browse(vals['facility_id'])
+            if facility and not facility.offers_catering:
+                raise ValidationError(_(
+                    'Die Einrichtung %(facility)s bietet keine Verpflegung an '
+                    '(Selbstversorgerhaus). Bitte in Buchung %(booking)s zuerst die '
+                    'Verpflegung auf „Selbstverpflegung“ setzen. Achtung: Damit '
+                    'entfaellt ein bereits berechneter Verpflegungsbetrag.',
+                    facility=facility.display_name, booking=rec.display_name,
+                ))
 
     @api.onchange('facility_id')
     def _onchange_facility_default_times(self):
@@ -787,6 +858,19 @@ class KjrFacilityBooking(models.Model):
                 self.arrival_time = self.facility_id.check_in_default_time
             if not self.departure_time and self.facility_id.check_out_default_time:
                 self.departure_time = self.facility_id.check_out_default_time
+
+    @api.onchange('facility_id')
+    def _onchange_facility_catering(self):
+        """Bei Wechsel auf ein Selbstversorgerhaus die Verpflegung zuruecksetzen.
+
+        Wirkt nur im Formular (Backend/Portal-Formularansicht) und nur waehrend der
+        Bearbeitung — gespeicherte Betraege bereits erfasster Buchungen bleiben
+        unberuehrt, solange niemand die Buchung im Formular anfasst und speichert.
+        onchange feuert NICHT bei create() aus einem Controller; der Website-Weg
+        ist deshalb zusaetzlich in create() und im Controller abgesichert.
+        """
+        if self.facility_id and not self.facility_id.offers_catering:
+            self.meal_option = 'none'
 
     # ══════════════════════════════════════════════════════════════════════════
     # WORKFLOW

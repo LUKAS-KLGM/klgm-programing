@@ -126,7 +126,7 @@
                 <!-- Zusatzpositionen aus dem Tarif (keine Beträge im Template hartkodiert) -->
                 <t t-if="tariff and (tariff.final_cleaning_fee or tariff.visitor_tax_per_person_night)">
                     <div class="alert alert-info">
-                        <strong>Diese Positionen kommen zu Unterkunft und Verpflegung hinzu</strong>
+                        <strong>Diese Positionen kommen zur Unterkunft<t t-if="facility.offers_catering"> und Verpflegung</t> hinzu</strong>
                         <ul class="mb-0 mt-2">
                             <li t-if="tariff.final_cleaning_fee">
                                 <strong>Endreinigung:</strong>
@@ -189,19 +189,35 @@
                             <div class="form-text">Anzahl der volljährigen Begleitpersonen – nicht zu
                                 verwechseln mit der Ansprechpartnerin bzw. dem Ansprechpartner oben.</div>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Verpflegung</label>
-                            <select name="meal_option" class="form-select">
-                                <option value="none"
-                                        t-att-selected="'selected' if values.get('meal_option','none') == 'none' else None">Selbstverpflegung</option>
-                                <option value="breakfast"
-                                        t-att-selected="'selected' if values.get('meal_option') == 'breakfast' else None">Frühstück</option>
-                                <option value="half"
-                                        t-att-selected="'selected' if values.get('meal_option') == 'half' else None">Halbpension</option>
-                                <option value="full"
-                                        t-att-selected="'selected' if values.get('meal_option') == 'full' else None">Vollpension</option>
-                            </select>
-                        </div>
+                        <!-- Verpflegung nur zur Auswahl stellen, wenn die Einrichtung sie
+                             auch erbringt (kjr.facility.offers_catering). Sonst stünden im
+                             Formular Leistungen, die es nicht gibt. Bei Selbstverpflegung wird
+                             das Feld gar nicht erst gesendet; serverseitig setzt
+                             KjrFacilityWebsite._meal_option_for ohnehin 'none'. -->
+                        <t t-if="facility.offers_catering">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Verpflegung</label>
+                                <select name="meal_option" class="form-select">
+                                    <option value="none"
+                                            t-att-selected="'selected' if values.get('meal_option','none') == 'none' else None">Selbstverpflegung</option>
+                                    <option value="breakfast"
+                                            t-att-selected="'selected' if values.get('meal_option') == 'breakfast' else None">Frühstück</option>
+                                    <option value="half"
+                                            t-att-selected="'selected' if values.get('meal_option') == 'half' else None">Halbpension</option>
+                                    <option value="full"
+                                            t-att-selected="'selected' if values.get('meal_option') == 'full' else None">Vollpension</option>
+                                </select>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Verpflegung</label>
+                                <p class="form-control-plaintext mb-0">Selbstverpflegung</p>
+                                <div class="form-text"><t t-esc="facility.name"/> ist ein
+                                    Selbstversorgerhaus. Wir stellen keine Verpflegung; Einkauf
+                                    und Zubereitung organisiert die Gruppe selbst.</div>
+                            </div>
+                        </t>
                         <t t-if="tariff and tariff.visitor_tax_per_person_night">
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Weitere vom Fremdenverkehrsbeitrag befreite
@@ -268,6 +284,8 @@
                                                 <t t-esc="preview.get('participant_count')"/> Teilnehmende)</td>
                                             <td class="text-end"><t t-esc="'%.2f €' % preview.get('accommodation')"/></td>
                                         </tr>
+                                        <!-- Ohne Verpflegungsangebot ist der Betrag 0,00 € und
+                                             die Zeile entfällt (siehe _meal_option_for). -->
                                         <tr t-if="preview.get('meals')">
                                             <td>Verpflegung</td>
                                             <td class="text-end"><t t-esc="'%.2f €' % preview.get('meals')"/></td>
@@ -359,7 +377,8 @@
                             <dd class="col-sm-8">An- und Abreisedatum, den Namen der
                                 Ansprechpartnerin bzw. des Ansprechpartners, die
                                 Gruppenbezeichnung, die Anzahl der Teilnehmenden und
-                                Betreuenden, die gewünschte Verpflegung, E-Mail-Adresse,
+                                Betreuenden,<t t-if="facility.offers_catering"> die gewünschte
+                                Verpflegung,</t> E-Mail-Adresse,
                                 Telefonnummer und Ihre Anmerkungen.
                                 <span class="d-block mt-1">Namen einzelner Teilnehmender –
                                     insbesondere von Kindern und Jugendlichen – fragen wir hier

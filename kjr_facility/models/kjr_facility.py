@@ -72,6 +72,27 @@ class KjrFacility(models.Model):
              'Schul- und Bildungsgruppen vergeben (kein privater Familien- oder '
              'Vereinsausflug). Die Buchung erfasst dazu das Kennzeichen '
              '"Organisierte Jugend-/Bildungsgruppe".')
+    # F-Verpflegung: Nicht jede Einrichtung verpflegt ihre Gruppen. Diepolz und
+    # NiSo sind reine Selbstversorgerhäuser (Kundenaussage KJR vom 21.08.2026),
+    # das Buchungsformular bot bis dahin trotzdem Frühstück/Halb-/Vollpension an —
+    # also Leistungen, die der KJR gar nicht erbringt. Der Schalter bleibt im
+    # Modul, weil es White-Label an weitere Jugendringe geht, von denen manche
+    # sehr wohl verpflegen; ersatzlos entfernt wird die Funktion deshalb nicht.
+    offers_catering = fields.Boolean(
+        string='Verpflegung anbieten', default=False,
+        help='Aus (Standard): Die Einrichtung verpflegt nicht — die Gruppe versorgt '
+             'sich selbst. Die Verpflegung wird dann überall ausgeblendet: im '
+             'Buchungsformular der Website, in der Buchungsmaske im Backend und im '
+             'Vertrag; auch die Verpflegungspreise am Tarif werden nicht angezeigt.\n'
+             'An: Verpflegungsauswahl (Frühstück, Halb-, Vollpension) und die '
+             'zugehörigen Preisfelder werden eingeblendet und können gebucht und '
+             'berechnet werden.\n'
+             'Der Schalter existiert, weil dieses Modul auch an Jugendringe MIT '
+             'eigener Verpflegung geht. Für den KJR Oberallgäu sind beide '
+             'Einrichtungen Selbstversorgerhäuser, deshalb ist die Vorgabe "aus".\n'
+             'Hinweis: Der Schalter wirkt NICHT rückwirkend. Bereits erfasste '
+             'Buchungen behalten ihre berechneten Verpflegungsbeträge, damit sich '
+             'fakturierte Vorgänge nicht nachträglich ändern.')
     room_ids = fields.One2many('kjr.facility.room', 'facility_id', string='Räume')
     equipment_ids = fields.One2many('kjr.facility.equipment', 'facility_id', string='Ausstattung')
     bed_total = fields.Integer(string='Betten gesamt', compute='_compute_bed_total')

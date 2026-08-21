@@ -30,6 +30,21 @@ class KjrFacilityTariff(models.Model):
     meal_breakfast = fields.Float(string='Frühstück p. P./Tag (€)', digits=(8, 2))
     meal_half = fields.Float(string='Halbpension p. P./Tag (€)', digits=(8, 2))
     meal_full = fields.Float(string='Vollpension p. P./Tag (€)', digits=(8, 2))
+    # F-Verpflegung: Reine Sichtbarkeitshilfe für die Formularansicht. Ein
+    # invisible-Ausdruck kann nur Felder auswerten, die im Arch vorhanden sind —
+    # 'facility_id.offers_catering' ist im View nicht auswertbar, deshalb dieses
+    # Feld. Bewusst KEIN related: Ein Tarif ohne Einrichtung gilt für ALLE
+    # Einrichtungen; ein related lieferte dort immer False und ein Jugendring mit
+    # Verpflegung, der nur globale Tarife pflegt, könnte seine Verpflegungssätze
+    # gar nicht mehr erfassen. Das Feld ist nicht gespeichert und geht in keine
+    # Berechnung ein — an bestehenden Tarifen und Buchungen ändert sich nichts.
+    show_meal_prices = fields.Boolean(
+        string='Verpflegungspreise anzeigen', compute='_compute_show_meal_prices',
+        help='Technisches Hilfsfeld: steuert nur, ob die Verpflegungssätze in der '
+             'Tarifmaske sichtbar sind. Es zeigt sie, wenn die zugeordnete '
+             'Einrichtung "Verpflegung anbieten" aktiviert hat — und bei einem Tarif '
+             'ohne Einrichtung (gilt für alle) dann, wenn mindestens eine '
+             'Einrichtung verpflegt.')
     # F1: Zusatzpositionen (Fremdenverkehrsbeitrag, Endreinigung) und Wochentagstarif.
     # Die Berechnung selbst liegt in kjr.facility.booking._compute_amounts.
     visitor_tax_per_person_night = fields.Float(
@@ -78,6 +93,26 @@ class KjrFacilityTariff(models.Model):
              'Tarifgruppe hinterlegt. Solange das Feld leer ist, greift die '
              'Vorgabesteuer der Gesellschaft.',
     )
+
+    @api.depends('facility_id', 'facility_id.offers_catering')
+    def _compute_show_meal_prices(self):
+        """Verpflegungssätze nur anzeigen, wenn überhaupt verpflegt wird.
+
+        Nur Sichtbarkeit — hinterlegte Sätze bleiben unangetastet und werden bei
+        bereits erfassten Buchungen weiterhin genauso verrechnet wie bisher.
+        """
+        any_catering = None
+        for rec in self:
+            if rec.facility_id:
+                rec.show_meal_prices = rec.facility_id.offers_catering
+                continue
+            # Tarif ohne Einrichtung = gilt für alle: konservativ einblenden,
+            # sobald irgendeine Einrichtung verpflegt. sudo(), weil das eine reine
+            # Anzeigefrage ist und auch für Leser ohne Einrichtungsrechte gilt.
+            if any_catering is None:
+                any_catering = bool(self.env['kjr.facility'].sudo().search_count(
+                    [('offers_catering', '=', True)], limit=1))
+            rec.show_meal_prices = any_catering
 
     @api.constrains(
         'price_per_person_night', 'price_flat_per_night',
