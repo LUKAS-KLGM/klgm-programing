@@ -1,5 +1,30 @@
 # Changelog – kjr_event
 
+## 19.0.3.0.0 — Wording, Altersfilter, Statistik-Export
+
+### Neu
+- **Statistik-Export je Maßnahme** (`kjr.event.statistics.wizard`): Zeitraum,
+  Veranstaltungsauswahl und Gruppierung, Ausgabe als CSV mit Semikolon und UTF-8-BOM
+  (Excel-tauglich, die Datei geht an eine Behörde). Die gesetzliche Statistikmeldung
+  musste bisher von Hand zusammengestellt werden — einer der Hauptkritikpunkte am
+  abzulösenden Altsystem.
+- **Altersfilter auf der Freizeiten-Übersicht** als GET-Parameter mit
+  Schnellfilter-Buttons, ohne JavaScript und ohne die Paginierung zu brechen.
+  Veranstaltungen ohne Altersangabe werden nie herausgefiltert; angeboten werden nur
+  Altersgruppen, in die tatsächlich eine Veranstaltung fällt.
+
+### Geändert
+- **„Tickets" → „Anmeldung"** im Frontend (Kundenentscheidung 23.07.2026: für
+  Freizeit-Anmeldungen ist der Verkaufsbegriff sachlich falsch). Umgesetzt über
+  Template-Vererbung auf die `website_event`-Kerntemplates, eingegrenzt auf
+  `event.is_kjr`. Bewusst **keine** `.po`-Datei: modulfremde Kernbegriffe lassen sich
+  darüber nicht zuverlässig überschreiben, ein späteres `-u website_event` würde sie
+  wieder überschreiben. Die Vererbungsblöcke sind kommentiert und nach einem
+  Odoo-Update zu prüfen.
+- **Nicht umgesetzt**: „Ticketpreis" → „Teilnahmebeitrag". Die Preisdarstellung kommt
+  aus `website_event_sale`; ein Zugriff darauf würde das Modul auf Instanzen ohne
+  Sales-App unbrauchbar machen. Architekturentscheidung nötig.
+
 ## 19.0.2.5.0
 
 ### Hinzugefügt

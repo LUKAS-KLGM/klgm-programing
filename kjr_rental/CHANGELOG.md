@@ -1,5 +1,48 @@
 # Changelog – KJR Materialverleih
 
+## 19.0.3.0.0 — Barcode, Nutzungshinweise, Rückgabeprotokoll, Spielmobil
+
+### Neu
+- **Barcode / Inventaretikett** am Artikel inkl. Etikettenreport (Code128 über den
+  Kern-Endpunkt `/report/barcode/`) und Suche nach Barcode und Inventarnummer.
+  Bewusst **ohne** die Abhängigkeit `stock` (ADR-1). Ein gescannter Code landet im
+  Suchfeld und findet den Artikel; der volle Kamera-Scan der Odoo-App setzt
+  `stock_barcode` (Enterprise) voraus — das wäre eine eigene Entscheidung.
+- **Nutzungshinweise** je Artikel (`usage_warning`), die vor dem Absenden angezeigt
+  und verbindlich bestätigt werden müssen (`usage_terms_accepted`). Als
+  eingeblendeter Block, nicht als Popup — ein Popup können Werbeblocker unterdrücken
+  und Screenreader überspringen, der Hinweis wäre dann wertlos.
+- **Zweck der Nutzung** als Pflichtfeld im Formular (§§ 11/12 SGB VIII) — die
+  Nutzungsberechtigung war bisher weder dokumentiert noch auswertbar.
+- **Rückgabeprotokoll**: vollständig / gereinigt / Schaden + Vermerk, mit
+  Chatter-Protokoll. Jede Abweichung verlangt einen Vermerk, aber die Rückgabe ist
+  auch bei Mängeln abschließbar — sonst müsste das Personal falsch ankreuzen.
+- **Spielmobil-Infoseite** `/service/spielmobil` mit Anfrageformular. Adressatenkreis
+  laut Entscheidung 23.07.2026 ausdrücklich **nur Gemeinden im Landkreis Oberallgäu**;
+  die Anfrage geht zusätzlich per Mail an das KJR-Postfach (Systemparameter
+  `kjr_rental.spielmobil_notify_email`, sonst Firmen-E-Mail).
+- **Fotos im Katalog** (`image_1920`) mit Icon-Fallback.
+- `res.partner.is_kjr_member` — namensgleich zu `kjr_grant`, damit beide Module sich
+  eine Spalte teilen und `kjr_rental` trotzdem eigenständig lauffähig bleibt.
+
+### Geändert
+- **Mitgliedstarif wird abgeleitet** statt manuell gesetzt: `is_member` kommt aus
+  `partner_id.is_kjr_member` (überschreibbar). Bisher wurde er weder im Checkout noch
+  bei der Direktanfrage gesetzt — jede Online-Anfrage rechnete zum Standardtarif und
+  musste von Hand korrigiert werden.
+- Eindeutigkeit von Inventarnummer und Barcode wird erzwungen.
+- Der Katalog nennt den Mitgliedstarif nur noch, wenn er am Artikel aktiviert ist.
+
+### Behoben
+- **Anonyme Anfragen konnten eine fremde Identität übernehmen**: Die öffentliche
+  Route ordnete den Absender per E-Mail-Suche einem *bestehenden* Kontakt zu. Wer die
+  Adresse eines Mitgliedsverbands kannte, erzeugte auf dessen Namen einen Vorgang —
+  inklusive Mitgliedstarif und sichtbar in dessen Portal. Nicht angemeldete Absender
+  bekommen jetzt immer einen neuen, als ungeprüft markierten Kontakt und den
+  Standardtarif.
+- Die Preise fakturierter Ausleihen konnten sich nachträglich noch ändern (der
+  Einfrier-Schutz hing am Status statt an der Rechnung).
+
 ## 19.0.2.3.0
 
 ### Neu

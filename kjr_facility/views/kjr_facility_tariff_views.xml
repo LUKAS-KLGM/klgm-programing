@@ -12,6 +12,12 @@
                 <field name="facility_id"/>
                 <field name="price_per_person_night"/>
                 <field name="meal_full"/>
+                <!-- F1: Zusatzpositionen standardmäßig ausgeblendet, damit die
+                     Tarifliste lesbar bleibt (über das Spaltenmenü einblendbar). -->
+                <field name="weekday_price_per_person_night" optional="hide"/>
+                <field name="weekday_min_nights" optional="hide"/>
+                <field name="visitor_tax_per_person_night" optional="hide"/>
+                <field name="final_cleaning_fee" optional="hide"/>
                 <field name="tax_id"/>
                 <field name="active"/>
             </list>
@@ -39,7 +45,28 @@
                             <field name="meal_half"/>
                             <field name="meal_full"/>
                         </group>
+                        <!-- F1: Einmal- und Zusatzpositionen sowie der reduzierte
+                             Mo–Fr-Satz. Berechnet wird das in der Buchung. -->
+                        <group string="Zusatzpositionen und Wochentagstarif" name="extras" colspan="2">
+                            <group>
+                                <field name="visitor_tax_per_person_night"/>
+                                <field name="final_cleaning_fee"/>
+                            </group>
+                            <group>
+                                <field name="weekday_price_per_person_night"/>
+                                <field name="weekday_min_nights"/>
+                            </group>
+                        </group>
                     </group>
+                    <div class="alert alert-info" role="alert">
+                        Der Fremdenverkehrsbeitrag wird je Nacht nur auf die Teilnehmenden
+                        berechnet. Betreuende sind als Begleitpersonen befreit und werden
+                        automatisch nicht mitgerechnet. Zusätzlich abgezogen wird die in der
+                        Buchung erfasste Anzahl weiterer befreiter Teilnehmender (Einwohner
+                        der Standortgemeinde, Kinder unter 7 Jahren, Schwerbehinderte) —
+                        Betreuende dort bitte NICHT erneut eintragen. Die Endreinigung fällt
+                        einmalig je Buchung an, nicht pro Nacht.
+                    </div>
                     <div class="alert alert-warning" role="alert">
                         Steuerlich final zu prüfen: § 4 Nr. 23 UStG (Befreiung) bzw. § 68 Nr. 8 AO
                         (7 %, Zweckbetrieb) für Jugendgruppen, 19 % bei kommerzieller Nutzung.

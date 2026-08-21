@@ -1,15 +1,63 @@
 # -*- coding: utf-8 -*-
 """KJR-Erweiterung der Veranstaltungsanmeldung: Minderjährige, Einwilligung, Juleica."""
+from collections import defaultdict
+
 from dateutil.relativedelta import relativedelta
+from markupsafe import Markup
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 
 
+# ---------------------------------------------------------------------------
+# K3 (Datenschutz-Audit vom 21.08.2026) - Feldschutz auf den sensibelsten
+# Angaben dieses Moduls.
+#
+# Odoo 19 wertet ``groups=`` am Feld SERVERSEITIG aus: die Pruefung
+# ``_has_field_access``/``_check_field_access`` greift beim Lesen einzelner
+# Felder, beim Schreiben und bei der Domain-Auswertung
+# (odoo/orm/models.py, odoo/orm/domains.py). ``readonly=True`` oder ein
+# ``invisible`` in der Ansicht ist dagegen NUR Oberflaeche und schuetzt nicht
+# gegen einen direkten RPC-Aufruf.
+#
+# Wirkung im Betrieb:
+#  * Wer die Gruppe nicht hat, bekommt die Felder in Formular und Liste gar
+#    nicht mehr ausgeliefert (Odoo entfernt die Feldknoten beim Aufbereiten der
+#    Ansicht) und laeuft bei direktem Lesen/Schreiben/Suchen in einen
+#    AccessError.
+#  * ``sudo()`` umgeht den Schutz. Gewollt ist das an genau einer Stelle: die
+#    oeffentliche Online-Anmeldung schreibt diese Felder ueber ein
+#    sudo-Recordset (``controllers/website_event.py``) - ohne das koennte
+#    niemand von aussen eine Anmeldung absenden. LESENDE Stellen duerfen
+#    deshalb nicht auf ``sudo()`` ausweichen (siehe ``controllers/portal.py``).
+#  * Gespeicherte Compute-Felder rechnet Odoo als Superuser
+#    (``compute_sudo`` folgt ``store``, odoo/orm/fields.py). ``has_birthdate``,
+#    ``kjr_age`` und ``is_minor`` werden deshalb weiterhin korrekt berechnet,
+#    obwohl ``birthdate`` geschuetzt ist. Sie bleiben bewusst ungeschuetzt: die
+#    Geschaeftsstelle braucht Alter und Minderjaehrigkeit fuer Platzvergabe,
+#    Einwilligungspruefung und die rein aggregierte Statistik - das
+#    Geburtsdatum selbst braucht sie dafuer nicht (Datenminimierung).
+#
+# Wer in der Gruppe ist, entscheidet der KJR (Berechtigungskonzept, im Audit
+# als offene Festlegung gefuehrt). Die Gruppe wird in
+# ``security/kjr_event_security.xml`` angelegt; ``event.group_event_manager``
+# schliesst sie ein, damit die Geschaeftsstelle nichts verliert.
+# ---------------------------------------------------------------------------
+KJR_SENSITIVE_DATA_GROUP = 'kjr_event.group_kjr_event_care'
+
+
 class EventRegistration(models.Model):
     _inherit = 'event.registration'
 
-    birthdate = fields.Date(string='Geburtsdatum')
+    # Alle Felder mit KJR_SENSITIVE_DATA_GROUP sind serverseitig geschützt
+    # (Befund K3) – siehe Erläuterung am Kopf der Datei.
+    birthdate = fields.Date(
+        string='Geburtsdatum',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Nur für die Betreuung/Leitung der Freizeiten sichtbar. Das daraus '
+             'abgeleitete Alter (Feld "Alter (bei Beginn)") bleibt für alle '
+             'Veranstaltungs-Benutzer/innen sichtbar.',
+    )
     has_birthdate = fields.Boolean(
         string='Geburtsdatum erfasst', compute='_compute_kjr_age', store=True,
         help='Hilfsflag, um den Sonderfall Alter 0 (z. B. Säugling) korrekt von '
@@ -17,12 +65,33 @@ class EventRegistration(models.Model):
     )
     kjr_age = fields.Integer(string='Alter (bei Beginn)', compute='_compute_kjr_age', store=True)
     is_minor = fields.Boolean(string='Minderjährig', compute='_compute_kjr_age', store=True)
+    # Bewusst OHNE Feldschutz: der Stand der Einwilligung ist ein Vorgangsmerkmal,
+    # das die Geschäftsstelle für Nachfassen und Platzvergabe braucht; er enthält
+    # selbst keine Gesundheits- oder Kontaktdaten.
     parental_consent = fields.Boolean(string='Einwilligung Erziehungsberechtigte')
-    guardian_name = fields.Char(string='Erziehungsberechtigte/r')
-    guardian_phone = fields.Char(string='Telefon Erziehungsberechtigte/r')
-    emergency_contact = fields.Char(string='Notfallkontakt')
+    guardian_name = fields.Char(
+        string='Erziehungsberechtigte/r',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Kontaktdaten der Erziehungsberechtigten – nur für die Betreuung/Leitung '
+             'der Freizeiten sichtbar.',
+    )
+    guardian_phone = fields.Char(
+        string='Telefon Erziehungsberechtigte/r',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Kontaktdaten der Erziehungsberechtigten – nur für die Betreuung/Leitung '
+             'der Freizeiten sichtbar.',
+    )
+    emergency_contact = fields.Char(
+        string='Notfallkontakt',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Nur für die Betreuung/Leitung der Freizeiten sichtbar; wird ausschließlich '
+             'für den Notfall während der Maßnahme benötigt.',
+    )
 
     # E1/E3 – Ernährung & Bemerkungen
+    # Ernährungsangabe und Freitext können Gesundheits- und Religionsdaten
+    # enthalten (Allergie, halal, koscher) und sind namentlich zugeordnet –
+    # deshalb ebenfalls feldgeschützt.
     dietary_requirements = fields.Selection([
         ('none', 'Keine besonderen'),
         ('vegetarian', 'Vegetarisch'),
@@ -31,9 +100,22 @@ class EventRegistration(models.Model):
         ('kosher', 'Koscher'),
         ('allergy', 'Allergie/Unverträglichkeit'),
         ('other', 'Sonstiges'),
-    ], string='Ernährung')
-    dietary_note = fields.Char(string='Ernährung – Hinweis')
-    notes = fields.Text(string='Bemerkungen')
+    ], string='Ernährung',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Nur für die Betreuung/Leitung der Freizeiten sichtbar.',
+    )
+    dietary_note = fields.Char(
+        string='Ernährung – Hinweis',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Freitext, in dem regelmäßig Allergien und Unverträglichkeiten stehen – '
+             'nur für die Betreuung/Leitung der Freizeiten sichtbar.',
+    )
+    notes = fields.Text(
+        string='Bemerkungen',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Unstrukturierter Freitext, in dem erfahrungsgemäß auch Gesundheits- und '
+             'Familienangaben landen – nur für die Betreuung/Leitung der Freizeiten sichtbar.',
+    )
 
     consent_missing = fields.Boolean(
         string='Einwilligung fehlt', compute='_compute_consent_missing',
@@ -43,6 +125,23 @@ class EventRegistration(models.Model):
         store=True, search='_search_age_out_of_range')
 
     event_payment_required = fields.Boolean(related='event_id.payment_required')
+
+    # E14 – Warteliste
+    kjr_is_waitlist = fields.Boolean(
+        string='Warteliste',
+        help='Diese Anmeldung steht auf der Warteliste und belegt KEINEN regulären Platz. '
+             'Sie wird dazu im unbestätigten Status gehalten, damit sie nicht auf die '
+             'belegten Plätze (seats_taken) zählt. Das Nachrücken löst die Geschäftsstelle '
+             'bewusst manuell aus (Schaltfläche "Von Warteliste nachrücken").',
+    )
+    kjr_waitlist_position = fields.Integer(
+        string='Wartelistenplatz',
+        compute='_compute_kjr_waitlist_position',
+        help='Position auf der Warteliste der Veranstaltung, lückenlos ab 1 nach '
+             'Anmeldezeitpunkt. 0 = steht nicht auf der Warteliste.',
+    )
+    event_waitlist_enabled = fields.Boolean(
+        related='event_id.kjr_waitlist_enabled', string='Warteliste am Event aktiv')
 
     # Juleica-Ausstellung (nur bei Juleica-Schulungen)
     event_is_juleica = fields.Boolean(related='event_id.is_juleica_course')
@@ -71,6 +170,32 @@ class EventRegistration(models.Model):
     kjr_currency_id = fields.Many2one(
         'res.currency', string='Währung',
         default=lambda self: self.env.company.currency_id.id)
+
+    # ------------------------------------------------------------------
+    # DSGVO – Merker für die Anonymisierung (Befund K5 des Audits vom 21.08.2026)
+    #
+    # Reines Protokollfeld: es hält fest, DASS die Anonymisierung gelaufen ist,
+    # damit der Lauf idempotent bleibt (``models/event_event.py``:
+    # ``_kjr_anonymize_expired_registrations`` /
+    # ``_cron_kjr_anonymize_expired_registrations``
+    # setzen und durchsuchen es). Das Feld trifft KEINE Aussage über eine Frist
+    # und löst von sich aus nichts aus – ob und wann anonymisiert wird, steuert
+    # ausschließlich der Systemparameter ``kjr_event.registration_retention_years``,
+    # der im Auslieferungszustand auf 0 (= keine automatische Anonymisierung)
+    # steht. Die Frist selbst ist eine offene Festlegung des KJR bzw. der
+    # Datenschutzbeauftragten (TODO(KJR)/TODO(DSGVO) dort).
+    #
+    # Bewusst OHNE Feldschutz (``groups=``): der Merker enthält keine
+    # personenbezogene Angabe, und die Geschäftsstelle muss ohne Sonderrecht
+    # erkennen können, dass ein Datensatz bereits anonymisiert wurde.
+    # ------------------------------------------------------------------
+    kjr_data_anonymized = fields.Boolean(
+        string='Daten anonymisiert', readonly=True, copy=False, index=True,
+        help='Kennzeichnet, dass die personenbezogenen Angaben dieser Anmeldung '
+             'nach Ablauf der vom KJR festgelegten Aufbewahrungsfrist geleert '
+             'wurden. Wird ausschließlich von der Anonymisierungsroutine gesetzt; '
+             'ein Zurücksetzen stellt die Daten nicht wieder her, sondern führt '
+             'nur zu einem erneuten Durchlauf.')
 
     @api.depends('birthdate', 'event_id.date_begin')
     def _compute_kjr_age(self):
@@ -131,6 +256,11 @@ class EventRegistration(models.Model):
                     base = (rec.event_id.date_begin.date()
                             if rec.event_id.date_begin else fields.Date.context_today(rec))
                     rec.juleica_valid_until = base + relativedelta(years=3)
+                else:
+                    # Manuell gesetztes Datum unverändert lassen. Selbstzuweisung statt
+                    # leerem Zweig, damit im Loop JEDEM Record ein Wert zugewiesen ist
+                    # (Odoo-Vorgabe für Compute-Methoden).
+                    rec.juleica_valid_until = rec.juleica_valid_until
             else:
                 # Keine ausgestellte Juleica -> kein Gültigkeitsdatum (verhindert Geisterwert
                 # in Report/Mail, wenn die Ausstellung wieder zurückgenommen wird).
@@ -253,3 +383,152 @@ class EventRegistration(models.Model):
             'view_mode': 'list,form',
             'domain': [('id', 'in', invoices.ids)],
         }
+
+    # ------------------------------------------------------------------
+    # E14 – Warteliste
+    # ------------------------------------------------------------------
+    def _kjr_waitlist_state(self):
+        """Status, in dem Wartelisten-Anmeldungen gehalten werden (oder ``None``).
+
+        Odoo 19 rechnet die Platzbelegung (seats_taken -> seats_available) nur über
+        registrierte ('open') und erschienene ('done') Anmeldungen; der unbestätigte
+        Status ('draft') zählt NICHT mit. Genau dort werden Wartelistenplätze geparkt –
+        so blockieren sie weder sich gegenseitig noch reguläre Anmeldungen, und die
+        Kern-Platzprüfung (Constraint auf den verfügbaren Plätzen) schlägt gar nicht
+        erst an. Wir umgehen die Kernlogik damit nicht, sondern nutzen sie.
+
+        Der Status wird zur Laufzeit aus der Selection gelesen: fehlt 'draft' in einer
+        Odoo-Variante, wird der Status nicht angefasst (Fallback ``None``).
+        """
+        # TODO(KJR): Gegen den Community-Quellcode von `event` (Odoo 19) gegenprüfen –
+        # der Klon unter ~/odoo-src enthält nur odoo/ und die Enterprise-Module, das
+        # Community-Addon `event` liegt lokal nicht vor. Sollte Odoo 19 die belegten
+        # Plätze anders zählen (z. B. unbestätigte Anmeldungen mitzählen), muss hier ein
+        # anderer Status bzw. eine Erweiterung von _compute_seats gewählt werden.
+        selection = self._fields['state'].selection
+        if isinstance(selection, str):
+            selection = getattr(self, selection)()
+        elif callable(selection):
+            selection = selection(self)
+        keys = [key for key, _label in selection or []]
+        return 'draft' if 'draft' in keys else None
+
+    def _kjr_dispatch_waitlist(self, vals_list):
+        """Verteilt neue Anmeldungen auf reguläre Plätze bzw. auf die Warteliste.
+
+        Läuft VOR ``super().create()``: Ist die Veranstaltung voll und die Warteliste
+        aktiv, wird die Anmeldung als Wartelistenplatz im unbestätigten Status angelegt,
+        statt an der Platzprüfung des Kerns zu scheitern. Ohne aktive Warteliste bleibt
+        der Odoo-Standard unverändert (Abweisung bzw. keine Bestätigung).
+        """
+        waitlist_state = self._kjr_waitlist_state()
+        by_event = defaultdict(list)
+        for vals in vals_list:
+            if vals.get('state') == 'cancel':
+                continue  # abgesagte Anmeldungen belegen keinen Platz
+            if vals.get('kjr_is_waitlist'):
+                # Manuell als Warteliste angelegt -> ebenfalls keinen Platz belegen.
+                if waitlist_state:
+                    vals['state'] = waitlist_state
+                continue
+            if vals.get('event_id'):
+                by_event[vals['event_id']].append(vals)
+        for event in self.env['event.event'].browse(list(by_event)).exists():
+            if not event.kjr_waitlist_enabled:
+                continue
+            free = event._kjr_free_seats()
+            if free is None:
+                continue  # unbegrenzte Plätze -> keine Warteliste nötig
+            for vals in by_event[event.id]:
+                if free > 0:
+                    free -= 1
+                    continue
+                vals['kjr_is_waitlist'] = True
+                if waitlist_state:
+                    vals['state'] = waitlist_state
+        return vals_list
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        self._kjr_dispatch_waitlist(vals_list)
+        registrations = super().create(vals_list)
+        # Sicherheitsnetz: Odoo bestätigt neue Anmeldungen je nach Konfiguration
+        # automatisch. Wartelistenplätze dürfen danach keinen Platz belegen.
+        waitlist_state = self._kjr_waitlist_state()
+        if waitlist_state:
+            wrong = registrations.filtered(
+                lambda r: r.kjr_is_waitlist and r.state not in ('cancel', waitlist_state))
+            if wrong:
+                wrong.write({'state': waitlist_state})
+        return registrations
+
+    def write(self, vals):
+        if vals.get('state') == 'open' and 'kjr_is_waitlist' not in vals:
+            # Wer regulär registriert wird, belegt einen echten Platz und ist damit
+            # kein Wartelistenplatz mehr (sonst würde seats_taken doppeldeutig).
+            vals = dict(vals, kjr_is_waitlist=False)
+        elif vals.get('kjr_is_waitlist') and 'state' not in vals:
+            # Zurück auf die Warteliste -> Platz sofort wieder freigeben.
+            waitlist_state = self._kjr_waitlist_state()
+            if waitlist_state:
+                vals = dict(vals, state=waitlist_state)
+        return super().write(vals)
+
+    @api.depends('kjr_is_waitlist', 'state', 'event_id', 'create_date')
+    def _compute_kjr_waitlist_position(self):
+        """Lückenlose Position je Veranstaltung nach Anmeldezeitpunkt (FIFO).
+
+        Bewusst nicht gespeichert: die Position verschiebt sich, sobald jemand
+        nachrückt oder absagt – ein gespeicherter Wert wäre reihenweise veraltet.
+        """
+        positions = {}
+        events = self.mapped('event_id')._origin
+        if events:
+            # Eine Abfrage für alle betroffenen Veranstaltungen, danach je
+            # Veranstaltung lückenlos durchnummerieren.
+            waiting = self.env['event.registration'].search(
+                [('event_id', 'in', events.ids),
+                 ('kjr_is_waitlist', '=', True),
+                 ('state', '!=', 'cancel')],
+                order='create_date asc, id asc',
+            )
+            counters = defaultdict(int)
+            for reg in waiting:
+                counters[reg.event_id.id] += 1
+                positions[reg.id] = counters[reg.event_id.id]
+        for rec in self:
+            # Noch nicht gespeicherte Anmeldungen (NewId) haben keine Position.
+            rec.kjr_waitlist_position = positions.get(rec._origin.id, 0) if rec.kjr_is_waitlist else 0
+
+    def action_kjr_promote_waitlist(self):
+        """Rückt die gewählte Wartelisten-Anmeldung auf einen freien Platz nach.
+
+        Bewusst manuell: die Geschäftsstelle entscheidet, wer nachrückt (siehe
+        ``event.event.action_kjr_promote_from_waitlist``).
+        """
+        # TODO(KJR): Mailvorlage `mail_template_waitlist_promoted` wird von der
+        # Vorlagen-/Website-Zuständigkeit angelegt. Offen ist außerdem, ob Nachrücker
+        # eine Zusagefrist erhalten sollen (KJR-Entscheidung, keine Zahl erfunden).
+        template = self.env.ref('kjr_event.mail_template_waitlist_promoted',
+                                raise_if_not_found=False)
+        for rec in self:
+            if not rec.kjr_is_waitlist:
+                raise UserError(_(
+                    'Die Anmeldung "%s" steht nicht auf der Warteliste.',
+                    rec.name or rec.display_name))
+            free = rec.event_id._kjr_free_seats()
+            if free is not None and free <= 0:
+                raise UserError(_(
+                    'Für "%s" ist derzeit kein regulärer Platz frei. Bitte zuerst einen Platz '
+                    'freigeben (Anmeldung absagen) oder die maximale Teilnehmerzahl erhöhen.',
+                    rec.event_id.name))
+            # kjr_is_waitlist und Status gemeinsam schreiben, damit die Sonderlogik in
+            # write() nicht greift und der Platz sauber belegt wird.
+            rec.write({'kjr_is_waitlist': False, 'state': 'open'})
+            rec.message_post(body=Markup('<p>%s</p>') % _(
+                'Von der Warteliste auf einen regulären Platz nachgerückt.'))
+            if template:
+                # Die Mailvorlage wird von der Geschäftsstelle gepflegt; fehlt sie,
+                # wird nur protokolliert (kein harter Fehler beim Nachrücken).
+                template.send_mail(rec.id, force_send=False)
+        return True

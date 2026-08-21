@@ -95,11 +95,20 @@
                     <button name="action_submit" string="Einreichen" type="object"
                             class="btn-primary" invisible="state != 'draft'"
                             confirm="Antrag wirklich einreichen? Eine Vollständigkeitsprüfung wird durchgeführt."/>
+                    <!-- Regelweg: submitted -> in_review -> approved. "Zur Prüfung annehmen"
+                         ist deshalb im Status 'submitted' die hervorgehobene Aktion.
+                         "Bewilligen" bleibt dort bewusst sichtbar (bei abgeschaltetem
+                         Vier-Augen-Prinzip ist der direkte Weg zulässig), tritt aber als
+                         btn-secondary optisch zurück. Die harte Absicherung liegt im Modell. -->
                     <button name="action_start_review" string="Zur Prüfung annehmen" type="object"
-                            invisible="state != 'submitted'"/>
+                            class="btn-primary" invisible="state != 'submitted'"/>
+                    <button name="action_approve" string="Bewilligen" type="object"
+                            class="btn-secondary" groups="kjr_grant.group_kjr_reviewer"
+                            invisible="state != 'submitted'"
+                            confirm="Der Antrag wurde noch nicht in Prüfung genommen. Regelweg ist: erst „Zur Prüfung annehmen“, dann bewilligen. Trotzdem direkt bewilligen?"/>
                     <button name="action_approve" string="Bewilligen" type="object"
                             class="btn-success" groups="kjr_grant.group_kjr_reviewer"
-                            invisible="state not in ('submitted','in_review')"
+                            invisible="state != 'in_review'"
                             confirm="Antrag wirklich bewilligen?"/>
                     <button name="action_reject" string="Ablehnen" type="object"
                             class="btn-danger" groups="kjr_grant.group_kjr_reviewer"
@@ -152,6 +161,14 @@
                             </div>
                         </button>
                     </div>
+                    <!-- Hinweis auf abweichenden Regelstand (Fassung zum Maßnahmenbeginn).
+                         Muss genau dort sichtbar sein, wo über die Bewilligung entschieden
+                         wird – nicht nur im Chatter beim Einreichen. -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not applicable_type_warning">
+                        <i class="fa fa-exclamation-triangle me-1" aria-hidden="true"/>
+                        <field name="applicable_type_warning" readonly="1"/>
+                    </div>
                     <div class="oe_title">
                         <label for="name"/>
                         <h1><field name="name" readonly="1"/></h1>
@@ -168,6 +185,10 @@
                         <group string="Förderart">
                             <field name="grant_type_id" readonly="state not in ('draft',)"
                                    options="{'no_create': True}"/>
+                            <!-- Nur informativ: die zum Maßnahmenbeginn gültige Fassung.
+                                 Die Förderart wird bewusst nicht automatisch umgehängt. -->
+                            <field name="applicable_type_id" readonly="1"
+                                   invisible="not applicable_type_id"/>
                             <field name="grant_type_code" invisible="1"/>
                         </group>
                     </group>
@@ -177,6 +198,7 @@
                             <group>
                                 <group string="Maßnahme">
                                     <field name="measure_name"     readonly="state not in ('draft','submitted')"/>
+                                    <field name="measure_zip"      readonly="state not in ('draft','submitted')"/>
                                     <field name="measure_location" readonly="state not in ('draft','submitted')"/>
                                 </group>
                             </group>
@@ -231,27 +253,39 @@
                             </group>
                         </page>
 
-                        <page string="Teilnehmerliste" name="participants">
+                        <page string="Teilnahmeliste" name="participants">
                             <field name="participant_ids"
                                    readonly="state not in ('draft','submitted')">
                                 <list editable="bottom">
                                     <field name="sequence" widget="handle"/>
                                     <field name="name"/>
-                                    <field name="birthdate"/>
-                                    <field name="age" optional="show"/>
+                                    <field name="age"/>
+                                    <field name="gender"/>
                                     <field name="zip_code" optional="show"/>
                                     <field name="city"/>
-                                    <field name="is_leader"/>
+                                    <field name="role_code"/>
                                     <field name="has_juleica"/>
+                                    <field name="birthdate" optional="hide"/>
+                                    <field name="is_leader" optional="hide"/>
                                     <field name="note" optional="hide"/>
                                 </list>
                             </field>
+                            <div class="text-muted small mt-2">
+                                Kennziffer: EA = ehrenamtliche/r Mitarbeiter/in, HA = haupt-/nebenberufliche/r
+                                Mitarbeiter/in, HO = Honorarkraft, PR = Praktikant/in, SO = sonstige.
+                                Teilnehmende bleiben leer — eine gesetzte Kennziffer markiert den Eintrag
+                                automatisch als „Gruppenleitung" (Betreuungsschlüssel).
+                                Das Geburtsdatum ist optional; maßgeblich für die Förderprüfung ist das Alter.
+                            </div>
                             <group>
                                 <group>
                                     <field name="participant_count" string="Einträge in TN-Liste"/>
                                     <field name="tn_count" string="Gemeldete TN-Anzahl"/>
-                                    <field name="participant_consent"
-                                           readonly="state not in ('draft','submitted')"/>
+                                    <!-- Historisch: seit 31.07.2026 auf Wunsch des KJR nicht
+                                         mehr erhoben. Nur noch sichtbar, wenn ein Altantrag den
+                                         Vermerk trägt. -->
+                                    <field name="participant_consent" readonly="1"
+                                           invisible="not participant_consent"/>
                                 </group>
                             </group>
                         </page>
@@ -294,6 +328,45 @@
                             </group>
                         </page>
 
+                        <page string="Belegliste" name="receipts">
+                            <group>
+                                <group string="Erfassung">
+                                    <field name="use_digital_receipts"
+                                           readonly="state not in ('draft','submitted')"/>
+                                </group>
+                            </group>
+                            <div class="text-muted" invisible="not use_digital_receipts">
+                                Diese Belege sind vom Antragsteller zum Zwecke der Nachprüfung 5 Jahre
+                                im Original aufzubewahren.
+                            </div>
+                            <field name="receipt_ids"
+                                   invisible="not use_digital_receipts"
+                                   readonly="state not in ('draft','submitted')">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="date"/>
+                                    <field name="receipt_no"/>
+                                    <field name="partner_name"/>
+                                    <field name="description"/>
+                                    <field name="direction"/>
+                                    <field name="category"/>
+                                    <field name="amount"/>
+                                    <field name="note" optional="hide"/>
+                                </list>
+                            </field>
+                            <group invisible="not use_digital_receipts">
+                                <group string="Summen Belegliste">
+                                    <field name="receipt_count"          readonly="1"/>
+                                    <field name="receipt_income_total"   readonly="1"/>
+                                    <field name="receipt_expense_total"  readonly="1"/>
+                                </group>
+                            </group>
+                            <div class="text-muted" invisible="use_digital_receipts">
+                                Die Belegliste wurde nicht digital erfasst — es gilt die als Datei
+                                hochgeladene Belegliste (Dokumente).
+                            </div>
+                        </page>
+
                         <page string="Zuschuss" name="grant">
                             <group>
                                 <group string="Berechnung">
@@ -313,22 +386,44 @@
                         </page>
 
                         <page string="Bearbeitungsvermerke" name="internal" groups="kjr_grant.group_kjr_reviewer">
+                            <div class="alert alert-info" role="alert">
+                                Die Bearbeitungsvermerke werden über die Workflow-Schaltflächen
+                                im Kopf des Antrags gesetzt und sind hier nicht änderbar.
+                                Nachträgliche Korrekturen sind der Kassenleitung vorbehalten.
+                            </div>
                             <group>
                                 <group string="Bearbeitungsinfos">
                                     <field name="reference_number"/>
-                                    <field name="reviewed_by"/>
+                                    <!-- Wird ausschließlich von action_start_review gesetzt. -->
+                                    <field name="reviewed_by" readonly="1"/>
                                     <field name="date_submitted" readonly="1"/>
                                     <field name="date_approved"  readonly="1" string="Zuschuss genehmigt am"/>
                                     <field name="date_paid"      readonly="1"/>
                                 </group>
                                 <group string="Prüfung &amp; Zahlung">
-                                    <field name="sachlich_richtig"/>
-                                    <field name="payment_ordered"/>
-                                    <field name="payment_ordered_by" invisible="not payment_ordered"/>
-                                    <field name="payment_ordered_date" invisible="not payment_ordered"/>
+                                    <!-- BEWUSST NICHT readonly="1": 'sachlich_richtig' wird von
+                                         KEINER Workflow-Action gesetzt, sondern ist der manuelle
+                                         Vermerk der Sachbearbeiterin. action_approve verlangt ihn
+                                         zwingend – ein hartes readonly würde jede Bewilligung
+                                         blockieren. Ab der Bewilligung ist der Vermerk gesperrt,
+                                         damit er nicht nachträglich verändert wird. -->
+                                    <field name="sachlich_richtig"
+                                           readonly="state in ('approved','paid','rejected')"/>
+                                    <!-- Wird ausschließlich von action_order_payment gesetzt. -->
+                                    <field name="payment_ordered" readonly="1"/>
+                                    <field name="payment_ordered_by" readonly="1"
+                                           invisible="not payment_ordered"/>
+                                    <field name="payment_ordered_date" readonly="1"
+                                           invisible="not payment_ordered"/>
                                 </group>
                             </group>
                             <group>
+                                <group string="Bestätigungen des Antragstellers">
+                                    <field name="confirm_privacy"     readonly="1"/>
+                                    <field name="confirm_guidelines"  readonly="1"/>
+                                    <field name="confirm_truthful"    readonly="1"/>
+                                    <field name="participant_consent" readonly="1" invisible="not participant_consent"/>
+                                </group>
                                 <group string="Ablehnung" invisible="state != 'rejected'">
                                     <field name="rejection_reason"/>
                                 </group>

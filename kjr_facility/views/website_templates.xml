@@ -30,7 +30,7 @@
                                     <p class="card-text text-muted flex-grow-1"><t t-esc="facility.description_short"/></p>
                                     <div class="small text-muted mb-2">
                                         <i class="fa fa-map-marker me-1"/><t t-esc="facility.city"/>
-                                        · <i class="fa fa-bed me-1"/><t t-esc="facility.bed_total"/> Betten
+                                        · <i t-attf-class="fa me-1 #{'fa-street-view' if facility.facility_type == 'campsite' else 'fa-bed'}"/><t t-esc="facility.bed_total"/> <t t-esc="facility.capacity_label"/>
                                         · max. <t t-esc="facility.capacity"/> Pers.
                                     </div>
                                     <a t-attf-href="/service/einrichtung/#{facility.id}" class="btn btn-primary mt-auto">Details &amp; Anfrage</a>
@@ -71,7 +71,7 @@
                                 <ul class="list-unstyled">
                                     <li><i class="fa fa-map-marker me-2"/><t t-esc="facility.city"/></li>
                                     <li><i class="fa fa-users me-2"/>max. <t t-esc="facility.capacity"/> Personen</li>
-                                    <li><i class="fa fa-bed me-2"/><t t-esc="facility.bed_total"/> Betten</li>
+                                    <li><i t-attf-class="fa me-2 #{'fa-street-view' if facility.facility_type == 'campsite' else 'fa-bed'}"/><t t-esc="facility.bed_total"/> <t t-esc="facility.capacity_label"/></li>
                                 </ul>
                                 <t t-if="facility.equipment_ids">
                                     <h6 class="mt-3">Ausstattung</h6>
@@ -103,61 +103,330 @@
                         <t t-foreach="errors.values()" t-as="err"><li><t t-esc="err"/></li></t>
                     </ul></div>
                 </t>
+
+                <!-- Belegungsregeln der Einrichtung vorab transparent machen -->
+                <t t-if="facility.min_persons or facility.min_nights or facility.requires_organized_group or facility.max_advance_months">
+                    <div class="alert alert-secondary">
+                        <strong>Voraussetzungen für eine Buchung von <t t-esc="facility.name"/></strong>
+                        <ul class="mb-0 mt-2">
+                            <li t-if="facility.min_persons">Mindestbelegung:
+                                <strong><t t-esc="facility.min_persons"/> Personen</strong>
+                                (Teilnehmende und Betreuende zusammen).</li>
+                            <li t-if="facility.min_nights">Mindestaufenthalt:
+                                <strong><t t-esc="facility.min_nights"/></strong>
+                                <t t-if="facility.min_nights == 1"> Nacht</t><t t-else=""> Nächte</t>.</li>
+                            <li t-if="facility.requires_organized_group">Die Vergabe erfolgt nur an
+                                organisierte Jugend- und Bildungsgruppen.</li>
+                            <li t-if="facility.max_advance_months">Anfragen sind höchstens
+                                <strong><t t-esc="facility.max_advance_months"/> Monate</strong> im Voraus möglich.</li>
+                        </ul>
+                    </div>
+                </t>
+
+                <!-- Zusatzpositionen aus dem Tarif (keine Beträge im Template hartkodiert) -->
+                <t t-if="tariff and (tariff.final_cleaning_fee or tariff.visitor_tax_per_person_night)">
+                    <div class="alert alert-info">
+                        <strong>Diese Positionen kommen zu Unterkunft und Verpflegung hinzu</strong>
+                        <ul class="mb-0 mt-2">
+                            <li t-if="tariff.final_cleaning_fee">
+                                <strong>Endreinigung:</strong>
+                                <t t-esc="'%.2f €' % tariff.final_cleaning_fee"/> einmalig je Aufenthalt.
+                            </li>
+                            <li t-if="tariff.visitor_tax_per_person_night">
+                                <strong>Fremdenverkehrsbeitrag:</strong>
+                                <t t-esc="'%.2f €' % tariff.visitor_tax_per_person_night"/> pro
+                                teilnehmender Person und Nacht. Den Beitrag führen wir an die Gemeinde ab.
+                                Ihre Betreuungspersonen sind als Begleitpersonen befreit – sie rechnen wir
+                                automatisch heraus, Sie müssen dafür nichts angeben. Sind darüber hinaus
+                                einzelne Teilnehmende befreit (z. B. Einwohnerinnen und Einwohner der
+                                Standortgemeinde, Kinder unter 7 Jahren, Schwerbehinderte), tragen Sie
+                                deren Anzahl unten ein.
+                            </li>
+                        </ul>
+                    </div>
+                </t>
+
                 <form method="post" t-attf-action="/service/einrichtung/#{facility.id}/anfrage">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Anreise *</label>
-                            <input type="date" name="check_in" class="form-control"
+                            <input type="date" name="check_in"
+                                   t-attf-class="form-control#{' is-invalid' if errors.get('check_in') else ''}"
                                    t-att-value="values.get('check_in','')" required="required"/>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Abreise *</label>
-                            <input type="date" name="check_out" class="form-control"
+                            <input type="date" name="check_out"
+                                   t-attf-class="form-control#{' is-invalid' if errors.get('check_out') else ''}"
                                    t-att-value="values.get('check_out','')" required="required"/>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Teilnehmer *</label>
-                            <input type="number" name="participant_count" class="form-control" min="1"
-                                   t-att-value="values.get('participant_count','')" required="required"/>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Betreuer</label>
-                            <input type="number" name="leader_count" class="form-control" min="0"
-                                   t-att-value="values.get('leader_count','')"/>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Verpflegung</label>
-                            <select name="meal_option" class="form-select">
-                                <option value="none">Selbstverpflegung</option>
-                                <option value="breakfast">Frühstück</option>
-                                <option value="half">Halbpension</option>
-                                <option value="full">Vollpension</option>
-                            </select>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Ansprechpartner/in *</label>
+                            <input type="text" name="contact_person"
+                                   t-attf-class="form-control#{' is-invalid' if errors.get('contact_person') else ''}"
+                                   t-att-value="values.get('contact_person','')" required="required"/>
+                            <div class="form-text">Name der Person, die die Gruppe leitet und für uns vor
+                                und während des Aufenthalts erreichbar ist.</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Gruppenbezeichnung</label>
                             <input type="text" name="group_name" class="form-control"
                                    t-att-value="values.get('group_name','')"/>
+                            <div class="form-text">z. B. „Jugendgruppe St. Martin“ oder „Klasse 7b“.</div>
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Teilnehmende (Anzahl) *</label>
+                            <input type="number" name="participant_count" min="1"
+                                   t-attf-class="form-control#{' is-invalid' if errors.get('participant_count') else ''}"
+                                   t-att-value="values.get('participant_count','')" required="required"/>
+                            <div class="form-text">Anzahl der Personen in der Gruppe ohne Begleitpersonen.</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Betreuende (Anzahl)</label>
+                            <input type="number" name="leader_count" class="form-control" min="0"
+                                   t-att-value="values.get('leader_count','')"/>
+                            <div class="form-text">Anzahl der volljährigen Begleitpersonen – nicht zu
+                                verwechseln mit der Ansprechpartnerin bzw. dem Ansprechpartner oben.</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Verpflegung</label>
+                            <select name="meal_option" class="form-select">
+                                <option value="none"
+                                        t-att-selected="'selected' if values.get('meal_option','none') == 'none' else None">Selbstverpflegung</option>
+                                <option value="breakfast"
+                                        t-att-selected="'selected' if values.get('meal_option') == 'breakfast' else None">Frühstück</option>
+                                <option value="half"
+                                        t-att-selected="'selected' if values.get('meal_option') == 'half' else None">Halbpension</option>
+                                <option value="full"
+                                        t-att-selected="'selected' if values.get('meal_option') == 'full' else None">Vollpension</option>
+                            </select>
+                        </div>
+                        <t t-if="tariff and tariff.visitor_tax_per_person_night">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Weitere vom Fremdenverkehrsbeitrag befreite
+                                    Teilnehmende (Anzahl)</label>
+                                <input type="number" name="visitor_tax_exempt_count" min="0"
+                                       t-attf-class="form-control#{' is-invalid' if errors.get('visitor_tax_exempt_count') else ''}"
+                                       t-att-value="values.get('visitor_tax_exempt_count','')"/>
+                                <div class="form-text">Anzahl der <strong>Teilnehmenden</strong>, die nach
+                                    der Satzung der Gemeinde vom Beitrag befreit sind (Einwohnerinnen und
+                                    Einwohner der Standortgemeinde, Kinder unter 7 Jahren, Schwerbehinderte).
+                                    Ihre Betreuungspersonen bitte <strong>nicht</strong> mitzählen – sie sind
+                                    ohnehin befreit und werden automatisch herausgerechnet. Im Zweifel leer
+                                    lassen – wir prüfen das gemeinsam mit Ihnen.</div>
+                            </div>
+                        </t>
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">E-Mail</label>
                             <input type="email" name="contact_email" class="form-control"
                                    t-att-value="values.get('contact_email','')"/>
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Telefon</label>
                             <input type="tel" name="contact_phone" class="form-control"
                                    t-att-value="values.get('contact_phone','')"/>
                         </div>
+                        <t t-if="facility.requires_organized_group">
+                            <div class="col-12 mb-3">
+                                <div class="form-check">
+                                    <input type="checkbox" name="is_organized_group" value="1"
+                                           id="kjr_is_organized_group" required="required"
+                                           t-attf-class="form-check-input#{' is-invalid' if errors.get('is_organized_group') else ''}"
+                                           t-att-checked="'checked' if values.get('is_organized_group') else None"/>
+                                    <label class="form-check-label fw-bold" for="kjr_is_organized_group">
+                                        Wir sind eine organisierte Jugend- oder Bildungsgruppe *
+                                    </label>
+                                    <div class="form-text">Das sind Gruppen in Trägerschaft eines
+                                        Jugendverbands, Vereins, einer Schule, Kirchengemeinde, Kommune
+                                        oder eines anerkannten Trägers der freien Jugendhilfe, deren Aufenthalt
+                                        einen jugend- oder bildungsbezogenen Zweck verfolgt und die von
+                                        volljährigen Personen begleitet wird. Private Feiern und rein
+                                        touristische Aufenthalte fallen nicht darunter.</div>
+                                </div>
+                            </div>
+                        </t>
                         <div class="col-12 mb-3">
                             <label class="form-label">Anmerkungen</label>
                             <textarea name="note" class="form-control" rows="3"
                                       t-esc="values.get('note','')"/>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-lg">
+
+                    <!-- Kostenvorschau: serverseitig aus demselben Modell berechnet -->
+                    <t t-if="preview">
+                        <div class="card mb-3">
+                            <div class="card-header"><strong>Kostenvorschau (unverbindlich)</strong></div>
+                            <div class="card-body">
+                                <div t-if="preview.get('occupancy_warning')" class="alert alert-warning py-2">
+                                    <i class="fa fa-info-circle me-1"/><t t-esc="preview.get('occupancy_warning')"/>
+                                </div>
+                                <table class="table table-sm mb-2">
+                                    <tbody>
+                                        <tr>
+                                            <td>Unterkunft (<t t-esc="preview.get('nights')"/> Nächte,
+                                                <t t-esc="preview.get('participant_count')"/> Teilnehmende)</td>
+                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('accommodation')"/></td>
+                                        </tr>
+                                        <tr t-if="preview.get('meals')">
+                                            <td>Verpflegung</td>
+                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('meals')"/></td>
+                                        </tr>
+                                        <tr t-if="preview.get('cleaning')">
+                                            <td>Endreinigung (einmalig)</td>
+                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('cleaning')"/></td>
+                                        </tr>
+                                        <tr t-if="preview.get('visitor_tax')">
+                                            <td>Fremdenverkehrsbeitrag</td>
+                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('visitor_tax')"/></td>
+                                        </tr>
+                                        <tr t-if="preview.get('tax')">
+                                            <td>zzgl. Umsatzsteuer</td>
+                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('tax')"/></td>
+                                        </tr>
+                                        <tr class="fw-bold border-top">
+                                            <td>Gesamt (brutto)</td>
+                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('total')"/></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <p class="small text-muted mb-0">
+                                    Berechnet auf Basis des Tarifs „<t t-esc="tariff.name"/>“. Welcher Tarif
+                                    für Ihre Gruppe gilt, legt die Geschäftsstelle bei der Bearbeitung Ihrer
+                                    Anfrage fest – der endgültige Betrag kann davon abweichen.
+                                </p>
+                            </div>
+                        </div>
+                    </t>
+                    <t t-if="preview_requested and not preview">
+                        <!-- Zwei verschiedene Gründe, aus denen keine Vorschau erscheint:
+                             (1) die Eingaben reichen nicht aus, (2) am Tarif ist noch kein
+                             Übernachtungssatz gepflegt (tariff_unpriced, siehe
+                             KjrFacilityWebsite._tariff_rate_maintained). Im Fall (2) sind die
+                             Eingaben vollständig — dort fehlende Angaben zu bemängeln wäre
+                             falsch, und eine Aufstellung mit 0,00 € wäre eine falsche
+                             Preisauskunft. -->
+                        <div t-if="tariff_unpriced" class="alert alert-info">
+                            Für <strong><t t-esc="facility.name"/></strong> sind die Preise derzeit
+                            noch nicht hinterlegt – deshalb können wir Ihnen hier keine
+                            Kostenvorschau anzeigen. Bitte senden Sie die Anfrage ab: Die
+                            Geschäftsstelle nennt Ihnen die Kosten mit dem Angebot.
+                        </div>
+                        <div t-else="" class="alert alert-warning">
+                            Für die Kostenvorschau benötigen wir Anreise, Abreise und die Anzahl der
+                            Teilnehmenden.
+                            <t t-if="not tariff"> Für diese Einrichtung ist derzeit kein Tarif
+                                hinterlegt – bitte senden Sie die Anfrage ab, wir melden uns mit einem
+                                Angebot bei Ihnen.</t>
+                        </div>
+                    </t>
+
+                    <!-- Datenschutzhinweis nach Art. 13 DSGVO (Audit-Befund K2 vom
+                         21.08.2026: das Formular erhob Namen, Kontaktdaten und
+                         Gruppenangaben ohne jede Datenschutzinformation).
+
+                         Platzierung direkt über den Schaltflächen: der Hinweis muss zum
+                         Zeitpunkt der Erhebung sichtbar sein, nicht in einem Popup, das
+                         Werbeblocker unterdrücken oder Screenreader überspringen können
+                         (gleiche Begründung wie bei den Nutzungshinweisen im Verleih).
+
+                         Bewusst OHNE Bestätigungs-Checkbox: hier wird informiert, keine
+                         Einwilligung eingeholt.
+
+                         TODO(KJR): Die mit "wird vom KJR ergänzt" markierten Angaben
+                         füllen Geschäftsstelle bzw. Datenschutzbeauftragte VOR dem
+                         Go-live aus. Sie sind absichtlich nicht vorbelegt, weil sie noch
+                         nicht festgelegt sind: Verantwortlicher, Kontakt der/des
+                         Datenschutzbeauftragten, Rechtsgrundlage (Audit-Befund K1,
+                         offen), Aufbewahrungs-/Löschfrist (nicht entschieden; es läuft
+                         derzeit keine automatische Löschung – bewusst nicht auf der
+                         Seite behauptet, sondern hier vermerkt), technischer Betrieb
+                         (Hosting) und zuständige Aufsichtsbehörde. Alles übrige
+                         beschreibt nur das tatsächliche Verhalten des Systems und ist
+                         KEINE rechtliche Bewertung. -->
+                    <section class="o_kjr_privacy_notice alert alert-light border mt-4 mb-3"
+                             role="region" aria-labelledby="kjr_privacy_facility_heading">
+                        <h2 class="alert-heading h6" id="kjr_privacy_facility_heading">
+                            <i class="fa fa-lock me-2" aria-hidden="true"/>Datenschutz – was mit Ihren Angaben passiert
+                        </h2>
+                        <p class="small mb-3">
+                            Kurz und ohne Fachsprache: Hier steht, was wir speichern, wofür wir
+                            es brauchen und wer es sehen kann. Ausführlich steht das in der
+                            <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
+                        </p>
+                        <dl class="row small mb-0">
+                            <dt class="col-sm-4">Was wir speichern</dt>
+                            <dd class="col-sm-8">An- und Abreisedatum, den Namen der
+                                Ansprechpartnerin bzw. des Ansprechpartners, die
+                                Gruppenbezeichnung, die Anzahl der Teilnehmenden und
+                                Betreuenden, die gewünschte Verpflegung, E-Mail-Adresse,
+                                Telefonnummer und Ihre Anmerkungen.
+                                <span class="d-block mt-1">Namen einzelner Teilnehmender –
+                                    insbesondere von Kindern und Jugendlichen – fragen wir hier
+                                    bewusst nicht ab. Für uns zählen nur Anzahlen.</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Wofür wir sie nutzen</dt>
+                            <dd class="col-sm-8">Um Ihre Buchungsanfrage zu bearbeiten, die
+                                Belegung der Einrichtung zu planen, die Kosten zu berechnen und
+                                Ihnen ein Angebot zu machen, für Rückfragen zum Aufenthalt sowie
+                                für Rechnung und Zahlung. Für den Fremdenverkehrsbeitrag rechnen
+                                wir ausschließlich mit Anzahlen und führen ihn an die Gemeinde ab.</dd>
+
+                            <dt class="col-sm-4">Wer sie sehen kann</dt>
+                            <dd class="col-sm-8">Die Geschäftsstelle des Kreisjugendrings
+                                Oberallgäu und die Personen, die die Einrichtung und die
+                                Abrechnung betreuen.
+                                <span class="d-block mt-1">Technischer Betrieb der Website:
+                                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                                </span>
+                            </dd>
+
+                            <dt class="col-sm-4">Verantwortlich</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                                <span class="d-block text-muted">Name, Anschrift und Kontakt der
+                                    verantwortlichen Stelle.</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                                <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Rechtsgrundlage</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                                <span class="d-block text-muted">Legt der Kreisjugendring gemeinsam
+                                    mit der Datenschutzbeauftragten fest.</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Wie lange wir speichern</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                                <span class="d-block text-muted">Die Aufbewahrungsdauer legt der
+                                    Kreisjugendring fest und trägt sie hier ein.</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Ihre Rechte</dt>
+                            <dd class="col-sm-8">Welche Rechte Sie haben – zum Beispiel Auskunft,
+                                Berichtigung, Löschung oder Einschränkung – und wie Sie sie geltend
+                                machen, steht in der
+                                <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
+                                <span class="d-block mt-1">Zuständige Aufsichtsbehörde:
+                                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                                </span>
+                            </dd>
+                        </dl>
+                    </section>
+
+                    <button type="submit" name="action" value="submit" class="btn btn-primary btn-lg">
                         <i class="fa fa-paper-plane me-1"/>Anfrage senden
+                    </button>
+                    <button type="submit" name="action" value="preview" formnovalidate="formnovalidate"
+                            class="btn btn-outline-primary btn-lg">
+                        <i class="fa fa-calculator me-1"/>Kosten berechnen
                     </button>
                     <a t-attf-href="/service/einrichtung/#{facility.id}" class="btn btn-outline-secondary btn-lg">Abbrechen</a>
                 </form>

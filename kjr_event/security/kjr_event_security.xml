@@ -1,37 +1,99 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo noupdate="1">
+<odoo>
 
-    <!-- E4: Gruppe für Kooperationspartner (Portal) -->
-    <record id="group_kjr_cooperation_partner" model="res.groups">
-        <field name="name">KJR Kooperationspartner</field>
-        <!-- Odoo 19: res.groups hat kein category_id mehr (privilege_id/res.groups.privilege).
-             Für diese versteckte Portal-Gruppe ist keine Kategorie/Privilege nötig. -->
-        <field name="implied_ids" eval="[(4, ref('base.group_portal'))]"/>
-        <field name="comment">Externe Kooperationspartner mit Lesezugriff auf die Teilnehmerlisten der ihnen zugeordneten KJR-Veranstaltungen.</field>
+    <!-- ==================================================================
+         K3 (Datenschutz-Audit vom 21.08.2026):
+         Eigene interne Gruppe für die sensiblen Teilnehmerangaben.
+
+         Ausgangslage: kjr_event hatte keine eigene interne Gruppe, die
+         Berechtigung hing allein an der Odoo-Standardrolle
+         "Veranstaltungen / Benutzer" (event.group_event_user). Damit sah
+         jede Person mit dieser Rolle sämtliche Anmeldungen aller Freizeiten
+         samt Geburtsdatum, Ernährungs-Freitext (dort stehen Allergien im
+         Klartext), Notfallkontakt und Bemerkungen.
+
+         Diese Gruppe trägt jetzt den Feldschutz (``groups=`` an den Feldern
+         in models/event_registration.py). Sie schließt die Standardrolle
+         "Veranstaltungen / Benutzer" ein, damit die Betreuung/Leitung wie
+         bisher mit den Veranstaltungen arbeiten kann; zusätzliche
+         Modellrechte entstehen dadurch nicht.
+
+         Diese Datensätze stehen bewusst NICHT unter noupdate="1": eine
+         Gruppendefinition soll bei einem Modul-Update mitgepflegt werden.
+         Die Zuordnung der Personen zur Gruppe ist Nutzerdatum und wird hier
+         nicht gesetzt.
+
+         TODO(KJR): Wer in die Gruppe gehört, ist eine offene Festlegung des
+         KJR (Berechtigungskonzept/TOM, im Audit ausdrücklich als
+         Voraussetzung genannt). Im Auslieferungszustand ist NIEMAND explizit
+         in der Gruppe; sie erreichen zunächst nur die Personen mit der Rolle
+         "Veranstaltungen / Administrator" (siehe unten).
+         ================================================================== -->
+
+    <record id="res_groups_privilege_kjr_event" model="res.groups.privilege">
+        <field name="name">KJR Freizeiten</field>
+        <field name="description">Zugriff auf die sensiblen Angaben der Teilnehmenden von KJR-Freizeiten und -Schulungen.</field>
+        <field name="placeholder">Kein Zugriff</field>
+        <field name="category_id" ref="base.module_category_marketing"/>
+        <field name="sequence">100</field>
     </record>
 
-    <!-- Lesezugriff Kooperationspartner auf zugeordnete Veranstaltungen -->
-    <record id="rule_kjr_cooperation_event" model="ir.rule">
-        <field name="name">KJR: Kooperationspartner sieht zugeordnete Veranstaltungen</field>
-        <field name="model_id" ref="event.model_event_event"/>
-        <field name="groups" eval="[(4, ref('group_kjr_cooperation_partner'))]"/>
-        <field name="domain_force">['|', ('cooperation_partner_id', '=', user.partner_id.id), ('cooperation_user_ids', 'in', user.id)]</field>
-        <field name="perm_read" eval="True"/>
-        <field name="perm_write" eval="False"/>
-        <field name="perm_create" eval="False"/>
-        <field name="perm_unlink" eval="False"/>
+    <record id="group_kjr_event_care" model="res.groups">
+        <field name="name">Betreuung/Freizeitleitung (sensible Teilnehmerdaten)</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_kjr_event"/>
+        <!-- Schließt die Standardrolle "Veranstaltungen / Benutzer" ein: die
+             Betreuung arbeitet ohnehin mit Veranstaltungen und Anmeldungen. -->
+        <field name="implied_ids" eval="[(4, ref('event.group_event_user'))]"/>
+        <field name="comment">Darf zusätzlich zu den Veranstaltungsdaten die besonders schutzbedürftigen Angaben der Teilnehmenden sehen und pflegen: Geburtsdatum, Ernährung samt Hinweis-Freitext (dort stehen regelmäßig Allergien), Erziehungsberechtigte und deren Telefonnummer, Notfallkontakt sowie das Bemerkungsfeld. Diese Angaben sind für die Durchführung einer Freizeit erforderlich, nicht für die allgemeine Veranstaltungsverwaltung. Ohne diese Gruppe sind die Felder serverseitig nicht lesbar – auch nicht über eine direkte Datenabfrage.</field>
     </record>
 
-    <!-- Lesezugriff Kooperationspartner auf Anmeldungen ihrer Veranstaltungen -->
-    <record id="rule_kjr_cooperation_registration" model="ir.rule">
-        <field name="name">KJR: Kooperationspartner sieht Teilnehmer/innen zugeordneter Veranstaltungen</field>
-        <field name="model_id" ref="event.model_event_registration"/>
-        <field name="groups" eval="[(4, ref('group_kjr_cooperation_partner'))]"/>
-        <field name="domain_force">['|', ('event_id.cooperation_partner_id', '=', user.partner_id.id), ('event_id.cooperation_user_ids', 'in', user.id)]</field>
-        <field name="perm_read" eval="True"/>
-        <field name="perm_write" eval="False"/>
-        <field name="perm_create" eval="False"/>
-        <field name="perm_unlink" eval="False"/>
+    <!-- Die Geschäftsstelle (Rolle "Veranstaltungen / Administrator") führt die
+         Freizeiten inhaltlich und darf die Angaben weiterhin sehen. Ohne diese
+         Einbindung würde der Feldschutz sie mit aussperren.
+         Bewusst ohne noupdate, damit die Verknüpfung auch bei einem Update auf
+         eine bereits installierte Instanz gesetzt wird (unter noupdate="1"
+         würde ein bestehender Datensatz wie event.group_event_manager beim
+         Update NICHT mehr angefasst). -->
+    <record id="event.group_event_manager" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_kjr_event_care'))]"/>
     </record>
+
+    <data noupdate="1">
+
+        <!-- E4: Gruppe für Kooperationspartner (Portal) -->
+        <record id="group_kjr_cooperation_partner" model="res.groups">
+            <field name="name">KJR Kooperationspartner</field>
+            <!-- Odoo 19: res.groups hat kein category_id mehr (privilege_id/res.groups.privilege).
+                 Für diese versteckte Portal-Gruppe ist keine Kategorie/Privilege nötig. -->
+            <field name="implied_ids" eval="[(4, ref('base.group_portal'))]"/>
+            <field name="comment">Externe Kooperationspartner mit Lesezugriff auf die Teilnehmerlisten der ihnen zugeordneten KJR-Veranstaltungen. Bewusst NICHT in der Gruppe "Betreuung/Freizeitleitung": die geschützten Felder (Geburtsdatum, Ernährung, Notfallkontakt, Erziehungsberechtigte, Bemerkungen) bleiben für externe Empfänger serverseitig gesperrt (Befunde K3/K4).</field>
+        </record>
+
+        <!-- Lesezugriff Kooperationspartner auf zugeordnete Veranstaltungen -->
+        <record id="rule_kjr_cooperation_event" model="ir.rule">
+            <field name="name">KJR: Kooperationspartner sieht zugeordnete Veranstaltungen</field>
+            <field name="model_id" ref="event.model_event_event"/>
+            <field name="groups" eval="[(4, ref('group_kjr_cooperation_partner'))]"/>
+            <field name="domain_force">['|', ('cooperation_partner_id', '=', user.partner_id.id), ('cooperation_user_ids', 'in', user.id)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <!-- Lesezugriff Kooperationspartner auf Anmeldungen ihrer Veranstaltungen -->
+        <record id="rule_kjr_cooperation_registration" model="ir.rule">
+            <field name="name">KJR: Kooperationspartner sieht Teilnehmer/innen zugeordneter Veranstaltungen</field>
+            <field name="model_id" ref="event.model_event_registration"/>
+            <field name="groups" eval="[(4, ref('group_kjr_cooperation_partner'))]"/>
+            <field name="domain_force">['|', ('event_id.cooperation_partner_id', '=', user.partner_id.id), ('event_id.cooperation_user_ids', 'in', user.id)]</field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+    </data>
 
 </odoo>

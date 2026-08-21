@@ -1,5 +1,141 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.10.0.0 — Restpaket: Regelversionierung, Vier-Augen-Prinzip, Hilfeseite
+
+Umsetzung der offenen code-lösbaren Punkte aus dem Abgleich „Funktionsideen ↔ Code"
+(Vault: `Projects/KJR Ideen-Code-Abgleich 2026-08.md`).
+
+### Neu
+- **Datierte Richtlinienfassungen**: `kjr.grant.type` hat `valid_from` / `valid_to` und
+  `rule_group`; überlappende Zeiträume derselben Regelgruppe werden abgewiesen.
+  Neue API `find_for_date(code, date_ref)` wählt die zum Maßnahmenbeginn gültige Fassung.
+  Bisher überschrieb eine Richtlinienänderung Altanträge rückwirkend — in einer
+  Verwendungsprüfung angreifbar. Altbestand ohne Datumsgrenzen bleibt über einen
+  Fallback gültig. Der Antrag zeigt über `applicable_type_id` /
+  `applicable_type_warning` an, wenn die gewählte Fassung von der gültigen abweicht.
+- **Vier-Augen-Prinzip technisch erzwungen** (vorher nur dokumentiert). Prüfen,
+  Bewilligen und Anweisen müssen von verschiedenen Personen kommen; abschaltbar über
+  den Systemparameter `kjr_grant.enforce_four_eyes` (Default `1`) für den
+  Ein-Personen-Betrieb. Die Bearbeitungsvermerke sind gegen direktes Schreiben
+  geschützt — die Administrator-Gruppe darf korrigieren, jede Korrektur landet im
+  Chatter. Absicherung über eine prozessinterne `ContextVar` (NICHT über den
+  Odoo-Kontext, der bei `call_kw` vom Client kommt), plus Guards in `create()`,
+  `default_get()` und `copy=False` auf allen Vermerken.
+- **IBAN-Prüfung nach ISO 13616** (Mod-97, ohne `base_iban`) und BIC-Format nach
+  ISO 9362 — im Modell und bereits im Website-Formular, mit feldgenauer Fehlermeldung.
+- **Hilfeseite** `/service/zuschuss-hilfe`: wer ist antragsberechtigt, welche Förderart
+  passt, welche Unterlagen, Fristen, Schritt für Schritt, häufige Fehler. Förderarten
+  und Pflichtunterlagen werden dynamisch aus den Stammdaten gelesen.
+- **Belegliste-Vorlage** `/service/zuschuss/belegliste-vorlage` zum Ausdrucken,
+  spaltengleich zur digitalen Belegliste (ANBest-P Nr. 6.4).
+- **Teilnahmeliste als Unterschriftenliste** (QWeb-PDF, A4 quer) mit Kennziffern-Legende
+  und Leerzeilen zum handschriftlichen Ergänzen. Auf die Sachbearbeiter-Gruppe
+  beschränkt — die Liste enthält Klarnamen und Wohnorte auch Minderjähriger.
+
+### Geändert
+- **§ 4.4 Jugendleiterschulung**: Höchstbetrag von 75 € auf **50 €**. Beleg:
+  Terminmitschnitt vom 30.07.2026, 00:16:19 — Bora Berlinger wörtlich: „bei
+  Jugendleiterschulung, da ist der Maximalbetrag zum Beispiel 50 und nicht 75."
+  Auch `jl_max_with_juleica` und der Beschreibungstext wurden angeglichen, sonst
+  hätte die globale Deckelung eine im Portal zugesagte Leistung stillschweigend
+  gekappt. **Auslegung — bitte von Bora bestätigen**, beide Varianten stehen als
+  TODO im Code.
+- **Förderart „Investitionszuschuss (Landkreis)"** deaktiviert (Entscheidung
+  30.07.2026).
+- Beide Stammdatenkorrekturen wirken über `migrations/19.0.10.0.0/post-migration.py`
+  auch auf bestehende Datenbanken — `noupdate="1"` allein erreicht sie nicht. Das
+  Skript ist idempotent und überschreibt keine manuell gepflegten Werte.
+- Wording durchgängig **„Jugendleiter" → „Gruppenleitung"** (Labels, Meldungen,
+  Bescheid, Portal). Ausgenommen: Förderart-Name „§ 4.4 Jugendleiterschulung" und
+  „Juleica".
+- `contact_email` und `contact_person` sind im Website-Formular jetzt Pflicht und
+  werden serverseitig geprüft (bisher nur Client-seitig bzw. gar nicht).
+- Belegliste-Pflicht im Formular hängt jetzt an `requires_receipt` der Förderart —
+  für § 4.4 war das Formular vorher unabsendbar.
+- Förderart-Auswahl und Hilfeseite filtern nach Gültigkeit, sonst erschiene ab der
+  ersten zweiten Fassung dieselbe Förderart doppelt.
+- Jahreslimit auf der Hilfeseite nennt die geteilte Limitgruppe (§ 4.1a und § 4.1b
+  teilen sich die vier Anträge — vorher stand dort irreführend „4 je Förderart").
+
+### Behoben
+- Fehlerhafte IBAN im Website-Formular lief in einen generischen `except` und der
+  Antragsteller sah nur „Bitte versuchen Sie es erneut". Zusätzlich fehlte ein
+  `cr.rollback()` — ein halb angelegter Antrag mit verbrauchter Sequenznummer blieb
+  in der Datenbank stehen.
+- `action_reset_draft` ließ die Bearbeitungsvermerke stehen; nach Zurücksetzen und
+  erneuter Bewilligung galt die alte Zahlungsanweisung weiter.
+
+## 19.0.9.0.0 — Zuschussantrag: Feldbezeichnungen & digitale Belegliste (Bora-Abstimmung 30.07.2026)
+
+Ergebnis des Kundentermins mit Barbora „Bora" Berlinger (Kassenleitung KJR Oberallgäu)
+am 30.07.2026 zu den Feldbezeichnungen im öffentlichen Zuschuss-Antragsformular
+(`/service/antrag-stellen`). Alle Wortlaute sind mit ihr abgestimmt.
+
+### Neu
+- **Digitale Belegliste** als neues Modell `kjr.grant.receipt` (Datum, Beleg-Nr.,
+  Empfänger/Einzahler, Bezeichnung, Art, Position, Betrag, Bemerkung), verknüpft über
+  `receipt_ids` am Antrag. Die Positionen spiegeln 1:1 die Kostenaufstellung des Antrags;
+  Prüfungen stellen sicher, dass der Betrag > 0 ist und Position und Art (Einnahme/Ausgabe)
+  zusammenpassen. Kennzahlen am Antrag: `receipt_count`, `receipt_income_total`,
+  `receipt_expense_total`.
+- Neuer Formularblock **„Belegliste"** zwischen Kostenaufstellung und Dokumenten mit der
+  Checkbox `use_digital_receipts` („Belegliste hier digital ausfüllen"). Entweder-oder,
+  vom System geprüft: ist sie aktiv, entfällt der Datei-Upload „Belegliste"; ist sie inaktiv,
+  bleibt der Upload sichtbar und Pflicht. Hinweistext: „Diese Belege sind vom Antragsteller
+  zum Zwecke der Nachprüfung 5 Jahre im Original aufzubewahren."
+- **Vier Bestätigungs-Checkboxen** statt einer, alle Pflicht zum Absenden: Datenschutz­hinweise
+  (`confirm_privacy`, mit Link auf `/datenschutz`), Zuschussrichtlinien (`confirm_guidelines`),
+  Vollständigkeit/Wahrheit inkl. Rückzahlungshinweis (`confirm_truthful`) sowie die bestehende
+  Einwilligung der Erziehungsberechtigten (`participant_consent`, Wortlaut unverändert).
+- **PLZ des Maßnahmenorts** als eigenes Feld `measure_zip` — getrennt vom Ort, für Boras Statistik.
+- Teilnahmeliste: **Geschlecht** (`gender`) und **Kennziffer** (`role_code`: EA/HA/HO/PR/SO
+  laut Papier-Teilnahmeliste) je Teilnehmer/in. Die Kennziffer setzt `is_leader` automatisch
+  (weiterhin manuell überschreibbar).
+- Neues Dokumentenfeld **„Neugründungsformular"** (`foundation_file`) — nur sichtbar und
+  pflichtig bei der Förderart Gruppenstarthilfe (Code `4_7`), per JS umgeschaltet.
+
+### Geändert
+- **Alter statt Geburtsdatum:** `age` ist jetzt gespeichert und manuell eingebbar
+  (`store=True, readonly=False`); aus `birthdate` wird nur noch gerechnet, wenn ein
+  Geburtsdatum vorliegt — ein eingetippter Wert wird nicht mehr überschrieben.
+  `birthdate` bleibt im Backend erhalten, entfällt aber im Website-Formular.
+- **Teilnehmerliste → „Teilnahmeliste"** (durchgängig, umgeht das Gendern). Neuer Hinweistext:
+  „Laut Zuschussrichtlinien ist die Teilnahmeliste bei Maßnahmen mit Teilnehmenden Pflicht.
+  Bitte alle Teilnehmer/innen eintragen." Spalten neu: Nr. | Name, Vorname * | Alter * |
+  Geschlecht | PLZ | Wohnort | Kennziffer | Juleica, dazu eine Legende zu den Kennziffern.
+  Die Checkbox „Leitung" entfällt zugunsten der Kennziffer.
+- Labels präzisiert: „Beginn Datum *" → **„Beginn der Maßnahme Datum *"**, „Ende Datum *" →
+  **„Ende der Maßnahme Datum *"**; „TN aus anderen Regionen (max. 25 %)" → **„davon Teilnehmer
+  aus anderen Regionen"** (Zusatz „(max. 25 %)" als Hinweis, bleibt optional);
+  „8. Kurzbericht (optional)" → **„Zusatzinformationen"** mit dem Feld **„Ihre Nachricht an uns
+  (optional)"** (der eigentliche Bericht ist ein Pflichtdokument — „Kurzbericht" war irreführend).
+- Ort der Maßnahme jetzt zwei Felder: **„PLZ *"** + **„Ort der Maßnahme *"**
+  (Beispiele „86871" / „Skylinepark, Rammingen").
+- Beispiel Maßnahmenbezeichnung auf **„z. B. Sommerausflug Skylinepark"** geändert — aus dem
+  Namen muss das Ziel hervorgehen.
+- „Anzahl der Teilnehmer *" mit dem Zusatzhinweis **„ohne Gruppenleitung"**;
+  **„Anzahl der Gruppenleitung"** und **„Telefon"** sind jetzt Pflichtfelder,
+  „Davon mit Juleica" bleibt bewusst optional.
+- Dokumenten-Block: Maßnahmenbericht mit dem Hilfetext „Aus dem Bericht müssen Charakter,
+  Inhalt und Ablauf der Maßnahme hervorgehen."; „Weitere Dokumente" auf **„Z. B. Juleica-Kopie"**
+  gekürzt.
+- Formular-Blöcke fortlaufend und konsistent durchnummeriert (Kommentar und Überschrift liefen
+  auseinander).
+
+### Behoben
+- **Altersfenster-Prüfung** stützte sich auf `birthdate` und übersprang damit alle Teilnehmenden,
+  die nur ein Alter haben. Sie wertet jetzt `age` aus; Gruppenleitungen bleiben wie bisher
+  ausgenommen, Datensätze ohne Alter und ohne Geburtsdatum werden übersprungen.
+
+### Hinweise
+- Die neuen Pflichtfelder (`measure_start_time`, `measure_end_time`, `measure_zip`,
+  `measure_location`, `tn_leader_count`, `contact_phone`) sind **nur im Website-Formular**
+  Pflicht (Template + Controller-Validierung), **nicht** im Modell — die Geschäftsstelle muss
+  weiterhin unvollständige Papieranträge im Backend erfassen können.
+- `participant_consent` bleibt bewusst unverändert, bis die Datenschutzbeauftragte des KJR
+  den Wortlaut geprüft hat.
+- Offen: PLZ/Ort des Skylineparks (Platzhalterbeispiel) mit Bora gegenprüfen.
+
 ## 19.0.8.3.0
 
 ### Geändert

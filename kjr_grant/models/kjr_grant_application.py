@@ -4,8 +4,10 @@ Kernmodell für Zuschussanträge. Enthält vollständige Berechnungslogik
 für alle 12 Förderarten (§ 4.1a–§ 4.9) sowie den kompletten Statusworkflow.
 """
 import base64
+import contextvars
 import math
 import logging
+import re
 from datetime import date
 
 from odoo import api, fields, models, _
@@ -13,6 +15,158 @@ import markupsafe
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
+
+# ── Bankverbindung: Formatmuster ─────────────────────────────────────────────
+# IBAN nach ISO 13616: 2 Buchstaben Land, 2 Prüfziffern, danach 11–30 alphanum.
+# Zeichen (max. 34 Stellen gesamt). Die Prüfziffer wird zusätzlich per Mod-97
+# geprüft (siehe _iban_is_valid) – bewusst selbst implementiert, weil das Modul
+# 'base_iban' NICHT in den depends steht.
+IBAN_RE = re.compile(r'^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$')
+# Landesspezifische Sollängen der in der Geschäftsstelle real vorkommenden Länder.
+# Andere Länder werden nur über Grundmuster + Mod-97 geprüft.
+IBAN_LENGTHS = {'DE': 22, 'AT': 20, 'CH': 21, 'LI': 21, 'LU': 20}
+# BIC/SWIFT nach ISO 9362: 4 Bank + 2 Land + 2 Ort (+ optional 3 Filiale).
+BIC_RE = re.compile(r'^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$')
+
+# ── DSGVO: Aufbewahrungsklassen (Befund K6, Datenschutz-Audit 21.08.2026) ────
+# Die Feld-Anonymisierung der Teilnehmerdaten (kjr.grant.participant,
+# _cron_anonymize_expired) hängt an EINEM Systemparameter,
+# 'kjr_grant.participant_retention_years', ausgeliefert mit 5 Jahren. Dieselben
+# Klarnamen stehen aber auch auf den Nebenschauplätzen am Antrag: in den
+# hochgeladenen Dateien, in der Feldhistorie (mail.tracking.value, u. a. die
+# IBAN-Historie) und im Chatter (mail.message).
+#
+# GRUNDREGEL (Gegenkontrolle zur ersten Fixrunde): Die Spurenbereinigung läuft
+# IMMER dann, wenn die zugehörigen Felder anonymisiert werden. Sie hängt NICHT
+# an einem zweiten, separat einzuschaltenden Schalter. Eine Anonymisierung, die
+# den strukturierten Datensatz leert und dieselbe Namensliste als PDF-Anhang und
+# in der Feldhistorie unverändert stehen lässt, erzeugt eine Sicherheit, die es
+# nicht gibt – das ist schlechter als gar keine Anonymisierung.
+#
+# Umsetzung: Jede Belegklasse hat einen eigenen, vom KJR pflegbaren Parameter.
+#   • Parameter NICHT gesetzt  → es gilt der Basisparameter der Feld-
+#     Anonymisierung (DSGVO_BASE_RETENTION_PARAM). Die Klasse läuft damit
+#     automatisch mit derselben Frist mit; es gibt keinen Auslieferungszustand,
+#     in dem Felder anonymisiert werden und die Spuren stehen bleiben.
+#   • Parameter auf 0 gesetzt  → Klasse abgeschaltet. Das ist dann eine
+#     ausdrückliche Entscheidung des KJR und keine stille Lücke.
+#   • Basisparameter ebenfalls nicht gesetzt → es passiert gar nichts, der Lauf
+#     kehrt sofort zurück (siehe _cron_anonymize_related).
+#
+# Eine EIGENE Frist erhalten nur die Klassen, für die der Vault einen belegten
+# Anker nennt (Werte in data/ir_config_parameter_data.xml):
+#   • Belegliste / Rechnungen / Quittungen: 8 Jahre (§ 147 AO, § 257 HGB)
+#   • Maßnahmenberichte / Verwendungsnachweise: 5 Jahre (ANBest-P Nr. 6.6)
+# "1 Jahr Ferienprogramm" ist eine selbstdefinierte Policy des KJR und
+# ausdrücklich KEINE gesetzliche Frist; sie wird hier nicht verwendet. Weitere
+# Fristen werden nicht erfunden.
+# TODO(KJR): Fristen je Belegklasse bestätigen oder abweichend festlegen.
+# TODO(DSGVO): Festlegung durch die Datenschutzbeauftragte bestätigen lassen.
+#
+# HARTE GRENZE: Buchungsbelege in 'account' (account.move, account.payment und
+# deren Anhänge) werden von dieser Routine NICHT angefasst – sie hängen an einer
+# Hash-Verkettung, jeder nachträgliche Eingriff zerstört die Unveränderbarkeit
+# des Belegs. Die Klasse 'receipt' meint ausschließlich die vom Antragsteller AM
+# ANTRAG hochgeladene Belegliste, nicht den gebuchten Beleg.
+DSGVO_BASE_RETENTION_PARAM = 'kjr_grant.participant_retention_years'
+DSGVO_RETENTION_PARAMS = {
+    # Teilnahmelisten als Datei-Upload (Klarnamen, z. T. Minderjähriger).
+    # Laut Fußnote der KJR-Unterschriftenliste verbleibt die Liste beim Träger.
+    # NICHT ausgeliefert → Basisfrist der Feld-Anonymisierung.
+    'tn_list':  'kjr_grant.retention_years_tn_list',
+    # Maßnahmenberichte / Verwendungsnachweise. Ausgeliefert mit 5 Jahren
+    # (belegter Anker: ANBest-P Nr. 6.6).
+    'report':   'kjr_grant.retention_years_report',
+    # Belegliste / Rechnungen / Quittungen, wie sie AM ANTRAG hochgeladen wurden.
+    # Ausgeliefert mit 8 Jahren (belegter Anker: § 147 AO, § 257 HGB) – bewusst
+    # länger als die Basisfrist, damit hier nichts zu früh ersetzt wird.
+    'receipt':  'kjr_grant.retention_years_receipt',
+    # Alles übrige am Antrag (Bescheid-PDF, Neugründungsformular, Sonstiges).
+    # NICHT ausgeliefert → Basisfrist der Feld-Anonymisierung.
+    'other':    'kjr_grant.retention_years_attachment_other',
+    # Feldhistorie (mail.tracking.value), insbesondere die IBAN-Historie.
+    # NICHT ausgeliefert → Basisfrist der Feld-Anonymisierung.
+    'tracking': 'kjr_grant.retention_years_tracking',
+    # Chatter-Nachrichten (mail.message) – nur Schwärzung, siehe Abwägung in
+    # _dsgvo_anonymize_chatter(). NICHT ausgeliefert → Basisfrist.
+    'chatter':  'kjr_grant.retention_years_chatter',
+}
+
+# Zuordnung Dateiname → Belegklasse. Die Antragsteller laden ihre Dateien unter
+# dem Original-Dateinamen hoch (controllers/website.py, controllers/portal.py),
+# eine strukturierte Kennzeichnung existiert nicht. Dieselbe Schlüsselwort-
+# Heuristik prüft bereits die Vollständigkeit beim Einreichen; sie wird hier
+# wiederverwendet, damit beide Stellen dieselbe Sicht auf die Dateien haben.
+# Reihenfolge = Priorität. Was nicht zuzuordnen ist, fällt auf 'other' und läuft
+# damit unter der Basisfrist mit – eine unbenannte Datei bleibt also nicht
+# unbefristet liegen, nur weil die Heuristik sie nicht einordnen konnte.
+# TODO(KJR): Stichprobe der real hochgeladenen Dateinamen, ob die Zuordnung
+# trifft; eine Datei "Beleg_TN.pdf" landet z. B. in 'receipt' (8 J.) statt in
+# 'tn_list'. Fehlzuordnungen wirken in Richtung längerer Aufbewahrung.
+DSGVO_ATTACHMENT_KEYWORDS = (
+    ('tn_list', ('teilnahme', 'teilnehmer', 'tn-liste', 'tn_liste', 'tnliste')),
+    ('receipt', ('beleg', 'rechnung', 'quittung', 'kassenbuch')),
+    ('report',  ('bericht', 'report', 'protokoll', 'verwendungsnachweis')),
+)
+# Klassen, die überhaupt an Dateien hängen (im Gegensatz zu 'tracking'/'chatter').
+DSGVO_ATTACHMENT_CLASSES = ('tn_list', 'report', 'receipt', 'other')
+
+# Felder mit tracking=True, deren Historie personenbezogen bzw. Bankdaten ist.
+# partner_id (Verband) trägt ebenfalls tracking=True; Odoo speichert dort den
+# damaligen Anzeigenamen als Text. Der Antragsteller ist eine Organisation und
+# der Wechsel des Antragstellers ist ein prüfungsrelevanter Vorgang – deshalb
+# bleibt partner_id hier bewusst unangetastet.
+# TODO(DSGVO): partner_id-Historie mit der Datenschutzbeauftragten bewerten.
+DSGVO_TRACKED_PERSONAL_FIELDS = (
+    'payment_iban',          # Bankverbindung, siehe Feld :208
+    'participant_consent',   # historisches Einwilligungs-Flag
+)
+
+# Marker für Idempotenz und Nachvollziehbarkeit. ir.attachment.description ist
+# ein freies Textfeld; ein eigenes Feld auf ir.attachment wird bewusst nicht
+# angelegt (Fremdmodell).
+DSGVO_ANON_MARKER = '[DSGVO-anonymisiert]'
+DSGVO_REDACTED = '(anonymisiert)'
+
+# Kandidatensuche für IBANs im Chatter-Freitext. Ein Treffer wird erst dann
+# geschwärzt, wenn er die Mod-97-Prüfziffer besteht (_iban_is_valid) – ohne
+# diese Prüfung würde die Schwärzung beliebige Zeichenketten treffen.
+IBAN_SCAN_RE = re.compile(r'\b[A-Z]{2}[0-9]{2}(?:[ \u00a0]?[A-Z0-9]){11,34}')
+
+# ── Vier-Augen-Prinzip: prozessinterne Freigabe ──────────────────────────────
+# Die Bearbeitungsvermerke (Status, Prüfung, Zahlungsanweisung) dürfen nur aus
+# den Workflow-Actions dieses Moduls heraus geschrieben werden. Die Freigabe darf
+# deshalb NICHT über den Odoo-Kontext laufen:
+#
+#   odoo/service/model.py, call_kw():
+#       context = kwargs.pop('context', None) or {}
+#       recs = recs.with_context(context)
+#
+# Der Kontext wird bei /web/dataset/call_kw also ungefiltert vom Client
+# übernommen. Ein angemeldeter Sachbearbeiter könnte per RPC (Browser-Konsole)
+# jeden beliebigen Kontextschlüssel mitschicken und damit eine kontextbasierte
+# Freigabe vortäuschen – der komplette Schutz wäre wertlos.
+#
+# Auch 'readonly=True' in der Felddefinition hilft NICHT: 'readonly' ist in
+# Odoo 19 ausschließlich eine UI-Eigenschaft.
+#   • odoo/orm/fields.py: 'def is_editable(self): return not self.readonly'
+#     – einziger Aufrufer ist odoo/addons/base/models/ir_ui_view.py (View-Prüfung).
+#   • odoo/orm/models.py, write(): prüft 'self.check_access("write")' und je Feld
+#     'self._check_field_access(field, "write")'.
+#   • odoo/orm/models.py, _has_field_access(): wertet ausschließlich
+#     'field.groups' (und env.su) aus – 'readonly' kommt darin nicht vor.
+# Ein readonly-Feld ist über /web/dataset/call_kw folglich weiterhin schreibbar.
+# 'groups=' wäre serverseitig zwar wirksam, hilft hier aber nicht: die Person,
+# gegen die geschützt wird, ist selbst Sachbearbeiterin (group_kjr_reviewer).
+#
+# Deshalb: ein prozessinterner Schalter, der ausschließlich von Servercode in
+# dieser Datei gesetzt werden kann. contextvars ist dafür das richtige Werkzeug
+# (auch der Odoo-Core nutzt es, z. B. odoo/addons/base/models/ir_cron.py) – der
+# Wert gilt pro Thread/Task, ein Request kann den Wert eines anderen Requests
+# also weder sehen noch setzen. Über RPC ist er grundsätzlich nicht erreichbar.
+_WORKFLOW_WRITE_ALLOWED = contextvars.ContextVar(
+    'kjr_grant_workflow_write_allowed', default=False,
+)
 
 
 class KjrGrantApplication(models.Model):
@@ -34,7 +188,8 @@ class KjrGrantApplication(models.Model):
         ('approved',  'Bewilligt'),
         ('rejected',  'Abgelehnt'),
         ('paid',      'Ausgezahlt'),
-    ], default='draft', required=True, tracking=True, index=True)
+    ], string='Status', default='draft', required=True, copy=False,
+        tracking=True, index=True)
     company_id = fields.Many2one(
         'res.company', string='Gesellschaft', required=True, index=True,
         default=lambda self: self.env.company,
@@ -56,6 +211,22 @@ class KjrGrantApplication(models.Model):
         tracking=True, domain="[('active', '=', True)]", ondelete='restrict',
     )
     grant_type_code = fields.Selection(related='grant_type_id.code', store=True)
+    # Fassung der Förderart, die zum Maßnahmenbeginn gültig war (valid_from/valid_to).
+    # BEWUSSTE ENTSCHEIDUNG: 'grant_type_id' bleibt das führende Feld und wird NICHT
+    # automatisch umgehängt. Ein automatischer Wechsel würde bestehende Anträge
+    # nachträglich auf eine andere Berechnungsgrundlage stellen – bereits erteilte
+    # Bescheide wären dann nicht mehr nachvollziehbar. Stattdessen nur Anzeige +
+    # Hinweis, die Geschäftsstelle entscheidet im Einzelfall.
+    applicable_type_id = fields.Many2one(
+        'kjr.grant.type', string='Gültige Fassung (Maßnahmenbeginn)',
+        compute='_compute_applicable_type', store=False,
+        help='Die zum Beginn der Maßnahme gültige Fassung der Förderart. '
+             'Weicht sie von der gewählten Förderart ab, ist zu prüfen, welcher '
+             'Regelstand für die Berechnung anzuwenden ist.',
+    )
+    applicable_type_warning = fields.Char(
+        string='Hinweis Regelstand', compute='_compute_applicable_type', store=False,
+    )
 
     # ── Maßnahme ─────────────────────────────────────────────────────────────
     measure_name = fields.Char(string='Bezeichnung der Maßnahme', required=True, tracking=True)
@@ -63,6 +234,8 @@ class KjrGrantApplication(models.Model):
     measure_start_time = fields.Float(string='Uhrzeit Beginn', help='z. B. 9.5 = 09:30 Uhr')
     measure_end = fields.Date(string='Ende', required=True, tracking=True)
     measure_end_time = fields.Float(string='Uhrzeit Ende', help='z. B. 17.0 = 17:00 Uhr')
+    # PLZ getrennt vom Ort erfasst (Auswertung Maßnahmenorte in der Geschäftsstelle).
+    measure_zip = fields.Char(string='PLZ Maßnahmenort')
     measure_location = fields.Char(string='Ort')
     measure_days = fields.Integer(
         string='Anzahl Tage', compute='_compute_measure_days',
@@ -79,17 +252,38 @@ class KjrGrantApplication(models.Model):
 
     # ── Teilnehmer ───────────────────────────────────────────────────────────
     tn_count = fields.Integer(string='Anzahl Teilnehmer', default=0, tracking=True)
-    tn_leader_count = fields.Integer(string='Jugendleiter', default=0)
+    tn_leader_count = fields.Integer(string='Gruppenleitung', default=0)
     tn_leader_juleica = fields.Integer(string='Davon mit Juleica', default=0)
     tn_external_count = fields.Integer(string='TN aus anderen Regionen', default=0)
     tn_external_pct = fields.Float(
         string='Anteil externer TN (%)', compute='_compute_tn_external_pct', digits=(5, 1),
     )
+    # HISTORISCH — nicht mehr erheben. Der KJR hat die Bestätigung am 31.07.2026
+    # abgelehnt: Er ist für die Richtigkeit des Datenschutzes in den Vereinen nicht
+    # zuständig und darf sie nicht prüfen; eine Bestätigung, die man nicht prüfen
+    # darf, erzeugt Scheinsicherheit. Das Feld bleibt erhalten, weil Anträge aus der
+    # Zeit davor den Vermerk tragen und ihre Historie behalten sollen — es wird aber
+    # weder im Website-Formular abgefragt noch beim Einreichen geprüft.
     participant_consent = fields.Boolean(
-        string='Einwilligung Erziehungsberechtigte liegt vor', tracking=True,
-        help='Bestätigung, dass für minderjährige Teilnehmer die Einwilligung der '
-             'Erziehungsberechtigten zur Verarbeitung der Teilnehmerdaten vorliegt '
-             '(Art. 6 Abs. 1 / Art. 8 DSGVO).',
+        string='Einwilligung Erziehungsberechtigte (historisch)', tracking=True,
+        help='Nur für Altanträge: Bestätigung, dass für minderjährige Teilnehmer die '
+             'Einwilligung der Erziehungsberechtigten vorliegt. Seit 31.07.2026 auf '
+             'Wunsch des KJR nicht mehr erhoben.',
+    )
+
+    # ── Bestätigungen Antragsteller ──────────────────────────────────────────
+    # Pflicht ausschließlich im Website-Formular (Template + Controller). Im Backend
+    # bewusst NICHT required, damit die Geschäftsstelle Papieranträge abtippen kann.
+    confirm_privacy = fields.Boolean(
+        string='Datenschutzhinweise gelesen und einverstanden', tracking=True,
+    )
+    confirm_guidelines = fields.Boolean(
+        string='Zuschussrichtlinien gelesen', tracking=True,
+    )
+    confirm_truthful = fields.Boolean(
+        string='Angaben vollständig und wahrheitsgemäß', tracking=True,
+        help='Antragsteller versichert Vollständigkeit/Richtigkeit und bestätigt, dass zu viel '
+             'erhaltene Beträge unaufgefordert mitzuteilen und zurückzuzahlen sind.',
     )
 
     # ── Delegiertenförderung § 4.9 (Fahrtkosten n. Bayer. Reisekostengesetz) ──
@@ -147,6 +341,26 @@ class KjrGrantApplication(models.Model):
         digits=(10, 2), store=True,
     )
 
+    # ── Belegliste ───────────────────────────────────────────────────────────
+    # Entweder-oder: digitale Erfassung im Formular ODER Datei-Upload der Belegliste.
+    use_digital_receipts = fields.Boolean(
+        string='Belegliste digital erfasst',
+        help='Wenn aktiv, wurde die Belegliste im Formular digital erfasst; '
+             'der Datei-Upload entfällt.',
+    )
+    receipt_ids = fields.One2many(
+        'kjr.grant.receipt', 'application_id', string='Belegliste',
+    )
+    receipt_count = fields.Integer(
+        string='Anzahl Belege', compute='_compute_receipt_totals',
+    )
+    receipt_income_total = fields.Float(
+        string='Belege Einnahmen (€)', compute='_compute_receipt_totals', digits=(12, 2),
+    )
+    receipt_expense_total = fields.Float(
+        string='Belege Ausgaben (€)', compute='_compute_receipt_totals', digits=(12, 2),
+    )
+
     # ── Förderberechnung ─────────────────────────────────────────────────────
     deficit = fields.Float(
         string='Fehlbetrag (€)', compute='_compute_deficit', digits=(10, 2), store=True,
@@ -169,9 +383,16 @@ class KjrGrantApplication(models.Model):
     )
 
     # ── Bearbeitungsvermerke KJR OA ──────────────────────────────────────────
-    date_submitted = fields.Date(string='Eingangsdatum', readonly=True, tracking=True)
-    date_approved = fields.Date(string='Zuschuss genehmigt am', readonly=True, tracking=True)
-    date_paid = fields.Date(string='Auszahlungsdatum', readonly=True, tracking=True)
+    # copy=False auf allen Bearbeitungsvermerken: sonst nimmt "Duplizieren"
+    # (copy/copy_data) Prüfvermerk, Bewilligung und Zahlungsanweisung mit. Eine
+    # Sachbearbeiterin könnte einen von einer Kollegin bewilligten Antrag
+    # duplizieren und hätte im Duplikat sofort einen fremden Prüfvermerk stehen –
+    # das Vier-Augen-Prinzip liefe leer. 'state' wird von Odoo bereits automatisch
+    # nicht kopiert (odoo/orm/fields.py: Felder mit dem Namen 'state' erhalten
+    # copy=False als Vorgabe), alle anderen Felder sind per Default copy=True.
+    date_submitted = fields.Date(string='Eingangsdatum', readonly=True, copy=False, tracking=True)
+    date_approved = fields.Date(string='Zuschuss genehmigt am', readonly=True, copy=False, tracking=True)
+    date_paid = fields.Date(string='Auszahlungsdatum', readonly=True, copy=False, tracking=True)
     payout_year = fields.Integer(
         string='Auszahlungsjahr', compute='_compute_payout_schedule', store=True,
         help='Haushaltsjahr der Auszahlung. Anträge bis zum Stichtag (KJR-OA: 15.11.) '
@@ -181,20 +402,22 @@ class KjrGrantApplication(models.Model):
         string='Auszahlungs-Hinweis', compute='_compute_payout_schedule', store=True,
     )
     reference_number = fields.Char(string='KJR-Aktenzeichen', copy=False, tracking=True)
-    reviewed_by = fields.Many2one('res.users', string='Bearbeitet von', tracking=True)
+    reviewed_by = fields.Many2one(
+        'res.users', string='Bearbeitet von', copy=False, tracking=True,
+    )
     sachlich_richtig = fields.Boolean(
-        string='Sachlich richtig', default=False, tracking=True,
+        string='Sachlich richtig', default=False, copy=False, tracking=True,
         help='Bestätigung der Sachbearbeiterin dass alle Angaben geprüft wurden.',
     )
     payment_ordered = fields.Boolean(
-        string='Zur Zahlung angewiesen', default=False, tracking=True,
+        string='Zur Zahlung angewiesen', default=False, copy=False, tracking=True,
         help='Zahlungsanweisung erteilt.',
     )
     payment_ordered_by = fields.Many2one(
-        'res.users', string='Zahlung angewiesen von', tracking=True,
+        'res.users', string='Zahlung angewiesen von', copy=False, tracking=True,
     )
-    payment_ordered_date = fields.Date(string='Zahlung angewiesen am', tracking=True)
-    rejection_reason = fields.Text(string='Ablehnungsgrund', tracking=True)
+    payment_ordered_date = fields.Date(string='Zahlung angewiesen am', copy=False, tracking=True)
+    rejection_reason = fields.Text(string='Ablehnungsgrund', copy=False, tracking=True)
     note_internal = fields.Text(string='Interne Notizen (nicht für Antragsteller)')
     # Buchhaltung
     move_id = fields.Many2one('account.move', string='Buchung Bewilligung', readonly=True, copy=False)
@@ -281,6 +504,45 @@ class KjrGrantApplication(models.Model):
                     '(vierteljährlich).'
                 ) % {'day': cutoff_day, 'month': cutoff_month, 'year': rec.payout_year}
 
+    @api.depends('grant_type_id', 'grant_type_id.code', 'measure_start')
+    def _compute_applicable_type(self):
+        """Regelauswahl nach Maßnahmenbeginn (§-Fassungen mit valid_from/valid_to).
+
+        Ändert der KJR eine Förderart (z. B. neue Tagessätze ab 01.01.), wird dafür
+        eine neue Fassung mit gleichem 'code' angelegt. Maßgeblich ist die Fassung,
+        die zum BEGINN der Maßnahme galt. Ermittelt wird sie über
+        kjr.grant.type.find_for_date(code, date_ref).
+
+        Das Ergebnis ist nur informativ: 'grant_type_id' bleibt führend und wird
+        nicht umgehängt (siehe Kommentar am Feld). Weicht die gültige Fassung ab,
+        füllen wir 'applicable_type_warning'; der Text landet zusätzlich beim
+        Einreichen als Hinweis im Chatter (_post_compliance_warnings)."""
+        Type = self.env['kjr.grant.type']
+        # Defensiv: solange die Fassungsverwaltung (find_for_date) in einer älteren
+        # Modulversion fehlt, gilt schlicht die gewählte Förderart.
+        has_finder = hasattr(Type, 'find_for_date')
+        for rec in self:
+            # Stored-compute-Regel analog: jedem Record in jedem Zweig einen Wert geben.
+            rec.applicable_type_id = rec.grant_type_id
+            rec.applicable_type_warning = ''
+            if not (has_finder and rec.grant_type_id and rec.grant_type_id.code and rec.measure_start):
+                continue
+            applicable = Type.find_for_date(rec.grant_type_id.code, rec.measure_start)
+            if applicable and applicable.id != rec.grant_type_id.id:
+                rec.applicable_type_id = applicable
+                rec.applicable_type_warning = _(
+                    'Regelstand: Zum Maßnahmenbeginn %(start)s galt die Fassung '
+                    '"%(valid)s"%(group)s, gewählt ist aber "%(chosen)s". Bitte prüfen, '
+                    'welche Fassung der Berechnung zugrunde zu legen ist – die Förderart '
+                    'wird bewusst nicht automatisch umgestellt.'
+                ) % {
+                    'start': rec.measure_start.strftime('%d.%m.%Y'),
+                    'valid': applicable.display_name,
+                    'group': (' [%s]' % applicable.rule_group)
+                             if applicable._fields.get('rule_group') and applicable.rule_group else '',
+                    'chosen': rec.grant_type_id.display_name,
+                }
+
     @api.depends('tn_count', 'tn_external_count')
     def _compute_tn_external_pct(self):
         for rec in self:
@@ -329,9 +591,9 @@ class KjrGrantApplication(models.Model):
             rec.grant_calculated = rec._calculate_grant()
 
     def _day_rate_grant(self, t, tn, days, leaders, leaders_juleica):
-        """Tagessatz-Berechnung (TN × Tage × Satz) inkl. anerkannter Jugendleiter.
+        """Tagessatz-Berechnung (TN × Tage × Satz) inkl. anerkannter Gruppenleitungen.
 
-        Jugendleiter erhalten ebenfalls den Tagessatz; mit gültiger Juleica erhöht
+        Gruppenleitungen erhalten ebenfalls den Tagessatz; mit gültiger Juleica erhöht
         er sich um den Juleica-Zuschlag (KJR-OA: +50 %, konfigurierbar). Diese Logik
         gilt einheitlich für alle tagessatz-basierten Förderarten (§ 4.1b/4.2/4.3/4.5)."""
         leaders_no_juleica = leaders - leaders_juleica
@@ -362,7 +624,7 @@ class KjrGrantApplication(models.Model):
 
         days = max(self.measure_days or 1, 1)
         tn = max(self.tn_count or 0, 0)
-        # Max. 1 anerkannter Jugendleiter je 'leader_ratio' TN (konfigurierbar, KJR-OA: 5)
+        # Max. 1 anerkannte Gruppenleitung je 'leader_ratio' TN (konfigurierbar, KJR-OA: 5)
         ratio = t.leader_ratio if t.leader_ratio and t.leader_ratio > 0 else 5
         max_leaders = math.ceil(tn / ratio) if tn > 0 else 0
         leaders = min(self.tn_leader_count or 0, max_leaders)
@@ -534,6 +796,19 @@ class KjrGrantApplication(models.Model):
         for rec in self:
             rec.participant_count = len(rec.participant_ids)
 
+    @api.depends('receipt_ids', 'receipt_ids.amount', 'receipt_ids.direction')
+    def _compute_receipt_totals(self):
+        """Summen der digitalen Belegliste. Das Vorzeichen steckt in 'direction',
+        die Beträge selbst sind immer positiv erfasst."""
+        for rec in self:
+            rec.receipt_count = len(rec.receipt_ids)
+            rec.receipt_income_total = sum(
+                r.amount for r in rec.receipt_ids if r.direction == 'income'
+            )
+            rec.receipt_expense_total = sum(
+                r.amount for r in rec.receipt_ids if r.direction == 'expense'
+            )
+
     # ══════════════════════════════════════════════════════════════════════════
     # CONSTRAINTS
     # ══════════════════════════════════════════════════════════════════════════
@@ -555,8 +830,8 @@ class KjrGrantApplication(models.Model):
                 raise ValidationError(_('Teilnehmerzahlen dürfen nicht negativ sein.'))
             if rec.tn_leader_juleica > rec.tn_leader_count:
                 raise ValidationError(_(
-                    'Es können nicht mehr Jugendleiter mit Juleica (%(j)d) als '
-                    'Jugendleiter insgesamt (%(l)d) angegeben werden.',
+                    'Es können nicht mehr Gruppenleitungen mit Juleica (%(j)d) als '
+                    'Gruppenleitungen insgesamt (%(l)d) angegeben werden.',
                     j=rec.tn_leader_juleica, l=rec.tn_leader_count,
                 ))
             if rec.tn_external_count > rec.tn_count:
@@ -583,6 +858,74 @@ class KjrGrantApplication(models.Model):
                         % rec._fields[fname].string
                     )
 
+    # ── Bankverbindung ───────────────────────────────────────────────────────
+
+    @staticmethod
+    def _normalize_bank_code(value):
+        """Eingabe der Antragsteller tolerant normalisieren: Leerzeichen (auch
+        geschützte), Bindestriche und Kleinschreibung sind erlaubt und werden vor
+        der Prüfung entfernt bzw. in Großbuchstaben gewandelt."""
+        return re.sub(r'[\s -]', '', (value or '')).upper()
+
+    @staticmethod
+    def _iban_is_valid(iban):
+        """Prüfziffernverfahren Mod 97-10 nach ISO 13616 / DIN 91060.
+
+        Ablauf: die ersten vier Zeichen (Land + Prüfziffer) ans Ende stellen, jeden
+        Buchstaben durch seine Position im Alphabet + 9 ersetzen (A=10 … Z=35) und
+        den Rest der Division durch 97 bilden. Gültig ist die IBAN bei Rest 1.
+        Bewusst selbst gerechnet – 'base_iban' steht NICHT in den depends."""
+        if not IBAN_RE.match(iban):
+            return False
+        rearranged = iban[4:] + iban[:4]
+        digits = ''.join(
+            str(ord(ch) - 55) if ch.isalpha() else ch for ch in rearranged
+        )
+        return int(digits) % 97 == 1
+
+    @api.constrains('payment_iban')
+    def _check_payment_iban(self):
+        """IBAN-Format und Prüfziffer validieren. Leer bleibt erlaubt: ob eine IBAN
+        Pflicht ist, entscheidet die Förderart (allow_private_account) und wird beim
+        Einreichen/Bewilligen geprüft – nicht hier."""
+        for rec in self:
+            if not rec.payment_iban:
+                continue
+            iban = rec._normalize_bank_code(rec.payment_iban)
+            expected_len = IBAN_LENGTHS.get(iban[:2])
+            if expected_len and len(iban) != expected_len:
+                raise ValidationError(_(
+                    'Die IBAN "%(iban)s" ist keine gültige %(country)s-IBAN: erwartet '
+                    'werden %(exp)d Stellen, angegeben sind %(act)d.',
+                    iban=rec.payment_iban, country=iban[:2],
+                    exp=expected_len, act=len(iban),
+                ))
+            if not rec._iban_is_valid(iban):
+                raise ValidationError(_(
+                    'Die IBAN "%(iban)s" ist ungültig. Erwartet wird das Format '
+                    'Länderkürzel + 2 Prüfziffern + Kontokennung '
+                    '(z. B. DE12 3456 7890 1234 5678 90); die Prüfziffer muss zur '
+                    'IBAN passen (Mod-97-Verfahren). Bitte die Angabe mit dem '
+                    'Kontoauszug abgleichen.',
+                    iban=rec.payment_iban,
+                ))
+
+    @api.constrains('payment_bic')
+    def _check_payment_bic(self):
+        """BIC-Format nach ISO 9362 prüfen (leer erlaubt – der BIC ist im SEPA-Raum
+        nicht mehr zwingend anzugeben)."""
+        for rec in self:
+            if not rec.payment_bic:
+                continue
+            bic = rec._normalize_bank_code(rec.payment_bic)
+            if not BIC_RE.match(bic):
+                raise ValidationError(_(
+                    'Der BIC "%(bic)s" ist ungültig. Erwartet werden 8 oder 11 Stellen: '
+                    '4 Buchstaben Bankcode + 2 Buchstaben Ländercode + 2 Zeichen '
+                    'Ortscode + optional 3 Zeichen Filialcode (z. B. BYLADEM1ALG).',
+                    bic=rec.payment_bic,
+                ))
+
     # ══════════════════════════════════════════════════════════════════════════
     # PORTAL MIXIN
     # ══════════════════════════════════════════════════════════════════════════
@@ -596,19 +939,357 @@ class KjrGrantApplication(models.Model):
     # ORM OVERRIDES
     # ══════════════════════════════════════════════════════════════════════════
 
+    # ── Schreibschutz Bearbeitungsvermerke ───────────────────────────────────
+    # Diese Felder tragen das Vier-Augen-Prinzip (Prüfung / Bewilligung /
+    # Zahlungsanweisung / Auszahlung). Sie dürfen ausschließlich über die
+    # Workflow-Actions gesetzt werden; die schreiben über _workflow_write()
+    # (prozessinterne Freigabe, siehe _WORKFLOW_WRITE_ALLOWED am Dateianfang).
+    # Ohne diese Freigabe ist ein direkter Schreibzugriff nur der Administrator-
+    # Gruppe erlaubt – und wird dann im Chatter protokolliert (Korrekturen sollen
+    # möglich, aber nachvollziehbar sein).
+    _WORKFLOW_PROTECTED_FIELDS = (
+        'state', 'reviewed_by', 'payment_ordered', 'payment_ordered_by',
+        'payment_ordered_date',
+    )
+    # 'Sachlich richtig' ist der eigentliche Prüfvermerk und wird von der
+    # Sachbearbeitung im Formular gesetzt (dafür gibt es bewusst keinen eigenen
+    # Button). Er bleibt deshalb für die Sachbearbeiter-Gruppe direkt setzbar,
+    # wird aber protokolliert – und wer zeichnet, gilt als prüfende Person und
+    # wird in 'Bearbeitet von' eingetragen, damit er/sie nicht auch bewilligen kann.
+    _REVIEW_MARK_FIELD = 'sachlich_richtig'
+
+    # ── Prozessinterne Freigabe ──────────────────────────────────────────────
+
+    def _workflow_write(self, vals):
+        """Schreibt Bearbeitungsvermerke aus einer Workflow-Action heraus.
+
+        Nur dieser Weg hebt den Schreibschutz auf. Die Freigabe steckt in einer
+        ContextVar (nicht im Odoo-Kontext) und ist damit über RPC nicht setzbar.
+        Die Methode selbst ist ebenfalls nicht per RPC aufrufbar – Odoo lässt nur
+        öffentliche Methoden zu (odoo/service/model.py, get_public_method():
+        "if name.startswith('_') … raise AccessError").
+
+        Die Freigabe gilt bewusst für GENAU EINEN write()-Aufruf: write() setzt
+        sie sofort wieder zurück, bevor super().write() läuft. Verschachtelte
+        Schreibvorgänge (Computes, Inverse, message_post, One2many-Zeilen) laufen
+        dadurch wieder mit vollem Schutz – eine einmal geöffnete Freigabe kann
+        sich also nicht über den gesamten Aufrufbaum ausbreiten."""
+        token = _WORKFLOW_WRITE_ALLOWED.set(True)
+        try:
+            return self.write(vals)
+        finally:
+            _WORKFLOW_WRITE_ALLOWED.reset(token)
+
+    @api.model
+    def _workflow_mark_is_set(self, fname, value):
+        """Trägt der Wert tatsächlich einen Bearbeitungsvermerk?
+
+        Der Web-Client schickt beim Anlegen auch Vorgabewerte mit. 'state' =
+        'draft' bzw. leere/falsche Vermerke sind keine Bevorrechtigung und dürfen
+        das Anlegen eines ganz normalen Antrags nicht blockieren."""
+        if fname == 'state':
+            return bool(value) and value != 'draft'
+        return bool(value)
+
+    @api.model
+    def default_get(self, fields_list):
+        """Vorgabewerte dürfen die Bearbeitungsvermerke nicht vorbelegen.
+
+        Odoo mischt Vorgaben aus drei Quellen zusammen: den 'default_*'-Schlüsseln
+        im Kontext (die bei /web/dataset/call_kw vollständig vom Client kommen),
+        den persönlichen Vorgabewerten aus ir.default – die sich JEDER Benutzer
+        über ir.default.set() selbst auf jedes Feld setzen darf – und den
+        default=-Angaben am Feld. Alle drei landen erst in
+        _add_missing_default_values() in den Werten, also NACH einer Prüfung, die
+        nur vals betrachtet.
+
+        Ohne diesen Filter genügt ein einziges ir.default.set(), um einen Antrag
+        anzulegen, der sofort 'approved' ist und einen fremden Prüfvermerk trägt –
+        das Vier-Augen-Prinzip wäre damit vollständig ausgehebelt.
+
+        Der Filter greift BEDINGUNGSLOS, insbesondere auch unter sudo(). Das ist
+        kein übertriebener Gürtel-und-Hosenträger, sondern zwingend: sudo() setzt
+        nur su=True und lässt env.uid unverändert ("The superuser mode does not
+        change the current user", odoo/orm/models.py), während
+        ir.default._get_model_defaults() die Vorgaben genau über env.uid liest.
+        Eine Ausnahme für env.su würde die persönlichen Vorgabewerte des
+        angemeldeten Benutzers also ausgerechnet dort wieder durchlassen, wo
+        Servercode mit erhöhten Rechten anlegt – etwa im öffentlichen
+        Antragsformular (controllers/website.py, sudo().create()). Genau dieser
+        Weg war offen und ist hier geschlossen.
+
+        Unbedenklich, weil ausschließlich VORGABEWERTE gefiltert werden: explizit
+        übergebene Werte (Migration, Tests, Brückenmodul, Workflow-Actions) laufen
+        über vals bzw. _workflow_write() und sind davon nicht berührt."""
+        defaults = super().default_get(fields_list)
+        for fname in self._WORKFLOW_PROTECTED_FIELDS + (self._REVIEW_MARK_FIELD,):
+            if fname not in defaults:
+                continue
+            if not self._workflow_mark_is_set(fname, defaults[fname]):
+                continue
+            if fname == 'state':
+                # 'state' ist ein Pflichtfeld: entfernen würde beim Anlegen in
+                # einen NOT-NULL-Fehler laufen statt in den gewollten Entwurf.
+                defaults[fname] = 'draft'
+            else:
+                del defaults[fname]
+        return defaults
+
     @api.model_create_multi
     def create(self, vals_list):
+        """Anlegen: die Bearbeitungsvermerke dürfen keine Hintertür sein.
+
+        Ohne diese Prüfung könnte eine Sachbearbeiterin per RPC einen Antrag
+        direkt mit 'sachlich_richtig=True' und einem fremden 'reviewed_by'
+        anlegen (oder gleich mit state='paid') und damit das Vier-Augen-Prinzip
+        vollständig umgehen – der write()-Schutz greift beim Anlegen nicht.
+
+        Geprüft werden vals UND die 'default_*'-Kontextschlüssel: Odoo füllt
+        fehlende Felder über _add_missing_default_values()/default_get() aus dem
+        Kontext, der bei /web/dataset/call_kw vom Client kommt. Ein
+        'default_state': 'paid' würde sonst an vals vorbei greifen.
+
+        Sonderfall "Sachlich richtig": der Haken wird beim Abtippen von
+        Papieranträgen gern direkt mitgesetzt. Er wird deshalb nicht abgewiesen,
+        sondern aus dem Anlegen herausgenommen und danach über den normalen
+        write()-Weg gesetzt – dort greifen Gruppenprüfung, Chatter-Protokoll und
+        vor allem die Zuordnung "wer zeichnet, hat geprüft" (reviewed_by)."""
+        protected = self._WORKFLOW_PROTECTED_FIELDS
+        privileged = self.env.su or _WORKFLOW_WRITE_ALLOWED.get()
+        is_manager = privileged or self.env.user.has_group('kjr_grant.group_kjr_manager')
+
+        # Je Datensatz getrennt ermitteln, damit das Protokoll unten nur die
+        # Vermerke nennt, die im jeweiligen Antrag wirklich vorbelegt wurden.
+        touched_per_vals = [
+            [f for f in protected
+             if f in vals and self._workflow_mark_is_set(f, vals[f])]
+            for vals in vals_list
+        ]
+        touched = sorted({f for entry in touched_per_vals for f in entry})
+        # 'Sachlich richtig' aus dem Anlegen herausnehmen (siehe Docstring).
+        deferred_review = []
+        if not privileged:
+            for idx, vals in enumerate(vals_list):
+                if vals.pop(self._REVIEW_MARK_FIELD, False):
+                    deferred_review.append(idx)
+
+        if not privileged and not is_manager:
+            if touched:
+                raise UserError(_(
+                    'Die Bearbeitungsvermerke (%(fields)s) können beim Anlegen eines '
+                    'Antrags nicht vorbelegt werden. Ein Antrag beginnt als Entwurf '
+                    'und wird über die Schaltflächen geführt: "Einreichen" ▸ "Zur '
+                    'Prüfung annehmen" ▸ "Bewilligen" ▸ "Zur Zahlung anweisen" ▸ '
+                    '"Als ausgezahlt markieren". So bleibt nachvollziehbar, wer '
+                    'geprüft, bewilligt und angewiesen hat (Vier-Augen-Prinzip).',
+                    fields=', '.join(self._fields[f].string for f in touched),
+                ))
+            # Kontext-Defaults auf geschützte Felder verwerfen (sie kämen vom Client).
+            ctx_keys = {
+                'default_%s' % f
+                for f in protected + (self._REVIEW_MARK_FIELD,)
+                if self._workflow_mark_is_set(f, self.env.context.get('default_%s' % f))
+            }
+            if ctx_keys:
+                self = self.with_context({
+                    k: v for k, v in self.env.context.items() if k not in ctx_keys
+                })
+
         for vals in vals_list:
             if vals.get('name', _('Neu')) == _('Neu'):
                 vals['name'] = (
                     self.env['ir.sequence'].next_by_code('kjr.grant.application')
                     or _('Neu')
                 )
-        return super().create(vals_list)
+        records = super().create(vals_list)
+
+        if deferred_review:
+            # Normaler write()-Weg: prüft die Gruppe, protokolliert im Chatter und
+            # trägt die zeichnende Person als "Bearbeitet von" ein.
+            records.browse([records[i].id for i in deferred_review]).write(
+                {self._REVIEW_MARK_FIELD: True})
+
+        # Korrekturweg für die Geschäftsstellenleitung: erlaubt, aber protokolliert.
+        if touched and not privileged:
+            user_name = self.env.user.display_name
+            for rec, rec_touched in zip(records, touched_per_vals):
+                if not rec_touched:
+                    continue
+                items = markupsafe.Markup('').join(
+                    markupsafe.Markup('<li>%s</li>') % (
+                        _('%(field)s: %(value)s') % {
+                            'field': rec._fields[f].string,
+                            'value': rec._format_workflow_value(f, rec[f]),
+                        }
+                    )
+                    for f in rec_touched
+                )
+                rec.message_post(
+                    body=markupsafe.Markup('<p>%s</p><ul>%s</ul>') % (
+                        _('Antrag durch %s bereits mit Bearbeitungsvermerken '
+                          'angelegt:') % user_name,
+                        items,
+                    ),
+                    subtype_xmlid='mail.mt_note',
+                )
+        return records
+
+    def _format_workflow_value(self, fname, value):
+        """Feldwert für das Chatter-Protokoll lesbar aufbereiten."""
+        field = self._fields[fname]
+        if field.type == 'boolean':
+            return _('Ja') if value else _('Nein')
+        if not value:
+            return _('(leer)')
+        if field.type == 'many2one':
+            return value.display_name
+        if field.type == 'date':
+            return value.strftime('%d.%m.%Y')
+        if field.type == 'selection':
+            selection = field.selection
+            if callable(selection):
+                selection = selection(self)
+            return dict(selection).get(value, value)
+        return str(value)
+
+    def write(self, vals):
+        """Schreibschutz für die Bearbeitungsvermerke.
+
+        Ohne diesen Override ließe sich der komplette Workflow im Formular von
+        einer einzigen Person durchklicken (Status setzen, 'sachlich richtig'
+        haken, Zahlung anweisen) – das Vier-Augen-Prinzip wäre wirkungslos.
+
+        Verhalten:
+          • Normale Feldänderungen (Beträge, Texte, Teilnehmer …) und alle
+            Schreibvorgänge aus den Workflow-Actions laufen unverändert durch.
+          • Direkte Änderungen an Status/Vermerken sind der Administrator-Gruppe
+            vorbehalten (Korrekturen bei Fehleingaben) und landen im Chatter.
+          • Alle anderen erhalten einen Hinweis auf die Workflow-Schaltflächen.
+
+        Die Freigabe der Workflow-Actions läuft NICHT über den Odoo-Kontext
+        (der ist bei /web/dataset/call_kw frei fälschbar, siehe Kommentar bei
+        _WORKFLOW_WRITE_ALLOWED), sondern über eine prozessinterne ContextVar,
+        die ausschließlich _workflow_write() setzen kann.
+        """
+        # Freigabe aus einer Workflow-Action: gilt nur für diesen einen Aufruf
+        # und wird vor super().write() sofort zurückgesetzt, damit sich die
+        # Freigabe nicht auf verschachtelte Schreibvorgänge vererbt.
+        if _WORKFLOW_WRITE_ALLOWED.get():
+            token = _WORKFLOW_WRITE_ALLOWED.set(False)
+            try:
+                return super().write(vals)
+            finally:
+                _WORKFLOW_WRITE_ALLOWED.reset(token)
+
+        touched = [f for f in self._WORKFLOW_PROTECTED_FIELDS if f in vals]
+        review_mark = self._REVIEW_MARK_FIELD in vals
+        # Schnellpfad: nichts Geschütztes betroffen bzw. Schreibvorgang aus
+        # Servercode (sudo, z. B. Website-Formular, Migration, Datenimport).
+        if (not touched and not review_mark) or self.env.su:
+            return super().write(vals)
+
+        is_manager = self.env.user.has_group('kjr_grant.group_kjr_manager')
+        if touched and not is_manager:
+            raise UserError(_(
+                'Die Bearbeitungsvermerke (%(fields)s) können nicht direkt geändert '
+                'werden. Bitte den Antrag über die Schaltflächen führen: '
+                '"Zur Prüfung annehmen" ▸ "Bewilligen" ▸ "Zur Zahlung anweisen" ▸ '
+                '"Als ausgezahlt markieren". So bleibt nachvollziehbar, wer geprüft, '
+                'bewilligt und angewiesen hat (Vier-Augen-Prinzip). '
+                'Korrekturen bei Fehleingaben nimmt die Geschäftsstellenleitung '
+                '(Gruppe "Administrator") vor; sie werden im Protokoll festgehalten.',
+                fields=', '.join(self._fields[f].string for f in touched),
+            ))
+        if review_mark and not (is_manager or self.env.user.has_group(
+                'kjr_grant.group_kjr_reviewer')):
+            raise UserError(_(
+                'Der Vermerk "Sachlich richtig" darf nur von der Sachbearbeitung '
+                'gesetzt werden.'
+            ))
+
+        # Altwerte einmal für den gesamten Recordset lesen. Der erste Feldzugriff
+        # lädt über den Prefetch alle Records auf einmal – kein Query je Record.
+        logged = list(touched) + ([self._REVIEW_MARK_FIELD] if review_mark else [])
+        old_values = {rec.id: {f: rec[f] for f in logged} for rec in self}
+
+        res = super().write(vals)
+
+        user_name = self.env.user.display_name
+        for rec in self:
+            changes = [
+                _('%(field)s: von %(old)s auf %(new)s') % {
+                    'field': rec._fields[f].string,
+                    'old': rec._format_workflow_value(f, old_values[rec.id][f]),
+                    'new': rec._format_workflow_value(f, rec[f]),
+                }
+                for f in logged
+                if old_values[rec.id][f] != rec[f]
+            ]
+            if not changes:
+                continue
+            items = markupsafe.Markup('').join(
+                markupsafe.Markup('<li>%s</li>') % c for c in changes
+            )
+            rec.message_post(
+                body=markupsafe.Markup('<p>%s</p><ul>%s</ul>') % (
+                    _('Bearbeitungsvermerk manuell geändert durch %s:') % user_name,
+                    items,
+                ),
+                subtype_xmlid='mail.mt_note',
+            )
+
+        # Wer "sachlich richtig" zeichnet, ist die prüfende Person: ist noch keine
+        # Prüfung vermerkt, wird sie hier festgehalten. Sonst könnte man den Haken
+        # setzen, ohne "in Prüfung" zu nehmen, und anschließend selbst bewilligen.
+        # TODO(Bora): konservativ gewählt (kassenrechtlich sauber: wer zeichnet,
+        # hat geprüft). Wenn die Geschäftsstelle den Haken auch ohne Zuordnung
+        # setzen können soll, diesen Block entfernen – dann greift das Vier-Augen-
+        # Prinzip erst ab "Zur Prüfung annehmen".
+        if review_mark and vals.get(self._REVIEW_MARK_FIELD):
+            to_stamp = self.filtered(lambda r: not r.reviewed_by)
+            if to_stamp:
+                to_stamp._workflow_write({'reviewed_by': self.env.user.id})
+                for rec in to_stamp:
+                    rec.message_post(
+                        body=_(
+                            'Sachliche Prüfung durch %s vermerkt (Bearbeitet von). '
+                            'Die Bewilligung muss daher durch eine zweite Person erfolgen.'
+                        ) % user_name,
+                        subtype_xmlid='mail.mt_note',
+                    )
+        return res
 
     # ══════════════════════════════════════════════════════════════════════════
     # WORKFLOW
     # ══════════════════════════════════════════════════════════════════════════
+
+    # ── Vier-Augen-Prinzip ───────────────────────────────────────────────────
+
+    @api.model
+    def _four_eyes_enabled(self):
+        """Ist das Vier-Augen-Prinzip aktiv? (Systemparameter, Default: an)
+
+        Prüfung, Bewilligung und Zahlungsanweisung dürfen kassenrechtlich nicht in
+        einer Hand liegen. Technisch erzwungen wird das über den Systemparameter
+        'kjr_grant.enforce_four_eyes' (Default '1' = an).
+
+        Eine Ein-Personen-Geschäftsstelle (Urlaub/Krankheit, sehr kleiner Kreis)
+        kann die Sperre abschalten: Einstellungen ▸ Technisch ▸ Parameter ▸
+        Systemparameter, 'kjr_grant.enforce_four_eyes' auf '0' setzen. Die
+        Bearbeitungsvermerke (Bearbeitet von / Zahlung angewiesen von) werden
+        weiterhin protokolliert."""
+        param = self.env['ir.config_parameter'].sudo().get_param(
+            'kjr_grant.enforce_four_eyes', '1')
+        return str(param).strip().lower() not in ('0', 'false', 'off', 'nein', '')
+
+    @api.model
+    def _four_eyes_hint(self):
+        """Einheitlicher Zusatzhinweis, wie sich die Sperre abschalten lässt."""
+        return _(
+            'Hinweis: Das Vier-Augen-Prinzip lässt sich für eine Ein-Personen-'
+            'Geschäftsstelle über den Systemparameter "kjr_grant.enforce_four_eyes" '
+            '(Wert "0") abschalten – Einstellungen ▸ Technisch ▸ Systemparameter.'
+        )
 
     def action_submit(self):
         for rec in self:
@@ -616,7 +1297,9 @@ class KjrGrantApplication(models.Model):
                 raise UserError(_('Nur Entwürfe können eingereicht werden.'))
             rec._check_completeness()
             rec._check_yearly_limit()
-            rec.write({'state': 'submitted', 'date_submitted': fields.Date.today()})
+            rec._workflow_write({
+                'state': 'submitted', 'date_submitted': fields.Date.today(),
+            })
             rec.message_post(
                 body=_('Antrag am %s eingereicht.') % fields.Date.today().strftime('%d.%m.%Y'),
                 subtype_xmlid='mail.mt_note',
@@ -632,7 +1315,9 @@ class KjrGrantApplication(models.Model):
         for rec in self:
             if rec.state != 'submitted':
                 raise UserError(_('Nur eingereichte Anträge können in Prüfung genommen werden.'))
-            rec.write({'state': 'in_review', 'reviewed_by': self.env.user.id})
+            rec._workflow_write({
+                'state': 'in_review', 'reviewed_by': self.env.user.id,
+            })
 
     def action_approve(self):
         if not self.env.user.has_group('kjr_grant.group_kjr_reviewer'):
@@ -640,6 +1325,40 @@ class KjrGrantApplication(models.Model):
         for rec in self:
             if rec.state not in ('submitted', 'in_review'):
                 raise UserError(_('Nur eingereichte Anträge können bewilligt werden.'))
+            # Sachliche Prüfung ist der Bewilligung zwingend vorgelagert – ohne den
+            # Vermerk "sachlich richtig" fehlt die Grundlage für die Anordnung.
+            # TODO(Bora): bewusst auch bei abgeschaltetem Vier-Augen-Prinzip zwingend
+            # (konservative Variante, kassenrechtlich sauber). Falls die Ein-Personen-
+            # Geschäftsstelle das anders wünscht, hier an _four_eyes_enabled() koppeln.
+            if not rec.sachlich_richtig:
+                raise UserError(_(
+                    'Antrag %(name)s: Der Vermerk "Sachlich richtig" fehlt. Bitte den '
+                    'Antrag zuerst sachlich prüfen und den Vermerk setzen, bevor '
+                    'bewilligt wird.',
+                    name=rec.name,
+                ))
+            # Vier-Augen-Prinzip: wer geprüft hat, darf nicht selbst bewilligen.
+            # Ohne vermerkte Prüfung liefe die Sperre ins Leere (der Button
+            # "Bewilligen" ist schon im Status "Eingereicht" sichtbar) – dann
+            # könnte eine Person bewilligen UND anweisen. Bei aktivem Vier-Augen-
+            # Prinzip ist der Prüfvermerk deshalb zwingend.
+            if rec._four_eyes_enabled():
+                if not rec.reviewed_by:
+                    raise UserError(_(
+                        'Vier-Augen-Prinzip: Für Antrag %(name)s ist keine prüfende '
+                        'Person vermerkt. Bitte den Antrag zuerst über "Zur Prüfung '
+                        'annehmen" in Prüfung nehmen (oder den Vermerk "Sachlich '
+                        'richtig" setzen); bewilligen muss anschließend eine zweite '
+                        'Person.\n\n%(hint)s',
+                        name=rec.name, hint=rec._four_eyes_hint(),
+                    ))
+                if rec.reviewed_by.id == self.env.user.id:
+                    raise UserError(_(
+                        'Vier-Augen-Prinzip: Antrag %(name)s wurde von %(user)s geprüft – '
+                        'dieselbe Person darf ihn nicht auch bewilligen. Bitte eine zweite '
+                        'Person der Geschäftsstelle bewilligen lassen.\n\n%(hint)s',
+                        name=rec.name, user=rec.reviewed_by.name, hint=rec._four_eyes_hint(),
+                    ))
             if not rec.grant_type_id.allow_private_account and not rec.payment_iban:
                 raise UserError(_('IBAN fehlt. Bitte vor Bewilligung angeben.'))
             if not rec.grant_approved:
@@ -649,7 +1368,9 @@ class KjrGrantApplication(models.Model):
                     'Bitte begründen Sie die Abweichung vom berechneten Zuschuss '
                     '(Feld "Begründung Abweichung").'
                 ))
-            rec.write({'state': 'approved', 'date_approved': fields.Date.today()})
+            rec._workflow_write({
+                'state': 'approved', 'date_approved': fields.Date.today(),
+            })
             rec._create_grant_move()
             rec._warn_budget_exceeded()
             rec._send_approval_notification()
@@ -667,7 +1388,7 @@ class KjrGrantApplication(models.Model):
                 raise UserError(_('Nur eingereichte Anträge können abgelehnt werden.'))
             if not rec.rejection_reason:
                 raise UserError(_('Bitte einen Ablehnungsgrund angeben.'))
-            rec.write({'state': 'rejected'})
+            rec._workflow_write({'state': 'rejected'})
             rec.message_post(
                 body=_('Antrag abgelehnt. Begründung: %s') % markupsafe.escape(rec.rejection_reason or ''),
                 subject=_('Antrag %s abgelehnt') % rec.name,
@@ -683,13 +1404,22 @@ class KjrGrantApplication(models.Model):
     def action_order_payment(self):
         """Bearbeitungsvermerk 'zur Zahlung angewiesen' setzen (KJR-OA-Antragsformular).
         Zwischenschritt zwischen Bewilligung und Auszahlung; steuert das Dashboard
-        'Zur Auszahlung'."""
+        'Zur Auszahlung'. Bei aktivem Vier-Augen-Prinzip darf die anweisende Person
+        nicht dieselbe sein, die den Antrag sachlich geprüft hat."""
         if not self.env.user.has_group('kjr_grant.group_kjr_reviewer'):
             raise AccessError(_('Keine Berechtigung zur Zahlungsanweisung.'))
         for rec in self:
             if rec.state != 'approved':
                 raise UserError(_('Nur bewilligte Anträge können zur Zahlung angewiesen werden.'))
-            rec.write({
+            if (rec._four_eyes_enabled() and rec.reviewed_by
+                    and rec.reviewed_by.id == self.env.user.id):
+                raise UserError(_(
+                    'Vier-Augen-Prinzip: Antrag %(name)s wurde von %(user)s geprüft – '
+                    'dieselbe Person darf die Zahlung nicht anweisen. Bitte die '
+                    'Anweisung durch eine zweite Person erteilen lassen.\n\n%(hint)s',
+                    name=rec.name, user=rec.reviewed_by.name, hint=rec._four_eyes_hint(),
+                ))
+            rec._workflow_write({
                 'payment_ordered': True,
                 'payment_ordered_by': self.env.user.id,
                 'payment_ordered_date': fields.Date.today(),
@@ -700,25 +1430,103 @@ class KjrGrantApplication(models.Model):
             )
 
     def action_mark_paid(self):
+        """Antrag als ausgezahlt markieren.
+
+        Die Zahlungsanweisung wird hier bewusst NICHT mehr nebenbei gesetzt: sonst
+        könnte eine Person prüfen, bewilligen und anweisen. Der Vermerk muss über
+        "Zur Zahlung anweisen" (action_order_payment) von einer zweiten Person
+        gesetzt worden sein."""
         if not self.env.user.has_group('kjr_grant.group_kjr_reviewer'):
             raise AccessError(_('Keine Berechtigung zur Auszahlungsmarkierung.'))
         for rec in self:
             if rec.state != 'approved':
                 raise UserError(_('Nur bewilligte Anträge können als ausgezahlt markiert werden.'))
             if not rec.payment_ordered:
-                rec.write({
-                    'payment_ordered': True,
-                    'payment_ordered_by': self.env.user.id,
-                    'payment_ordered_date': fields.Date.today(),
-                })
-            rec.write({'state': 'paid', 'date_paid': fields.Date.today()})
+                raise UserError(_(
+                    'Antrag %(name)s ist noch nicht zur Zahlung angewiesen. Bitte zuerst '
+                    'den Schritt "Zur Zahlung anweisen" ausführen; erst danach kann die '
+                    'Auszahlung vermerkt werden.',
+                    name=rec.name,
+                ))
+            # Vier-Augen-Prinzip: wer angewiesen hat, vollzieht die Auszahlung nicht selbst.
+            # Ohne vermerkte anweisende Person liefe die Sperre ins Leere (der Haken
+            # kann von der Administrator-Gruppe auch manuell gesetzt worden sein).
+            if rec._four_eyes_enabled() and not rec.payment_ordered_by:
+                raise UserError(_(
+                    'Antrag %(name)s: Zur Zahlungsanweisung ist keine anweisende '
+                    'Person vermerkt. Bitte die Anweisung über die Schaltfläche '
+                    '"Zur Zahlung anweisen" erteilen lassen – erst danach kann die '
+                    'Auszahlung vermerkt werden.\n\n%(hint)s',
+                    name=rec.name, hint=rec._four_eyes_hint(),
+                ))
+            if (rec._four_eyes_enabled() and rec.payment_ordered_by
+                    and rec.payment_ordered_by.id == self.env.user.id):
+                raise UserError(_(
+                    'Vier-Augen-Prinzip: Die Zahlung für Antrag %(name)s wurde von '
+                    '%(user)s angewiesen – dieselbe Person darf die Auszahlung nicht '
+                    'selbst vollziehen. Bitte durch eine zweite Person ausführen lassen.'
+                    '\n\n%(hint)s',
+                    name=rec.name, user=rec.payment_ordered_by.name,
+                    hint=rec._four_eyes_hint(),
+                ))
+            rec._workflow_write({
+                'state': 'paid', 'date_paid': fields.Date.today(),
+            })
             rec._create_grant_payment()
 
     def action_reset_draft(self):
+        """Antrag auf Entwurf zurücksetzen und alle Bearbeitungsvermerke verwerfen.
+
+        Die Vermerke müssen mit zurückgenommen werden: bleiben Prüfung,
+        Bewilligungsdatum und vor allem die Zahlungsanweisung stehen, gilt nach
+        einer Änderung (z. B. des Betrags) und erneuter Bewilligung die ALTE
+        Anweisung weiter – die Auszahlung wäre dann ohne zweite Person möglich.
+        Was verworfen wurde, hält der Chatter fest (Kassenprüfung)."""
+        # Serverseitig auf die Administrator-Gruppe begrenzt (die Schaltfläche im
+        # Formular ist bereits so eingeschränkt); sonst könnten Antragsteller die
+        # Vermerke eines bewilligten Antrags über einen direkten Aufruf verwerfen.
+        if not self.env.user.has_group('kjr_grant.group_kjr_manager'):
+            raise AccessError(_(
+                'Nur die Geschäftsstellenleitung (Gruppe "Administrator") darf '
+                'Anträge auf Entwurf zurücksetzen.'
+            ))
+        cleared_fields = (
+            'reviewed_by', 'sachlich_richtig', 'payment_ordered',
+            'payment_ordered_by', 'payment_ordered_date', 'date_approved',
+        )
         for rec in self:
             if rec.state == 'paid':
                 raise UserError(_('Ausgezahlte Anträge können nicht zurückgesetzt werden.'))
-            rec.write({'state': 'draft'})
+            discarded = [
+                _('%(field)s (war: %(value)s)') % {
+                    'field': rec._fields[f].string,
+                    'value': rec._format_workflow_value(f, rec[f]),
+                }
+                for f in cleared_fields if rec[f]
+            ]
+            rec._workflow_write({
+                'state': 'draft',
+                'reviewed_by': False,
+                'sachlich_richtig': False,
+                'payment_ordered': False,
+                'payment_ordered_by': False,
+                'payment_ordered_date': False,
+                'date_approved': False,
+            })
+            if discarded:
+                items = markupsafe.Markup('').join(
+                    markupsafe.Markup('<li>%s</li>') % d for d in discarded
+                )
+                body = markupsafe.Markup('<p>%s</p><ul>%s</ul><p>%s</p>') % (
+                    _('Auf Entwurf zurückgesetzt durch %s. Verworfene '
+                      'Bearbeitungsvermerke:') % self.env.user.display_name,
+                    items,
+                    _('Prüfung, Bewilligung und Zahlungsanweisung sind erneut '
+                      'zu durchlaufen.'),
+                )
+            else:
+                body = _('Auf Entwurf zurückgesetzt durch %s.') % self.env.user.display_name
+            rec.message_post(body=body, subtype_xmlid='mail.mt_note')
 
     def action_print_bescheid(self):
         self.ensure_one()
@@ -966,6 +1774,429 @@ class KjrGrantApplication(models.Model):
         _logger.info('Fristen-Erinnerung: %d Anträge benachrichtigt', len(drafts))
 
     # ══════════════════════════════════════════════════════════════════════════
+    # DSGVO — ANONYMISIERUNG DER NEBENSCHAUPLÄTZE (Befund K6)
+    # ══════════════════════════════════════════════════════════════════════════
+    #
+    # Ausgangslage laut Audit vom 21.08.2026: kjr.grant.participant leerte fünf
+    # Felder des Primärmodells – dieselben Klarnamen lagen danach unverändert
+    # weiter als hochgeladene Teilnahmeliste (ir.attachment), in der Feldhistorie
+    # (mail.tracking.value, u. a. IBAN) und im Chatter (mail.message).
+    #
+    # Was hier NICHT angefasst wird und warum:
+    #   • account.move / account.payment und deren Anhänge. Die Buchungsbelege
+    #     hängen in 'account' an einer Hash-Verkettung; ein nachträglicher
+    #     Eingriff zerstört die Unveränderbarkeit des Belegs. Die Suche unten
+    #     ist deshalb strikt auf res_model = 'kjr.grant.application' begrenzt.
+    #   • kjr.juleica, kjr.volunteer.log, kjr.grant.receipt.partner_name,
+    #     res.partner – eigene Modelle, eigene Zuständigkeit (siehe Audit K6).
+
+    @api.model
+    def _dsgvo_read_years(self, param):
+        """Einen Fristparameter lesen.
+
+        Rückgabe:
+          • None – der Parameter ist NICHT gesetzt (fehlt oder ist leer). Nur
+            dieser Fall löst den Rückgriff auf die Basisfrist aus.
+          • 0    – ausdrücklich abgeschaltet (Wert 0 oder negativ) ODER nicht als
+            ganze Zahl lesbar. Ein unlesbarer Wert wird bewusst NICHT still durch
+            die Basisfrist ersetzt: sonst würde ein Tippfehler in einem
+            Klassenparameter eine Verarbeitung auslösen, die der KJR so nicht
+            angeordnet hat. Stattdessen bleibt die Klasse aus, mit Warnung.
+          • > 0  – die gepflegte Frist in Jahren."""
+        raw = self.env['ir.config_parameter'].sudo().get_param(param, '')
+        raw = (raw or '').strip()
+        if not raw:
+            return None
+        try:
+            years = int(raw)
+        except (TypeError, ValueError):
+            _logger.warning(
+                'DSGVO: Systemparameter %s ist keine ganze Zahl (%r) – die '
+                'zugehörige Klasse bleibt abgeschaltet.', param, raw,
+            )
+            return 0
+        return years if years > 0 else 0
+
+    @api.model
+    def _dsgvo_retention_source(self, class_key):
+        """(Jahre, maßgeblicher Parameter) einer Belegklasse.
+
+        Reihenfolge:
+          1. der klasseneigene Parameter, sofern gesetzt,
+          2. sonst der Basisparameter der Feld-Anonymisierung
+             (DSGVO_BASE_RETENTION_PARAM).
+
+        Punkt 2 ist der Kern des Fixes zu Befund K6: Ohne gepflegten
+        Klassenparameter läuft die Spurenbereinigung mit GENAU DER Frist, mit der
+        auch die Teilnehmerfelder anonymisiert werden. Es gibt damit keinen
+        Zustand mehr, in dem Felder geleert werden und Anhänge, Feldhistorie und
+        Chatter dieselben Klarnamen weiter tragen."""
+        param = DSGVO_RETENTION_PARAMS.get(class_key)
+        if param:
+            years = self._dsgvo_read_years(param)
+            if years is not None:
+                return years, param
+        base_years = self._dsgvo_read_years(DSGVO_BASE_RETENTION_PARAM)
+        return (base_years or 0), DSGVO_BASE_RETENTION_PARAM
+
+    @api.model
+    def _dsgvo_retention_years(self, class_key):
+        """Maßgebliche Aufbewahrungsfrist einer Belegklasse in Jahren.
+
+        0 = für diese Klasse passiert gar nichts (weder Ersetzen noch Löschen
+        noch Schwärzen)."""
+        return self._dsgvo_retention_source(class_key)[0]
+
+    @api.model
+    def _dsgvo_cutoff_date(self, class_key):
+        """Stichtag einer Klasse oder None, wenn die Klasse abgeschaltet ist.
+
+        Jahresend-Anker: gezählt werden volle Kalenderjahre NACH dem Jahr, in dem
+        die Maßnahme endete. Eine Maßnahme mit Ende 2027 und einer Frist von
+        5 Jahren ist damit erst ab dem 01.01.2033 fällig, nicht schon im Laufe
+        des Jahres 2032. Der Anker ist bewusst die spätere Variante – zu früh
+        anonymisieren würde eine etwaige Aufbewahrungspflicht verletzen.
+
+        Unterschied zur Feld-Anonymisierung: kjr.grant.participant rechnet
+        rollierend (heute − n Jahre), hier gilt der Jahresend-Anker. Der Stichtag
+        hier ist damit nie früher, sondern bis zu ein Jahr später. Es wird also
+        NICHTS ersetzt oder geschwärzt, bevor die Feldfrist abgelaufen ist; im
+        ungünstigsten Fall zieht die Spurenbereinigung dem Teilnehmerdatensatz um
+        bis zu ein Jahr hinterher. Diese Richtung ist die konservative: eine
+        ersetzte Datei ist unwiederbringlich, ein Nachlauf ist es nicht.
+        TODO(KJR): Jahresend-Anker auch für die Feld-Anonymisierung übernehmen,
+        dann laufen beide Seiten taggleich (betrifft kjr_grant_participant.py)."""
+        years = self._dsgvo_retention_years(class_key)
+        if not years:
+            return None
+        return date(fields.Date.today().year - years, 1, 1)
+
+    def _dsgvo_is_due(self, class_key):
+        """Ist dieser Antrag für die genannte Klasse fällig?"""
+        self.ensure_one()
+        cutoff = self._dsgvo_cutoff_date(class_key)
+        return bool(cutoff and self.measure_end and self.measure_end < cutoff)
+
+    @api.model
+    def _dsgvo_attachment_class(self, attachment):
+        """Belegklasse eines Anhangs anhand des Dateinamens."""
+        fname = (attachment.name or '').lower()
+        for class_key, keywords in DSGVO_ATTACHMENT_KEYWORDS:
+            if any(kw in fname for kw in keywords):
+                return class_key
+        return 'other'
+
+    @api.model
+    def _dsgvo_placeholder_name(self, class_key):
+        """Neuer Dateiname des Platzhalters.
+
+        Das Schlüsselwort der Klasse bleibt bewusst im Namen: die
+        Vollständigkeitsprüfung beim Einreichen (_check_completeness) erkennt
+        Teilnahmeliste, Bericht und Belegliste am Dateinamen. Ein Platzhalter
+        ohne Schlüsselwort würde einen bereits eingereichten Antrag im Nachhinein
+        als unvollständig erscheinen lassen. Der Original-Dateiname wird NICHT
+        aufbewahrt – er enthält erfahrungsgemäß selbst Klarnamen
+        ("TN-Liste Zeltlager Familie ….pdf")."""
+        labels = {
+            'tn_list': _('Teilnahmeliste (anonymisiert).txt'),
+            'report':  _('Bericht (anonymisiert).txt'),
+            'receipt': _('Belegliste (anonymisiert).txt'),
+            'other':   _('Unterlage (anonymisiert).txt'),
+        }
+        return labels.get(class_key, labels['other'])
+
+    @api.model
+    def _dsgvo_placeholder_body(self, class_key):
+        """Inhalt der Platzhalterdatei (reiner Text, keine Rechtsaussage).
+
+        Nennt den TATSÄCHLICH herangezogenen Parameter samt Wert – also je nach
+        Pflegezustand den Klassenparameter oder die Basisfrist. Nur so lässt sich
+        im Nachhinein nachvollziehen, auf welcher Grundlage ersetzt wurde."""
+        years, param = self._dsgvo_retention_source(class_key)
+        return _(
+            'Diese Datei wurde am %(day)s im Rahmen der DSGVO-Anonymisierung '
+            '(Belegklasse "%(cls)s") durch diesen Platzhalter ersetzt. '
+            'Maßgeblich war die vom KJR Oberallgäu im Systemparameter '
+            '"%(param)s" hinterlegte Aufbewahrungsfrist von %(years)d Jahren '
+            '(gerechnet ab dem Ende des Jahres, in dem die Maßnahme endete). '
+            'Der Vorgang selbst bleibt als Nachweis erhalten; die '
+            'personenbezogenen Inhalte der Datei wurden entfernt.'
+        ) % {
+            'day': fields.Date.today().strftime('%d.%m.%Y'),
+            'cls': class_key,
+            'param': param,
+            'years': years,
+        }
+
+    def _dsgvo_anonymize_attachments(self):
+        """Hochgeladene Dateien am Antrag klassenweise anonymisieren.
+
+        Abwägung Löschen vs. Platzhalter: gewählt ist der Platzhalter.
+        Ein unlink() nähme dem Antrag den Nachweis, dass Teilnahmeliste, Bericht
+        oder Belegliste überhaupt eingereicht wurden – genau das prüft die
+        Geschäftsstelle bei Rückfragen und Rechnungsprüfungen (Art. 5 Abs. 2
+        Rechenschaftspflicht). Der Personenbezug steckt im Dateiinhalt und im
+        Dateinamen, nicht in der Tatsache der Einreichung: beides wird ersetzt,
+        die Hülle bleibt. Für Teilnahmelisten kommt hinzu, dass die Liste laut
+        KJR-Fußnote ohnehin beim Träger verbleibt – der KJR braucht den Inhalt
+        nach Fristablauf nicht mehr.
+
+        Idempotent über den Marker in ir.attachment.description."""
+        self.ensure_one()
+        # Günstiger Rückweg und zugleich die Sicherung gegen ein zu frühes
+        # Ersetzen: Ist für KEINE Anhangklasse eine Frist abgelaufen – weil kein
+        # Parameter gepflegt ist, weil alles auf 0 steht oder weil die Frist
+        # dieses Antrags schlicht noch läuft –, wird gar nicht erst gesucht und
+        # keine einzige Datei angefasst.
+        if not any(self._dsgvo_is_due(key) for key in DSGVO_ATTACHMENT_CLASSES):
+            return 0
+        # res_field = False: nur echte Dokumente, keine Binärfeld-Ablagen.
+        # res_model fest auf dieses Modell – Anhänge an account.move/account.payment
+        # bleiben unberührt (Hash-Verkettung, siehe Kopfkommentar).
+        attachments = self.env['ir.attachment'].sudo().search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('res_field', '=', False),
+        ])
+        touched = 0
+        for att in attachments:
+            if DSGVO_ANON_MARKER in (att.description or ''):
+                continue  # bereits anonymisiert
+            if att.type != 'binary':
+                continue  # URL-Anhänge tragen keinen Dateiinhalt
+            class_key = self._dsgvo_attachment_class(att)
+            if not self._dsgvo_is_due(class_key):
+                continue
+            body = self._dsgvo_placeholder_body(class_key)
+            att.write({
+                'name': self._dsgvo_placeholder_name(class_key),
+                'datas': base64.b64encode(body.encode('utf-8')),
+                'mimetype': 'text/plain',
+                'description': '%s Klasse=%s, ersetzt am %s' % (
+                    DSGVO_ANON_MARKER, class_key,
+                    fields.Date.today().strftime('%d.%m.%Y'),
+                ),
+            })
+            touched += 1
+        return touched
+
+    def _dsgvo_iban_literals(self):
+        """Alle am Antrag bekannten IBAN-Zeichenketten einsammeln.
+
+        Quelle sind das Feld selbst und die Feldhistorie – damit die Schwärzung
+        im Chatter auch frühere IBANs trifft. Muss VOR dem Aufräumen der
+        Trackingwerte laufen."""
+        self.ensure_one()
+        literals = set()
+        if self.payment_iban:
+            literals.add(self.payment_iban.strip())
+        for tv in self._dsgvo_tracking_values(('payment_iban',)):
+            for fname in ('old_value_char', 'new_value_char',
+                          'old_value_text', 'new_value_text'):
+                # Die Spaltennamen von mail.tracking.value sind versionsabhängig –
+                # deshalb über _fields abgefragt statt hart zugegriffen.
+                if fname in tv._fields:
+                    value = tv[fname]
+                    if value and isinstance(value, str):
+                        literals.add(value.strip())
+        # Schreibweise mit Leerzeichen (Vierergruppen) mit aufnehmen: im Chatter
+        # steht die IBAN oft so, wie sie aus dem Formular kopiert wurde.
+        grouped = set()
+        for lit in literals:
+            compact = lit.replace(' ', '')
+            if compact:
+                grouped.add(' '.join(
+                    compact[i:i + 4] for i in range(0, len(compact), 4)
+                ))
+        return {lit for lit in (literals | grouped) if len(lit) >= 8}
+
+    def _dsgvo_tracking_values(self, field_names):
+        """Trackingwerte dieses Antrags zu den genannten Feldern."""
+        self.ensure_one()
+        return self.env['mail.tracking.value'].sudo().search([
+            ('mail_message_id.model', '=', self._name),
+            ('mail_message_id.res_id', '=', self.id),
+            ('field_id.name', 'in', list(field_names)),
+        ])
+
+    def _dsgvo_anonymize_tracking(self):
+        """Feldhistorie der personenbezogenen Felder aufräumen.
+
+        mail.tracking.value überlebt jede Anonymisierung des Feldes: die alte
+        IBAN steht nach dem Leeren von payment_iban weiterhin in der Historie.
+        Die Trackingwerte werden deshalb entfernt – die zugehörige
+        mail.message bleibt bestehen, der Vorgang ("Feld geändert durch X am Y")
+        bleibt also nachweisbar, nur der Wert verschwindet.
+
+        Idempotent: entfernte Datensätze werden beim nächsten Lauf nicht mehr
+        gefunden."""
+        self.ensure_one()
+        tracking = self._dsgvo_tracking_values(DSGVO_TRACKED_PERSONAL_FIELDS)
+        count = len(tracking)
+        if count:
+            tracking.unlink()
+        return count
+
+    @staticmethod
+    def _dsgvo_redact(text, literals):
+        """Klartextvorkommen in einem (HTML-)Text durch Platzhalter ersetzen.
+
+        Gibt (neuer_text, Treffer) zurück. Es wird sowohl die rohe als auch die
+        HTML-escapte Schreibweise gesucht, weil Chatter-Inhalte escaped
+        gespeichert werden ('Müller & Sohn' → 'Müller &amp; Sohn')."""
+        if not text:
+            return text, 0
+        result = text
+        hits = 0
+        for literal in literals:
+            literal = (literal or '').strip()
+            if len(literal) < 4:
+                # Zu kurze Zeichenketten würden im Fließtext falsche Treffer
+                # erzeugen; solche Fälle bleiben der manuellen Prüfung.
+                continue
+            for variant in {literal, str(markupsafe.escape(literal))}:
+                if variant and variant in result:
+                    hits += result.count(variant)
+                    result = result.replace(variant, DSGVO_REDACTED)
+        return result, hits
+
+    def _dsgvo_anonymize_chatter(self, participant_names=None):
+        """Klarnamen und Bankdaten in den Chatter-Nachrichten schwärzen.
+
+        Abwägung (Audit K6, "der Chatter ist auch Nachweis"):
+        Der Chatter dokumentiert den Verwaltungsvorgang – wer wann eingereicht,
+        geprüft, bewilligt und angewiesen hat. Dieser Nachweis ist für die
+        Rechnungsprüfung und für das Vier-Augen-Prinzip erforderlich und wiegt
+        schwerer als die Nachricht selbst. Gelöscht wird deshalb NICHTS:
+        Autor, Zeitpunkt, Betreff-Struktur und Reihenfolge der Nachrichten
+        bleiben vollständig erhalten. Ersetzt werden ausschließlich die
+        personenbezogenen Zeichenketten im Text:
+          • die Klarnamen, die derselbe Lauf gerade am Teilnehmerdatensatz
+            anonymisiert hat (werden von kjr.grant.participant übergeben),
+          • bekannte IBANs des Antrags samt Historie,
+          • weitere IBAN-artige Zeichenketten im Freitext, aber nur wenn sie die
+            Mod-97-Prüfziffer bestehen (sonst würde die Schwärzung raten).
+        Anhänge an Chatter-Nachrichten hängen als ir.attachment am Antrag und
+        werden von _dsgvo_anonymize_attachments() mit erfasst.
+
+        Grenze, die der Code nicht überwinden kann: Namen von Teilnehmenden, die
+        in einem FRÜHEREN Lauf anonymisiert wurden, sind nicht mehr bekannt und
+        können im Chatter nicht mehr erkannt werden.
+        TODO(KJR): Einmalige manuelle Durchsicht der Altbestände einplanen.
+
+        Idempotent: nach dem Ersetzen findet der nächste Lauf nichts mehr."""
+        self.ensure_one()
+        literals = set(participant_names or [])
+        literals |= self._dsgvo_iban_literals()
+        messages = self.env['mail.message'].sudo().search([
+            ('model', '=', self._name),
+            ('res_id', '=', self.id),
+        ])
+        touched = 0
+        for msg in messages:
+            body = msg.body or ''
+            found = set(literals)
+            for candidate in IBAN_SCAN_RE.findall(body):
+                compact = candidate.replace(' ', '').replace('\u00a0', '')
+                if self._iban_is_valid(compact):
+                    found.add(candidate)
+            new_body, body_hits = self._dsgvo_redact(body, found)
+            new_subject, subject_hits = self._dsgvo_redact(msg.subject or '', found)
+            if not (body_hits or subject_hits):
+                continue
+            vals = {}
+            if body_hits:
+                vals['body'] = new_body
+            if subject_hits:
+                vals['subject'] = new_subject
+            msg.write(vals)
+            touched += 1
+        return touched
+
+    def _dsgvo_anonymize_related(self, participant_names=None):
+        """Nebenschauplätze der übergebenen Anträge anonymisieren (Befund K6).
+
+        Jede Klasse prüft ihre EIGENE Frist; ein Antrag kann also für den
+        Chatter fällig sein und für die Belegliste noch nicht (Belege laufen
+        länger, § 147 AO / § 257 HGB). Ist für eine Klasse kein eigener Parameter
+        gepflegt, gilt die Basisfrist der Feld-Anonymisierung – die Klasse läuft
+        dann automatisch mit. Nur ein ausdrücklich auf 0 gesetzter Parameter
+        schaltet eine Klasse ab.
+
+        Ist ein Antrag für keine Klasse fällig, fasst diese Methode ihn nicht an:
+        jeder Zweig prüft _dsgvo_is_due() vorab, und _dsgvo_anonymize_attachments()
+        sucht bei nicht abgelaufener Frist nicht einmal nach Anhängen.
+
+        Buchungsbelege bleiben unberührt: die Suchen sind auf res_model bzw.
+        model = 'kjr.grant.application' festgenagelt, account.move/account.payment
+        samt ihren Anhängen und ihrem Chatter kommen darin nicht vor
+        (Hash-Verkettung, siehe Kopfkommentar des Abschnitts).
+
+        :param participant_names: dict {application_id: [Klarnamen, …]} der
+            Namen, die im selben Lauf am Teilnehmerdatensatz anonymisiert wurden.
+        :return: dict mit den Zählern für die Protokollierung."""
+        names_by_app = participant_names or {}
+        stats = {'attachments': 0, 'tracking': 0, 'messages': 0, 'applications': 0}
+        for rec in self:
+            touched_any = False
+            if rec._dsgvo_is_due('chatter'):
+                # VOR dem Aufräumen der Trackingwerte: die Schwärzung im Chatter
+                # verwendet die historischen IBANs aus mail.tracking.value.
+                count = rec._dsgvo_anonymize_chatter(names_by_app.get(rec.id))
+                stats['messages'] += count
+                touched_any = touched_any or bool(count)
+            if rec._dsgvo_is_due('tracking'):
+                count = rec._dsgvo_anonymize_tracking()
+                stats['tracking'] += count
+                touched_any = touched_any or bool(count)
+            count = rec._dsgvo_anonymize_attachments()
+            stats['attachments'] += count
+            touched_any = touched_any or bool(count)
+            if touched_any:
+                stats['applications'] += 1
+        return stats
+
+    @api.model
+    def _cron_anonymize_related(self):
+        """Cron: Nebenschauplätze fälliger Anträge anonymisieren.
+
+        Läuft zusätzlich zur Teilnehmer-Anonymisierung, damit auch Anträge ohne
+        (bzw. mit bereits anonymisierten) Teilnehmerdatensätzen erfasst werden.
+
+        Ist weder ein Klassenparameter noch der Basisparameter gepflegt bzw.
+        stehen alle auf 0, ist nichts fällig: der Lauf kehrt nach ein paar
+        Parameterlesungen ohne jede Suche zurück und protokolliert genau das."""
+        active_years = {
+            key: self._dsgvo_retention_years(key) for key in DSGVO_RETENTION_PARAMS
+        }
+        active = [key for key, years in active_years.items() if years]
+        if not active:
+            _logger.info(
+                'DSGVO-Nachlauf Zuschussanträge: keine Aufbewahrungsfrist wirksam '
+                '(weder Klassenparameter noch %s gesetzt bzw. alles auf 0) – '
+                'nichts zu tun. TODO(KJR): Fristen festlegen.',
+                DSGVO_BASE_RETENTION_PARAM,
+            )
+            return
+        cutoffs = [self._dsgvo_cutoff_date(key) for key in active]
+        # Späterer Stichtag = kürzere Frist = größere Kandidatenmenge.
+        cutoff = max(c for c in cutoffs if c)
+        applications = self.search([
+            ('measure_end', '!=', False),
+            ('measure_end', '<', cutoff),
+        ])
+        stats = applications._dsgvo_anonymize_related()
+        _logger.info(
+            'DSGVO-Nachlauf Zuschussanträge (Fristen: %s): %d Anträge geprüft, '
+            '%d bearbeitet, %d Anhänge ersetzt, %d Trackingwerte entfernt, '
+            '%d Chatter-Nachrichten geschwärzt. Buchungsbelege (account.move/'
+            'account.payment) bleiben wegen der Hash-Verkettung unangetastet.',
+            ', '.join('%s=%dJ' % (key, active_years[key]) for key in sorted(active)),
+            len(applications), stats['applications'],
+            stats['attachments'], stats['tracking'], stats['messages'],
+        )
+
+    # ══════════════════════════════════════════════════════════════════════════
     # DUPLIKAT-PRÜFUNG
     # ══════════════════════════════════════════════════════════════════════════
 
@@ -1022,10 +2253,6 @@ class KjrGrantApplication(models.Model):
         no_tn_codes = ('4_6', '4_7', '4_9', 'invest')
         if t.code not in no_tn_codes and self.tn_count <= 0:
             errors.append(_('Anzahl Teilnehmer muss > 0 sein.'))
-        if self.participant_ids and not self.participant_consent:
-            errors.append(_('Bitte bestätigen Sie, dass die Einwilligung der '
-                           'Erziehungsberechtigten zur Verarbeitung der '
-                           'Teilnehmerdaten vorliegt (Datenschutz).'))
         if t.min_participants and self.tn_count < t.min_participants:
             errors.append(_('Mindestens %d Teilnehmer erforderlich für "%s".')
                          % (t.min_participants, t.name))
@@ -1043,14 +2270,17 @@ class KjrGrantApplication(models.Model):
         if not t.allow_private_account and not self.payment_iban:
             errors.append(_('IBAN fehlt. Auszahlung nur auf Organisationskonto.'))
 
-        # Teilnehmerliste: digital oder als Datei
+        # Teilnahmeliste: digital oder als Datei. 'teilnahme' muss mitgeprüft werden —
+        # seit 07/2026 heißt das Feld im Formular „Teilnahmeliste", die Dateien der
+        # Antragsteller heißen entsprechend (Bora-Abstimmung 30.07.2026).
         if t.requires_tn_list and not self.participant_ids:
             attachments = self.env['ir.attachment'].search([
                 ('res_model', '=', self._name), ('res_id', '=', self.id),
             ])
             names = [a.name.lower() for a in attachments]
-            if not any(kw in n for n in names for kw in ['teilnehmer', 'tn-liste', 'tn_liste']):
-                errors.append(_('Teilnehmerliste fehlt. Bitte digital ausfüllen oder als Datei hochladen.'))
+            if not any(kw in n for n in names
+                       for kw in ['teilnahme', 'teilnehmer', 'tn-liste', 'tn_liste']):
+                errors.append(_('Teilnahmeliste fehlt. Bitte digital ausfüllen oder als Datei hochladen.'))
 
         attachments = self.env['ir.attachment'].search([
             ('res_model', '=', self._name), ('res_id', '=', self.id),
@@ -1061,7 +2291,13 @@ class KjrGrantApplication(models.Model):
             if not self.measure_report and not any(kw in n for n in names for kw in ['bericht', 'report', 'protokoll']):
                 errors.append(_('Maßnahmenbericht fehlt (Textfeld oder Datei mit "bericht" im Namen).'))
         if t.requires_receipt:
-            if not any(kw in n for n in names for kw in ['beleg', 'rechnung', 'quittung']):
+            # Entweder-oder: digital erfasste Belegliste ODER hochgeladene Datei.
+            if self.use_digital_receipts:
+                if not self.receipt_ids:
+                    errors.append(_('Die Belegliste ist als digital erfasst markiert, enthält '
+                                   'aber keinen einzigen Beleg. Bitte Belege eintragen oder die '
+                                   'Belegliste als Datei hochladen.'))
+            elif not any(kw in n for n in names for kw in ['beleg', 'rechnung', 'quittung']):
                 errors.append(_('Belegliste fehlt (Datei mit "beleg" oder "rechnung" im Namen).'))
 
         if errors:
@@ -1107,6 +2343,9 @@ class KjrGrantApplication(models.Model):
         self.ensure_one()
         t = self.grant_type_id
         warnings = []
+        # Regelstand: gewählte Förderart vs. die zum Maßnahmenbeginn gültige Fassung.
+        if self.applicable_type_warning:
+            warnings.append(self.applicable_type_warning)
         # Herkunft: TN sollen überwiegend aus dem Landkreis kommen.
         if t.max_external_pct and self.tn_external_pct > t.max_external_pct:
             warnings.append(_(
@@ -1118,13 +2357,13 @@ class KjrGrantApplication(models.Model):
         required_leaders = math.ceil(self.tn_count / ratio) if self.tn_count else 0
         if self.tn_count and self.tn_leader_count < required_leaders:
             warnings.append(_(
-                'Betreuungsschlüssel: bei %(tn)d Teilnehmern werden mind. %(req)d Jugendleiter '
-                'empfohlen (1 je %(ratio)d TN), angegeben sind %(have)d.'
+                'Betreuungsschlüssel: bei %(tn)d Teilnehmern werden mind. %(req)d '
+                'Gruppenleitungen empfohlen (1 je %(ratio)d TN), angegeben sind %(have)d.'
             ) % {'tn': self.tn_count, 'req': required_leaders, 'ratio': ratio, 'have': self.tn_leader_count})
         # Juleica.
         if self.tn_leader_count and self.tn_leader_juleica < self.tn_leader_count:
             warnings.append(_(
-                'Nicht alle Jugendleiter haben eine Juleica (%(j)d von %(l)d). Für den '
+                'Nicht alle Gruppenleitungen haben eine Juleica (%(j)d von %(l)d). Für den '
                 'Juleica-Zuschlag ist eine gültige Juleica erforderlich.'
             ) % {'j': self.tn_leader_juleica, 'l': self.tn_leader_count})
         # Dauer.
@@ -1132,13 +2371,17 @@ class KjrGrantApplication(models.Model):
             warnings.append(_('Die Maßnahme ist kürzer als die Mindestdauer von %d Tagen.') % t.min_days)
         if t.max_days and self.measure_days and self.measure_days > t.max_days:
             warnings.append(_('Die Maßnahme überschreitet die Höchstdauer von %d Tagen.') % t.max_days)
-        # Alter (nur wenn Grenzen gesetzt und Geburtsdaten vorhanden).
-        # Jugendleiter sind von der Teilnehmer-Altersgrenze ausgenommen (KJR-OA: für
-        # Jugendleiter besteht keine Altersgrenze) und werden hier nicht gezählt.
+        # Alter (nur wenn Grenzen gesetzt und das Alter erfasst ist).
+        # Maßgeblich ist das Feld 'age': es wird in der Teilnahmeliste direkt eingegeben
+        # und nur dann aus dem Geburtsdatum berechnet, wenn eines hinterlegt ist.
+        # Gruppenleitungen sind von der Teilnehmer-Altersgrenze ausgenommen (KJR-OA: für
+        # Gruppenleitungen besteht keine Altersgrenze) und werden hier nicht gezählt.
         if (t.min_age or t.max_age) and self.participant_ids:
             out = 0
             for p in self.participant_ids:
-                if not p.birthdate or p.is_leader:
+                if p.is_leader:
+                    continue
+                if not p.age and not p.birthdate:
                     continue
                 if t.min_age and p.age < t.min_age:
                     out += 1
@@ -1146,7 +2389,7 @@ class KjrGrantApplication(models.Model):
                     out += 1
             if out:
                 warnings.append(_(
-                    '%(n)d Teilnehmer (ohne Jugendleiter) liegen außerhalb des förderfähigen '
+                    '%(n)d Teilnehmer (ohne Gruppenleitungen) liegen außerhalb des förderfähigen '
                     'Altersbereichs (%(min)s–%(max)s Jahre).'
                 ) % {'n': out, 'min': t.min_age or '–', 'max': t.max_age or '–'})
         # Subsidiarität: anderweitige Zuschussmöglichkeiten sind auszuschöpfen und
@@ -1201,11 +2444,13 @@ class KjrGrantApplication(models.Model):
                 'mimetype': 'application/pdf',
             })
             self.message_post(
-                body=_(
+                # message_post escapt einfache Zeichenketten – ohne Markup stünden
+                # <b>/<br/> als Text im Chatter und in der Benachrichtigungs-Mail.
+                # Die eingesetzten Werte werden von Markup.__mod__ weiterhin escaped.
+                body=markupsafe.Markup(_(
                     'Antrag <b>%(name)s</b> wurde bewilligt.<br/>'
-                    'Bewilligter Betrag: <b>%(amount).2f €</b>',
-                    name=self.name, amount=self.grant_approved,
-                ),
+                    'Bewilligter Betrag: <b>%(amount).2f €</b>'
+                )) % {'name': self.name, 'amount': self.grant_approved},
                 subject=_('Zuschussbescheid %s') % self.name,
                 attachment_ids=[attachment.id],
                 subtype_xmlid='mail.mt_comment',

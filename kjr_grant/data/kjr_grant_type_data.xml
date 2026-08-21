@@ -40,7 +40,7 @@
             <field name="requires_receipt">True</field>
             <field name="min_duration_hours">4.0</field>
             <field name="min_days">2</field>
-            <field name="description">Mehrtägige Fahrten und Lager. Min. eine Übernachtung. Zuschuss: 8 € pro TN/Tag, max. 600 €. Jugendleiter mit Juleica erhalten +50 % Bonus. Max. 4 Maßnahmen/Jahr.</field>
+            <field name="description">Mehrtägige Fahrten und Lager. Min. eine Übernachtung. Zuschuss: 8 € pro TN/Tag, max. 600 €. Gruppenleitungen mit Juleica erhalten +50 % Bonus. Max. 4 Maßnahmen/Jahr.</field>
         </record>
 
         <record id="grant_type_4_2" model="kjr.grant.type">
@@ -87,20 +87,52 @@
             <field name="name">Jugendleiterschulung (§ 4.4)</field>
             <field name="code">4_4</field>
             <field name="sequence">50</field>
-            <field name="max_amount">75.0</field>
+            <!-- Höchstfördersumme laut Entscheidung Bora Berlinger (KJR OA) vom 30.07.2026
+                 (Beleg: Terminmitschnitt „KJR Felderbesprechung" vom 30.07.2026, 00:16:19 — Bora Berlinger woertlich: „bei Jugendleiterschulung, da ist der Maximalbetrag zum Beispiel 50 und nicht 75.") von 75 € auf 50 € korrigiert. Wirkt wegen noupdate="1"
+                 nur auf Neuinstallationen – bestehende DBs zieht das
+                 Migrationsskript migrations/19.0.10.0.0/post-migration.py nach.
+
+                 TODO (Bora) – BITTE BESTÄTIGEN, betrifft ausgezahlte Beträge:
+                 Aus dem Termin ist überliefert „Höchstbetrag der Jugendleiter-
+                 schulung = 50 €". Offen blieb, ob die 50 € auch für Teilnehmende
+                 MIT Juleica gelten, die bisher bis 75 € erhalten konnten.
+                 Umgesetzt ist Variante A (die konservative, niedrigere Auslegung):
+                   Variante A (aktiv): 50 € ist die Obergrenze für ALLE Fälle.
+                     max_amount = 50 €, jl_max_with_juleica = 50 €,
+                     jl_max_no_juleica = 50 €. Die Quoten bleiben unverändert
+                     (ohne Juleica 50 %, mit Juleica 75 %) – wer eine Juleica hat,
+                     erreicht die 50 € also schon bei geringeren Selbstkosten.
+                     Ergebnis: max. 50 € ohne Juleica, max. 50 € mit Juleica.
+                   Variante B (Alternative, falls die 50 € nur den Fall OHNE
+                     Juleica meinten): max_amount zurück auf 75 €,
+                     jl_max_with_juleica zurück auf 75 €, jl_max_no_juleica
+                     bleibt 50 €. Ergebnis: max. 50 € ohne Juleica, max. 75 €
+                     mit Juleica.
+                 Hintergrund: max_amount wirkt in _calculate_grant als globale
+                 Deckelung über ALLE Berechnungszweige. Solange max_amount 50 €
+                 ist, würde ein jl_max_with_juleica von 75 € nie ausgezahlt – der
+                 Antragstellende läse 75 € und bekäme 50 €. Deshalb sind beide
+                 Werte hier gemeinsam auf 50 € gesetzt und die Beschreibung
+                 nennt genau das, was das System auch auszahlt.
+                 Bei Entscheidung für Variante B sind XML, Beschreibung und das
+                 Migrationsskript gemeinsam zurückzudrehen. -->
+            <field name="max_amount">50.0</field>
             <field name="max_per_year">0</field>
             <field name="max_cofinancing_pct">75.0</field>
             <field name="juleica_bonus">False</field>
             <field name="jl_pct_no_juleica">50.0</field>
             <field name="jl_max_no_juleica">50.0</field>
             <field name="jl_pct_with_juleica">75.0</field>
-            <field name="jl_max_with_juleica">75.0</field>
+            <!-- Von 75 € auf 50 € gesenkt: siehe TODO (Bora) oben, Variante A.
+                 Die Quote (75 %) bleibt unverändert – die Kundenvorgabe betraf
+                 den Höchstbetrag, nicht den Prozentsatz. -->
+            <field name="jl_max_with_juleica">50.0</field>
             <field name="allow_private_account">True</field>
             <field name="requires_tn_list">False</field>
             <field name="requires_report">False</field>
             <field name="requires_receipt">False</field>
             <field name="requires_other_docs">TN-Bestätigung des Verbandes + Kopie Juleica (falls vorhanden)</field>
-            <field name="description">50 % der Selbstkosten (max. 50 €), mit Juleica: 75 % (max. 75 €). Kein Jahreslimit. Auszahlung auf Privatkonto möglich.</field>
+            <field name="description">Zuschuss zu den Selbstkosten (Fahrtkosten + Kursgebühren): ohne Juleica 50 % der Selbstkosten, mit Juleica 75 % der Selbstkosten. In beiden Fällen höchstens 50 € je Schulung. Kein Jahreslimit. Auszahlung auf ein Privatkonto möglich.</field>
         </record>
 
         <record id="grant_type_4_5" model="kjr.grant.type">
@@ -220,11 +252,18 @@
              Zuschussrichtlinie, sondern ein generischer, konfigurierbarer Antragstyp
              für Investitionsförderungen Dritter (z. B. Landkreis). Die hier gesetzten
              Werte sind PLATZHALTER und vor Go-live gegen das jeweils gültige
-             Förderprogramm zu bestätigen (Förderquote + Höchstbetrag). -->
+             Förderprogramm zu bestätigen (Förderquote + Höchstbetrag).
+             DEAKTIVIERT: Bora Berlinger (KJR OA) hat am 30.07.2026 entschieden,
+             dass diese Förderart nicht mehr angeboten wird. Der Record bleibt
+             bewusst erhalten (nur active=False), weil bestehende Anträge ihn über
+             grant_type_id referenzieren – ein Löschen würde diese Anträge zerreißen.
+             Wegen noupdate="1" wirkt das active-Flag nur auf Neuinstallationen;
+             bestehende DBs deaktiviert migrations/19.0.10.0.0/post-migration.py. -->
         <record id="grant_type_invest" model="kjr.grant.type">
             <field name="name">Investitionszuschuss (Landkreis – konfigurierbar)</field>
             <field name="code">invest</field>
             <field name="sequence">200</field>
+            <field name="active">False</field>
             <field name="max_cofinancing_pct">30.0</field>
             <field name="max_amount">0.0</field>
             <field name="max_per_year">0</field>

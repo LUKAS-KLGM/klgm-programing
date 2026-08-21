@@ -15,10 +15,50 @@
             <field name="value">3.0</field>
         </record>
 
-        <!-- DSGVO: Aufbewahrungsfrist Teilnehmerdaten in Jahren (KJR-OA: 5) -->
+        <!-- ══ DSGVO: Aufbewahrungsfristen ══════════════════════════════════
+             Basisfrist. Sie steuert die Anonymisierung der Teilnehmerdaten
+             (kjr.grant.participant) UND – als Rückfallwert – die Bereinigung der
+             Nebenschauplätze am Antrag: hochgeladene Dateien, Feldhistorie
+             (mail.tracking.value, u. a. IBAN) und Chatter. Belegter Anker für
+             die 5 Jahre: ANBest-P Nr. 6.6.
+
+             Warum Rückfallwert und kein zweiter Schalter: Wird der strukturierte
+             Teilnehmerdatensatz anonymisiert, während dieselbe Namensliste als
+             PDF-Anhang und in der Feldhistorie stehen bleibt, entsteht eine
+             Sicherheit, die es nicht gibt. Beides läuft deshalb mit derselben
+             Frist, sofern für eine Belegklasse unten nichts anderes gepflegt ist.
+
+             TODO(KJR): Frist bestätigen bzw. festlegen.
+             TODO(DSGVO): Durch die Datenschutzbeauftragte bestätigen lassen. -->
         <record id="param_retention_years" model="ir.config_parameter">
             <field name="key">kjr_grant.participant_retention_years</field>
             <field name="value">5</field>
+        </record>
+
+        <!-- Belegklassen mit eigener, im Vault BELEGTER Frist. Nur diese beiden
+             werden ausgeliefert; alle übrigen Klassen (Teilnahmeliste, sonstige
+             Anhänge, Feldhistorie, Chatter) haben bewusst keinen eigenen
+             Parameter und folgen damit automatisch der Basisfrist oben. Ein hier
+             oder dort eingetragener Wert 0 schaltet die jeweilige Klasse ab.
+             Die Zuordnung Datei → Klasse erfolgt über den Dateinamen
+             (DSGVO_ATTACHMENT_KEYWORDS in models/kjr_grant_application.py). -->
+
+        <!-- Maßnahmenberichte / Verwendungsnachweise: 5 Jahre (ANBest-P Nr. 6.6).
+             TODO(KJR): Frist bestätigen. -->
+        <record id="param_retention_years_report" model="ir.config_parameter">
+            <field name="key">kjr_grant.retention_years_report</field>
+            <field name="value">5</field>
+        </record>
+        <!-- Am Antrag hochgeladene Belegliste / Rechnungen / Quittungen:
+             8 Jahre (§ 147 AO, § 257 HGB) – bewusst länger als die Basisfrist,
+             damit hier nichts zu früh durch einen Platzhalter ersetzt wird.
+             ACHTUNG: Betrifft ausschließlich die Datei-Anhänge AM ANTRAG. Die
+             gebuchten Belege in 'account' (account.move / account.payment) rührt
+             die Routine wegen der Hash-Verkettung grundsätzlich nicht an.
+             TODO(KJR): Frist bestätigen. -->
+        <record id="param_retention_years_receipt" model="ir.config_parameter">
+            <field name="key">kjr_grant.retention_years_receipt</field>
+            <field name="value">8</field>
         </record>
 
         <!-- § 4.9 Delegiertenförderung: Sätze nach Bayer. Reisekostengesetz (BayRKG) -->
@@ -29,6 +69,14 @@
         <record id="param_bayrkg_passenger_rate" model="ir.config_parameter">
             <field name="key">kjr_grant.bayrkg_passenger_rate_per_km</field>
             <field name="value">0.03</field>
+        </record>
+
+        <!-- Vier-Augen-Prinzip: '1' = an (Default, kassenrechtlich sauber).
+             Ein-Personen-Geschäftsstelle kann hier auf '0' stellen; der Code
+             nimmt bei fehlendem Parameter ebenfalls '1' an. -->
+        <record id="param_enforce_four_eyes" model="ir.config_parameter">
+            <field name="key">kjr_grant.enforce_four_eyes</field>
+            <field name="value">1</field>
         </record>
 
         <!-- Auszahlungs-Stichtag (KJR-OA: 15.11.) – Anträge bis dahin im selben Jahr -->

@@ -62,7 +62,7 @@
                         </p>
                         <p>
                             Teilnehmer: <t t-esc="o.tn_count"/>
-                            (zzgl. <t t-esc="o.tn_leader_count"/> Jugendleiter,
+                            (zzgl. <t t-esc="o.tn_leader_count"/> Gruppenleitungen,
                             davon <t t-esc="o.tn_leader_juleica"/> mit Juleica)
                         </p>
 

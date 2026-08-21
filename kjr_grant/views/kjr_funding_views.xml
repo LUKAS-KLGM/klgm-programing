@@ -59,6 +59,53 @@
                     </group>
                     <field name="project_description" placeholder="Projektbeschreibung..."/>
                     <field name="note" placeholder="Anmerkungen..."/>
+                    <notebook>
+                        <page string="Förderabrechnung (Export)" name="bezjr_export">
+                            <div class="alert alert-info" role="alert">
+                                Erzeugt die zeilenweise Aufstellung der geförderten
+                                Maßnahmen als CSV (Semikolon, UTF-8 mit BOM, in Excel
+                                direkt lesbar) für die Abrechnung mit dem Fördergeber.
+                                <br/>
+                                <b>Hinweis:</b> Die Spaltenstruktur ist eine
+                                nachvollziehbare Aufstellung aus den Daten dieser
+                                Anwendung und keine Nachbildung eines amtlichen
+                                Vordrucks. Vor der ersten Abgabe bitte mit dem
+                                Bezirksjugendring abstimmen.
+                            </div>
+                            <group>
+                                <group string="Zeitraum">
+                                    <field name="export_date_from"/>
+                                    <field name="export_date_to"/>
+                                    <field name="export_date_basis"/>
+                                </group>
+                                <group string="Umfang">
+                                    <field name="export_state"/>
+                                    <field name="export_layout"/>
+                                    <field name="funding_source_code"
+                                           placeholder="z. B. Aktenzeichen des Zuwendungsbescheids"/>
+                                </group>
+                            </group>
+                            <group string="Abgrenzung der Maßnahmen">
+                                <field name="export_grant_type_ids" widget="many2many_tags"
+                                       options="{'no_create': True}"/>
+                                <field name="export_analytic_account_id"
+                                       options="{'no_create': True}"/>
+                            </group>
+                            <div class="mt16 mb16">
+                                <button name="action_export_bezjr" type="object"
+                                        string="Förderabrechnung erzeugen"
+                                        class="btn-primary" icon="fa-download"/>
+                            </div>
+                            <group string="Zuletzt erzeugte Abrechnung"
+                                   invisible="not export_filename">
+                                <field name="export_file" filename="export_filename"
+                                       readonly="1"/>
+                                <field name="export_filename" readonly="1"/>
+                                <field name="export_date" readonly="1"/>
+                                <field name="export_line_count" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
                 </sheet>
                 <chatter/>
             </form>

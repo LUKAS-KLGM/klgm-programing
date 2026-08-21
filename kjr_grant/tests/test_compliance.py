@@ -233,6 +233,43 @@ class TestKjrGrantCompliance(TransactionCase):
         d.write({'vote_yes': 2, 'vote_no': 3})
         self.assertEqual(d.result, 'rejected')
 
+    # ══ BJR § 34 Abs. 3: Wahl (geheim) — Kandidaturen & Auszählung ═══════════
+    # Regressionstest zur technischen Abnahme: 'kjr.assembly.candidate' fehlte in
+    # security/ir.model.access.csv. Ohne ACL scheitert bereits das Anlegen einer
+    # Kandidatur mit AccessError.
+    def test_assembly_election_absolute_majority(self):
+        """Absolute Mehrheit = mehr als die Hälfte der gültigen Kandidatenstimmen.
+        7 : 3 Stimmen bei einem Sitz → Schwelle 6, die 7 Stimmen genügen."""
+        a = self.env['kjr.assembly'].create({
+            'name': 'Wahl-VV 2026', 'date': '2026-03-01 18:00:00',
+        })
+        d = self.env['kjr.assembly.decision'].create({
+            'assembly_id': a.id, 'name': 'Wahl des Vorsitzes',
+            'decision_type': 'election', 'election_office': 'Vorsitz',
+            'seats': 1, 'majority_rule': 'absolute',
+        })
+        self.env['kjr.assembly.candidate'].create([
+            {'decision_id': d.id, 'name': 'Kandidatin A', 'votes': 7},
+            {'decision_id': d.id, 'name': 'Kandidat B', 'votes': 3},
+        ])
+        self.assertEqual(d.election_valid_votes, 10)
+        self.assertEqual(d.election_majority_needed, 6)
+        self.assertEqual(d.election_state, 'elected')
+        self.assertEqual(d.elected_names, 'Kandidatin A')
+        # Geheime Wahl: es wird nur die Stimmensumme geführt, kein Stimmverhalten.
+        self.assertNotIn('partner_ids', self.env['kjr.assembly.candidate']._fields)
+
+    def test_assembly_protokoll_report_action_exists(self):
+        """Die Schaltfläche "Protokoll drucken" löst über eine External ID auf —
+        fehlt der ir.actions.report-Datensatz, bricht sie zur Laufzeit ab."""
+        action = self.env.ref('kjr_grant.action_report_kjr_assembly_protokoll')
+        self.assertEqual(action.model, 'kjr.assembly')
+        self.assertEqual(action.report_name,
+                         'kjr_grant.kjr_assembly_protokoll_template')
+        self.assertTrue(self.env.ref(action.report_name, raise_if_not_found=False),
+                        'QWeb-Vorlage des Protokolls ist nicht geladen '
+                        '(report/kjr_assembly_protokoll_template.xml im Manifest?).')
+
     # ══ Juleica-Lifecycle: Gültigkeit 3 Jahre ════════════════════════════════
     def test_juleica_validity_three_years(self):
         """Ausstellung + 3 Jahre = Ablaufdatum; aktuelle Karte ist 'gültig'."""

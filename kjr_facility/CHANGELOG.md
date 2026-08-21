@@ -1,5 +1,35 @@
 # Changelog — kjr_facility
 
+## 19.0.3.0.0 — Buchungsregeln und Preislogik Diepolz/NiSo
+
+### Neu
+- **Buchungsvorlauf** je Einrichtung (`max_advance_months`, Default 18) — Vorstands-
+  beschluss vom 21.07.2026. Hart durchgesetzt im Website-Formular, im Backend als
+  Hinweis: die Geschäftsstelle muss begründete Ausnahmen erfassen können.
+- **Mindestbelegung** (`min_persons`, `min_nights`, `requires_organized_group`) nach
+  demselben Muster. Gezählt werden Teilnehmende **und** Betreuende — einheitlich in
+  Formular, Backend-Hinweis und Hilfetext.
+- **Fremdenverkehrsbeitrag** pro Person und Nacht mit Befreiungen. Begleitpersonen
+  sind befreit und gehen nicht in die Bemessung ein; `visitor_tax_exempt_count`
+  erfasst die *weiteren* Befreiten (Einwohner der Gemeinde, Kinder unter 7,
+  Schwerbehinderte). Als durchlaufender Posten ohne Steuer angelegt —
+  **TODO(Steuer)**, die Einordnung ist nicht final geklärt.
+- **Endreinigung** als einmalige Position je Buchung (nicht pro Nacht — über die
+  Ausstattung wäre sie falsch berechnet worden).
+- **Wochentagstarif** (Mo–Fr ab einer Mindestnächtezahl) als eigene Preisregel; eine
+  reine Mengenstaffel bildet das nicht ab.
+- **Ansprechpartner/in** als Namensfeld (bisher gab es nur das Zahlenfeld „Betreuer").
+
+### Behoben
+- **Doppelbelegung ohne Raumauswahl** lief im Backend völlig ungeprüft durch; geprüft
+  wird jetzt gegen die Kapazität der Einrichtung.
+- Die **Website-Verfügbarkeitsprüfung** sperrte die gesamte Einrichtung, sobald
+  irgendeine überlappende Anfrage existierte — eine einzelne 8-Personen-Anfrage
+  blockierte Diepolz mit 42 Betten. Sie prüft jetzt gegen die freie Kapazität und
+  nennt dem Nutzer die verbleibenden Plätze.
+- Der **Buchungsvertrag** (PDF) listete Positionen, deren Summe nicht die
+  ausgewiesene Gesamtsumme ergab, seit Endreinigung und Beitrag hinzukamen.
+
 ## 19.0.2.3.0
 
 ### Neu

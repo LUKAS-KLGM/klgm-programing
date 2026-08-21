@@ -1,17 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <!-- Suchansicht: ERSATZ FÜR DEN KAMERA-SCAN.
+         Ein Handscanner tippt den gelesenen Code in das gerade aktive Eingabefeld.
+         Landet er in der Suchzeile, muss die Standardsuche (Feld "name") deshalb
+         zusätzlich Inventarnummer UND Barcode abdecken - sonst findet die
+         Geschäftsstelle den gescannten Artikel nicht. -->
+    <record id="view_kjr_rental_item_search" model="ir.ui.view">
+        <field name="name">kjr.rental.item.search</field>
+        <field name="model">kjr.rental.item</field>
+        <field name="arch" type="xml">
+            <search string="Verleihartikel">
+                <field name="name" string="Artikel / Nummer / Barcode"
+                       filter_domain="['|', '|', ('name', 'ilike', self), ('code', 'ilike', self), ('barcode', 'ilike', self)]"/>
+                <field name="barcode" string="Barcode"/>
+                <field name="code" string="Inventarnummer"/>
+                <field name="category_id"/>
+                <field name="location_id"/>
+                <field name="pricing_model"/>
+                <separator/>
+                <filter string="Auf Website" name="published" domain="[('website_published','=',True)]"/>
+                <filter string="Ohne Barcode" name="no_barcode"
+                        domain="['|', ('barcode','=',False), ('barcode','=','')]"
+                        help="Artikel, für die noch kein Inventaretikett vergeben wurde."/>
+                <separator/>
+                <filter string="Kategorie" name="group_category" context="{'group_by':'category_id'}"/>
+                <filter string="Lager" name="group_location" context="{'group_by':'location_id'}"/>
+                <!-- Gruppierung nach Preismodell: Grundlage für die Pflege der echten
+                     Preisliste ("welche Artikel rechnen noch nach Tagespreis?"). -->
+                <filter string="Preismodell" name="group_pricing_model" context="{'group_by':'pricing_model'}"/>
+            </search>
+        </field>
+    </record>
+
     <record id="view_kjr_rental_item_list" model="ir.ui.view">
         <field name="name">kjr.rental.item.list</field>
         <field name="model">kjr.rental.item</field>
         <field name="arch" type="xml">
             <list string="Verleihartikel">
+                <!-- Mehrfachauswahl: Barcodes für alle markierten Artikel auf einmal
+                     erzeugen, danach direkt über "Drucken > Inventaretikett" bekleben. -->
+                <header>
+                    <button name="action_generate_barcode" type="object"
+                            string="Barcode erzeugen" icon="fa-barcode"
+                            groups="kjr_rental.group_kjr_rental_user"/>
+                </header>
                 <field name="name"/>
+                <field name="code" optional="hide"/>
+                <!-- Standardmäßig ausgeblendet: nur für Etiketten-/Inventurarbeit relevant. -->
+                <field name="barcode" optional="hide"/>
                 <field name="category_id"/>
                 <field name="location_id"/>
                 <field name="quantity_total"/>
+                <field name="pricing_model"/>
                 <field name="price_per_day"/>
                 <field name="price_member_per_day"/>
+                <!-- Nur für Fahrzeuge relevant, deshalb standardmäßig ausgeblendet. -->
+                <field name="price_per_km" optional="hide"/>
+                <field name="price_member_per_km" optional="hide"/>
+                <field name="price_unit_label" optional="hide"/>
                 <field name="deposit"/>
                 <field name="book_value"/>
                 <field name="website_published"/>
@@ -24,12 +71,21 @@
         <field name="model">kjr.rental.item</field>
         <field name="arch" type="xml">
             <form string="Verleihartikel">
+                <header>
+                    <!-- Nur sichtbar, solange kein Etikett vergeben ist: die Methode
+                         überschreibt vorhandene Barcodes bewusst nicht. -->
+                    <button name="action_generate_barcode" type="object"
+                            string="Barcode erzeugen" icon="fa-barcode"
+                            invisible="barcode"
+                            groups="kjr_rental.group_kjr_rental_user"/>
+                </header>
                 <sheet>
                     <field name="image_1920" widget="image" class="oe_avatar"/>
                     <div class="oe_title"><label for="name"/><h1><field name="name"/></h1></div>
                     <group>
                         <group string="Einordnung">
                             <field name="code"/>
+                            <field name="barcode" placeholder="z. B. KJR-BUS-01"/>
                             <field name="category_id"/>
                             <field name="location_id"/>
                             <field name="quantity_total"/>
@@ -37,9 +93,25 @@
                             <field name="website_published"/>
                         </group>
                         <group string="Tarife &amp; Kaution">
+                            <!-- Das Preismodell steuert, welche der folgenden Felder
+                                 überhaupt in die Berechnung eingehen; nicht benötigte
+                                 Felder werden ausgeblendet, damit niemand einen Wert
+                                 pflegt, der nie angewandt wird. -->
+                            <field name="pricing_model"/>
+                            <field name="price_unit_label"/>
+                            <field name="unit_label"
+                                   invisible="pricing_model not in ('per_unit', 'tiered')"
+                                   placeholder="z. B. Kiste, Satz, Garnitur"/>
+                            <field name="price_time_basis"
+                                   invisible="pricing_model not in ('per_km', 'tiered')"/>
                             <field name="price_per_day"/>
                             <field name="has_member_price"/>
                             <field name="price_member_per_day" invisible="not has_member_price"/>
+                            <field name="price_per_km" invisible="pricing_model != 'per_km'"/>
+                            <field name="price_member_per_km"
+                                   invisible="pricing_model != 'per_km' or not has_member_price"/>
+                            <field name="min_billable_units"
+                                   invisible="pricing_model == 'per_unit'"/>
                             <field name="deposit"/>
                         </group>
                     </group>
@@ -54,7 +126,37 @@
                             <field name="book_value"/>
                         </group>
                     </group>
-                    <field name="description" placeholder="Beschreibung..."/>
+                    <notebook>
+                        <page string="Mengenstaffel" name="price_tiers"
+                              invisible="pricing_model != 'tiered'">
+                            <div class="text-muted mb-2">
+                                Es greift die Zeile mit der höchsten „Ab Menge", die die
+                                bestellte Menge nicht überschreitet; der Staffelpreis gilt
+                                dann für alle Stück der Position. Ohne passende Zeile bleibt
+                                es beim Grundpreis. Die Preise sind noch nicht befüllt —
+                                sie stammen aus der Preisliste des KJR.
+                            </div>
+                            <field name="tier_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="min_quantity"/>
+                                    <field name="price"/>
+                                    <field name="price_member"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Beschreibung" name="description">
+                            <field name="description" placeholder="Beschreibung..."/>
+                        </page>
+                        <page string="Nutzungshinweise" name="usage_warning">
+                            <div class="text-muted mb-2">
+                                Verbindliche Regeln für genau diesen Artikel. Der Text wird
+                                dem Entleiher auf der Website vor dem Absenden der Anfrage
+                                angezeigt und muss dort bestätigt werden.
+                            </div>
+                            <field name="usage_warning" nolabel="1"
+                                   placeholder="z. B. Führerscheinklasse, Aufbau nur durch eingewiesene Personen, gereinigt zurückgeben..."/>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
@@ -85,6 +187,7 @@
         <field name="name">Verleihartikel</field>
         <field name="res_model">kjr.rental.item</field>
         <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_kjr_rental_item_search"/>
     </record>
 
     <!-- Stammdaten: Kategorien (frei pflegbar) -->

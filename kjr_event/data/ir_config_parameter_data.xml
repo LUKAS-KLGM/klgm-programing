@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate="1": Default-Werte; von der Geschäftsstelle pflegbar
+         (Einstellungen -> Technisch -> Systemparameter) und bei Modul-Updates
+         nicht überschrieben. -->
+    <data noupdate="1">
+
+        <!-- E7: Vorlauf für die Einwilligungs-Erinnerung in Tagen vor Beginn.
+             0 = Automatik AUS (Default). Der Cron sendet dann nichts.
+             TODO(KJR): Fachlichen Vorlauf mit der Geschäftsstelle festlegen –
+             es liegt keine belegte Vorgabe vor, deshalb bewusst 0. -->
+        <record id="param_consent_reminder_lead_days" model="ir.config_parameter">
+            <field name="key">kjr_event.consent_reminder_lead_days</field>
+            <field name="value">0</field>
+        </record>
+
+        <!-- E7: Vorlauf für den Packlisten-Versand in Tagen vor Beginn.
+             0 = Automatik AUS (Default).
+             TODO(KJR): Fachlichen Vorlauf festlegen. -->
+        <record id="param_packing_list_lead_days" model="ir.config_parameter">
+            <field name="key">kjr_event.packing_list_lead_days</field>
+            <field name="value">0</field>
+        </record>
+
+        <!-- Technische Obergrenze je Cron-Lauf (Schutz vor Massenversand,
+             kein fachlicher Wert). -->
+        <record id="param_automation_batch_limit" model="ir.config_parameter">
+            <field name="key">kjr_event.automation_batch_limit</field>
+            <field name="value">50</field>
+        </record>
+
+        <!-- E9: Erzeugte Schulungsrechnungen automatisch buchen?
+             '0' = nein (Default). Das Buchen bleibt eine bewusste Entscheidung
+             der Geschäftsstelle – gleiches Muster wie
+             kjr_facility.invoice_auto_post an der Einrichtung. -->
+        <record id="param_invoice_auto_post" model="ir.config_parameter">
+            <field name="key">kjr_event.invoice_auto_post</field>
+            <field name="value">0</field>
+        </record>
+
+        <!-- E9: Gebuchte Rechnungen direkt per Mail-Vorlage versenden?
+             '0' = nein (Default). Greift nur zusammen mit dem Auto-Buchen,
+             weil Entwürfe grundsätzlich nicht versendet werden. -->
+        <record id="param_invoice_auto_send" model="ir.config_parameter">
+            <field name="key">kjr_event.invoice_auto_send</field>
+            <field name="value">0</field>
+        </record>
+
+        <!-- DSGVO / Befund K5 des Datenschutz-Audits vom 21.08.2026:
+             Aufbewahrungsfrist fuer Anmeldedaten in JAHREN, gerechnet ab dem ENDE
+             der Veranstaltung (nicht ab dem Anmeldedatum). Gezaehlt werden volle
+             Kalenderjahre NACH dem Jahr des Veranstaltungsendes (Jahresend-Anker,
+             gleiche Rechnung wie in kjr_grant): Freizeit endet 2027, Frist 5 Jahre
+             => faellig ab 01.01.2033.
+             0 = keine automatische Anonymisierung (Default, Auslieferungszustand).
+             Der Cron "KJR Veranstaltung: Anmeldedaten anonymisieren (DSGVO)" kehrt
+             bei 0 sofort zurueck und fasst keinen Datensatz an.
+
+             TODO(KJR)/TODO(DSGVO): Frist festlegen. Die Frist ist eine fachliche und
+             rechtliche Entscheidung des KJR bzw. der Datenschutzbeauftragten und wird
+             hier bewusst NICHT vorbelegt - eine geratene Frist loescht entweder zu
+             frueh (Aufbewahrungspflicht) oder zu spaet (Art. 5 Abs. 1 lit. e DSGVO).
+             Anhaltspunkte aus den Projektunterlagen, ausdruecklich nur als Orientierung
+             und ohne Rechtsaussage:
+               * 8 Jahre - Buchungsbelege nach Paragraf 147 AO / Paragraf 257 HGB
+               * 5 Jahre - Zuwendungsunterlagen nach ANBest-P Nr. 6.6
+               * "1 Jahr nach dem Ferienprogramm" - ausdruecklich selbstdefinierte
+                 Policy des KJR, KEINE gesetzliche Frist
+             Fuer Gesundheits- und Notfalldaten ist eine kuerzere Frist als fuer die
+             zahlungsrelevanten Felder denkbar; das ist zu entscheiden, nicht zu
+             programmieren. -->
+        <record id="param_registration_retention_years" model="ir.config_parameter">
+            <field name="key">kjr_event.registration_retention_years</field>
+            <field name="value">0</field>
+        </record>
+
+        <!-- Technische Obergrenze der je Cron-Lauf anonymisierten Anmeldungen
+             (Laufzeit/Transaktionsgroesse, kein fachlicher Wert). Der Cron laeuft
+             taeglich und arbeitet einen Rueckstand ueber mehrere Tage ab. -->
+        <record id="param_registration_anonymize_batch_limit" model="ir.config_parameter">
+            <field name="key">kjr_event.registration_anonymize_batch_limit</field>
+            <field name="value">200</field>
+        </record>
+
+        <!-- kjr_event.automation_active_from wird ABSICHTLICH nicht vorbelegt:
+             Der erste Lauf einer aktivierten Automatik schreibt den
+             Aktivierungszeitpunkt selbst fest. Danach werden ausschließlich
+             Veranstaltungen berücksichtigt, die NACH diesem Zeitpunkt angelegt
+             wurden – Bestandsveranstaltungen werden also nie angeschrieben.
+             Soll ein Altbestand doch einbezogen werden, kann der Parameter
+             manuell auf ein früheres Datum ("2000-01-01 00:00:00") gesetzt
+             werden. -->
+
+    </data>
+</odoo>

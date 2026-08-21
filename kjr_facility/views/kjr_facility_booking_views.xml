@@ -8,6 +8,7 @@
             <search string="Buchungen">
                 <field name="name"/>
                 <field name="partner_id"/>
+                <field name="contact_person"/>
                 <field name="facility_id"/>
                 <filter string="Anfragen" name="draft" domain="[('state','=','draft')]"/>
                 <filter string="Reserviert (vorgemerkt)" name="reserved" domain="[('state','=','reserved')]"/>
@@ -15,6 +16,10 @@
                 <filter string="Berechnet" name="invoiced" domain="[('state','=','invoiced')]"/>
                 <filter string="Offen (Zahlung)" name="payment_open" domain="[('payment_status','in',('not_paid','partial'))]"/>
                 <filter string="Aktuell/Zukünftig" name="upcoming" domain="[('check_out','&gt;=',context_today())]"/>
+                <filter string="Schaden im Übergabeprotokoll" name="handover_damage"
+                        domain="['|',('handover_in_damage','=',True),('handover_out_damage','=',True)]"/>
+                <filter string="Abreiseprotokoll fehlt" name="handover_missing"
+                        domain="[('state','in',('checked_in','invoiced','done')),('handover_out_date','=',False)]"/>
                 <separator/>
                 <filter string="Einrichtung" name="group_facility" context="{'group_by':'facility_id'}"/>
                 <filter string="Status" name="group_state" context="{'group_by':'state'}"/>
@@ -36,12 +41,15 @@
                 <field name="facility_id"/>
                 <field name="partner_id"/>
                 <field name="group_name" optional="show"/>
+                <field name="contact_person" optional="hide"/>
                 <field name="check_in"/>
                 <field name="check_out"/>
                 <field name="nights" optional="hide"/>
                 <field name="participant_count" string="TN"/>
                 <field name="amount_total" widget="monetary"/>
                 <field name="currency_id" column_invisible="1"/>
+                <field name="handover_out_date" string="Rücknahme" optional="hide"/>
+                <field name="handover_out_damage" optional="hide"/>
                 <field name="payment_status" widget="badge" optional="show"
                        decoration-warning="payment_status in ('not_paid','partial')"
                        decoration-success="payment_status == 'paid'"/>
@@ -87,7 +95,14 @@
                             class="btn-primary" invisible="state not in ('checked_in',) or invoice_id"/>
                     <button name="action_done" string="Abschließen" type="object"
                             invisible="state not in ('checked_in','invoiced')"/>
+                    <button name="action_handover_arrival" string="Übergabe Anreise erfassen"
+                            type="object"
+                            invisible="state not in ('confirmed','deposit','checked_in','invoiced')"/>
+                    <button name="action_handover_departure" string="Rücknahme Abreise erfassen"
+                            type="object" invisible="state not in ('checked_in','invoiced')"/>
                     <button name="action_print_contract" string="Vertrag drucken" type="object" icon="fa-print"/>
+                    <button name="action_print_handover" string="Übergabeprotokoll drucken"
+                            type="object" icon="fa-print" invisible="not is_booked"/>
                     <button name="action_cancel" string="Stornieren" type="object"
                             invisible="state in ('done','cancelled')"
                             confirm="Diese Buchung wirklich stornieren?"/>
@@ -110,10 +125,17 @@
                         <label for="name"/>
                         <h1><field name="name" readonly="1"/></h1>
                     </div>
+                    <!-- F2: Weicher Hinweis auf verletzte Belegungsregeln (kein Constraint) -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not occupancy_warning">
+                        <i class="fa fa-exclamation-triangle me-1" title="Warnung"/>
+                        <field name="occupancy_warning" readonly="1" nolabel="1" class="d-inline"/>
+                    </div>
                     <group>
                         <group string="Gruppe">
                             <field name="partner_id" readonly="state not in ('draft','reserved','confirmed')"/>
                             <field name="group_name"/>
+                            <field name="contact_person"/>
                             <field name="contact_email"/>
                             <field name="contact_phone"/>
                         </group>
@@ -140,6 +162,7 @@
                                     <field name="participant_count"/>
                                     <field name="leader_count"/>
                                     <field name="supervision_ok"/>
+                                    <field name="is_organized_group"/>
                                     <field name="room_ids" widget="many2many_tags"
                                            domain="[('facility_id','=',facility_id)]"/>
                                     <field name="bed_count"/>
@@ -161,6 +184,9 @@
                                     <field name="amount_accommodation"/>
                                     <field name="amount_meals"/>
                                     <field name="amount_equipment"/>
+                                    <field name="amount_cleaning"/>
+                                    <field name="visitor_tax_exempt_count"/>
+                                    <field name="amount_visitor_tax"/>
                                 </group>
                                 <group>
                                     <field name="amount_untaxed"/>
@@ -180,6 +206,61 @@
                                 </group>
                             </group>
                             <field name="currency_id" invisible="1"/>
+                        </page>
+                        <!-- Übergabeprotokoll: erst ab der verbindlichen Buchung sichtbar
+                             (is_booked = gebucht/Anzahlung/angereist/berechnet/abgeschlossen). -->
+                        <page string="Übergabe" name="handover" invisible="not is_booked">
+                            <div class="alert alert-info" role="alert">
+                                <i class="fa fa-info-circle me-1" title="Hinweis"/>
+                                Das Übergabeprotokoll dokumentiert den ZUSTAND von Haus bzw. Zeltplatz.
+                                Es ist keine Freigabebedingung: Ein festgestellter Mangel verhindert den
+                                Abschluss der Buchung nicht, er verlangt nur einen Vermerk. Bitte die
+                                Häkchen niemals wahrheitswidrig setzen — sobald „Schaden festgestellt"
+                                angekreuzt ist, wird beim Erfassen eine Schadensbeschreibung verlangt.
+                            </div>
+                            <group>
+                                <group string="Anreise — Übergabe an die Gruppe">
+                                    <field name="handover_in_date"/>
+                                    <field name="handover_in_user_id"/>
+                                    <field name="handover_in_received_by"/>
+                                    <field name="handover_in_condition"/>
+                                    <field name="handover_in_keys"/>
+                                    <field name="handover_in_damage"/>
+                                    <field name="handover_in_damage_note"
+                                           invisible="not handover_in_damage"
+                                           placeholder="Pflicht, sobald ein Schaden festgestellt wurde: was, wo, seit wann, wer hat es festgestellt..."/>
+                                </group>
+                                <group string="Zählerstände Anreise">
+                                    <field name="handover_in_meter_electricity"/>
+                                    <field name="handover_in_meter_water"/>
+                                    <field name="handover_in_meter_gas"/>
+                                </group>
+                            </group>
+                            <field name="handover_in_note"
+                                   placeholder="Vermerk zur Übergabe: Einweisung, Absprachen, Besonderheiten..."/>
+                            <!-- Abreiseteil erst nach der Anreise, vorher gibt es nichts zurückzunehmen. -->
+                            <group invisible="state not in ('checked_in','invoiced','done')">
+                                <group string="Abreise — Rücknahme von der Gruppe">
+                                    <field name="handover_out_date"/>
+                                    <field name="handover_out_user_id"/>
+                                    <field name="handover_out_handed_by"/>
+                                    <field name="handover_out_condition"/>
+                                    <field name="handover_out_keys"/>
+                                    <field name="handover_out_cleaning_ok"/>
+                                    <field name="handover_out_damage"/>
+                                    <field name="handover_out_damage_note"
+                                           invisible="not handover_out_damage"
+                                           placeholder="Pflicht, sobald ein Schaden festgestellt wurde: was fehlt, was ist beschädigt, was wurde vereinbart..."/>
+                                </group>
+                                <group string="Zählerstände Abreise">
+                                    <field name="handover_out_meter_electricity"/>
+                                    <field name="handover_out_meter_water"/>
+                                    <field name="handover_out_meter_gas"/>
+                                </group>
+                            </group>
+                            <field name="handover_out_note"
+                                   invisible="state not in ('checked_in','invoiced','done')"
+                                   placeholder="Vermerk zur Rücknahme: Reinigungszustand, offene Punkte, abweichende Schlüsselzahl..."/>
                         </page>
                         <page string="Notizen" name="notes">
                             <field name="note" placeholder="Anmerkungen (für Gruppe sichtbar im Portal)..."/>

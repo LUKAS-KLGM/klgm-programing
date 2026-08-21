@@ -32,6 +32,41 @@
             <field name="active" eval="True"/>
         </record>
 
+        <!-- DSGVO / Befund K6: Nebenschauplaetze der Antraege (hochgeladene
+             Dateien, Feldhistorie, Chatter). Eigener Cron, weil die Teilnehmer-
+             Anonymisierung oben nur Antraege erreicht, an denen noch NICHT
+             anonymisierte Teilnehmerdatensaetze haengen.
+             DIESER CRON IST IM AUSLIEFERUNGSZUSTAND WIRKSAM — anders als die
+             DSGVO-Crons in kjr_event, kjr_facility und kjr_rental. Jede Belegklasse
+             haengt an einem eigenen Systemparameter (DSGVO_RETENTION_PARAMS in
+             models/kjr_grant_application.py); ist einer davon nicht gepflegt, faellt
+             der Code bewusst auf die Basisfrist der Feld-Anonymisierung zurueck
+             (kjr_grant.participant_retention_years, ausgeliefert mit 5 Jahren).
+             Ausgeliefert sind ausserdem retention_years_report = 5 und
+             retention_years_receipt = 8. Der Lauf findet damit ab dem ersten Tag
+             Kandidaten.
+
+             WAS BEIM ERSTEN LAUF PASSIERT: Fuer Antraege, deren measure_end vor dem
+             Stichtag liegt (Jahresend-Anker: 1. Januar des Jahres heute-Frist),
+             werden hochgeladene Dateien durch eine Platzhalter-Textdatei ERSETZT,
+             Feldhistorien-Eintraege GELOESCHT und Chatter-Texte GESCHWAERZT. Alle
+             drei Vorgaenge sind unwiederbringlich.
+
+             TODO(KJR): Fristen je Belegklasse VOR dem Go-live bestaetigen. Soll bis
+             zur Bestaetigung nichts ersetzt werden, entweder diesen Cron auf
+             "aktiv = nein" stellen oder alle sechs Klassenparameter ausdruecklich
+             auf 0 setzen; die Feld-Anonymisierung der Teilnehmerdaten laeuft davon
+             unabhaengig weiter (eigener Cron unten). -->
+        <record id="cron_kjr_application_anonymize_related" model="ir.cron">
+            <field name="name">KJR: Antragsunterlagen anonymisieren (DSGVO)</field>
+            <field name="model_id" ref="model_kjr_grant_application"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_anonymize_related()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">months</field>
+            <field name="active" eval="True"/>
+        </record>
+
         <record id="cron_kjr_participant_anonymize" model="ir.cron">
             <field name="name">KJR: Teilnehmerdaten anonymisieren (DSGVO)</field>
             <field name="model_id" ref="model_kjr_grant_participant"/>

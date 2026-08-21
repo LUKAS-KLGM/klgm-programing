@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Materialverleih',
-    'version': '19.0.2.3.0',
+    'version': '19.0.5.0.0',
     'category': 'Custom/KJR',
     'summary': 'Verleih von Material (Fahrzeuge, Zelte, Technik, Sport, Küche, Spielgeräte) mit '
                'Bestand, Verfügbarkeitsprüfung, Mitgliedertarif, Kaution, Website-Anfrage & Vertrag',
@@ -16,9 +16,11 @@
         # geskippt). Nach erfolgreicher Installation einzeln wieder aktivieren.
         'data/ir_sequence_data.xml',
         'data/kjr_rental_data.xml',
+        'data/ir_cron_data.xml',
         'views/kjr_rental_item_views.xml',
         'views/kjr_rental_order_views.xml',
         'views/kjr_rental_inventory_views.xml',
+        'views/kjr_rental_inventory_replacement_views.xml',
         'views/menu.xml',
         'views/website_templates.xml',
         'report/kjr_rental_report.xml',

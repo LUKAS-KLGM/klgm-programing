@@ -79,3 +79,32 @@ class TestKjrFacilityBooking(TransactionCase):
         with self.assertRaises(ValidationError):
             self._booking(check_in='2026-08-03', check_out='2026-08-07',
                           state='confirmed', room_ids=[(6, 0, [self.room.id])])
+
+    # ── Schutz gegen Massenversand beim ersten Cron-Lauf ─────────────────────
+    # Die Merker-Felder stehen bei übernommenen Buchungen auf False. Ohne den
+    # Aktivierungszeitpunkt würde der erste Lauf nach Go-live den kompletten
+    # Bestand anschreiben. Dieser Test darf nicht "weggetestet" werden.
+    def test_automation_skips_legacy_bookings(self):
+        """Der erste Lauf schreibt den Aktivierungszeitpunkt fest; vorher
+        angelegte Buchungen bleiben von der Automatik unberührt."""
+        Booking = self.env['kjr.facility.booking']
+        Param = self.env['ir.config_parameter'].sudo()
+        Param.search([('key', '=', Booking._AUTOMATION_ACTIVE_FROM)]).unlink()
+        legacy = self._booking()
+        self.assertTrue(Booking._automation_active_from(),
+                        'Der erste Lauf muss den Aktivierungszeitpunkt setzen.')
+        self.assertNotIn(legacy, Booking._automation_search([('id', '=', legacy.id)]))
+        # Bewusstes Zurücksetzen durch die Administration bezieht Altbestände ein.
+        Param.set_param(Booking._AUTOMATION_ACTIVE_FROM, '2000-01-01 00:00:00')
+        self.assertIn(legacy, Booking._automation_search([('id', '=', legacy.id)]))
+
+    def test_automation_batch_limit_caps_each_run(self):
+        """Die Mengenbegrenzung je Lauf greift (Default 50, hier auf 1 gesetzt)."""
+        Booking = self.env['kjr.facility.booking']
+        Param = self.env['ir.config_parameter'].sudo()
+        Param.set_param(Booking._AUTOMATION_ACTIVE_FROM, '2000-01-01 00:00:00')
+        Param.set_param(Booking._AUTOMATION_BATCH_LIMIT, '1')
+        first = self._booking()
+        second = self._booking()
+        found = Booking._automation_search([('id', 'in', (first + second).ids)])
+        self.assertEqual(len(found), 1)

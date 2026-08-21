@@ -13,4 +13,43 @@
         <field name="group_ids" eval="[(4, ref('kjr_grant.group_kjr_reviewer'))]"/>
     </record>
 
+    <!-- Eigenes Papierformat für die Teilnahmeliste: neun Spalten inklusive
+         einer breiten Unterschriftenspalte passen im A4-Hochformat nicht lesbar
+         nebeneinander. Ränder/Header-Abstand entsprechen base.paperformat_euro,
+         damit web.external_layout unverändert sitzt — geändert ist nur die
+         Ausrichtung. Gilt ausschließlich für diese eine Report-Action. -->
+    <record id="paperformat_kjr_tn_liste" model="report.paperformat">
+        <field name="name">KJR Teilnahmeliste (A4 quer)</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">52</field>
+        <field name="margin_bottom">32</field>
+        <field name="margin_left">0</field>
+        <field name="margin_right">0</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">52</field>
+        <field name="dpi">90</field>
+        <field name="css_margins" eval="True"/>
+    </record>
+
+    <!-- Teilnahme-/Unterschriftenliste: Prüfunterlage nach ANBest-P, wird vom
+         Träger ausgedruckt, unterschrieben und dort aufbewahrt. -->
+    <record id="action_report_kjr_tn_unterschriftenliste" model="ir.actions.report">
+        <field name="name">Teilnahmeliste (Unterschriftenliste)</field>
+        <field name="model">kjr.grant.application</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">kjr_grant.report_kjr_tn_unterschriftenliste</field>
+        <field name="report_file">kjr_grant.report_kjr_tn_unterschriftenliste</field>
+        <field name="print_report_name">'Teilnahmeliste_%s' % (object.name or '').replace('/', '-')</field>
+        <field name="binding_model_id" ref="model_kjr_grant_application"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="kjr_grant.paperformat_kjr_tn_liste"/>
+        <!-- Datenschutz: Die Liste enthält Klarnamen, Alter und Wohnort auch
+             minderjähriger Teilnehmender. Sie darf deshalb nicht von jedem
+             internen Benutzer druckbar sein, der den Antrag lesen darf, sondern
+             nur von der prüfenden Geschäftsstelle (Reviewer) — analog Bescheid. -->
+        <field name="group_ids" eval="[(4, ref('kjr_grant.group_kjr_reviewer'))]"/>
+    </record>
+
 </odoo>

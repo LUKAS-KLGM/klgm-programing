@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         Beschaffungs-Vorschlagsliste zur Jahresinventur.
+
+         Eigene Datei, damit die bestehende Inventur-Ansicht (views/
+         kjr_rental_inventory_views.xml) unangetastet bleibt. Die Ergänzungen
+         an der Formularsicht laufen deshalb über Vererbung.
+
+         WICHTIG (Odoo-19-Fallstrick): als xpath-Selektor werden ausschliesslich
+         nicht uebersetzbare Attribute (@name) verwendet — niemals string/title/
+         placeholder, das bricht beim Upgrade mit einem ParseError.
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <record id="view_kjr_rental_inventory_line_replacement_list" model="ir.ui.view">
+        <field name="name">kjr.rental.inventory.line.replacement.list</field>
+        <field name="model">kjr.rental.inventory.line</field>
+        <field name="arch" type="xml">
+            <!-- Reine Auswertung: nicht editierbar, damit niemand hier den
+                 Inventurbefund nachträglich verändert. -->
+            <list string="Beschaffungsvorschlag" create="false" delete="false"
+                  edit="false" default_order="item_id">
+                <field name="inventory_id" optional="show"/>
+                <field name="item_id"/>
+                <field name="condition"/>
+                <field name="qty_expected" optional="hide"/>
+                <field name="qty_counted"/>
+                <field name="qty_diff" optional="hide"/>
+                <field name="replace_qty"/>
+                <field name="item_purchase_date" optional="show"/>
+                <field name="item_age_years" optional="show"/>
+                <field name="item_book_value" optional="show"/>
+                <field name="replace_reason"/>
+                <field name="note" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Formularsicht der Inventur um Vorschlagsliste und Aktionen ergänzen. -->
+    <record id="view_kjr_rental_inventory_form_replacement" model="ir.ui.view">
+        <field name="name">kjr.rental.inventory.form.replacement</field>
+        <field name="model">kjr.rental.inventory</field>
+        <field name="inherit_id" ref="kjr_rental.view_kjr_rental_inventory_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//header/field[@name='state']" position="before">
+                <button name="action_open_replacement_list" type="object"
+                        string="Beschaffungsvorschlag"
+                        help="Positionen anzeigen, für die sich aus Zustand, Fehlbestand, Nutzungsdauer oder Buchwert ein Ersatzbedarf ergibt."/>
+                <button name="action_log_replacement_proposal" type="object"
+                        string="Vorschlag im Chatter festhalten"
+                        groups="kjr_rental.group_kjr_rental_manager"
+                        help="Hält den heutigen Stand der Vorschlagsliste als Notiz im Chatter fest (Nachweis für Gremien und Haushaltsplanung)."/>
+            </xpath>
+
+            <!-- Bewertungsspalten in der Zähl-Liste: standardmässig ausgeblendet,
+                 damit die Erfassung schlank bleibt. -->
+            <xpath expr="//field[@name='line_ids']/list/field[@name='note']" position="after">
+                <field name="replace_suggested" optional="hide" readonly="1"/>
+                <field name="replace_qty" optional="hide" readonly="1"/>
+                <field name="item_age_years" optional="hide" readonly="1"/>
+                <field name="item_book_value" optional="hide" readonly="1"/>
+                <field name="replace_reason" optional="hide" readonly="1"/>
+            </xpath>
+
+            <!-- //sheet/field[@name='note'] ist eindeutig: das gleichnamige Feld der
+                 Positionen liegt innerhalb von field[@name='line_ids']. -->
+            <xpath expr="//sheet/field[@name='note']" position="after">
+                <group string="Beschaffungsvorschlag" name="kjr_replacement">
+                    <div class="text-muted mb-2" colspan="2">
+                        Auswertung der erfassten Positionen: welche Artikel müssen ersetzt
+                        werden und warum. Berücksichtigt werden Zustand („Beschädigt",
+                        „Verloren"), als Ausschuss markierte Positionen, Fehlbestand sowie
+                        Alter und Buchwert aus dem Artikelstamm.
+                        Die Werte werden bei jedem Öffnen neu berechnet (Alter und Buchwert
+                        hängen am heutigen Datum) und sind deshalb bewusst nicht gespeichert.
+                        Es wird nichts bestellt und nichts am Bestand verändert.
+                    </div>
+                    <field name="replacement_count"/>
+                    <field name="replacement_qty"/>
+                    <field name="replacement_summary" colspan="2" nolabel="1" readonly="1"/>
+                </group>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

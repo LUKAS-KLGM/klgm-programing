@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ──────────────────────────────────────────────────────────────────────
+         Teilnahme-/Unterschriftenliste zum Zuschussantrag.
+         Prüfunterlage nach ANBest-P: verbleibt beim Träger, wird dort 5 Jahre
+         aufbewahrt und nur auf Anforderung vorgelegt. Deshalb ist die Liste
+         bewusst auch handschriftlich ergänzbar (Auffüllen auf 15 Zeilen).
+         ────────────────────────────────────────────────────────────────────── -->
+    <template id="report_kjr_tn_unterschriftenliste">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <!-- Lesbare Labels statt Selection-Keys. Bewusst als Literal
+                         gehalten (kein Zugriff auf _fields), damit das Template auch
+                         ohne erfasste Teilnehmer sauber rendert; leere Werte -> ''. -->
+                    <t t-set="gender_labels" t-value="{'male': 'männlich', 'female': 'weiblich', 'diverse': 'divers'}"/>
+                    <!-- Teilnehmer in Erfassungsreihenfolge (sequence), _order der
+                         One2many greift hier zwar schon, wird aber explizit erzwungen. -->
+                    <t t-set="parts" t-value="o.participant_ids.sorted(lambda p: (p.sequence, p.name or ''))"/>
+                    <!-- Nach Ablauf der Aufbewahrungsfrist anonymisierte Datensätze:
+                         erscheinen als "(anonymisiert)" ohne PLZ/Wohnort. Der Ausdruck
+                         taugt dann nicht mehr als Unterschriftennachweis — Hinweis unter
+                         der Tabelle, aber nur wenn wirklich welche vorhanden sind. -->
+                    <t t-set="anon_parts" t-value="parts.filtered('data_anonymized')"/>
+                    <div class="page">
+                        <div class="row mb-3">
+                            <div class="col-8">
+                                <!-- Absender aus dem Antrag (company_id), nicht aus der
+                                     aktiven Company des Druckenden – analog Bescheid. -->
+                                <h3 class="text-primary"><span t-field="o.company_id.name"/></h3>
+                                <p class="mb-0"><span t-field="o.company_id.street"/> · <span t-field="o.company_id.zip"/> <span t-field="o.company_id.city"/></p>
+                            </div>
+                            <div class="col-4 text-end">
+                                <p class="mb-0 text-muted">Antrag <t t-esc="o.name"/></p>
+                            </div>
+                        </div>
+                        <hr/>
+
+                        <h4 class="text-center mb-4">Teilnahmeliste / Unterschriftenliste</h4>
+
+                        <!-- ── Kopfdaten der Maßnahme ────────────────────────── -->
+                        <table class="table table-sm table-borderless mb-4">
+                            <tbody>
+                                <tr>
+                                    <td style="width:28%;" class="text-muted">Antragsnummer</td>
+                                    <td><strong><t t-esc="o.name"/></strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Antragsteller</td>
+                                    <td><strong><t t-esc="o.partner_id.name"/></strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Maßnahme</td>
+                                    <td><strong><t t-esc="o.measure_name"/></strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Zeitraum</td>
+                                    <td>
+                                        <span t-field="o.measure_start" t-options='{"format":"dd.MM.yyyy"}'/> bis
+                                        <span t-field="o.measure_end" t-options='{"format":"dd.MM.yyyy"}'/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Ort der Maßnahme</td>
+                                    <td><t t-esc="o.measure_zip"/> <t t-esc="o.measure_location"/></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Förderart</td>
+                                    <td><t t-esc="o.grant_type_id.name"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- ── Teilnehmertabelle ─────────────────────────────────
+                             Keine festen Zeilenhöhen, thead wiederholt sich auf
+                             Folgeseiten; nur die Unterschriftenspalte bekommt eine
+                             Mindestbreite, damit handschriftlich Platz bleibt. -->
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:4%;" class="text-end">Nr.</th>
+                                    <th style="width:24%;">Name, Vorname</th>
+                                    <th style="width:6%;" class="text-end">Alter</th>
+                                    <th style="width:10%;">Geschlecht</th>
+                                    <th style="width:7%;">PLZ</th>
+                                    <th style="width:15%;">Wohnort</th>
+                                    <th style="width:9%;">Kennziffer</th>
+                                    <th style="width:7%;">Juleica</th>
+                                    <th style="width:18%;">Unterschrift</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="parts" t-as="p" style="page-break-inside:avoid;">
+                                    <td class="text-end"><t t-esc="p_index + 1"/></td>
+                                    <td><t t-esc="p.name"/></td>
+                                    <!-- Alter 0 bedeutet "nicht erfasst" und bleibt leer. -->
+                                    <td class="text-end"><t t-if="p.age"><t t-esc="p.age"/></t></td>
+                                    <td><t t-esc="gender_labels.get(p.gender, '')"/></td>
+                                    <td><t t-esc="p.zip_code"/></td>
+                                    <td><t t-esc="p.city"/></td>
+                                    <!-- Kennziffer als Kürzel, Auflösung in der Legende unter der Tabelle. -->
+                                    <td><t t-esc="p.role_code or ''"/></td>
+                                    <td><t t-if="p.has_juleica">ja</t></td>
+                                    <td>&#160;</td>
+                                </tr>
+                                <!-- Auf 15 Zeilen auffüllen: Nachmeldungen können direkt
+                                     auf dem Ausdruck handschriftlich ergänzt werden. -->
+                                <t t-set="pad" t-value="15 - len(parts)"/>
+                                <t t-if="pad &gt; 0">
+                                    <tr t-foreach="range(pad)" t-as="i" style="page-break-inside:avoid;">
+                                        <td class="text-end text-muted"><t t-esc="len(parts) + i + 1"/></td>
+                                        <td>&#160;</td>
+                                        <td>&#160;</td>
+                                        <td>&#160;</td>
+                                        <td>&#160;</td>
+                                        <td>&#160;</td>
+                                        <td>&#160;</td>
+                                        <td>&#160;</td>
+                                        <td>&#160;</td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- ── Hinweis auf anonymisierte Datensätze ──────────── -->
+                        <div t-if="anon_parts" class="alert alert-warning mt-2" style="page-break-inside:avoid;">
+                            <strong>Hinweis: Diese Liste ist kein gültiger Unterschriftennachweis mehr.</strong>
+                            <span>
+                                Von <t t-esc="len(anon_parts)"/> der <t t-esc="len(parts)"/> erfassten
+                                Teilnehmenden wurden die personenbezogenen Daten (Name, Geburtsdatum,
+                                PLZ, Wohnort) nach Ablauf der Aufbewahrungsfrist DSGVO-konform
+                                anonymisiert und stehen dauerhaft nicht mehr zur Verfügung. Die
+                                betroffenen Zeilen sind mit „(anonymisiert)“ gekennzeichnet.
+                                Der Ausdruck dient nur noch der Dokumentation der Teilnehmerzahl
+                                und der Aggregatmerkmale (Alter, Geschlecht, Kennziffer, Juleica).
+                            </span>
+                        </div>
+
+                        <!-- ── Legende der Kennziffern ───────────────────────── -->
+                        <p class="mt-2 mb-4">
+                            <small>
+                                <strong>Kennziffern:</strong>
+                                EA = ehrenamtliche/r Mitarbeiter/in ·
+                                HA = haupt-/nebenberufliche/r Mitarbeiter/in ·
+                                HO = Honorarkraft ·
+                                PR = Praktikant/in ·
+                                SO = sonstige
+                            </small>
+                        </p>
+
+                        <!-- ── Unterschrift und Aufbewahrungshinweis ─────────── -->
+                        <div class="row mt-5" style="page-break-inside:avoid;">
+                            <div class="col-6">
+                                <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px;">
+                                    <small>Ort, Datum</small>
+                                </div>
+                            </div>
+                            <div class="col-6 text-end">
+                                <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px; margin-left:auto;">
+                                    <small>Unterschrift der Gruppenleitung</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p class="mt-4">
+                            <small class="text-muted">
+                                Diese Teilnahmeliste verbleibt beim Träger der Maßnahme und ist dort
+                                fünf Jahre aufzubewahren (ANBest-P). Sie ist dem Kreisjugendring
+                                Oberallgäu nur auf Anforderung im Rahmen einer Prüfung vorzulegen.
+                            </small>
+                        </p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

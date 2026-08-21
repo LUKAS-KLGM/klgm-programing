@@ -3,17 +3,302 @@
 import logging
 from datetime import date as date_cls
 
+from markupsafe import Markup
+
 from odoo import http, _
 from odoo.http import request
 from odoo.addons.portal.controllers.portal import CustomerPortal, pager as portal_pager
 from odoo.exceptions import AccessError, MissingError
+from odoo.tools import email_normalize, is_html_empty
 
 _logger = logging.getLogger(__name__)
 ITEMS_PER_PAGE = 10
 CART_KEY = 'kjr_rental_cart'
+# R3: Seed-Artikel für die Spielmobil-Anfrage (wird über die Stammdaten geliefert).
+SPIELMOBIL_XMLID = 'kjr_rental.item_spielmobil'
+
+# ══════════════════════════════════════════════════════════════════════════
+# Preismodelle (pro Tag / pro Nacht / pro Stück / pro Kilometer / Mengenstaffel)
+#
+# Der Artikelstamm bekommt ein Preismodell-Feld. Solange dessen endgültige
+# Feldnamen nicht feststehen, wird die Preisaussage der Website DEFENSIV
+# ermittelt (Prüfung über _fields) — statt einer harten Kopplung, die beim
+# kleinsten Umbenennen die öffentliche Preisauskunft zerlegt.
+#
+# Reihenfolge der Auswertung:
+#   1. Der Artikel liefert seine Preisaussage selbst: price_label(is_member)
+#      -> VERTRAG für das Artikelmodell. Wer diese Methode implementiert,
+#         bestimmt den Website-Text vollständig selbst; alles Weitere entfällt.
+#   2. Preismodell-Feld (Selection) am Artikel: Abrechnungsart aus dem Wert
+#      ableiten, Beschriftung aus der Selection ÜBERNEHMEN (deutsche Bezeichnung
+#      des Artikelmodells statt einer zweiten, abweichenden Formulierung) und den
+#      dazu passenden Betrag über den Feldnamen finden.
+#   3. Kein Preismodell-Feld vorhanden (Stand heute): unverändertes Verhalten,
+#      Tagespreis aus price_per_day / price_member_per_day.
+#
+# Lässt sich zu einer Abrechnungsart KEIN Betrag zuordnen, wird bewusst KEINE
+# Zahl ausgegeben, sondern "Konditionen auf Anfrage". Eine mit der falschen
+# Einheit beschriftete Zahl (z. B. "0,35 €/Tag" statt "0,35 €/km") wäre eine
+# falsche öffentliche Preisauskunft — daran würde sich ein Entleiher festhalten.
+# ══════════════════════════════════════════════════════════════════════════
+
+# Text, wenn zu einer Abrechnungsart kein belastbarer Betrag ermittelbar ist.
+PRICE_ON_REQUEST = (
+    'Konditionen auf Anfrage – den Preis für diesen Artikel nennt Ihnen die '
+    'Geschäftsstelle mit der Bestätigung.')
+PRICE_TIER_NOTICE = (
+    'Preis nach Mengenstaffel – der Betrag richtet sich nach der bestellten Menge '
+    'und wird von der Geschäftsstelle bestätigt.')
+PRICE_KM_NOTICE = (
+    'Die Endabrechnung erfolgt nach den tatsächlich gefahrenen Kilometern.')
 
 
 class KjrRentalWebsite(http.Controller):
+
+    # ------------------------------------------------------------------
+    # Gemeinsame Helfer: Tarif, Pflichtfelder, Nutzungshinweise
+    # ------------------------------------------------------------------
+    def _website_partner(self):
+        """Kontakt, auf den ein Vorgang gebucht wird (kaufmännischer Hauptkontakt)."""
+        return request.env.user.partner_id.commercial_partner_id
+
+    def _partner_is_member(self, partner):
+        """Mitgliedstarif-Kennzeichen des Kontakts.
+
+        sudo(): Portal- und öffentliche Nutzer dürfen ihren eigenen Kontakt nur
+        eingeschränkt lesen; das Kennzeichen ist reine Stammdatenpflege der
+        Geschäftsstelle und wird hier nur ausgewertet, nicht verändert.
+        """
+        if not partner:
+            return False
+        return bool(partner.sudo().is_kjr_member)
+
+    def _usage_warning_items(self, items):
+        """Artikel mit gepflegten Nutzungshinweisen (Reihenfolge bleibt erhalten).
+
+        is_html_empty(): ein leerer Html-Editor liefert '<p><br></p>' und wäre
+        sonst „gefüllt“ – der Nutzer müsste einen leeren Hinweis bestätigen.
+        """
+        seen, result = set(), []
+        for item in items:
+            if item.id in seen:
+                continue
+            seen.add(item.id)
+            if not is_html_empty(item.usage_warning):
+                result.append(item)
+        return result
+
+    def _can_stream_item_images(self):
+        """Kann der aktuelle Besucher Artikelbilder über /web/image laden?
+
+        Die Katalogseite selbst wird mit sudo() aufbereitet, die Bilder holt der
+        Browser aber in EINEM EIGENEN Request ohne sudo. Fehlt dem Besucher das
+        Leserecht auf kjr.rental.item, liefert /web/image den grauen Odoo-
+        Platzhalter – das sähe schlechter aus als unser Icon-Fallback.
+        Leere Recordset + has_access() prüft genau das Modellrecht (ir.model.access).
+        Hinweis: Für die öffentliche Gruppe ist derzeit kein Leserecht auf
+        kjr.rental.item hinterlegt; sobald es ergänzt wird, zeigt der Katalog die
+        Fotos automatisch auch nicht angemeldeten Besuchern.
+        """
+        return request.env['kjr.rental.item'].browse().has_access('read')
+
+    # ------------------------------------------------------------------
+    # Preisaussage je Artikel (siehe Modulkopf)
+    # ------------------------------------------------------------------
+
+    # Preismodell des Artikels -> Anzeigeart für die Templates. Schlüssel sind die
+    # Selection-Werte von kjr.rental.item.pricing_model; 'day' ist der Rückfall für
+    # Altdaten, die den Feld-Default beim Upgrade nicht abbekommen haben.
+    PRICE_MODEL_KIND = {
+        'per_day': 'day',
+        'per_night': 'night',
+        'per_unit': 'unit',
+        'per_km': 'km',
+        'tiered': 'tier',
+    }
+
+    def _price_info_map(self, items, is_member=False):
+        """Preisinfo je Artikel-ID: {id: info} für ein Recordset oder einen Artikel.
+
+        Die Templates greifen über price_info[item.id] zu; ein fehlender Eintrag
+        würde dort einen KeyError auslösen und die ganze Seite mitnehmen. Deshalb
+        wird hier für JEDEN übergebenen Artikel ein vollständiges Dict erzeugt.
+        """
+        if not items:
+            return {}
+        return {item.id: self._item_price_info(item, is_member) for item in items}
+
+    def _item_price_info(self, item, is_member=False):
+        """Alles, was die Website über den Preis EINES Artikels sagen darf.
+
+        Die Beträge kommen AUSSCHLIESSLICH aus der Preis-API des Modells
+        (price_for / price_km_for / price_base_unit_label / price_km_unit_label). Eine eigene Preislogik im
+        Controller wäre die Quelle der nächsten falschen Preisauskunft: Der
+        Grundpreis liegt bei ALLEN Preismodellen bewusst in price_per_day
+        (Feldname aus Bestandsgründen beibehalten, siehe kjr_rental_item.py).
+        Eine Zuordnung über Feldnamen — etwa die Suche nach einem Feld mit
+        „night“ im Namen für das Modell „pro Nacht“ — findet dort schlicht nichts
+        und hätte auf der öffentlichen Katalogseite „auf Anfrage“ statt des
+        gepflegten Preises ausgegeben.
+
+        Kilometermodell: Es gibt ZWEI Beträge (Grundgebühr und Kilometersatz), die
+        NIE zu einer Zahl verschmolzen werden dürfen. Früher stand der Kilometersatz
+        in 'standard', beschriftet mit der Einheit des gesamten Modells — öffentlich
+        las sich das als „Standard: 0,30 € Grundgebühr pauschal je Ausleihe zuzüglich
+        Kilometerpreis", während die Grundgebühr tatsächlich 25,00 € betrug. Deshalb
+        gilt jetzt durchgängig: 'standard'/'member'/'own' sind IMMER der Grundpreis
+        mit der Einheit 'unit'; der Kilometersatz steht in 'km_standard'/'km_member'/
+        'km_own' mit der Einheit 'km_unit'. Beide Einheiten liefert das Artikelmodell
+        (price_base_unit_label / price_km_unit_label).
+
+        Ungepflegt oder bewusst kostenlos — die Regel für 0,00 €:
+        Ein Betrag von 0,00 € ist KEINE Preisaussage, solange er auch schlicht der
+        Startwert eines nie gepflegten Feldes sein kann. „Standard: 0,00 €" auf der
+        öffentlichen Katalogseite liest sich als kostenlos und ist schlimmer als eine
+        erfundene Zahl, weil sie plausibel wirkt (Vault: „Bei rund 30 Artikeln steht
+        Mitglied: 0,00 €"). Anker ist deshalb IMMER der Standardbetrag DERSELBEN
+        Betragsart:
+          * Standardbetrag 0,00 (oder nicht ermittelbar) -> die Betragsart ist
+            ungepflegt. Alle Beträge dieser Art (Standard, Mitglied, eigener Tarif)
+            werden auf None gesetzt; die Website nennt dann keine Zahl, sondern
+            „auf Anfrage" bzw. — wenn der Artikel überhaupt keinen gepflegten Betrag
+            hat — den vollständigen Text PRICE_ON_REQUEST in 'statement'.
+          * Standardbetrag > 0, Mitgliedsbetrag 0,00 -> der Mitgliedstarif ist
+            gepflegt und ausdrücklich kostenlos (has_member_price ist aktiv, die
+            Feldhilfe nennt „auch 0 € = gratis"). Die 0,00 bleibt erhalten und wird
+            als „kostenlos" ausgegeben, NICHT als „auf Anfrage".
+        Grundpreis und Kilometersatz werden getrennt bewertet: ein Fahrzeug ohne
+        gepflegte Grundgebühr, aber mit echtem Kilometersatz nennt den Kilometersatz
+        und lässt die Grundgebühr offen.
+
+        Rückgabe (immer alle Schlüssel gesetzt, damit QWeb nie auf None läuft):
+          kind        'day' | 'night' | 'unit' | 'km' | 'tier'
+          unit        Einheit des Grundpreises, z. B. 'pro Tag' /
+                      'Grundgebühr pauschal je Ausleihe'
+          standard    Grundpreis Standardtarif als float oder None (None = ungepflegt)
+          member      Grundpreis Mitgliedstarif als float oder None (None = kein
+                      Mitgliedstarif oder ungepflegt; 0.0 = bewusst kostenlos)
+          own         Grundpreis des angemeldeten Kontakts als float oder None
+          km_unit     Einheit des Kilometersatzes ('je gefahrenem Kilometer'),
+                      nur bei kind == 'km' gefüllt, sonst None
+          km_standard Kilometersatz Standardtarif als float oder None (None =
+                      ungepflegt)
+          km_member   Kilometersatz Mitgliedstarif als float oder None
+          km_own      Kilometersatz des angemeldeten Kontakts als float oder None
+          has_member  Mitgliedstarif am Artikel überhaupt aktiviert
+          deposit     Kaution
+          km_notice   Hinweis auf Abrechnung nach gefahrenen Kilometern anzeigen
+          statement   vollständiger Ersatztext statt Zahlen (oder None); gesetzt bei
+                      der Mengenstaffel und bei Artikeln ohne jeden gepflegten Betrag
+        """
+        info = {
+            'kind': 'day', 'unit': 'pro Tag', 'standard': None, 'member': None,
+            'own': None, 'has_member': False, 'deposit': 0.0,
+            'km_unit': None, 'km_standard': None, 'km_member': None, 'km_own': None,
+            'km_notice': False, 'statement': None,
+        }
+        if not item:
+            return info
+        info['deposit'] = item.deposit or 0.0
+        info['has_member'] = bool(item.has_member_price)
+
+        model = item.pricing_model or 'per_day'
+        info['kind'] = self.PRICE_MODEL_KIND.get(model, 'day')
+        # price_base_unit_label statt price_unit_label: Letzteres beschreibt beim
+        # Kilometermodell BEIDE Beträge und wäre als Beschriftung einer einzelnen
+        # Zahl falsch. Bei allen anderen Modellen sind beide Texte identisch.
+        info['unit'] = item.price_base_unit_label or item.price_unit_label or 'pro Tag'
+
+        # Mengenstaffel: der Preis hängt an der bestellten Menge, ein einzelner
+        # Betrag wäre irreführend. Bewusst nur ein Hinweis statt einer Zahl.
+        if model == 'tiered':
+            info['statement'] = PRICE_TIER_NOTICE
+            return info
+
+        info['standard'] = item.price_for(False)
+        if info['has_member']:
+            info['member'] = item.price_for(True)
+        info['own'] = info['member'] if (is_member and info['member'] is not None) \
+            else info['standard']
+
+        if model == 'per_km':
+            info['km_notice'] = True
+            info['km_unit'] = item.price_km_unit_label or None
+            info['km_standard'] = item.price_km_for(False)
+            if info['has_member']:
+                info['km_member'] = item.price_km_for(True)
+            info['km_own'] = info['km_member'] \
+                if (is_member and info['km_member'] is not None) else info['km_standard']
+        return self._drop_unmaintained_prices(info)
+
+    # Beträge, die zusammengehören: erster Eintrag ist der Anker (Standardbetrag),
+    # an dem entschieden wird, ob die Betragsart überhaupt gepflegt ist.
+    BASE_PRICE_KEYS = ('standard', 'member', 'own')
+    KM_PRICE_KEYS = ('km_standard', 'km_member', 'km_own')
+
+    @classmethod
+    def _drop_unmaintained_prices(cls, info):
+        """Nicht gepflegte Beträge aus der Preisinfo entfernen.
+
+        Setzt die Regel aus _item_price_info um: Ist der Standardbetrag einer
+        Betragsart 0,00 (bzw. nicht ermittelbar), gibt es zu dieser Art keine
+        belastbare Zahl — alle ihre Beträge werden auf None gesetzt, damit die
+        Templates „auf Anfrage" statt „0,00 €" zeigen. Ein Mitgliedsbetrag von 0,00
+        neben einem gepflegten Standardbetrag bleibt dagegen erhalten und erscheint
+        als „kostenlos".
+
+        Bleibt am Ende gar kein Betrag übrig, tritt PRICE_ON_REQUEST an die Stelle
+        der Zahlen (ein bereits gesetzter Text — etwa der Staffelhinweis — bleibt
+        unangetastet).
+        """
+        for keys in (cls.BASE_PRICE_KEYS, cls.KM_PRICE_KEYS):
+            if not (info.get(keys[0]) or 0) > 0:
+                for key in keys:
+                    info[key] = None
+        if not info.get('statement') and all(
+                info.get(key) is None for key in cls.BASE_PRICE_KEYS + cls.KM_PRICE_KEYS):
+            info['statement'] = PRICE_ON_REQUEST
+        return info
+
+    @staticmethod
+    def _pricing_flags(price_info):
+        """Seitenweite Hinweise: nicht alles wird pro Tag abgerechnet."""
+        infos = list(price_info.values())
+        return {
+            # Zeitraum-unabhängige Modelle: die Anfrage nennt Von/Bis, der Preis
+            # hängt aber nicht (nur) daran.
+            'pricing_hint': any(i['kind'] != 'day' for i in infos),
+            'has_km_items': any(i['km_notice'] for i in infos),
+        }
+
+    @staticmethod
+    def _is_checked(raw):
+        """HTML-Checkbox robust auswerten (Browser senden 'on', JS ggf. '1'/'true')."""
+        return str(raw or '').strip().lower() in ('1', 'true', 'on', 'yes', 'ja')
+
+    def _validate_purpose(self, post, errors):
+        """Zweck der Nutzung ist Pflicht im Website-Formular (Projektstandard:
+        NICHT required=True am Modell – die Geschäftsstelle muss unvollständige
+        Vorgänge im Backend erfassen können)."""
+        purpose = (post.get('purpose') or '').strip()
+        if not purpose:
+            errors['purpose'] = _(
+                'Bitte beschreiben Sie kurz den Zweck der Nutzung. Der Verleih ist an '
+                'Zwecke der Kinder- und Jugendarbeit nach dem SGB VIII gebunden.')
+        return purpose
+
+    def _validate_usage_terms(self, warn_items, post, errors):
+        """Nutzungshinweise müssen bestätigt sein, sobald mindestens ein angefragter
+        Artikel welche hat. Serverseitig erzwungen – das Template-`required` allein
+        genügt nicht (JS deaktiviert, direkter POST)."""
+        accepted = self._is_checked(post.get('usage_terms_accepted'))
+        if warn_items and not accepted:
+            errors['usage_terms'] = _(
+                'Bitte bestätigen Sie die Nutzungshinweise zu den gewählten Artikeln '
+                '(%(items)s), bevor Sie die Anfrage absenden.',
+                items=', '.join(i.name for i in warn_items),
+            )
+        return accepted
 
     # ------------------------------------------------------------------
     # Warenkorb-Helfer (Session-basiert)
@@ -47,11 +332,23 @@ class KjrRentalWebsite(http.Controller):
         for item in items:
             by_cat.setdefault(item.category_id, request.env['kjr.rental.item'].sudo())
             by_cat[item.category_id] |= item
-        return request.render('kjr_rental.website_rental_catalog', {
+        is_public_user = request.env.user._is_public()
+        partner = self._website_partner() if not is_public_user else None
+        is_member = self._partner_is_member(partner)
+        # Preisaussage passend zum Preismodell des Artikels (pro Tag, pro Nacht,
+        # pro Stück, pro Kilometer, Mengenstaffel) – siehe Modulkopf.
+        price_info = self._price_info_map(items, is_member)
+        values = {
             'items_by_category': by_cat, 'page_name': 'kjr_rental',
             'cart_count': self._cart_count(),
-            'is_public_user': request.env.user._is_public(),
-        })
+            'is_public_user': is_public_user,
+            'partner': partner,
+            'is_member': is_member,
+            'show_images': self._can_stream_item_images(),
+            'price_info': price_info,
+        }
+        values.update(self._pricing_flags(price_info))
+        return request.render('kjr_rental.website_rental_catalog', values)
 
     # ------------------------------------------------------------------
     # R1: Warenkorb / Sammelbestellung
@@ -96,11 +393,39 @@ class KjrRentalWebsite(http.Controller):
             })
         return lines
 
+    def _cart_render_values(self, post, errors, date_from=None, date_to=None):
+        """Einheitliche Renderwerte der Warenkorbseite (GET, Aktualisierung und
+        Checkout-Fehlerfall) – so bleiben Tarifanzeige und Nutzungshinweise überall gleich."""
+        lines = self._cart_lines(date_from, date_to)
+        partner = self._website_partner()
+        cart_items = [line['item'] for line in lines]
+        usage_items = self._usage_warning_items(cart_items)
+        is_member = self._partner_is_member(partner)
+        price_info = self._price_info_map(cart_items, is_member)
+        values = {
+            'lines': lines, 'errors': errors, 'values': dict(post),
+            'cart_count': self._cart_count(), 'page_name': 'kjr_rental',
+            'date_from': post.get('date_from', ''), 'date_to': post.get('date_to', ''),
+            'partner': partner,
+            'is_member': is_member,
+            'usage_items': usage_items,
+            # Pflicht-Checkbox: im Warenkorb ist die Artikelmenge serverseitig bekannt,
+            # das Attribut kann deshalb hart gesetzt werden.
+            'usage_required': bool(usage_items),
+            'price_info': price_info,
+            # Die Preisspalten sind ein gemeinsamer Block mit dem Katalog; dort
+            # entscheidet is_public_user über die Zeile "Ihr Tarif". Der Warenkorb
+            # ist auth='user', der Wert ist deshalb immer False – er muss aber
+            # gesetzt sein, sonst läuft QWeb auf eine undefinierte Variable.
+            'is_public_user': False,
+        }
+        values.update(self._pricing_flags(price_info))
+        return values
+
     @http.route('/service/verleih/warenkorb', type='http', auth='user', website=True,
                 methods=['GET', 'POST'])
     def rental_cart_view(self, **post):
         errors = {}
-        values = dict(post)
         date_from = date_to = None
         # Mengenaktualisierung / Entfernen aus dem Warenkorb
         if request.httprequest.method == 'POST':
@@ -135,12 +460,9 @@ class KjrRentalWebsite(http.Controller):
                 errors['date'] = _('Das Rückgabedatum darf nicht vor dem Ausleihdatum liegen.')
                 date_from = date_to = None
 
-        lines = self._cart_lines(date_from, date_to)
-        return request.render('kjr_rental.website_rental_cart', {
-            'lines': lines, 'errors': errors, 'values': values,
-            'cart_count': self._cart_count(), 'page_name': 'kjr_rental',
-            'date_from': raw_from, 'date_to': raw_to,
-        })
+        return request.render(
+            'kjr_rental.website_rental_cart',
+            self._cart_render_values(post, errors, date_from, date_to))
 
     @http.route('/service/verleih/checkout', type='http', auth='user', website=True,
                 methods=['POST'])
@@ -158,9 +480,15 @@ class KjrRentalWebsite(http.Controller):
         if not cart:
             errors['items'] = _('Der Warenkorb ist leer.')
 
+        # Pflichtangaben des Website-Formulars
+        purpose = self._validate_purpose(post, errors)
+        cart_items = [line['item'] for line in self._cart_lines()]
+        warn_items = self._usage_warning_items(cart_items)
+        terms_accepted = self._validate_usage_terms(warn_items, post, errors)
+
+        line_vals = []
         if not errors:
             Item = request.env['kjr.rental.item'].sudo()
-            line_vals = []
             for entry in cart:
                 item = Item.browse(entry['item_id'])
                 if not item.exists():
@@ -174,16 +502,13 @@ class KjrRentalWebsite(http.Controller):
                 line_vals.append((0, 0, {'item_id': item.id, 'quantity': entry['qty']}))
 
         if errors:
-            lines = self._cart_lines(
+            values = self._cart_render_values(
+                post, errors,
                 date_from if not errors.get('date') else None,
                 date_to if not errors.get('date') else None)
-            return request.render('kjr_rental.website_rental_cart', {
-                'lines': lines, 'errors': errors, 'values': dict(post),
-                'cart_count': self._cart_count(), 'page_name': 'kjr_rental',
-                'date_from': post.get('date_from', ''), 'date_to': post.get('date_to', ''),
-            })
+            return request.render('kjr_rental.website_rental_cart', values)
 
-        partner = request.env.user.partner_id.commercial_partner_id
+        partner = self._website_partner()
         # BUG-Fix: company_id explizit aus der Website
         company = request.website.company_id
         order = request.env['kjr.rental.order'].sudo().create({
@@ -193,6 +518,12 @@ class KjrRentalWebsite(http.Controller):
             'contact_phone': post.get('contact_phone') or partner.phone,
             'date_from': date_from,
             'date_to': date_to,
+            # Mitgliedstarif hier EXPLIZIT setzen: @api.onchange feuert bei create()
+            # aus dem Controller nicht, die Positionspreise würden sonst zum
+            # Standardtarif berechnet.
+            'is_member': self._partner_is_member(partner),
+            'purpose': purpose,
+            'usage_terms_accepted': terms_accepted,
             'note': post.get('note', '').strip(),
             'line_ids': line_vals,
         })
@@ -203,6 +534,32 @@ class KjrRentalWebsite(http.Controller):
     @http.route('/service/verleih/anfrage', type='http', auth='user', website=True, methods=['GET', 'POST'])
     def rental_request(self, **post):
         items = request.env['kjr.rental.item'].sudo().search([('website_published', '=', True)])
+        partner = self._website_partner()
+        is_member = self._partner_is_member(partner)
+        # Auf der Direktanfrage steht die Artikelauswahl erst nach dem Absenden fest.
+        # Deshalb werden die Hinweise ALLER Artikel mit Nutzungsregeln angezeigt; die
+        # Pflicht zur Bestätigung greift serverseitig nur für die tatsächlich
+        # gewählten Artikel (kein hartes required im Formular).
+        # TODO: Wenn der KJR eine dynamische Einblendung wünscht, dafür ein eigenes
+        # Frontend-Asset vorsehen (bewusst kein Inline-Script in diesem Template).
+        all_usage_items = self._usage_warning_items(items)
+        price_info = self._price_info_map(items, is_member)
+
+        def _render_values(values, errors):
+            """Renderwerte der Direktanfrage – einmal definiert, damit GET- und
+            Fehlerfall dieselbe Preisaussage zeigen."""
+            vals = {
+                'items': items, 'errors': errors, 'values': values,
+                'page_name': 'kjr_rental',
+                'partner': partner, 'is_member': is_member,
+                'usage_items': all_usage_items, 'usage_required': False,
+                'price_info': price_info,
+                # auth='user' – siehe Warenkorb.
+                'is_public_user': False,
+            }
+            vals.update(self._pricing_flags(price_info))
+            return vals
+
         if request.httprequest.method == 'POST':
             errors = {}
             values = dict(post)
@@ -226,12 +583,14 @@ class KjrRentalWebsite(http.Controller):
             if not selected:
                 errors['items'] = _('Bitte mindestens einen Artikel mit Menge wählen.')
 
-            if errors:
-                return request.render('kjr_rental.website_rental_request', {
-                    'items': items, 'errors': errors, 'values': values, 'page_name': 'kjr_rental',
-                })
+            purpose = self._validate_purpose(post, errors)
+            warn_items = self._usage_warning_items([item for item, _qty in selected])
+            terms_accepted = self._validate_usage_terms(warn_items, post, errors)
 
-            partner = request.env.user.partner_id.commercial_partner_id
+            if errors:
+                return request.render('kjr_rental.website_rental_request',
+                                      _render_values(values, errors))
+
             order = request.env['kjr.rental.order'].sudo().create({
                 'partner_id': partner.id,
                 'company_id': request.website.company_id.id,
@@ -239,17 +598,312 @@ class KjrRentalWebsite(http.Controller):
                 'contact_phone': post.get('contact_phone') or partner.phone,
                 'date_from': check_from,
                 'date_to': check_to,
+                # siehe Checkout: Mitgliedstarif explizit mitgeben
+                'is_member': is_member,
+                'purpose': purpose,
+                'usage_terms_accepted': terms_accepted,
                 'note': post.get('note', '').strip(),
                 'line_ids': [(0, 0, {'item_id': item.id, 'quantity': qty}) for item, qty in selected],
             })
             return request.redirect('/my/ausleihen/%d' % order.id)
 
-        return request.render('kjr_rental.website_rental_request', {
-            'items': items, 'errors': {}, 'values': {
-                'contact_email': request.env.user.email or '',
-                'contact_phone': request.env.user.partner_id.phone or '',
-            }, 'page_name': 'kjr_rental',
+        return request.render('kjr_rental.website_rental_request', _render_values({
+            'contact_email': request.env.user.email or '',
+            'contact_phone': request.env.user.partner_id.phone or '',
+        }, {}))
+
+    # ------------------------------------------------------------------
+    # R3: Spielmobil – Infoseite mit Anfrageformular
+    # ------------------------------------------------------------------
+    def _spielmobil_item(self):
+        """Seed-Artikel „Spielmobil" oder None.
+
+        Der Artikel kommt aus den Stammdaten und kann fehlen (Daten nicht geladen,
+        Artikel archiviert/gelöscht). Der Aufrufer MUSS None abfangen – die Seite
+        soll dann eine verständliche Meldung zeigen und keinen Serverfehler.
+        """
+        # env(su=True): ir.model.data ist für öffentliche Nutzer nicht lesbar.
+        item = request.env(su=True).ref(SPIELMOBIL_XMLID, raise_if_not_found=False)
+        if item is None or item._name != 'kjr.rental.item' or not item.exists():
+            return None
+        return item
+
+    def _spielmobil_partner(self, email, contact_person, organisation, phone):
+        """Kontakt für die Anfrage ermitteln.
+
+        SICHERHEIT — bewusste Abwägung zwischen Komfort und Identitätsschutz:
+        Die Route ist auth='public'. Ein nicht angemeldeter Absender hat seine
+        E-Mail-Adresse NICHT nachgewiesen. Eine Zuordnung über
+        search([('email', '=ilike', ...)]) würde deshalb jedem, der die Mailadresse
+        eines Mitgliedsverbands kennt, erlauben, eine Anfrage auf dessen Namen zu
+        erzeugen – inklusive Mitgliedstarif und Sichtbarkeit im Portal des fremden
+        Verbands. Anonyme Anfragen werden daher NIEMALS einem bestehenden Kontakt
+        zugeordnet; es entsteht immer ein neuer, ausdrücklich als ungeprüft
+        gekennzeichneter Kontakt.
+
+        Preis dieser Entscheidung: Bei wiederholten Anfragen derselben Gemeinde
+        entstehen Dubletten. Das ist gewollt – das Zusammenführen ist Stammdaten-
+        pflege der Geschäftsstelle (res.partner bietet dafür die Dubletten-
+        Zusammenführung), eine Identitätsübernahme wäre dagegen nicht heilbar.
+        Angemeldete Nutzer buchen unverändert auf ihren eigenen Hauptkontakt –
+        dort ist die Identität durch die Anmeldung belegt.
+        """
+        if not request.env.user._is_public():
+            return self._website_partner()
+        Partner = request.env['res.partner'].sudo()
+        name = organisation or contact_person or email or _('Unbekannte Anfrage')
+        return Partner.create({
+            # Kennzeichnung direkt im Namen: die Geschäftsstelle sieht in jeder
+            # Liste und in jedem Bericht sofort, dass der Kontakt aus einer
+            # unbestätigten Website-Anfrage stammt.
+            'name': _('%s (ungeprüfte Website-Anfrage)') % name,
+            'is_company': bool(organisation),
+            'email': email or False,
+            'phone': phone or False,
+            # is_kjr_member wird BEWUSST nicht gesetzt: der Mitgliedsstatus darf
+            # nur aus der Stammdatenpflege der Geschäftsstelle kommen.
+            'comment': _(
+                'Automatisch angelegt aus der Spielmobil-Anfrage der Website.\n'
+                'Der Absender war NICHT angemeldet: Name, E-Mail-Adresse, Telefon '
+                'und Mitgliedsstatus sind ungeprüft. Bitte vor der Reservierung '
+                'bestätigen und den Kontakt gegebenenfalls mit dem bestehenden '
+                'Datensatz zusammenführen.'),
         })
+
+    # Postfach für Spielmobil-Anfragen. Leer = Firmen-E-Mail der Website-Company.
+    SPIELMOBIL_MAIL_PARAM = 'kjr_rental.spielmobil_notify_email'
+
+    def _spielmobil_notify(self, order, contact_person, organisation, place,
+                           participants, wish_date, email, phone):
+        """Anfrage per Mail an das KJR-Postfach schicken.
+
+        Ausdrückliche Anforderung aus dem Website-Termin am 23.07.2026: das
+        Spielmobil-Formular „geht per Mail ans KJR-Postfach". Der angelegte
+        Vorgang allein genügt nicht — die Geschäftsstelle arbeitet nicht
+        dauerhaft im Backend und würde die Anfrage sonst erst spät sehen.
+
+        Empfänger: Systemparameter kjr_rental.spielmobil_notify_email, sonst die
+        E-Mail-Adresse der Website-Company. Fehlt beides, wird nur protokolliert —
+        eine fehlende Mailadresse darf die Anfrage des Bürgers nicht scheitern
+        lassen, der Vorgang ist ja bereits gespeichert.
+        """
+        company = order.company_id or request.website.company_id
+        recipient = (request.env['ir.config_parameter'].sudo()
+                     .get_param(self.SPIELMOBIL_MAIL_PARAM) or '').strip()
+        recipient = recipient or (company.email or '').strip()
+        if not recipient:
+            _logger.warning(
+                'Spielmobil-Anfrage %s: kein Empfänger für die Benachrichtigung '
+                '(Systemparameter %s und Firmen-E-Mail sind leer).',
+                order.name, self.SPIELMOBIL_MAIL_PARAM)
+            return
+        body = Markup(
+            '<p>Über das Formular <strong>Spielmobil</strong> auf der Website ist eine '
+            'neue Anfrage eingegangen.</p>'
+            '<table style="border-collapse:collapse">'
+            '<tr><td><strong>Vorgang</strong></td><td>%(order)s</td></tr>'
+            '<tr><td><strong>Gemeinde / Organisation</strong></td><td>%(org)s</td></tr>'
+            '<tr><td><strong>Ansprechpartner/in</strong></td><td>%(person)s</td></tr>'
+            '<tr><td><strong>E-Mail</strong></td><td>%(email)s</td></tr>'
+            '<tr><td><strong>Telefon</strong></td><td>%(phone)s</td></tr>'
+            '<tr><td><strong>Wunschtermin</strong></td><td>%(date)s</td></tr>'
+            '<tr><td><strong>Einsatzort</strong></td><td>%(place)s</td></tr>'
+            '<tr><td><strong>Erwartete Teilnehmerzahl</strong></td><td>%(pax)s</td></tr>'
+            '</table>'
+            '<p>Zweck der Nutzung:<br/>%(purpose)s</p>'
+        ) % {
+            'order': order.name or '',
+            'org': organisation,
+            'person': contact_person,
+            'email': email,
+            'phone': phone,
+            'date': wish_date.strftime('%d.%m.%Y') if wish_date else '',
+            'place': place,
+            'pax': participants,
+            'purpose': order.purpose or '',
+        }
+        try:
+            # savepoint(): ein Datenbankfehler beim Anlegen der Mail (z. B. verletzte
+            # Bedingung) würde die laufende Transaktion sonst abbrechen — das except
+            # unten schluckt zwar die Ausnahme, aber JEDE weitere Abfrage des Requests
+            # (Rendern der Bestätigungsseite) liefe danach ins Leere und der bereits
+            # gespeicherte Vorgang des Bürgers ginge mit zurück. Der Savepoint macht
+            # nur den Mailversand rückgängig, der Vorgang bleibt bestehen.
+            with request.env.cr.savepoint():
+                request.env['mail.mail'].sudo().create({
+                    'subject': _('Spielmobil-Anfrage: %(org)s zum %(date)s', org=organisation,
+                                 date=wish_date.strftime('%d.%m.%Y') if wish_date else ''),
+                    'email_to': recipient,
+                    'reply_to': email or recipient,
+                    'body_html': body,
+                    'auto_delete': True,
+                }).send()
+        except Exception:
+            # Der Vorgang ist gespeichert – ein Mailfehler darf die Anfrage nicht
+            # zurückweisen. Die Geschäftsstelle findet sie im Backend.
+            _logger.exception('Spielmobil-Anfrage %s: Benachrichtigung fehlgeschlagen.',
+                              order.name)
+
+    def _spielmobil_prices_confirmed(self, item, price_info=None):
+        """Dürfen auf der öffentlichen Spielmobil-Seite Preise genannt werden?
+
+        Die Seite ist auth='public', der Seed-Artikel steht dagegen mit 0,00 € und
+        website_published=False in den Stammdaten – die Preise sind laut Seed-Daten
+        ausdrücklich unbestätigte Platzhalter. Eine öffentlich lesbare Angabe
+        „0,00 € pro Tag" wäre eine Preisauskunft, an der sich Gemeinden festhalten
+        würden. Preise werden deshalb NUR genannt, wenn die Geschäftsstelle sie
+        freigegeben hat:
+        - website_published: bewusstes Veröffentlichen durch die Geschäftsstelle,
+        - mindestens ein Betrag > 0 IN DER ABRECHNUNGSART DES ARTIKELS: gepflegter,
+          kein Platzhalterwert.
+        Die Kaution allein genügt nicht – sonst stünde neben ihr wieder
+        „Standardtarif: 0,00 €".
+
+        Preismodell-fest: geprüft wird der über _item_price_info ermittelte Betrag,
+        nicht mehr fix der Tagespreis. Beim Kilometermodell zählt auch ein gepflegter
+        Kilometersatz als Freigabe – sonst bliebe ein Fahrzeug ohne Grundgebühr, aber
+        mit echtem Kilometerpreis stumm. Bei Mengenstaffel oder unbekannter Einheit
+        liefert die Preisinfo gar keinen Betrag – dann bleibt die Seite bewusst
+        ohne Preisangabe (konservative Variante).
+        """
+        if not item:
+            return False
+        if not item.website_published:
+            return False
+        info = price_info if price_info is not None else self._item_price_info(item)
+        return any((info.get(key) or 0) > 0
+                   for key in ('standard', 'member', 'km_standard', 'km_member'))
+
+    def _spielmobil_values(self, item, values=None, errors=None, order=None):
+        usage_items = self._usage_warning_items(item) if item else []
+        partner = None if request.env.user._is_public() else self._website_partner()
+        is_member = self._partner_is_member(partner)
+        price_info = self._price_info_map(item, is_member) if item else {}
+        info = price_info.get(item.id) if item else {}
+        vals = {
+            'page_name': 'kjr_rental',
+            'item': item,
+            'values': values or {},
+            'errors': errors or {},
+            'order': order,
+            'is_public_user': request.env.user._is_public(),
+            'partner': partner,
+            'is_member': is_member,
+            'usage_items': usage_items,
+            'usage_required': bool(usage_items),
+            'cart_count': self._cart_count(),
+            'show_images': self._can_stream_item_images(),
+            'price_info': price_info,
+            'show_prices': self._spielmobil_prices_confirmed(item, info),
+        }
+        vals.update(self._pricing_flags(price_info))
+        return vals
+
+    @http.route('/service/spielmobil', type='http', auth='public', website=True,
+                sitemap=True, methods=['GET', 'POST'])
+    def rental_spielmobil(self, **post):
+        item = self._spielmobil_item()
+        if request.httprequest.method != 'POST':
+            return request.render('kjr_rental.website_spielmobil',
+                                  self._spielmobil_values(item))
+
+        errors = {}
+        values = dict(post)
+        if not item:
+            # Verständliche Meldung statt Serverfehler, wenn der Seed-Artikel fehlt.
+            errors['item'] = _(
+                'Das Spielmobil ist derzeit nicht für Online-Anfragen hinterlegt. '
+                'Bitte wenden Sie sich direkt an die Geschäftsstelle des Kreisjugendrings.')
+
+        contact_person = (post.get('contact_person') or '').strip()
+        organisation = (post.get('organisation') or '').strip()
+        phone = (post.get('contact_phone') or '').strip()
+        place = (post.get('place') or '').strip()
+        email = email_normalize(post.get('contact_email') or '')
+        if not contact_person:
+            errors['contact_person'] = _('Bitte eine Ansprechpartnerin oder einen Ansprechpartner angeben.')
+        if not organisation:
+            errors['organisation'] = _(
+                'Bitte den Namen der anfragenden Gemeinde angeben. Das Spielmobil steht '
+                'ausschließlich Gemeinden im Landkreis Oberallgäu zur Verfügung '
+                '(Entscheidung KJR vom 23.07.2026).')
+        if not email:
+            errors['contact_email'] = _('Bitte eine gültige E-Mail-Adresse angeben.')
+        if not phone:
+            errors['contact_phone'] = _('Bitte eine Telefonnummer für Rückfragen angeben.')
+        if not place:
+            errors['place'] = _('Bitte den geplanten Einsatzort angeben.')
+
+        wish_date = None
+        try:
+            wish_date = date_cls.fromisoformat(post.get('date_wish', ''))
+        except (ValueError, TypeError):
+            errors['date_wish'] = _('Bitte einen Wunschtermin (JJJJ-MM-TT) angeben.')
+        if wish_date and wish_date < date_cls.today():
+            errors['date_wish'] = _('Der Wunschtermin darf nicht in der Vergangenheit liegen.')
+
+        try:
+            participants = int(post.get('participants') or 0)
+        except (TypeError, ValueError):
+            participants = 0
+        if participants <= 0:
+            errors['participants'] = _('Bitte die erwartete Teilnehmerzahl als Zahl angeben.')
+
+        purpose = self._validate_purpose(post, errors)
+        warn_items = self._usage_warning_items(item) if item else []
+        terms_accepted = self._validate_usage_terms(warn_items, post, errors)
+
+        if errors:
+            return request.render('kjr_rental.website_spielmobil',
+                                  self._spielmobil_values(item, values, errors))
+
+        is_public = request.env.user._is_public()
+        partner = self._spielmobil_partner(email, contact_person, organisation, phone)
+        note_lines = [
+            _('Anfrage über das Online-Formular „Spielmobil".'),
+            _('Ansprechpartner/in: %s') % contact_person,
+            _('Organisation: %s') % organisation,
+            _('Einsatzort: %s') % place,
+            _('Erwartete Teilnehmerzahl: %s') % participants,
+        ]
+        if is_public:
+            note_lines.append(_(
+                'ACHTUNG – Absender war NICHT angemeldet: Die Identität des Absenders '
+                'ist nicht nachgewiesen. Der Kontakt wurde deshalb neu angelegt und '
+                'nicht einem bestehenden Verband zugeordnet; der Vorgang läuft zunächst '
+                'zum Standardtarif. Kontaktdaten, Zuordnung und Mitgliedsstatus bitte '
+                'vor der Reservierung prüfen und den Vorgang danach gegebenenfalls auf '
+                'den richtigen Kontakt umtragen.'))
+        if (post.get('note') or '').strip():
+            note_lines.append(_('Anmerkungen: %s') % post.get('note').strip())
+
+        order = request.env['kjr.rental.order'].sudo().create({
+            'partner_id': partner.id,
+            'company_id': request.website.company_id.id,
+            'contact_email': email,
+            'contact_phone': phone,
+            # Einsatz an einem Tag: Beginn = Ende. Mehrtägige Einsätze klärt die
+            # Geschäftsstelle im Vorgang.
+            'date_from': wish_date,
+            'date_to': wish_date,
+            # Mitgliedstarif niemals aus einer ungeprüften Anfrage übernehmen:
+            # bei anonymen Absendern hart Standardtarif. Die Geschäftsstelle kann
+            # is_member im Vorgang übersteuern, sobald der Verband bestätigt ist.
+            # (Ein hier mitgegebener Wert schützt das speichernde Compute-Feld vor
+            # dem Neuberechnen – siehe _compute_is_member.)
+            'is_member': False if is_public else self._partner_is_member(partner),
+            'purpose': purpose,
+            'usage_terms_accepted': terms_accepted,
+            'note': '\n'.join(note_lines),
+            'line_ids': [(0, 0, {'item_id': item.id, 'quantity': 1})],
+        })
+        self._spielmobil_notify(order, contact_person, organisation, place,
+                                participants, wish_date, email, phone)
+        if not is_public:
+            return request.redirect('/my/ausleihen/%d' % order.id)
+        # Öffentliche Absender haben keinen Portalzugang -> Bestätigung auf der Seite.
+        return request.render('kjr_rental.website_spielmobil',
+                              self._spielmobil_values(item, order=order))
 
 
 class KjrRentalPortal(CustomerPortal):
@@ -276,12 +930,39 @@ class KjrRentalPortal(CustomerPortal):
             'default_url': '/my/ausleihen',
         })
 
+    def _portal_deposit_values(self, order):
+        """Kautionsangaben für die Portalansicht.
+
+        Der Entleiher muss im Portal nachvollziehen können, was mit seiner Kaution
+        passiert ist – ob sie angefordert, erhalten, erstattet oder (mit welcher
+        Begründung) einbehalten wurde. Ohne diese Anzeige ist der Kautionsvorgang
+        für ihn eine Blackbox und jede Rückfrage landet telefonisch in der
+        Geschäftsstelle.
+
+        Zur Kaution selbst gibt es im System KEINEN Beleg – sie ist ausschließlich
+        ein Status mit Datum (siehe portal_rental_detail). Ausgegeben werden deshalb
+        nur der Klartext des Status und die Gebührenrechnung.
+
+        `order` kommt aus _document_check_access und ist bereits sudo; die
+        verknüpften Belege gehören demselben Kontakt. Verlinkt wird trotzdem nur
+        auf /my/invoices/<id> – diese Route prüft den Zugriff selbst.
+        """
+        state_label = dict(
+            order._fields['deposit_state']._description_selection(request.env)
+        ).get(order.deposit_state, order.deposit_state or '')
+        return {
+            'deposit_state_label': state_label,
+            # Nur GEBUCHTE Belege verlinken: ein Entwurf ist noch nicht verbindlich
+            # und für den Entleiher über das Portal ohnehin nicht lesbar.
+            'fee_invoice': order.invoice_id.filtered(lambda m: m.state == 'posted'),
+        }
+
     @http.route('/my/ausleihen/<int:order_id>', type='http', auth='user', website=True)
     def portal_rental_detail(self, order_id, **kw):
         try:
             order = self._document_check_access('kjr.rental.order', order_id)
         except (AccessError, MissingError):
             return request.redirect('/my')
-        return request.render('kjr_rental.portal_rental_detail', {
-            'order': order, 'page_name': 'kjr_rental',
-        })
+        values = {'order': order, 'page_name': 'kjr_rental'}
+        values.update(self._portal_deposit_values(order))
+        return request.render('kjr_rental.portal_rental_detail', values)
