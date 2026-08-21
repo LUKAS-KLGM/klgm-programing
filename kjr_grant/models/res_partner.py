@@ -1,6 +1,69 @@
 # -*- coding: utf-8 -*-
-"""Erweiterung res.partner für KJR-Mitgliedsverbände."""
+"""Erweiterung res.partner für KJR-Mitgliedsverbände.
+
+SCHREIBSCHUTZ DER MITGLIEDSCHAFTSDATEN
+──────────────────────────────────────
+Seit der Portalseite /my/verband pflegt ein Mitgliedsverband seine Kontakt- und
+Adressdaten selbst. Die Angaben zur MITGLIEDSCHAFT sind dagegen Feststellungen
+des Kreisjugendrings (Aufnahmebeschluss, Verbandstyp nach § 30 BJR-Satzung,
+Vertretungsrecht) — der Verband darf sie sehen, aber nicht ändern.
+
+`readonly=True` schützt davor NICHT: das ist eine reine UI-Angabe, ein direkter
+RPC-Aufruf (`/web/dataset/call_kw` → `res.partner.write`) umgeht sie vollständig.
+Serverseitig wirken nur zwei Mittel, und dieses Modul nutzt beide:
+
+  (a) `groups='base.group_user'` am Feld. Die ORM prüft das in `write()`,
+      `create()`, beim Lesen (`_fetch_field`) UND seit Odoo 19 auch in
+      Suchdomains (`_field_to_sql` → `_check_field_access`). Ein `sudo()`-Env
+      hebt die Prüfung auf (`Model._has_field_access`: `if ... or self.env.su`).
+      Gesetzt an: kjr_member_type, kjr_member_number, kjr_active_since,
+      kjr_vr_votes. Diese vier werden nirgends von einem Portal-User gelesen.
+
+  (b) Der Wächter `_kjr_assert_member_status_writable()` in `write()`/`create()`.
+      Er blockt Schreibzugriffe nicht-interner Nutzer auf ALLE sechs Felder der
+      Liste KJR_MEMBER_STATUS_FIELDS — also auch auf `is_kjr_member` und
+      `kjr_vr_right`, die aus den unten dokumentierten Gründen KEIN `groups=`
+      tragen dürfen.
+
+WARUM is_kjr_member UND kjr_vr_right KEIN groups= BEKOMMEN
+  * `is_kjr_member` ist bewusst namensgleich ein zweites Mal in
+    kjr_rental/models/res_partner.py definiert (ADR-1: kjr_rental hängt NICHT
+    von kjr_grant ab). Beide Definitionen teilen sich eine Spalte und werden von
+    der ORM verschmolzen. Ein hier gesetztes `groups=` würde deshalb auch für
+    kjr_rental gelten — obwohl der dortige Modul-Docstring ausdrücklich verlangt,
+    Zusatzattribute nicht einseitig zu setzen. Betroffen wäre u. a. der
+    gespeicherte Compute `KjrRentalOrder._compute_is_member`
+    (`@api.depends('partner_id.is_kjr_member')`), der in dem Env läuft, das ihn
+    auslöst — im Verleih-Portal auch ohne sudo.
+  * `kjr_vr_right` wird in `KjrGrantApplication._check_completeness()` gelesen.
+    Diese Methode hängt an `action_submit()`, und die Gruppe „Antragsteller"
+    (group_kjr_applicant, ein Portal-Profil) hat laut ir.model.access Schreib-
+    und Anlagerecht auf kjr.grant.application. Ein `groups=` würde diesen Pfad
+    mit einem AccessError beenden.
+Der Wächter (b) deckt beide Felder ohne diese Nebenwirkungen ab.
+
+FOLGE FÜR DAS PORTAL: Die unter (a) geschützten Felder sind für einen
+Portal-Nutzer serverseitig unsichtbar. Wer sie auf /my/verband ANZEIGEN will
+(Anforderung: „der Verband soll sehen, was hinterlegt ist"), muss den Verband
+dafür über `sudo()` lesen. Geschrieben werden dürfen sie auch mit sudo() nicht —
+der Controller arbeitet mit einer Feld-Whitelist.
+"""
 from odoo import api, fields, models, _
+from odoo.exceptions import AccessError
+
+# Feststellungen des KJR über die Mitgliedschaft eines Verbands. Sie entstehen
+# durch Beschluss der Vollversammlung bzw. durch Verwaltungsakt der
+# Geschäftsstelle und sind kein Selbstauskunftsfeld des Verbands. Wer diese
+# Liste ändert, muss die Feld-Whitelist des Portal-Controllers
+# (/my/verband, controllers/portal.py) gegenprüfen.
+KJR_MEMBER_STATUS_FIELDS = (
+    'is_kjr_member',
+    'kjr_member_type',
+    'kjr_member_number',
+    'kjr_vr_right',
+    'kjr_vr_votes',
+    'kjr_active_since',
+)
 
 
 class ResPartner(models.Model):
@@ -23,8 +86,15 @@ class ResPartner(models.Model):
         ('assoc',          'Jugendverband (§ 30 Abs. 2a BJR-Satzung)'),
         ('group',          'Jugendgruppe (§ 30 Abs. 2c BJR-Satzung)'),
         ('open',           'Offene Jugendeinrichtung'),
-    ], string='Verbandstyp')
-    kjr_member_number = fields.Char(string='Mitgliedsnummer KJR', copy=False)
+    ], string='Verbandstyp', groups='base.group_user',
+        help='Einstufung nach § 30 BJR-Satzung. Feststellung des KJR — im Portal '
+             'nur sichtbar, Änderungen laufen über die Geschäftsstelle.',
+    )
+    kjr_member_number = fields.Char(
+        string='Mitgliedsnummer KJR', copy=False, groups='base.group_user',
+        help='Vergibt die Geschäftsstelle. Feststellung des KJR — im Portal nur '
+             'sichtbar, Änderungen laufen über die Geschäftsstelle.',
+    )
     # TODO(KJR): Die Gap-Analyse (Vault, "KJR Funktions-Gap-Analyse 2026-06.md",
     # Abschnitt Antragsberechtigung) haelt fest, dass Antragsberechtigung und
     # Stimmrecht in der Vollversammlung zu TRENNEN sind — massgeblich ist die
@@ -57,12 +127,18 @@ class ResPartner(models.Model):
     # Altdaten enthalten kann; es ist aus dem Kontaktformular entfernt.
     kjr_vr_votes = fields.Integer(
         string='Stimmen in Vollversammlung (historisch)', default=0,
+        groups='base.group_user',
         help='Historisches Feld ohne fachliche Wirkung. Nach § 33 Abs. 1 der '
              'Satzung hat jedes Mitglied in der Vollversammlung genau EINE '
              'Stimme; ein numerisches Stimmgewicht gibt es nicht. Der Wert wird '
              'in keiner Berechnung, Auswertung oder Abstimmung verwendet.',
     )
-    kjr_active_since = fields.Date(string='Mitglied seit')
+    kjr_active_since = fields.Date(
+        string='Mitglied seit', groups='base.group_user',
+        help='Beginn der Mitgliedschaft laut Aufnahmebeschluss. Feststellung des '
+             'KJR — im Portal nur sichtbar, Änderungen laufen über die '
+             'Geschäftsstelle.',
+    )
     kjr_grant_ids = fields.One2many(
         'kjr.grant.application', 'partner_id', string='Zuschussanträge',
     )
@@ -115,6 +191,50 @@ class ResPartner(models.Model):
             dates = [d for d in logs.mapped('date') if d]
             rec.volunteer_first_date = min(dates) if dates else False
             rec.volunteer_last_date = max(dates) if dates else False
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # SCHREIBSCHUTZ DER MITGLIEDSCHAFTSDATEN (siehe Modul-Docstring)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _kjr_assert_member_status_writable(self, vals):
+        """Verhindert, dass ein Portal-Nutzer die Mitgliedschaftsdaten setzt.
+
+        Greift für jeden nicht-internen Nutzer (Portal, öffentlich) und damit
+        auch für einen direkten RPC-Aufruf, den kein Template und kein
+        Controller absichern kann.
+
+        `self.env.su` ist bewusst ausgenommen: der Portal-Controller muss den
+        Verband ohnehin mit sudo() schreiben (Portal-Nutzer haben auf
+        res.partner laut base.access_res_partner_portal nur Leserecht), und
+        Serverlogik, Import und Migrationen laufen ebenfalls mit sudo. Der
+        Schutz gegen unerwünschte Felder liegt dort in der Feld-Whitelist des
+        Controllers; hier wird der Weg abgeschnitten, der an jedem Controller
+        vorbeiführt.
+        """
+        if self.env.su or self.env.user._is_internal():
+            return
+        touched = [name for name in KJR_MEMBER_STATUS_FIELDS if name in vals]
+        if not touched:
+            return
+        labels = ', '.join(
+            self._fields[name].string or name for name in touched
+        )
+        raise AccessError(_(
+            'Die Angaben zur KJR-Mitgliedschaft (%s) stellt die Geschäftsstelle '
+            'des Kreisjugendrings fest; sie können im Portal nicht geändert '
+            'werden. Bitte wenden Sie sich für eine Korrektur an die '
+            'Geschäftsstelle.'
+        ) % labels)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            self._kjr_assert_member_status_writable(vals)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        self._kjr_assert_member_status_writable(vals)
+        return super().write(vals)
 
     def _volunteer_hours_by_category(self):
         """Stunden je Tätigkeitskategorie (für den Ehrenamtsnachweis).
