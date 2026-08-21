@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- DSGVO-Anonymisierung abgelaufener Ausleihen.
+
+             Die Modellmethode _cron_anonymize_expired() gab es seit dem
+             Datenschutz-Audit vom 21.08.2026, aber kein ir.cron rief sie auf —
+             das Löschkonzept war damit vorhanden und wirkungslos zugleich.
+
+             Der Lauf ist absichtlich harmlos, solange der KJR keine Frist
+             festgelegt hat: 'kjr_rental.order_retention_years' wird nicht
+             ausgeliefert, der Code liest dann 0 und die Methode kehrt ohne Suche
+             und ohne Schreibvorgang zurück. Erst wenn die Geschäftsstelle eine
+             Frist einträgt, wird anonymisiert. Die Frist ist beim KJR nicht
+             festgelegt und wird bewusst nicht vorbelegt
+             (TODO(KJR)/TODO(DSGVO) im Modell).
+
+             ACHTUNG, zweiter Schalter: Chatter, Feldhistorie und Anhänge werden
+             nur mitgezogen, wenn zusätzlich 'kjr_rental.order_anonymize_traces'
+             auf 1 steht (ebenfalls nicht ausgeliefert). Wird nur die Frist
+             gesetzt, leert der Lauf die Felder, während dieselben Angaben in
+             Chatter und Feldhistorie stehen bleiben; der Lauf protokolliert das
+             als Warnung. TODO(KJR): beide Parameter gemeinsam entscheiden.
+
+             noupdate="1" gilt für den ganzen Block: bestehende Datensätze bleiben
+             so, wie die Geschäftsstelle sie eingestellt hat, neue werden bei einem
+             Update trotzdem angelegt. Abschalten deshalb über "aktiv" und nicht
+             durch Löschen — sonst legt das nächste Modul-Update den Datensatz
+             erneut an.
+             Monatlicher Lauf genügt — eine Aufbewahrungsfrist bemisst sich in
+             Jahren, ein täglicher Lauf brächte nichts außer Last. -->
+        <record id="cron_kjr_rental_anonymize" model="ir.cron">
+            <field name="name">KJR Verleih: Ausleihdaten anonymisieren (DSGVO)</field>
+            <field name="model_id" ref="model_kjr_rental_order"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_anonymize_expired()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">months</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

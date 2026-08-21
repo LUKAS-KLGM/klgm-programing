@@ -85,7 +85,28 @@ class KjrGrantParticipant(models.Model):
         der Aufbewahrungsfrist anonymisieren statt zu löschen, damit aggregierte Nachweise
         (Anzahl, Juleica-Quote) für die Förderprüfung erhalten bleiben.
         Frist über System-Parameter 'kjr_grant.participant_retention_years' (Default 5 Jahre).
-        TODO(DSGVO): Aufbewahrungsfrist und Anonymisierungsverfahren datenschutzrechtlich final bestätigen."""
+        TODO(DSGVO): Aufbewahrungsfrist und Anonymisierungsverfahren datenschutzrechtlich final bestätigen.
+
+        Befund K6 (Datenschutz-Audit 21.08.2026): Diese Routine erfasste nur das
+        Primärmodell. Dieselben Klarnamen lagen danach weiterhin in den
+        hochgeladenen Dateien, in der Feldhistorie (mail.tracking.value) und im
+        Chatter des Antrags. Deshalb übergibt der Lauf die gerade anonymisierten
+        Klarnamen an kjr.grant.application._dsgvo_anonymize_related(), das die
+        Nebenschauplätze mitzieht.
+
+        Fristen: Die Nebenschauplätze können eine EIGENE Frist je Belegklasse haben
+        (DSGVO_RETENTION_PARAMS in kjr_grant_application.py). Ist eine Klasse nicht
+        gepflegt, gilt bewusst DIESE Basisfrist als Rückfallwert – die Spuren laufen
+        also mit, statt stehen zu bleiben. Nur ein ausdrücklich auf 0 gesetzter
+        Klassenparameter schaltet eine Klasse ab.
+
+        ACHTUNG, Auslieferungszustand: Die Basisfrist steht auf 5 Jahren, zusätzlich
+        sind retention_years_report = 5 und retention_years_receipt = 8 ausgeliefert.
+        Der Nachlauf ist damit ab dem ersten Tag wirksam und ersetzt hochgeladene
+        Dateien, löscht Trackingwerte und schwärzt Chatter-Texte – alles
+        unwiederbringlich. TODO(KJR): Fristen je Belegklasse VOR dem Go-live
+        bestätigen; bis dahin ggf. den Cron
+        kjr_grant.cron_kjr_application_anonymize_related deaktivieren."""
         years = int(self.env['ir.config_parameter'].sudo().get_param(
             'kjr_grant.participant_retention_years', 5))
         cutoff = fields.Date.today() - relativedelta(years=years)
@@ -93,7 +114,12 @@ class KjrGrantParticipant(models.Model):
             ('data_anonymized', '=', False),
             ('application_id.measure_end', '<', cutoff),
         ])
+        # Klarnamen je Antrag merken, BEVOR sie überschrieben werden – danach sind
+        # sie nicht mehr rekonstruierbar und im Chatter nicht mehr auffindbar.
+        names_by_app = {}
         for rec in stale:
+            if rec.name:
+                names_by_app.setdefault(rec.application_id.id, []).append(rec.name)
             # Bewusst NICHT anonymisiert: age, gender, role_code — reine Aggregatmerkmale
             # ohne Personenbezug, werden für Statistik/Förderprüfung weiter benötigt.
             # (age bleibt trotz Löschung des Geburtsdatums stehen, s. _compute_age.)
@@ -107,3 +133,15 @@ class KjrGrantParticipant(models.Model):
             })
         if stale:
             _logger.info('DSGVO-Anonymisierung: %d Teilnehmerdatensätze anonymisiert', len(stale))
+        # Nebenschauplätze am zugehörigen Antrag (Befund K6). Jede Belegklasse prüft
+        # dort ihre eigene Frist; ist keine gesetzt, passiert nichts.
+        applications = stale.application_id
+        if applications:
+            stats = applications._dsgvo_anonymize_related(participant_names=names_by_app)
+            _logger.info(
+                'DSGVO-Anonymisierung Nebenschauplätze: %d Anträge bearbeitet, '
+                '%d Anhänge ersetzt, %d Trackingwerte entfernt, '
+                '%d Chatter-Nachrichten geschwärzt',
+                stats['applications'], stats['attachments'],
+                stats['tracking'], stats['messages'],
+            )

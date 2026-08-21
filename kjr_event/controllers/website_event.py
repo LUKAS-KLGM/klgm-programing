@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 """Frontend-Erweiterung der Online-Anmeldung um KJR-Felder und den Altersfilter."""
+import logging
+from datetime import timedelta
+
 from odoo import http
 from odoo.fields import Domain
 from odoo.http import request
 from odoo.addons.website_event.controllers.main import WebsiteEventController
+
+_logger = logging.getLogger(__name__)
 
 
 # Felder, die im Anmeldeformular je Teilnehmer/in erfasst werden können.
@@ -11,6 +16,20 @@ KJR_VALUE_FIELDS = (
     'birthdate', 'guardian_name', 'guardian_phone',
     'emergency_contact', 'dietary_requirements', 'dietary_note', 'notes',
 )
+
+# Kernfelder des STANDARD-Anmeldeformulars (website_event), über die eine Formularzeile
+# wieder genau einer erzeugten Anmeldung zugeordnet wird. Sie stammen aus demselben POST
+# wie die KJR-Felder und tragen dieselbe Namenskonvention "<counter>-<feldname>" (siehe
+# views/website_event_templates.xml, Einschub in //t[@name='attendee_loop']).
+# Reihenfolge = Prüfreihenfolge: der Name ist Pflichtfeld des Kernformulars, die übrigen
+# Merkmale werden nur herangezogen, solange die Zuordnung noch nicht eindeutig ist.
+KJR_MATCH_FIELDS = ('name', 'email', 'phone', 'event_ticket_id')
+
+# Toleranz auf den Transaktionszeitstempel bei der Kandidatensuche (Sekunden).
+# Domains serialisieren Datumswerte sekundengenau; eine Sekunde Puffer stellt sicher,
+# dass die eigenen Anmeldungen sicher IM Fenster liegen. Das Fenster ist bewusst nur eine
+# Vorauswahl und nie das Zuordnungskriterium (siehe _kjr_write_attendee_values).
+KJR_CREATE_WINDOW_SECONDS = 1
 
 # Muss zu ``website_event.WebsiteEventController.events()`` passen (dort hart als
 # ``step = 12`` hinterlegt). Wird nur gebraucht, wenn der Altersfilter aktiv ist und
@@ -52,6 +71,21 @@ def _truthy(value):
     return bool(value) and str(value).lower() not in ('0', 'false', 'off', 'no')
 
 
+def _kjr_norm_text(value):
+    """Vergleichsform für Freitexte: Groß-/Kleinschreibung und Mehrfach-Leerzeichen egal."""
+    return ' '.join(str(value or '').split()).casefold()
+
+
+def _kjr_norm_phone(value):
+    """Vergleichsform für Telefonnummern: nur die Ziffern.
+
+    Odoo kann Telefonnummern beim Speichern umformatieren (Leerzeichen, Klammern,
+    Ländervorwahl). Der Vergleich läuft deshalb über die reine Ziffernfolge und wird
+    ohnehin nur als zusätzliches Unterscheidungsmerkmal verwendet.
+    """
+    return ''.join(ch for ch in str(value or '') if ch.isdigit())
+
+
 class KjrWebsiteEventController(WebsiteEventController):
 
     # ------------------------------------------------------------------
@@ -62,7 +96,7 @@ class KjrWebsiteEventController(WebsiteEventController):
         """Sammelt die KJR-Felder je Teilnehmer/in aus den geposteten Formulardaten.
 
         Das Frontend liefert die Felder unter ``<counter>-<feldname>`` (z. B. ``1-birthdate``).
-        Rückgabe: Liste von Wert-Dicts in derselben Reihenfolge wie die Anmeldungen.
+        Rückgabe: Liste von Tupeln ``(counter, werte)`` in Formularreihenfolge.
         """
         # Anzahl Teilnehmer/innen anhand der Standardfelder bestimmen.
         counters = sorted({
@@ -84,26 +118,141 @@ class KjrWebsiteEventController(WebsiteEventController):
             result.append((counter, values))
         return result
 
+    def _kjr_extract_attendee_match_values(self, registrations):
+        """Sammelt je Zähler die Kernfelder, an denen die Anmeldung wiedererkannt wird.
+
+        Gleiche Namenskonvention wie in :meth:`_kjr_extract_attendee_values`
+        (``<counter>-<feldname>``), aber ausschließlich Felder des Standardformulars
+        (siehe ``KJR_MATCH_FIELDS``). Diese Werte schreibt der Standard-Controller
+        unverändert auf die erzeugte Anmeldung; sie sind damit das fachliche Merkmal,
+        über das die KJR-Zusatzangaben ihrem eigenen Datensatz zugeordnet werden.
+
+        Rückgabe: ``{counter: {feldname: wert}}``.
+        """
+        result = {}
+        for key, value in registrations.items():
+            if '-' not in key or value in (None, ''):
+                continue
+            counter, field = key.split('-', 1)
+            if not counter.isdigit() or field not in KJR_MATCH_FIELDS:
+                continue
+            result.setdefault(int(counter), {})[field] = value
+        return result
+
+    def _kjr_find_registration(self, candidates, match):
+        """Sucht in ``candidates`` die eine Anmeldung, die zu den Formularwerten passt.
+
+        Es wird stufenweise eingegrenzt: zuerst über den Namen (Pflichtfeld des
+        Kernformulars), danach – nur solange noch mehrere Datensätze übrig sind – über
+        E-Mail, Telefon und Ticketart.
+
+        Rückgabe: Recordset. Genau EIN Datensatz bedeutet "eindeutig zugeordnet"; jede
+        andere Länge (0 oder >1) bedeutet "nicht zuordenbar" — der Aufrufer schreibt
+        dann bewusst nichts.
+        """
+        name = _kjr_norm_text(match.get('name'))
+        if not name:
+            # Ohne Namen gibt es kein fachliches Merkmal -> keine Zuordnung.
+            return candidates.browse()
+        found = candidates.filtered(lambda reg: _kjr_norm_text(reg.name) == name)
+        if len(found) > 1 and match.get('email'):
+            email = _kjr_norm_text(match['email'])
+            found = found.filtered(lambda reg: _kjr_norm_text(reg.email) == email)
+        if len(found) > 1 and match.get('phone'):
+            phone = _kjr_norm_phone(match['phone'])
+            found = found.filtered(lambda reg: _kjr_norm_phone(reg.phone) == phone)
+        if len(found) > 1 and str(match.get('event_ticket_id') or '').isdigit():
+            ticket_id = int(match['event_ticket_id'])
+            found = found.filtered(lambda reg: reg.event_ticket_id.id == ticket_id)
+        return found
+
+    def _kjr_write_attendee_values(self, event, kjr_values, match_values, tx_start):
+        """Schreibt die KJR-Zusatzangaben auf die Anmeldungen DIESER Anfrage.
+
+        Die Zuordnung läuft ausdrücklich NICHT mehr über die Reihenfolge der neu
+        erzeugten IDs (Befund K7 des Datenschutz-Audits vom 21.08.2026). PostgreSQL
+        arbeitet im Modus READ COMMITTED: meldet sich zeitgleich eine zweite Familie zur
+        selben Veranstaltung an und wird deren Transaktion währenddessen festgeschrieben,
+        stehen ihre Anmeldungen in genau derselben Ergebnismenge. Ein positionsweises
+        ``zip()`` hat dann Geburtsdatum, Ernährungs-/Allergiehinweis, Notfallkontakt und
+        Elterntelefon auf die Anmeldung eines fremden Kindes geschrieben.
+
+        Stattdessen zweistufig:
+
+        1. Kandidatenmenge so eng wie möglich fassen: nur diese Veranstaltung, nur
+           Anmeldungen aus dem Zeitfenster dieser Transaktion, nur solche desselben
+           erzeugenden Benutzers.
+        2. Innerhalb dieser Menge wird jede Formularzeile über ihre eigenen Kernfelder
+           (Name, bei Bedarf zusätzlich E-Mail, Telefon, Ticketart) genau EINEM Datensatz
+           zugeordnet; bereits vergebene Datensätze scheiden aus. Ist die Zuordnung nicht
+           eindeutig, wird für diese Zeile NICHTS geschrieben und ein Fehler
+           protokolliert. Eine fehlende Allergieangabe fällt in der Geschäftsstelle auf,
+           eine falsch zugeordnete nicht.
+        """
+        # sudo(): öffentliche Besucher/innen dürfen Anmeldungen nicht lesen. Der Zugriff
+        # ist bewusst auf die eigene Anfrage eingegrenzt und liest NICHT mehr alle
+        # Anmeldungen der Veranstaltung.
+        Registration = request.env['event.registration'].sudo()
+        domain = [
+            ('event_id', '=', event.id),
+            ('create_date', '>=', tx_start),
+        ]
+        candidates = Registration.search(domain + [('create_uid', '=', request.env.uid)])
+        if not candidates:
+            # Rückfallebene: legt eine künftige Odoo-Version die Anmeldungen unter einem
+            # anderen Benutzer an (z. B. als Superuser), greift die create_uid-Bedingung
+            # nicht mehr. Die Eindeutigkeitsprüfung unten bleibt davon unberührt.
+            candidates = Registration.search(domain)
+            if candidates:
+                _logger.warning(
+                    "KJR-Anmeldung: Eingrenzung über create_uid greift nicht "
+                    "(Veranstaltung %s). Die Zuordnung erfolgt allein über die "
+                    "Kernfelder des Formulars.", event.id)
+        if not candidates:
+            # Regulärer Fall, wenn der Standard-Controller gar keine Anmeldung erzeugt hat
+            # (z. B. Fehlerseite "keine Plätze frei"). Kein Fehler.
+            _logger.info(
+                "KJR-Anmeldung: keine neu erzeugte Anmeldung zur Veranstaltung %s "
+                "gefunden – es werden keine Zusatzangaben geschrieben.", event.id)
+            return
+
+        assigned = set()
+        for counter, values in kjr_values:
+            if not values:
+                continue
+            pool = candidates.filtered(lambda reg: reg.id not in assigned)
+            found = self._kjr_find_registration(pool, match_values.get(counter) or {})
+            if len(found) != 1:
+                # Bewusst OHNE personenbezogene Daten im Protokoll (kein Name, keine
+                # Gesundheitsangabe) – das Log ist selbst ein Speicherort.
+                _logger.error(
+                    "KJR-Anmeldung: Zusatzangaben der Formularzeile %s (Veranstaltung %s) "
+                    "konnten keiner eindeutigen Anmeldung zugeordnet werden "
+                    "(%s Treffer bei %s Anmeldungen dieser Anfrage). Es wurde NICHTS "
+                    "geschrieben; Geburtsdatum, Ernährung/Allergie, Notfallkontakt und "
+                    "Erziehungsberechtigte sind in der Geschäftsstelle nachzuerfassen.",
+                    counter, event.id, len(found), len(candidates))
+                continue
+            assigned.add(found.id)
+            found.write(values)
+
     @http.route()
     def registration_confirm(self, event, **post):
         # Roh-Post sichern, bevor die Standardverarbeitung läuft.
         kjr_values = self._kjr_extract_attendee_values(post)
+        match_values = self._kjr_extract_attendee_match_values(post)
 
-        # Anmeldungen vor dem Aufruf zählen, um die neu erzeugten zu identifizieren.
-        existing = request.env['event.registration'].sudo().search(
-            [('event_id', '=', event.id)]).ids
-        before = set(existing)
+        # Zeitstempel DIESER Transaktion. ``cr.now()`` liefert den Transaktionsbeginn –
+        # genau den Wert, den der ORM neu erzeugten Datensätzen als create_date mitgibt
+        # (odoo/orm/models.py: ``vals.setdefault('create_date', self.env.cr.now())``).
+        # fields.Datetime.now() wäre hier falsch: es liegt NACH dem Transaktionsbeginn und
+        # würde die eigenen Anmeldungen aus dem Fenster schneiden.
+        tx_start = request.env.cr.now() - timedelta(seconds=KJR_CREATE_WINDOW_SECONDS)
 
         response = super().registration_confirm(event, **post)
 
-        if kjr_values:
-            new_regs = request.env['event.registration'].sudo().search(
-                [('event_id', '=', event.id), ('id', 'not in', list(before))],
-                order='id asc')
-            # Reihenfolge der neuen Anmeldungen entspricht der Reihenfolge im Formular.
-            for reg, (_counter, values) in zip(new_regs, kjr_values):
-                if values:
-                    reg.write(values)
+        if any(values for _counter, values in kjr_values):
+            self._kjr_write_attendee_values(event, kjr_values, match_values, tx_start)
         return response
 
     # ------------------------------------------------------------------

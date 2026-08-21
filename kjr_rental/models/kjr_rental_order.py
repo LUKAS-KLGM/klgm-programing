@@ -1,14 +1,51 @@
 # -*- coding: utf-8 -*-
 """Ausleihvorgang mit Workflow und Verfügbarkeitsprüfung."""
+import base64
 import logging
+from datetime import date
 
-from markupsafe import Markup
+from markupsafe import Markup, escape
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare
 
 _logger = logging.getLogger(__name__)
+
+# ── DSGVO: Aufbewahrung / Anonymisierung (Befund K5, Audit vom 21.08.2026) ───
+# Aufbau und Begründungsstil bewusst übernommen von kjr_grant
+# (kjr.grant.participant._cron_anonymize_expired und die Nebenschauplätze in
+# kjr_grant_application.py) und identisch zu kjr_facility, damit alle Module
+# gleich zu prüfen und zu pflegen sind. Eine Modulabhängigkeit zu kjr_grant
+# besteht nicht und soll nicht entstehen — die wenigen Helfer sind deshalb
+# bewusst dupliziert.
+#
+# WICHTIG: Für Ausleihen ist KEINE Aufbewahrungsfrist entschieden. Die Parameter
+# sind im Auslieferungszustand NICHT gesetzt; der Code liest dann '0', und '0'
+# bedeutet: es passiert GAR NICHTS. Erst ein vom KJR eingetragener Wert > 0
+# schaltet die Verarbeitung ein.
+#
+# Anhaltspunkte aus dem Projektvault — ausschließlich Entscheidungshilfe für den
+# KJR, bewusst NICHT als Default gesetzt und hier ausdrücklich keine Rechtsaussage:
+#   • Buchungsbelege: 8 Jahre (§ 147 AO, § 257 HGB)
+#   • Verwendungsnachweise: 5 Jahre (ANBest-P Nr. 6.6)
+#   • "1 Jahr Ferienprogramm" ist eine selbstdefinierte Policy des KJR und
+#     ausdrücklich keine gesetzliche Frist.
+# TODO(KJR): Frist festlegen und KJR_RENTAL_RETENTION_PARAM setzen.
+# TODO(DSGVO): Festlegung und Verfahren von der Datenschutzbeauftragten
+# bestätigen lassen, insbesondere den Umgang mit Chatter und Feldhistorie.
+KJR_RENTAL_RETENTION_PARAM = 'kjr_rental.order_retention_years'
+KJR_RENTAL_TRACES_PARAM = 'kjr_rental.order_anonymize_traces'
+# Technische Obergrenze je Lauf, kein fachlicher Wert: was übrig bleibt, kommt
+# beim nächsten Lauf dran (der Cron läuft monatlich).
+KJR_RENTAL_BATCH_PARAM = 'kjr_rental.order_anonymize_batch_limit'
+KJR_RENTAL_BATCH_DEFAULT = 200
+
+# Platzhalter und Idempotenz-Marker (Schreibweise wie in kjr_grant/kjr_facility).
+# ir.attachment.description ist ein freies Textfeld; ein eigenes Feld auf
+# ir.attachment wird bewusst nicht angelegt (Fremdmodell).
+DSGVO_REDACTED = '(anonymisiert)'
+DSGVO_ANON_MARKER = '[DSGVO-anonymisiert]'
 
 
 class KjrRentalOrder(models.Model):
@@ -125,6 +162,19 @@ class KjrRentalOrder(models.Model):
              'Begründung für einen Einbehalt der Kaution — ein Einbehalt setzt eine '
              'Begründung voraus, aber nicht zwingend einen Schaden (z. B. verspätete '
              'Rückgabe oder Nichtabholung).',
+    )
+
+    # DSGVO: Merker für die Anonymisierung nach Ablauf der Aufbewahrungsfrist
+    # (siehe _cron_anonymize_expired). Gleiches Muster wie kjr.grant.participant:
+    # der Merker macht den Lauf idempotent, damit ein zweiter Durchlauf einen
+    # bereits anonymisierten Vorgang nicht erneut anfasst.
+    data_anonymized = fields.Boolean(
+        string='Anonymisiert (DSGVO)', default=False, readonly=True, copy=False,
+        help='Die personenbezogenen Angaben dieser Ausleihe (E-Mail, Telefon, '
+             'Zweckbeschreibung, Anmerkungen und der Rückgabevermerk) wurden nach '
+             'Ablauf der Aufbewahrungsfrist maschinell geleert. Zeitraum, Positionen, '
+             'Gebühren und Kautionsverlauf bleiben für Auswertung und Abrechnung '
+             'erhalten.',
     )
 
     @api.depends('partner_id', 'partner_id.is_kjr_member')
@@ -531,6 +581,323 @@ class KjrRentalOrder(models.Model):
     def action_print_contract(self):
         self.ensure_one()
         return self.env.ref('kjr_rental.action_report_rental_contract').report_action(self)
+
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # DSGVO — AUFBEWAHRUNG / ANONYMISIERUNG (Befund K5)
+    # ══════════════════════════════════════════════════════════════════════════
+    #
+    # Anonymisieren statt löschen, aus demselben Grund wie in kjr_grant und
+    # kjr_facility: Zeitraum, Positionen, Gebühren und Kautionsverlauf werden für
+    # Auswertung und Abrechnung weiter gebraucht — die Kontaktdaten und Freitexte
+    # nicht. Minderjährige stehen in diesem Modul ohnehin nur als Zahl.
+    #
+    # Zur Frist siehe den Kommentarblock am Modulkopf: sie ist NICHT entschieden,
+    # der Auslieferungszustand ist aus.
+
+    # Felder, die beim Ablauf der Frist geleert werden. Bewusst NICHT enthalten und
+    # deshalb hier begründet:
+    #   • partner_id — Pflichtfeld mit ondelete='restrict' und Klammer zur Rechnung;
+    #     der Entleiher-Kontakt gehört nach res.partner, nicht in die Ausleihe.
+    #   • invoice_id und alles an der Rechnung — account.move ist hash-verkettet,
+    #     dort wird weder gelöscht noch geändert (siehe _cron_anonymize_expired).
+    #   • date_from/date_to, Positionen, Beträge, Kautionsstatus und -daten, state,
+    #     is_member, usage_terms_accepted — Abrechnungs-, Zeit- und Nachweisdaten
+    #     ohne Personenbezug (usage_terms_accepted ist ein reines Ja/Nein).
+    #   • return_checked_complete/-clean, return_damage — Zustandskennzeichen zum
+    #     Material; nur der zugehörige FREITEXT wird geleert.
+    _ANONYMIZE_FIELDS = (
+        'contact_email',
+        'contact_phone',
+        'note',          # Anmerkungen, Freitext
+        'purpose',       # Zweckbeschreibung, laut Audit mittelbar personenbezogen
+        'return_note',   # Rückgabevermerk, kann Klarnamen enthalten
+    )
+
+    # Feldhistorie (mail.tracking.value): Von den getrackten Feldern der Ausleihe
+    # trägt nur partner_id einen Klarnamen — Odoo schreibt bei Many2one den damaligen
+    # ANZEIGENAMEN als Text mit. Alle übrigen getrackten Felder (Status, Daten,
+    # Kaution, Zustandskennzeichen) sind sachbezogen; die personenbezogenen Felder
+    # oben tragen kein tracking=True und hinterlassen deshalb keine Historie.
+    # Entfernt wird nur der Trackingwert, die zugehörige mail.message bleibt stehen.
+    # TODO(DSGVO): Ob die Entleiher-Historie entfernt werden soll, ist eine Abwägung
+    # (Nachweis, wem das Material überlassen war, gegen Speicherbegrenzung) — sie
+    # hängt am Schalter KJR_RENTAL_TRACES_PARAM und ist im Auslieferungszustand aus.
+    _ANONYMIZE_TRACKED_FIELDS = ('partner_id',)
+
+    @api.model
+    def _dsgvo_retention_years(self):
+        """Aufbewahrungsfrist in Jahren aus dem Systemparameter; 0 = abgeschaltet.
+
+        Fehlt der Parameter oder ist er nicht als ganze Zahl lesbar, gilt 0 — also
+        KEINE Verarbeitung. Das ist die konservative Seite: solange der KJR keine
+        Frist festgelegt hat, darf nichts passieren (TODO(KJR) am Modulkopf)."""
+        raw = self.env['ir.config_parameter'].sudo().get_param(
+            KJR_RENTAL_RETENTION_PARAM, '0')
+        try:
+            years = int(raw)
+        except (TypeError, ValueError):
+            _logger.warning(
+                'DSGVO: Systemparameter %s ist keine ganze Zahl (%r) — die '
+                'Anonymisierung der Ausleihen bleibt abgeschaltet.',
+                KJR_RENTAL_RETENTION_PARAM, raw)
+            return 0
+        return years if years > 0 else 0
+
+    @api.model
+    def _dsgvo_cutoff_date(self):
+        """Stichtag oder None, wenn keine Frist gesetzt ist.
+
+        Jahresend-Anker wie in kjr_grant: gezählt werden volle Kalenderjahre NACH
+        dem Jahr der Rückgabe. Eine Ausleihe mit Rückgabe 2027 ist bei einer Frist
+        von 5 Jahren erst ab dem 01.01.2033 fällig, nicht schon im Laufe des Jahres
+        2032. Bewusst die spätere Variante — zu früh anonymisieren würde eine
+        etwaige Aufbewahrungspflicht verletzen."""
+        years = self._dsgvo_retention_years()
+        if not years:
+            return None
+        return date(fields.Date.today().year - years, 1, 1)
+
+    @api.model
+    def _dsgvo_batch_limit(self):
+        """Technische Obergrenze je Lauf (kein fachlicher Wert)."""
+        raw = self.env['ir.config_parameter'].sudo().get_param(KJR_RENTAL_BATCH_PARAM)
+        try:
+            limit = int(raw)
+        except (TypeError, ValueError):
+            limit = 0
+        return limit if limit > 0 else KJR_RENTAL_BATCH_DEFAULT
+
+    @api.model
+    def _dsgvo_traces_enabled(self):
+        """Sollen auch Chatter, Feldhistorie und Anhänge mitgezogen werden?
+
+        Ebenfalls im Auslieferungszustand AUS. Hintergrund (Audit K6): der Chatter
+        ist zugleich Nachweis des Vorgangs (Rückgabeprüfung, Kautionsentscheidung);
+        ob und wie weit er mit anonymisiert wird, ist eine Abwägung zwischen
+        Nachweisinteresse und Speicherbegrenzung und keine Codeentscheidung.
+        TODO(DSGVO): Von der Datenschutzbeauftragten entscheiden lassen."""
+        raw = self.env['ir.config_parameter'].sudo().get_param(
+            KJR_RENTAL_TRACES_PARAM, '0')
+        return str(raw).strip().lower() in ('1', 'true', 'yes', 'wahr')
+
+    @staticmethod
+    def _dsgvo_redact(text, literals):
+        """Klartextvorkommen in einem (HTML-)Text durch den Platzhalter ersetzen.
+
+        Gibt (neuer_text, Treffer) zurück. Gesucht wird sowohl die rohe als auch die
+        HTML-escapte Schreibweise, weil Chatter-Inhalte escaped gespeichert werden
+        ("Müller & Sohn" → "Müller &amp; Sohn"). Zeichenketten unter vier Zeichen
+        bleiben außen vor, sonst entstünden im Fließtext falsche Treffer."""
+        if not text:
+            return text, 0
+        result = text
+        hits = 0
+        for literal in literals:
+            literal = (literal or '').strip()
+            if len(literal) < 4:
+                continue
+            for variant in {literal, str(escape(literal))}:
+                if variant and variant in result:
+                    hits += result.count(variant)
+                    result = result.replace(variant, DSGVO_REDACTED)
+        return result, hits
+
+    def _dsgvo_personal_literals(self):
+        """Die personenbezogenen Zeichenketten dieser Ausleihe einsammeln.
+
+        Muss VOR dem Leeren der Felder laufen: danach sind die Werte nicht mehr
+        rekonstruierbar und im Chatter nicht mehr auffindbar (dieselbe Grenze wie in
+        kjr_grant)."""
+        self.ensure_one()
+        literals = set()
+        for fname in self._ANONYMIZE_FIELDS:
+            value = self[fname]
+            if value and isinstance(value, str):
+                literals.add(value.strip())
+        return {lit for lit in literals if lit}
+
+    def _dsgvo_anonymize_chatter(self, literals):
+        """Klarnamen und Freitexte in den Chatter-Nachrichten schwärzen.
+
+        Abwägung wie in kjr_grant: GELÖSCHT wird nichts. Autor, Zeitpunkt und
+        Reihenfolge der Nachrichten dokumentieren den Vorgang (Ausgabe, Rücknahme,
+        Kautionsentscheidung) und bleiben vollständig erhalten. Ersetzt werden nur
+        die personenbezogenen Zeichenketten — und zwar genau die, die derselbe Lauf
+        gerade an den Feldern geleert hat.
+
+        Nötig ist das, weil die Rückgabeprüfung samt Rückgabevermerk zusätzlich als
+        Chatter-Notiz gespiegelt wird (_return_check_message) und die Begründung des
+        Kautionseinbehalts denselben Text noch einmal enthält
+        (action_withhold_deposit). Ohne diesen Schritt liefe die Anonymisierung dort
+        ins Leere.
+
+        Grenze, die der Code nicht überwinden kann: Werte aus einem FRÜHEREN Lauf
+        sind nicht mehr bekannt und im Chatter nicht mehr erkennbar.
+        TODO(KJR): Einmalige manuelle Durchsicht der Altbestände einplanen.
+
+        Idempotent: nach dem Ersetzen findet der nächste Lauf nichts mehr."""
+        self.ensure_one()
+        if not literals:
+            return 0
+        messages = self.env['mail.message'].sudo().search([
+            ('model', '=', self._name),
+            ('res_id', '=', self.id),
+        ])
+        touched = 0
+        for msg in messages:
+            new_body, body_hits = self._dsgvo_redact(msg.body or '', literals)
+            new_subject, subject_hits = self._dsgvo_redact(msg.subject or '', literals)
+            if not (body_hits or subject_hits):
+                continue
+            vals = {}
+            if body_hits:
+                vals['body'] = new_body
+            if subject_hits:
+                vals['subject'] = new_subject
+            msg.write(vals)
+            touched += 1
+        return touched
+
+    def _dsgvo_anonymize_tracking(self):
+        """Feldhistorie zu den personenbezogenen Feldern aufräumen.
+
+        mail.tracking.value überlebt jede Anonymisierung des Feldes: der frühere
+        Entleiher steht nach einem Wechsel weiterhin als Text in der Historie.
+        Entfernt wird deshalb der Trackingwert; die zugehörige mail.message bleibt
+        bestehen.
+
+        Idempotent: entfernte Datensätze findet der nächste Lauf nicht mehr."""
+        self.ensure_one()
+        tracking = self.env['mail.tracking.value'].sudo().search([
+            ('mail_message_id.model', '=', self._name),
+            ('mail_message_id.res_id', '=', self.id),
+            ('field_id.name', 'in', list(self._ANONYMIZE_TRACKED_FIELDS)),
+        ])
+        count = len(tracking)
+        if count:
+            tracking.unlink()
+        return count
+
+    def _dsgvo_anonymize_attachments(self):
+        """Am Vorgang hängende Dateien durch einen Platzhalter ersetzen.
+
+        kjr_rental legt derzeit selbst kein PDF am Vorgang ab (der Leihvertrag wird
+        über action_print_contract nur gedruckt). Anhänge entstehen aber über den
+        Chatter — z. B. ein abfotografiertes Rückgabeprotokoll oder ein Schadensfoto.
+        Behandelt werden sie wie in kjr_grant: Platzhalter statt unlink(), damit der
+        Nachweis erhalten bleibt, DASS etwas abgelegt war; der Personenbezug steckt
+        im Inhalt und im Dateinamen, und beides wird ersetzt.
+
+        NICHT angefasst: Anhänge an der Rechnung (account.move) — anderes res_model,
+        wegen der Hash-Verkettung unberührt.
+
+        Idempotent über den Marker in ir.attachment.description."""
+        self.ensure_one()
+        # res_field = False: nur echte Dokumente, keine Binärfeld-Ablagen.
+        attachments = self.env['ir.attachment'].sudo().search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('res_field', '=', False),
+        ])
+        touched = 0
+        for att in attachments:
+            if DSGVO_ANON_MARKER in (att.description or ''):
+                continue  # bereits ersetzt
+            if att.type != 'binary':
+                continue  # URL-Anhänge tragen keinen Dateiinhalt
+            body = _(
+                'Der Inhalt dieses Anhangs (%(orig)s) wurde nach Ablauf der vom KJR '
+                'festgelegten Aufbewahrungsfrist entfernt. Erhalten bleibt nur die '
+                'Tatsache, dass zur Ausleihe %(order)s ein Dokument abgelegt war.'
+            ) % {'orig': att.name or '', 'order': self.name or ''}
+            att.write({
+                'name': _('Anonymisiert_%s.txt') % (self.name or '').replace('/', '-'),
+                'datas': base64.b64encode(body.encode('utf-8')),
+                'mimetype': 'text/plain',
+                'description': '%s ersetzt am %s' % (
+                    DSGVO_ANON_MARKER, fields.Date.today().strftime('%d.%m.%Y')),
+            })
+            touched += 1
+        return touched
+
+    @api.model
+    def _cron_anonymize_expired(self):
+        """DSGVO (Speicherbegrenzung): personenbezogene Anteile abgelaufener
+        Ausleihen anonymisieren statt zu löschen (Befund K5).
+
+        Bezugspunkt ist das Ende des Ausleihzeitraums (date_to) — die Rückgabe. Ein
+        eigenes Rückgabedatum führt das Modell nicht; date_to ist der vertraglich
+        vereinbarte Rückgabetag und damit der nächstliegende belastbare Anker. Das
+        Anlagedatum wäre falsch, weil Ausleihen im Voraus erfasst werden.
+        TODO(KJR): Falls das TATSÄCHLICHE Rückgabedatum als Anker gewünscht ist,
+        muss dafür erst ein Feld erfasst werden — das ist eine Fachentscheidung und
+        wird hier nicht unterstellt.
+
+        Nicht erfasst werden Vorgänge im Status "Ausgegeben": ist der Rückgabetag
+        lange vorbei und das Material nicht zurück, ist der Vorgang offen und die
+        Erforderlichkeit besteht fort.
+
+        Frist über den Systemparameter 'kjr_rental.order_retention_years'.
+        Auslieferungszustand 0 = AUS: der Cron läuft, findet nichts und schreibt
+        nichts. Es wird bewusst KEINE Frist vorbelegt (siehe Modulkopf).
+
+        Bewusst NICHT berührt wird die Rechnung: account.move ist hash-verkettet,
+        eine nachträgliche Änderung bricht die Kette. Dort stehen der
+        Rechnungsempfänger (partner_id) und die Positionstexte; die Positionstexte
+        kommen ohne Klarnamen aus (Artikel, Menge, Zeitraum, Kilometer), sodass der
+        personenbezogene Rest vollständig über die Ausleihe anonymisierbar ist. Der
+        Rechnungsempfänger selbst ist eine Frage von res.partner und account.move,
+        nicht dieses Moduls.
+        TODO(DSGVO): Umgang mit dem Rechnungsempfänger im Buchungsbeleg klären.
+        """
+        cutoff = self._dsgvo_cutoff_date()
+        if not cutoff:
+            # Auslieferungszustand: keine Frist festgelegt → nichts tun. Bewusst nur
+            # auf Debug-Ebene, der Cron läuft monatlich.
+            _logger.debug(
+                'DSGVO-Anonymisierung (Verleih) ausgesetzt: %s ist nicht gesetzt.',
+                KJR_RENTAL_RETENTION_PARAM)
+            return
+        stale = self.sudo().search([
+            ('data_anonymized', '=', False),
+            ('date_to', '<', cutoff),
+            ('state', '!=', 'issued'),
+            # Solange eine Rechnung offen oder erst im Entwurf ist, ist der Vorgang
+            # nicht abgeschlossen. Ohne Rechnung greift die Bedingung nicht — deshalb
+            # ausdrücklich als ODER formuliert statt über die NULL-Behandlung eines
+            # 'not in' auf einem related-Feld.
+            '|', ('invoice_id', '=', False),
+            ('invoice_payment_state', 'not in', ('not_paid', 'in_payment', 'partial')),
+        ], limit=self._dsgvo_batch_limit(), order='id')
+        if not stale:
+            return
+        with_traces = self._dsgvo_traces_enabled()
+        messages = tracking = attachments = 0
+        blank_values = dict.fromkeys(self._ANONYMIZE_FIELDS, False)
+        for rec in stale:
+            # Erst einsammeln, dann leeren: danach sind die Werte weg.
+            literals = rec._dsgvo_personal_literals() if with_traces else set()
+            rec.write(dict(blank_values, data_anonymized=True))
+            if with_traces:
+                messages += rec._dsgvo_anonymize_chatter(literals)
+                tracking += rec._dsgvo_anonymize_tracking()
+                attachments += rec._dsgvo_anonymize_attachments()
+        _logger.info(
+            'DSGVO-Anonymisierung (Verleih): %d Ausleihen anonymisiert '
+            '(Stichtag %s, Frist %d Jahre ab Rückgabe, Jahresend-Anker).',
+            len(stale), cutoff, self._dsgvo_retention_years())
+        if with_traces:
+            _logger.info(
+                'DSGVO-Anonymisierung (Verleih) Nebenschauplätze: '
+                '%d Chatter-Nachrichten geschwärzt, %d Trackingwerte entfernt, '
+                '%d Anhänge ersetzt.', messages, tracking, attachments)
+        else:
+            _logger.warning(
+                'DSGVO-Anonymisierung (Verleih): Chatter, Feldhistorie und Anhänge '
+                'der %d Ausleihen wurden NICHT bearbeitet (%s ist aus). Dort stehen '
+                'dieselben Angaben weiterhin.',
+                len(stale), KJR_RENTAL_TRACES_PARAM)
 
 
 class KjrRentalOrderLine(models.Model):

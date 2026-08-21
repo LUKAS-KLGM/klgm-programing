@@ -28,6 +28,111 @@ IBAN_LENGTHS = {'DE': 22, 'AT': 20, 'CH': 21, 'LI': 21, 'LU': 20}
 # BIC/SWIFT nach ISO 9362: 4 Bank + 2 Land + 2 Ort (+ optional 3 Filiale).
 BIC_RE = re.compile(r'^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$')
 
+# ── DSGVO: Aufbewahrungsklassen (Befund K6, Datenschutz-Audit 21.08.2026) ────
+# Die Feld-Anonymisierung der Teilnehmerdaten (kjr.grant.participant,
+# _cron_anonymize_expired) hängt an EINEM Systemparameter,
+# 'kjr_grant.participant_retention_years', ausgeliefert mit 5 Jahren. Dieselben
+# Klarnamen stehen aber auch auf den Nebenschauplätzen am Antrag: in den
+# hochgeladenen Dateien, in der Feldhistorie (mail.tracking.value, u. a. die
+# IBAN-Historie) und im Chatter (mail.message).
+#
+# GRUNDREGEL (Gegenkontrolle zur ersten Fixrunde): Die Spurenbereinigung läuft
+# IMMER dann, wenn die zugehörigen Felder anonymisiert werden. Sie hängt NICHT
+# an einem zweiten, separat einzuschaltenden Schalter. Eine Anonymisierung, die
+# den strukturierten Datensatz leert und dieselbe Namensliste als PDF-Anhang und
+# in der Feldhistorie unverändert stehen lässt, erzeugt eine Sicherheit, die es
+# nicht gibt – das ist schlechter als gar keine Anonymisierung.
+#
+# Umsetzung: Jede Belegklasse hat einen eigenen, vom KJR pflegbaren Parameter.
+#   • Parameter NICHT gesetzt  → es gilt der Basisparameter der Feld-
+#     Anonymisierung (DSGVO_BASE_RETENTION_PARAM). Die Klasse läuft damit
+#     automatisch mit derselben Frist mit; es gibt keinen Auslieferungszustand,
+#     in dem Felder anonymisiert werden und die Spuren stehen bleiben.
+#   • Parameter auf 0 gesetzt  → Klasse abgeschaltet. Das ist dann eine
+#     ausdrückliche Entscheidung des KJR und keine stille Lücke.
+#   • Basisparameter ebenfalls nicht gesetzt → es passiert gar nichts, der Lauf
+#     kehrt sofort zurück (siehe _cron_anonymize_related).
+#
+# Eine EIGENE Frist erhalten nur die Klassen, für die der Vault einen belegten
+# Anker nennt (Werte in data/ir_config_parameter_data.xml):
+#   • Belegliste / Rechnungen / Quittungen: 8 Jahre (§ 147 AO, § 257 HGB)
+#   • Maßnahmenberichte / Verwendungsnachweise: 5 Jahre (ANBest-P Nr. 6.6)
+# "1 Jahr Ferienprogramm" ist eine selbstdefinierte Policy des KJR und
+# ausdrücklich KEINE gesetzliche Frist; sie wird hier nicht verwendet. Weitere
+# Fristen werden nicht erfunden.
+# TODO(KJR): Fristen je Belegklasse bestätigen oder abweichend festlegen.
+# TODO(DSGVO): Festlegung durch die Datenschutzbeauftragte bestätigen lassen.
+#
+# HARTE GRENZE: Buchungsbelege in 'account' (account.move, account.payment und
+# deren Anhänge) werden von dieser Routine NICHT angefasst – sie hängen an einer
+# Hash-Verkettung, jeder nachträgliche Eingriff zerstört die Unveränderbarkeit
+# des Belegs. Die Klasse 'receipt' meint ausschließlich die vom Antragsteller AM
+# ANTRAG hochgeladene Belegliste, nicht den gebuchten Beleg.
+DSGVO_BASE_RETENTION_PARAM = 'kjr_grant.participant_retention_years'
+DSGVO_RETENTION_PARAMS = {
+    # Teilnahmelisten als Datei-Upload (Klarnamen, z. T. Minderjähriger).
+    # Laut Fußnote der KJR-Unterschriftenliste verbleibt die Liste beim Träger.
+    # NICHT ausgeliefert → Basisfrist der Feld-Anonymisierung.
+    'tn_list':  'kjr_grant.retention_years_tn_list',
+    # Maßnahmenberichte / Verwendungsnachweise. Ausgeliefert mit 5 Jahren
+    # (belegter Anker: ANBest-P Nr. 6.6).
+    'report':   'kjr_grant.retention_years_report',
+    # Belegliste / Rechnungen / Quittungen, wie sie AM ANTRAG hochgeladen wurden.
+    # Ausgeliefert mit 8 Jahren (belegter Anker: § 147 AO, § 257 HGB) – bewusst
+    # länger als die Basisfrist, damit hier nichts zu früh ersetzt wird.
+    'receipt':  'kjr_grant.retention_years_receipt',
+    # Alles übrige am Antrag (Bescheid-PDF, Neugründungsformular, Sonstiges).
+    # NICHT ausgeliefert → Basisfrist der Feld-Anonymisierung.
+    'other':    'kjr_grant.retention_years_attachment_other',
+    # Feldhistorie (mail.tracking.value), insbesondere die IBAN-Historie.
+    # NICHT ausgeliefert → Basisfrist der Feld-Anonymisierung.
+    'tracking': 'kjr_grant.retention_years_tracking',
+    # Chatter-Nachrichten (mail.message) – nur Schwärzung, siehe Abwägung in
+    # _dsgvo_anonymize_chatter(). NICHT ausgeliefert → Basisfrist.
+    'chatter':  'kjr_grant.retention_years_chatter',
+}
+
+# Zuordnung Dateiname → Belegklasse. Die Antragsteller laden ihre Dateien unter
+# dem Original-Dateinamen hoch (controllers/website.py, controllers/portal.py),
+# eine strukturierte Kennzeichnung existiert nicht. Dieselbe Schlüsselwort-
+# Heuristik prüft bereits die Vollständigkeit beim Einreichen; sie wird hier
+# wiederverwendet, damit beide Stellen dieselbe Sicht auf die Dateien haben.
+# Reihenfolge = Priorität. Was nicht zuzuordnen ist, fällt auf 'other' und läuft
+# damit unter der Basisfrist mit – eine unbenannte Datei bleibt also nicht
+# unbefristet liegen, nur weil die Heuristik sie nicht einordnen konnte.
+# TODO(KJR): Stichprobe der real hochgeladenen Dateinamen, ob die Zuordnung
+# trifft; eine Datei "Beleg_TN.pdf" landet z. B. in 'receipt' (8 J.) statt in
+# 'tn_list'. Fehlzuordnungen wirken in Richtung längerer Aufbewahrung.
+DSGVO_ATTACHMENT_KEYWORDS = (
+    ('tn_list', ('teilnahme', 'teilnehmer', 'tn-liste', 'tn_liste', 'tnliste')),
+    ('receipt', ('beleg', 'rechnung', 'quittung', 'kassenbuch')),
+    ('report',  ('bericht', 'report', 'protokoll', 'verwendungsnachweis')),
+)
+# Klassen, die überhaupt an Dateien hängen (im Gegensatz zu 'tracking'/'chatter').
+DSGVO_ATTACHMENT_CLASSES = ('tn_list', 'report', 'receipt', 'other')
+
+# Felder mit tracking=True, deren Historie personenbezogen bzw. Bankdaten ist.
+# partner_id (Verband) trägt ebenfalls tracking=True; Odoo speichert dort den
+# damaligen Anzeigenamen als Text. Der Antragsteller ist eine Organisation und
+# der Wechsel des Antragstellers ist ein prüfungsrelevanter Vorgang – deshalb
+# bleibt partner_id hier bewusst unangetastet.
+# TODO(DSGVO): partner_id-Historie mit der Datenschutzbeauftragten bewerten.
+DSGVO_TRACKED_PERSONAL_FIELDS = (
+    'payment_iban',          # Bankverbindung, siehe Feld :208
+    'participant_consent',   # historisches Einwilligungs-Flag
+)
+
+# Marker für Idempotenz und Nachvollziehbarkeit. ir.attachment.description ist
+# ein freies Textfeld; ein eigenes Feld auf ir.attachment wird bewusst nicht
+# angelegt (Fremdmodell).
+DSGVO_ANON_MARKER = '[DSGVO-anonymisiert]'
+DSGVO_REDACTED = '(anonymisiert)'
+
+# Kandidatensuche für IBANs im Chatter-Freitext. Ein Treffer wird erst dann
+# geschwärzt, wenn er die Mod-97-Prüfziffer besteht (_iban_is_valid) – ohne
+# diese Prüfung würde die Schwärzung beliebige Zeichenketten treffen.
+IBAN_SCAN_RE = re.compile(r'\b[A-Z]{2}[0-9]{2}(?:[ \u00a0]?[A-Z0-9]){11,34}')
+
 # ── Vier-Augen-Prinzip: prozessinterne Freigabe ──────────────────────────────
 # Die Bearbeitungsvermerke (Status, Prüfung, Zahlungsanweisung) dürfen nur aus
 # den Workflow-Actions dieses Moduls heraus geschrieben werden. Die Freigabe darf
@@ -1667,6 +1772,429 @@ class KjrGrantApplication(models.Model):
                 ),
             )
         _logger.info('Fristen-Erinnerung: %d Anträge benachrichtigt', len(drafts))
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # DSGVO — ANONYMISIERUNG DER NEBENSCHAUPLÄTZE (Befund K6)
+    # ══════════════════════════════════════════════════════════════════════════
+    #
+    # Ausgangslage laut Audit vom 21.08.2026: kjr.grant.participant leerte fünf
+    # Felder des Primärmodells – dieselben Klarnamen lagen danach unverändert
+    # weiter als hochgeladene Teilnahmeliste (ir.attachment), in der Feldhistorie
+    # (mail.tracking.value, u. a. IBAN) und im Chatter (mail.message).
+    #
+    # Was hier NICHT angefasst wird und warum:
+    #   • account.move / account.payment und deren Anhänge. Die Buchungsbelege
+    #     hängen in 'account' an einer Hash-Verkettung; ein nachträglicher
+    #     Eingriff zerstört die Unveränderbarkeit des Belegs. Die Suche unten
+    #     ist deshalb strikt auf res_model = 'kjr.grant.application' begrenzt.
+    #   • kjr.juleica, kjr.volunteer.log, kjr.grant.receipt.partner_name,
+    #     res.partner – eigene Modelle, eigene Zuständigkeit (siehe Audit K6).
+
+    @api.model
+    def _dsgvo_read_years(self, param):
+        """Einen Fristparameter lesen.
+
+        Rückgabe:
+          • None – der Parameter ist NICHT gesetzt (fehlt oder ist leer). Nur
+            dieser Fall löst den Rückgriff auf die Basisfrist aus.
+          • 0    – ausdrücklich abgeschaltet (Wert 0 oder negativ) ODER nicht als
+            ganze Zahl lesbar. Ein unlesbarer Wert wird bewusst NICHT still durch
+            die Basisfrist ersetzt: sonst würde ein Tippfehler in einem
+            Klassenparameter eine Verarbeitung auslösen, die der KJR so nicht
+            angeordnet hat. Stattdessen bleibt die Klasse aus, mit Warnung.
+          • > 0  – die gepflegte Frist in Jahren."""
+        raw = self.env['ir.config_parameter'].sudo().get_param(param, '')
+        raw = (raw or '').strip()
+        if not raw:
+            return None
+        try:
+            years = int(raw)
+        except (TypeError, ValueError):
+            _logger.warning(
+                'DSGVO: Systemparameter %s ist keine ganze Zahl (%r) – die '
+                'zugehörige Klasse bleibt abgeschaltet.', param, raw,
+            )
+            return 0
+        return years if years > 0 else 0
+
+    @api.model
+    def _dsgvo_retention_source(self, class_key):
+        """(Jahre, maßgeblicher Parameter) einer Belegklasse.
+
+        Reihenfolge:
+          1. der klasseneigene Parameter, sofern gesetzt,
+          2. sonst der Basisparameter der Feld-Anonymisierung
+             (DSGVO_BASE_RETENTION_PARAM).
+
+        Punkt 2 ist der Kern des Fixes zu Befund K6: Ohne gepflegten
+        Klassenparameter läuft die Spurenbereinigung mit GENAU DER Frist, mit der
+        auch die Teilnehmerfelder anonymisiert werden. Es gibt damit keinen
+        Zustand mehr, in dem Felder geleert werden und Anhänge, Feldhistorie und
+        Chatter dieselben Klarnamen weiter tragen."""
+        param = DSGVO_RETENTION_PARAMS.get(class_key)
+        if param:
+            years = self._dsgvo_read_years(param)
+            if years is not None:
+                return years, param
+        base_years = self._dsgvo_read_years(DSGVO_BASE_RETENTION_PARAM)
+        return (base_years or 0), DSGVO_BASE_RETENTION_PARAM
+
+    @api.model
+    def _dsgvo_retention_years(self, class_key):
+        """Maßgebliche Aufbewahrungsfrist einer Belegklasse in Jahren.
+
+        0 = für diese Klasse passiert gar nichts (weder Ersetzen noch Löschen
+        noch Schwärzen)."""
+        return self._dsgvo_retention_source(class_key)[0]
+
+    @api.model
+    def _dsgvo_cutoff_date(self, class_key):
+        """Stichtag einer Klasse oder None, wenn die Klasse abgeschaltet ist.
+
+        Jahresend-Anker: gezählt werden volle Kalenderjahre NACH dem Jahr, in dem
+        die Maßnahme endete. Eine Maßnahme mit Ende 2027 und einer Frist von
+        5 Jahren ist damit erst ab dem 01.01.2033 fällig, nicht schon im Laufe
+        des Jahres 2032. Der Anker ist bewusst die spätere Variante – zu früh
+        anonymisieren würde eine etwaige Aufbewahrungspflicht verletzen.
+
+        Unterschied zur Feld-Anonymisierung: kjr.grant.participant rechnet
+        rollierend (heute − n Jahre), hier gilt der Jahresend-Anker. Der Stichtag
+        hier ist damit nie früher, sondern bis zu ein Jahr später. Es wird also
+        NICHTS ersetzt oder geschwärzt, bevor die Feldfrist abgelaufen ist; im
+        ungünstigsten Fall zieht die Spurenbereinigung dem Teilnehmerdatensatz um
+        bis zu ein Jahr hinterher. Diese Richtung ist die konservative: eine
+        ersetzte Datei ist unwiederbringlich, ein Nachlauf ist es nicht.
+        TODO(KJR): Jahresend-Anker auch für die Feld-Anonymisierung übernehmen,
+        dann laufen beide Seiten taggleich (betrifft kjr_grant_participant.py)."""
+        years = self._dsgvo_retention_years(class_key)
+        if not years:
+            return None
+        return date(fields.Date.today().year - years, 1, 1)
+
+    def _dsgvo_is_due(self, class_key):
+        """Ist dieser Antrag für die genannte Klasse fällig?"""
+        self.ensure_one()
+        cutoff = self._dsgvo_cutoff_date(class_key)
+        return bool(cutoff and self.measure_end and self.measure_end < cutoff)
+
+    @api.model
+    def _dsgvo_attachment_class(self, attachment):
+        """Belegklasse eines Anhangs anhand des Dateinamens."""
+        fname = (attachment.name or '').lower()
+        for class_key, keywords in DSGVO_ATTACHMENT_KEYWORDS:
+            if any(kw in fname for kw in keywords):
+                return class_key
+        return 'other'
+
+    @api.model
+    def _dsgvo_placeholder_name(self, class_key):
+        """Neuer Dateiname des Platzhalters.
+
+        Das Schlüsselwort der Klasse bleibt bewusst im Namen: die
+        Vollständigkeitsprüfung beim Einreichen (_check_completeness) erkennt
+        Teilnahmeliste, Bericht und Belegliste am Dateinamen. Ein Platzhalter
+        ohne Schlüsselwort würde einen bereits eingereichten Antrag im Nachhinein
+        als unvollständig erscheinen lassen. Der Original-Dateiname wird NICHT
+        aufbewahrt – er enthält erfahrungsgemäß selbst Klarnamen
+        ("TN-Liste Zeltlager Familie ….pdf")."""
+        labels = {
+            'tn_list': _('Teilnahmeliste (anonymisiert).txt'),
+            'report':  _('Bericht (anonymisiert).txt'),
+            'receipt': _('Belegliste (anonymisiert).txt'),
+            'other':   _('Unterlage (anonymisiert).txt'),
+        }
+        return labels.get(class_key, labels['other'])
+
+    @api.model
+    def _dsgvo_placeholder_body(self, class_key):
+        """Inhalt der Platzhalterdatei (reiner Text, keine Rechtsaussage).
+
+        Nennt den TATSÄCHLICH herangezogenen Parameter samt Wert – also je nach
+        Pflegezustand den Klassenparameter oder die Basisfrist. Nur so lässt sich
+        im Nachhinein nachvollziehen, auf welcher Grundlage ersetzt wurde."""
+        years, param = self._dsgvo_retention_source(class_key)
+        return _(
+            'Diese Datei wurde am %(day)s im Rahmen der DSGVO-Anonymisierung '
+            '(Belegklasse "%(cls)s") durch diesen Platzhalter ersetzt. '
+            'Maßgeblich war die vom KJR Oberallgäu im Systemparameter '
+            '"%(param)s" hinterlegte Aufbewahrungsfrist von %(years)d Jahren '
+            '(gerechnet ab dem Ende des Jahres, in dem die Maßnahme endete). '
+            'Der Vorgang selbst bleibt als Nachweis erhalten; die '
+            'personenbezogenen Inhalte der Datei wurden entfernt.'
+        ) % {
+            'day': fields.Date.today().strftime('%d.%m.%Y'),
+            'cls': class_key,
+            'param': param,
+            'years': years,
+        }
+
+    def _dsgvo_anonymize_attachments(self):
+        """Hochgeladene Dateien am Antrag klassenweise anonymisieren.
+
+        Abwägung Löschen vs. Platzhalter: gewählt ist der Platzhalter.
+        Ein unlink() nähme dem Antrag den Nachweis, dass Teilnahmeliste, Bericht
+        oder Belegliste überhaupt eingereicht wurden – genau das prüft die
+        Geschäftsstelle bei Rückfragen und Rechnungsprüfungen (Art. 5 Abs. 2
+        Rechenschaftspflicht). Der Personenbezug steckt im Dateiinhalt und im
+        Dateinamen, nicht in der Tatsache der Einreichung: beides wird ersetzt,
+        die Hülle bleibt. Für Teilnahmelisten kommt hinzu, dass die Liste laut
+        KJR-Fußnote ohnehin beim Träger verbleibt – der KJR braucht den Inhalt
+        nach Fristablauf nicht mehr.
+
+        Idempotent über den Marker in ir.attachment.description."""
+        self.ensure_one()
+        # Günstiger Rückweg und zugleich die Sicherung gegen ein zu frühes
+        # Ersetzen: Ist für KEINE Anhangklasse eine Frist abgelaufen – weil kein
+        # Parameter gepflegt ist, weil alles auf 0 steht oder weil die Frist
+        # dieses Antrags schlicht noch läuft –, wird gar nicht erst gesucht und
+        # keine einzige Datei angefasst.
+        if not any(self._dsgvo_is_due(key) for key in DSGVO_ATTACHMENT_CLASSES):
+            return 0
+        # res_field = False: nur echte Dokumente, keine Binärfeld-Ablagen.
+        # res_model fest auf dieses Modell – Anhänge an account.move/account.payment
+        # bleiben unberührt (Hash-Verkettung, siehe Kopfkommentar).
+        attachments = self.env['ir.attachment'].sudo().search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('res_field', '=', False),
+        ])
+        touched = 0
+        for att in attachments:
+            if DSGVO_ANON_MARKER in (att.description or ''):
+                continue  # bereits anonymisiert
+            if att.type != 'binary':
+                continue  # URL-Anhänge tragen keinen Dateiinhalt
+            class_key = self._dsgvo_attachment_class(att)
+            if not self._dsgvo_is_due(class_key):
+                continue
+            body = self._dsgvo_placeholder_body(class_key)
+            att.write({
+                'name': self._dsgvo_placeholder_name(class_key),
+                'datas': base64.b64encode(body.encode('utf-8')),
+                'mimetype': 'text/plain',
+                'description': '%s Klasse=%s, ersetzt am %s' % (
+                    DSGVO_ANON_MARKER, class_key,
+                    fields.Date.today().strftime('%d.%m.%Y'),
+                ),
+            })
+            touched += 1
+        return touched
+
+    def _dsgvo_iban_literals(self):
+        """Alle am Antrag bekannten IBAN-Zeichenketten einsammeln.
+
+        Quelle sind das Feld selbst und die Feldhistorie – damit die Schwärzung
+        im Chatter auch frühere IBANs trifft. Muss VOR dem Aufräumen der
+        Trackingwerte laufen."""
+        self.ensure_one()
+        literals = set()
+        if self.payment_iban:
+            literals.add(self.payment_iban.strip())
+        for tv in self._dsgvo_tracking_values(('payment_iban',)):
+            for fname in ('old_value_char', 'new_value_char',
+                          'old_value_text', 'new_value_text'):
+                # Die Spaltennamen von mail.tracking.value sind versionsabhängig –
+                # deshalb über _fields abgefragt statt hart zugegriffen.
+                if fname in tv._fields:
+                    value = tv[fname]
+                    if value and isinstance(value, str):
+                        literals.add(value.strip())
+        # Schreibweise mit Leerzeichen (Vierergruppen) mit aufnehmen: im Chatter
+        # steht die IBAN oft so, wie sie aus dem Formular kopiert wurde.
+        grouped = set()
+        for lit in literals:
+            compact = lit.replace(' ', '')
+            if compact:
+                grouped.add(' '.join(
+                    compact[i:i + 4] for i in range(0, len(compact), 4)
+                ))
+        return {lit for lit in (literals | grouped) if len(lit) >= 8}
+
+    def _dsgvo_tracking_values(self, field_names):
+        """Trackingwerte dieses Antrags zu den genannten Feldern."""
+        self.ensure_one()
+        return self.env['mail.tracking.value'].sudo().search([
+            ('mail_message_id.model', '=', self._name),
+            ('mail_message_id.res_id', '=', self.id),
+            ('field_id.name', 'in', list(field_names)),
+        ])
+
+    def _dsgvo_anonymize_tracking(self):
+        """Feldhistorie der personenbezogenen Felder aufräumen.
+
+        mail.tracking.value überlebt jede Anonymisierung des Feldes: die alte
+        IBAN steht nach dem Leeren von payment_iban weiterhin in der Historie.
+        Die Trackingwerte werden deshalb entfernt – die zugehörige
+        mail.message bleibt bestehen, der Vorgang ("Feld geändert durch X am Y")
+        bleibt also nachweisbar, nur der Wert verschwindet.
+
+        Idempotent: entfernte Datensätze werden beim nächsten Lauf nicht mehr
+        gefunden."""
+        self.ensure_one()
+        tracking = self._dsgvo_tracking_values(DSGVO_TRACKED_PERSONAL_FIELDS)
+        count = len(tracking)
+        if count:
+            tracking.unlink()
+        return count
+
+    @staticmethod
+    def _dsgvo_redact(text, literals):
+        """Klartextvorkommen in einem (HTML-)Text durch Platzhalter ersetzen.
+
+        Gibt (neuer_text, Treffer) zurück. Es wird sowohl die rohe als auch die
+        HTML-escapte Schreibweise gesucht, weil Chatter-Inhalte escaped
+        gespeichert werden ('Müller & Sohn' → 'Müller &amp; Sohn')."""
+        if not text:
+            return text, 0
+        result = text
+        hits = 0
+        for literal in literals:
+            literal = (literal or '').strip()
+            if len(literal) < 4:
+                # Zu kurze Zeichenketten würden im Fließtext falsche Treffer
+                # erzeugen; solche Fälle bleiben der manuellen Prüfung.
+                continue
+            for variant in {literal, str(markupsafe.escape(literal))}:
+                if variant and variant in result:
+                    hits += result.count(variant)
+                    result = result.replace(variant, DSGVO_REDACTED)
+        return result, hits
+
+    def _dsgvo_anonymize_chatter(self, participant_names=None):
+        """Klarnamen und Bankdaten in den Chatter-Nachrichten schwärzen.
+
+        Abwägung (Audit K6, "der Chatter ist auch Nachweis"):
+        Der Chatter dokumentiert den Verwaltungsvorgang – wer wann eingereicht,
+        geprüft, bewilligt und angewiesen hat. Dieser Nachweis ist für die
+        Rechnungsprüfung und für das Vier-Augen-Prinzip erforderlich und wiegt
+        schwerer als die Nachricht selbst. Gelöscht wird deshalb NICHTS:
+        Autor, Zeitpunkt, Betreff-Struktur und Reihenfolge der Nachrichten
+        bleiben vollständig erhalten. Ersetzt werden ausschließlich die
+        personenbezogenen Zeichenketten im Text:
+          • die Klarnamen, die derselbe Lauf gerade am Teilnehmerdatensatz
+            anonymisiert hat (werden von kjr.grant.participant übergeben),
+          • bekannte IBANs des Antrags samt Historie,
+          • weitere IBAN-artige Zeichenketten im Freitext, aber nur wenn sie die
+            Mod-97-Prüfziffer bestehen (sonst würde die Schwärzung raten).
+        Anhänge an Chatter-Nachrichten hängen als ir.attachment am Antrag und
+        werden von _dsgvo_anonymize_attachments() mit erfasst.
+
+        Grenze, die der Code nicht überwinden kann: Namen von Teilnehmenden, die
+        in einem FRÜHEREN Lauf anonymisiert wurden, sind nicht mehr bekannt und
+        können im Chatter nicht mehr erkannt werden.
+        TODO(KJR): Einmalige manuelle Durchsicht der Altbestände einplanen.
+
+        Idempotent: nach dem Ersetzen findet der nächste Lauf nichts mehr."""
+        self.ensure_one()
+        literals = set(participant_names or [])
+        literals |= self._dsgvo_iban_literals()
+        messages = self.env['mail.message'].sudo().search([
+            ('model', '=', self._name),
+            ('res_id', '=', self.id),
+        ])
+        touched = 0
+        for msg in messages:
+            body = msg.body or ''
+            found = set(literals)
+            for candidate in IBAN_SCAN_RE.findall(body):
+                compact = candidate.replace(' ', '').replace('\u00a0', '')
+                if self._iban_is_valid(compact):
+                    found.add(candidate)
+            new_body, body_hits = self._dsgvo_redact(body, found)
+            new_subject, subject_hits = self._dsgvo_redact(msg.subject or '', found)
+            if not (body_hits or subject_hits):
+                continue
+            vals = {}
+            if body_hits:
+                vals['body'] = new_body
+            if subject_hits:
+                vals['subject'] = new_subject
+            msg.write(vals)
+            touched += 1
+        return touched
+
+    def _dsgvo_anonymize_related(self, participant_names=None):
+        """Nebenschauplätze der übergebenen Anträge anonymisieren (Befund K6).
+
+        Jede Klasse prüft ihre EIGENE Frist; ein Antrag kann also für den
+        Chatter fällig sein und für die Belegliste noch nicht (Belege laufen
+        länger, § 147 AO / § 257 HGB). Ist für eine Klasse kein eigener Parameter
+        gepflegt, gilt die Basisfrist der Feld-Anonymisierung – die Klasse läuft
+        dann automatisch mit. Nur ein ausdrücklich auf 0 gesetzter Parameter
+        schaltet eine Klasse ab.
+
+        Ist ein Antrag für keine Klasse fällig, fasst diese Methode ihn nicht an:
+        jeder Zweig prüft _dsgvo_is_due() vorab, und _dsgvo_anonymize_attachments()
+        sucht bei nicht abgelaufener Frist nicht einmal nach Anhängen.
+
+        Buchungsbelege bleiben unberührt: die Suchen sind auf res_model bzw.
+        model = 'kjr.grant.application' festgenagelt, account.move/account.payment
+        samt ihren Anhängen und ihrem Chatter kommen darin nicht vor
+        (Hash-Verkettung, siehe Kopfkommentar des Abschnitts).
+
+        :param participant_names: dict {application_id: [Klarnamen, …]} der
+            Namen, die im selben Lauf am Teilnehmerdatensatz anonymisiert wurden.
+        :return: dict mit den Zählern für die Protokollierung."""
+        names_by_app = participant_names or {}
+        stats = {'attachments': 0, 'tracking': 0, 'messages': 0, 'applications': 0}
+        for rec in self:
+            touched_any = False
+            if rec._dsgvo_is_due('chatter'):
+                # VOR dem Aufräumen der Trackingwerte: die Schwärzung im Chatter
+                # verwendet die historischen IBANs aus mail.tracking.value.
+                count = rec._dsgvo_anonymize_chatter(names_by_app.get(rec.id))
+                stats['messages'] += count
+                touched_any = touched_any or bool(count)
+            if rec._dsgvo_is_due('tracking'):
+                count = rec._dsgvo_anonymize_tracking()
+                stats['tracking'] += count
+                touched_any = touched_any or bool(count)
+            count = rec._dsgvo_anonymize_attachments()
+            stats['attachments'] += count
+            touched_any = touched_any or bool(count)
+            if touched_any:
+                stats['applications'] += 1
+        return stats
+
+    @api.model
+    def _cron_anonymize_related(self):
+        """Cron: Nebenschauplätze fälliger Anträge anonymisieren.
+
+        Läuft zusätzlich zur Teilnehmer-Anonymisierung, damit auch Anträge ohne
+        (bzw. mit bereits anonymisierten) Teilnehmerdatensätzen erfasst werden.
+
+        Ist weder ein Klassenparameter noch der Basisparameter gepflegt bzw.
+        stehen alle auf 0, ist nichts fällig: der Lauf kehrt nach ein paar
+        Parameterlesungen ohne jede Suche zurück und protokolliert genau das."""
+        active_years = {
+            key: self._dsgvo_retention_years(key) for key in DSGVO_RETENTION_PARAMS
+        }
+        active = [key for key, years in active_years.items() if years]
+        if not active:
+            _logger.info(
+                'DSGVO-Nachlauf Zuschussanträge: keine Aufbewahrungsfrist wirksam '
+                '(weder Klassenparameter noch %s gesetzt bzw. alles auf 0) – '
+                'nichts zu tun. TODO(KJR): Fristen festlegen.',
+                DSGVO_BASE_RETENTION_PARAM,
+            )
+            return
+        cutoffs = [self._dsgvo_cutoff_date(key) for key in active]
+        # Späterer Stichtag = kürzere Frist = größere Kandidatenmenge.
+        cutoff = max(c for c in cutoffs if c)
+        applications = self.search([
+            ('measure_end', '!=', False),
+            ('measure_end', '<', cutoff),
+        ])
+        stats = applications._dsgvo_anonymize_related()
+        _logger.info(
+            'DSGVO-Nachlauf Zuschussanträge (Fristen: %s): %d Anträge geprüft, '
+            '%d bearbeitet, %d Anhänge ersetzt, %d Trackingwerte entfernt, '
+            '%d Chatter-Nachrichten geschwärzt. Buchungsbelege (account.move/'
+            'account.payment) bleiben wegen der Hash-Verkettung unangetastet.',
+            ', '.join('%s=%dJ' % (key, active_years[key]) for key in sorted(active)),
+            len(applications), stats['applications'],
+            stats['attachments'], stats['tracking'], stats['messages'],
+        )
 
     # ══════════════════════════════════════════════════════════════════════════
     # DUPLIKAT-PRÜFUNG

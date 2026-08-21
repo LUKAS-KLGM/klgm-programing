@@ -46,6 +46,42 @@
             <field name="value">0</field>
         </record>
 
+        <!-- DSGVO / Befund K5 des Datenschutz-Audits vom 21.08.2026:
+             Aufbewahrungsfrist fuer Anmeldedaten in JAHREN, gerechnet ab dem ENDE
+             der Veranstaltung (nicht ab dem Anmeldedatum). Gezaehlt werden volle
+             Kalenderjahre NACH dem Jahr des Veranstaltungsendes (Jahresend-Anker,
+             gleiche Rechnung wie in kjr_grant): Freizeit endet 2027, Frist 5 Jahre
+             => faellig ab 01.01.2033.
+             0 = keine automatische Anonymisierung (Default, Auslieferungszustand).
+             Der Cron "KJR Veranstaltung: Anmeldedaten anonymisieren (DSGVO)" kehrt
+             bei 0 sofort zurueck und fasst keinen Datensatz an.
+
+             TODO(KJR)/TODO(DSGVO): Frist festlegen. Die Frist ist eine fachliche und
+             rechtliche Entscheidung des KJR bzw. der Datenschutzbeauftragten und wird
+             hier bewusst NICHT vorbelegt - eine geratene Frist loescht entweder zu
+             frueh (Aufbewahrungspflicht) oder zu spaet (Art. 5 Abs. 1 lit. e DSGVO).
+             Anhaltspunkte aus den Projektunterlagen, ausdruecklich nur als Orientierung
+             und ohne Rechtsaussage:
+               * 8 Jahre - Buchungsbelege nach Paragraf 147 AO / Paragraf 257 HGB
+               * 5 Jahre - Zuwendungsunterlagen nach ANBest-P Nr. 6.6
+               * "1 Jahr nach dem Ferienprogramm" - ausdruecklich selbstdefinierte
+                 Policy des KJR, KEINE gesetzliche Frist
+             Fuer Gesundheits- und Notfalldaten ist eine kuerzere Frist als fuer die
+             zahlungsrelevanten Felder denkbar; das ist zu entscheiden, nicht zu
+             programmieren. -->
+        <record id="param_registration_retention_years" model="ir.config_parameter">
+            <field name="key">kjr_event.registration_retention_years</field>
+            <field name="value">0</field>
+        </record>
+
+        <!-- Technische Obergrenze der je Cron-Lauf anonymisierten Anmeldungen
+             (Laufzeit/Transaktionsgroesse, kein fachlicher Wert). Der Cron laeuft
+             taeglich und arbeitet einen Rueckstand ueber mehrere Tage ab. -->
+        <record id="param_registration_anonymize_batch_limit" model="ir.config_parameter">
+            <field name="key">kjr_event.registration_anonymize_batch_limit</field>
+            <field name="value">200</field>
+        </record>
+
         <!-- kjr_event.automation_active_from wird ABSICHTLICH nicht vorbelegt:
              Der erste Lauf einer aktivierten Automatik schreibt den
              Aktivierungszeitpunkt selbst fest. Danach werden ausschließlich

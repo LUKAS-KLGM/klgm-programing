@@ -2,15 +2,45 @@
 """Einrichtungsbuchung mit Workflow, Preis-/Steuerberechnung und Rechnungsstellung."""
 import base64
 import logging
-from datetime import timedelta
+from datetime import date, timedelta
 
 from dateutil.relativedelta import relativedelta
-from markupsafe import Markup
+from markupsafe import Markup, escape
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
+
+# ── DSGVO: Aufbewahrung / Anonymisierung (Befund K5, Audit vom 21.08.2026) ───
+# Aufbau und Begründungsstil bewusst übernommen von kjr_grant
+# (kjr.grant.participant._cron_anonymize_expired und die Nebenschauplätze in
+# kjr_grant_application.py), damit beide Module gleich zu prüfen und zu pflegen
+# sind. Eine Modulabhängigkeit zu kjr_grant besteht nicht und soll nicht
+# entstehen — die wenigen Helfer sind deshalb bewusst dupliziert.
+#
+# WICHTIG: Für Einrichtungsbuchungen ist KEINE Aufbewahrungsfrist entschieden.
+# Beide Parameter sind im Auslieferungszustand NICHT gesetzt; der Code liest dann
+# '0', und '0' bedeutet: es passiert GAR NICHTS. Erst ein vom KJR eingetragener
+# Wert > 0 schaltet die Verarbeitung ein.
+#
+# Anhaltspunkte aus dem Projektvault — ausschließlich Entscheidungshilfe für den
+# KJR, bewusst NICHT als Default gesetzt und hier ausdrücklich keine Rechtsaussage:
+#   • Buchungsbelege: 8 Jahre (§ 147 AO, § 257 HGB)
+#   • Verwendungsnachweise: 5 Jahre (ANBest-P Nr. 6.6)
+#   • "1 Jahr Ferienprogramm" ist eine selbstdefinierte Policy des KJR und
+#     ausdrücklich keine gesetzliche Frist.
+# TODO(KJR): Frist festlegen und KJR_FACILITY_RETENTION_PARAM setzen.
+# TODO(DSGVO): Festlegung und Verfahren von der Datenschutzbeauftragten
+# bestätigen lassen, insbesondere den Umgang mit Chatter und Feldhistorie.
+KJR_FACILITY_RETENTION_PARAM = 'kjr_facility.booking_retention_years'
+KJR_FACILITY_TRACES_PARAM = 'kjr_facility.booking_anonymize_traces'
+
+# Platzhalter und Idempotenz-Marker (Schreibweise wie in kjr_grant).
+# ir.attachment.description ist ein freies Textfeld; ein eigenes Feld auf
+# ir.attachment wird bewusst nicht angelegt (Fremdmodell).
+DSGVO_REDACTED = '(anonymisiert)'
+DSGVO_ANON_MARKER = '[DSGVO-anonymisiert]'
 
 
 class KjrFacilityBooking(models.Model):
@@ -171,6 +201,19 @@ class KjrFacilityBooking(models.Model):
     internal_note = fields.Text(
         string='Interne Notiz', groups='kjr_facility.group_kjr_facility_user',
         help='Nur für Mitarbeiter sichtbar (nicht im Portal).')
+
+    # DSGVO: Merker für die Anonymisierung nach Ablauf der Aufbewahrungsfrist
+    # (siehe _cron_anonymize_expired). Gleiches Muster wie kjr.grant.participant:
+    # der Merker macht den Lauf idempotent, damit ein zweiter Cron-Durchlauf einen
+    # bereits anonymisierten Vorgang nicht erneut anfasst.
+    data_anonymized = fields.Boolean(
+        string='Anonymisiert (DSGVO)', default=False, readonly=True, copy=False,
+        help='Die personenbezogenen Angaben dieser Buchung (Ansprechperson, E-Mail, '
+             'Telefon, Gruppenbezeichnung, Freitexte und die Namen im Übergabe- bzw. '
+             'Rücknahmeprotokoll) wurden nach Ablauf der Aufbewahrungsfrist maschinell '
+             'geleert. Zeitraum, Personenzahlen und Beträge bleiben für Auswertung und '
+             'Abrechnung erhalten.',
+    )
 
     # ── Übergabeprotokoll (F: Haus/Zeltplatz, beide Richtungen) ──────────────
     #
@@ -1362,3 +1405,323 @@ class KjrFacilityBooking(models.Model):
             )
             count += 1
         _logger.info('Reservierung abgelaufen: %d Buchungen', count)
+
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # DSGVO — AUFBEWAHRUNG / ANONYMISIERUNG (Befund K5)
+    # ══════════════════════════════════════════════════════════════════════════
+    #
+    # Anonymisieren statt löschen, aus demselben Grund wie in kjr_grant: Belegung,
+    # Personenzahlen, Zeitraum und Beträge werden für Auswertung, Belegungsstatistik
+    # und Abrechnung weiter gebraucht — die Klarnamen nicht. Minderjährige stehen in
+    # diesem Modul ohnehin nur als Zahl (participant_count), betroffen sind die
+    # Ansprechperson, deren Kontaktdaten, die Gruppenbezeichnung, die Freitexte und
+    # die Namen im Übergabe-/Rücknahmeprotokoll.
+    #
+    # Zur Frist siehe den Kommentarblock am Modulkopf: sie ist NICHT entschieden,
+    # der Auslieferungszustand ist aus.
+
+    # Felder, die beim Ablauf der Frist geleert werden. Bewusst NICHT enthalten und
+    # deshalb hier begründet:
+    #   • partner_id — Pflichtfeld mit ondelete='restrict' und Klammer zur Rechnung;
+    #     der Kontakt selbst gehört nach res.partner, nicht in die Buchung.
+    #   • invoice_id und alles an der Rechnung — account.move ist hash-verkettet,
+    #     dort wird weder gelöscht noch geändert (siehe _cron_anonymize_expired).
+    #   • participant_count, leader_count, visitor_tax_exempt_count, nights,
+    #     check_in/check_out, sämtliche Beträge, state, is_grant_funded — Aggregat-,
+    #     Zeit- und Abrechnungsdaten ohne Personenbezug.
+    #   • Zählerstände, Schlüsselzahlen, Zustands- und Schadenskennzeichen —
+    #     Sachangaben zum Objekt; nur die zugehörigen FREITEXTE werden geleert.
+    #   • grant_reference — Aktenzeichen des Zuschussvorgangs, kein Klarname; die
+    #     Teilnehmerdaten dazu anonymisiert kjr_grant nach eigener Frist.
+    _ANONYMIZE_FIELDS = (
+        'group_name',                 # Gruppenbezeichnung, kann ein Klarname sein
+        'contact_person',             # Ansprechperson der Gruppe
+        'contact_email',
+        'contact_phone',
+        'note',                       # Freitext, laut Audit mittelbar personenbezogen
+        'internal_note',
+        'equipment_notes',
+        'handover_in_received_by',    # Klarname aus dem Übergabeprotokoll (Gruppe)
+        'handover_out_handed_by',     # Klarname aus dem Rücknahmeprotokoll (Gruppe)
+        'handover_in_note',
+        'handover_out_note',
+        'handover_in_damage_note',
+        'handover_out_damage_note',
+        'handover_in_user_id',        # Beschäftigtenbezug: wer hat übergeben
+        'handover_out_user_id',       # Beschäftigtenbezug: wer hat zurückgenommen
+    )
+
+    # Feldhistorie (mail.tracking.value): Von den getrackten Feldern der Buchung
+    # trägt nur partner_id einen Klarnamen — Odoo schreibt bei Many2one den damaligen
+    # ANZEIGENAMEN als Text mit. Alle übrigen getrackten Felder (Status, Daten,
+    # Zahlen, Zustandskennzeichen) sind sachbezogen; die personenbezogenen Felder
+    # oben tragen kein tracking=True und hinterlassen deshalb auch keine Historie.
+    # Entfernt wird nur der Trackingwert, die zugehörige mail.message bleibt stehen:
+    # dass der Mieter gewechselt wurde und wer das getan hat, bleibt nachweisbar.
+    # TODO(DSGVO): Ob die Mieter-Historie überhaupt entfernt werden soll, ist eine
+    # Abwägung (Nachweis der Vertragspartnerschaft gegen Speicherbegrenzung) — sie
+    # hängt am Schalter KJR_FACILITY_TRACES_PARAM und ist im Auslieferungszustand aus.
+    _ANONYMIZE_TRACKED_FIELDS = ('partner_id',)
+
+    @api.model
+    def _dsgvo_retention_years(self):
+        """Aufbewahrungsfrist in Jahren aus dem Systemparameter; 0 = abgeschaltet.
+
+        Fehlt der Parameter oder ist er nicht als ganze Zahl lesbar, gilt 0 — also
+        KEINE Verarbeitung. Das ist die konservative Seite: solange der KJR keine
+        Frist festgelegt hat, darf nichts passieren (TODO(KJR) am Modulkopf)."""
+        raw = self.env['ir.config_parameter'].sudo().get_param(
+            KJR_FACILITY_RETENTION_PARAM, '0')
+        try:
+            years = int(raw)
+        except (TypeError, ValueError):
+            _logger.warning(
+                'DSGVO: Systemparameter %s ist keine ganze Zahl (%r) — die '
+                'Anonymisierung der Einrichtungsbuchungen bleibt abgeschaltet.',
+                KJR_FACILITY_RETENTION_PARAM, raw)
+            return 0
+        return years if years > 0 else 0
+
+    @api.model
+    def _dsgvo_cutoff_date(self):
+        """Stichtag oder None, wenn keine Frist gesetzt ist.
+
+        Jahresend-Anker wie in kjr_grant: gezählt werden volle Kalenderjahre NACH
+        dem Jahr der Abreise. Eine Buchung mit Abreise 2027 ist bei einer Frist von
+        5 Jahren erst ab dem 01.01.2033 fällig, nicht schon im Laufe des Jahres 2032.
+        Bewusst die spätere Variante — zu früh anonymisieren würde eine etwaige
+        Aufbewahrungspflicht verletzen."""
+        years = self._dsgvo_retention_years()
+        if not years:
+            return None
+        return date(fields.Date.today().year - years, 1, 1)
+
+    @api.model
+    def _dsgvo_traces_enabled(self):
+        """Sollen auch Chatter, Feldhistorie und Anhänge mitgezogen werden?
+
+        Ebenfalls im Auslieferungszustand AUS. Hintergrund (Audit K6): Chatter und
+        abgelegte PDF sind zugleich Nachweis des Verwaltungsvorgangs; ob und wie
+        weit sie mit anonymisiert werden, ist eine Abwägung zwischen
+        Nachweisinteresse und Speicherbegrenzung und keine Codeentscheidung.
+        TODO(DSGVO): Von der Datenschutzbeauftragten entscheiden lassen."""
+        raw = self.env['ir.config_parameter'].sudo().get_param(
+            KJR_FACILITY_TRACES_PARAM, '0')
+        return str(raw).strip().lower() in ('1', 'true', 'yes', 'wahr')
+
+    @staticmethod
+    def _dsgvo_redact(text, literals):
+        """Klartextvorkommen in einem (HTML-)Text durch den Platzhalter ersetzen.
+
+        Gibt (neuer_text, Treffer) zurück. Gesucht wird sowohl die rohe als auch die
+        HTML-escapte Schreibweise, weil Chatter-Inhalte escaped gespeichert werden
+        ("Müller & Sohn" → "Müller &amp; Sohn"). Zeichenketten unter vier Zeichen
+        bleiben außen vor, sonst entstünden im Fließtext falsche Treffer."""
+        if not text:
+            return text, 0
+        result = text
+        hits = 0
+        for literal in literals:
+            literal = (literal or '').strip()
+            if len(literal) < 4:
+                continue
+            for variant in {literal, str(escape(literal))}:
+                if variant and variant in result:
+                    hits += result.count(variant)
+                    result = result.replace(variant, DSGVO_REDACTED)
+        return result, hits
+
+    def _dsgvo_personal_literals(self):
+        """Die personenbezogenen Zeichenketten dieser Buchung einsammeln.
+
+        Muss VOR dem Leeren der Felder laufen: danach sind die Werte nicht mehr
+        rekonstruierbar und im Chatter nicht mehr auffindbar (dieselbe Grenze wie in
+        kjr_grant). Die Anzeigenamen der beiden Protokoll-Bearbeitenden kommen mit
+        hinein, weil _handover_message sie in die Chatter-Notiz schreibt."""
+        self.ensure_one()
+        literals = set()
+        for fname in self._ANONYMIZE_FIELDS:
+            value = self[fname]
+            if not value:
+                continue
+            if isinstance(value, str):
+                literals.add(value.strip())
+            else:  # Many2one (handover_*_user_id)
+                literals.add(value.display_name or '')
+        return {lit for lit in literals if lit}
+
+    def _dsgvo_anonymize_chatter(self, literals):
+        """Klarnamen in den Chatter-Nachrichten der Buchung schwärzen.
+
+        Abwägung wie in kjr_grant: GELÖSCHT wird nichts. Autor, Zeitpunkt und
+        Reihenfolge der Nachrichten dokumentieren den Verwaltungsvorgang (wer hat
+        wann übergeben, zurückgenommen, berechnet) und bleiben vollständig erhalten.
+        Ersetzt werden nur die personenbezogenen Zeichenketten — und zwar genau die,
+        die derselbe Lauf gerade an den Feldern geleert hat.
+
+        Nötig ist das, weil das Übergabe- und Rücknahmeprotokoll zusätzlich als
+        Chatter-Notiz gespiegelt wird (_handover_message): ohne diesen Schritt stünde
+        derselbe Name unverändert im Chatter und die Anonymisierung liefe ins Leere.
+
+        Grenze, die der Code nicht überwinden kann: Namen aus einem FRÜHEREN Lauf
+        sind nicht mehr bekannt und im Chatter nicht mehr erkennbar.
+        TODO(KJR): Einmalige manuelle Durchsicht der Altbestände einplanen.
+
+        Idempotent: nach dem Ersetzen findet der nächste Lauf nichts mehr."""
+        self.ensure_one()
+        if not literals:
+            return 0
+        messages = self.env['mail.message'].sudo().search([
+            ('model', '=', self._name),
+            ('res_id', '=', self.id),
+        ])
+        touched = 0
+        for msg in messages:
+            new_body, body_hits = self._dsgvo_redact(msg.body or '', literals)
+            new_subject, subject_hits = self._dsgvo_redact(msg.subject or '', literals)
+            if not (body_hits or subject_hits):
+                continue
+            vals = {}
+            if body_hits:
+                vals['body'] = new_body
+            if subject_hits:
+                vals['subject'] = new_subject
+            msg.write(vals)
+            touched += 1
+        return touched
+
+    def _dsgvo_anonymize_tracking(self):
+        """Feldhistorie zu den personenbezogenen Feldern aufräumen.
+
+        mail.tracking.value überlebt jede Anonymisierung des Feldes: der frühere
+        Mieter steht nach dem Wechsel weiterhin als Text in der Historie. Entfernt
+        wird deshalb der Trackingwert; die zugehörige mail.message bleibt bestehen.
+
+        Idempotent: entfernte Datensätze findet der nächste Lauf nicht mehr."""
+        self.ensure_one()
+        tracking = self.env['mail.tracking.value'].sudo().search([
+            ('mail_message_id.model', '=', self._name),
+            ('mail_message_id.res_id', '=', self.id),
+            ('field_id.name', 'in', list(self._ANONYMIZE_TRACKED_FIELDS)),
+        ])
+        count = len(tracking)
+        if count:
+            tracking.unlink()
+        return count
+
+    def _dsgvo_anonymize_attachments(self):
+        """Am Vorgang abgelegte PDF durch einen Platzhalter ersetzen.
+
+        Abwägung Löschen vs. Platzhalter — gewählt ist der Platzhalter, wie in
+        kjr_grant: Ein unlink() nähme der Buchung den Nachweis, dass Vertrag,
+        Reservierungsbestätigung und Übergabeprotokoll überhaupt erzeugt wurden. Der
+        Personenbezug steckt im Dateiinhalt (Ansprechperson, Gruppe, Kontaktdaten,
+        Protokollnamen), nicht in der Tatsache der Ablage: der Inhalt wird ersetzt,
+        die Hülle bleibt.
+
+        NICHT angefasst: Anhänge an der Rechnung (account.move) — die liegen an
+        einem anderen res_model und bleiben wegen der Hash-Verkettung unberührt.
+
+        Idempotent über den Marker in ir.attachment.description."""
+        self.ensure_one()
+        # res_field = False: nur echte Dokumente, keine Binärfeld-Ablagen.
+        attachments = self.env['ir.attachment'].sudo().search([
+            ('res_model', '=', self._name),
+            ('res_id', '=', self.id),
+            ('res_field', '=', False),
+        ])
+        touched = 0
+        for att in attachments:
+            if DSGVO_ANON_MARKER in (att.description or ''):
+                continue  # bereits ersetzt
+            if att.type != 'binary':
+                continue  # URL-Anhänge tragen keinen Dateiinhalt
+            body = _(
+                'Der Inhalt dieses Anhangs (%(orig)s) wurde nach Ablauf der vom KJR '
+                'festgelegten Aufbewahrungsfrist entfernt. Erhalten bleibt nur die '
+                'Tatsache, dass zum Vorgang %(booking)s ein Dokument abgelegt war.'
+            ) % {'orig': att.name or '', 'booking': self.name or ''}
+            att.write({
+                'name': _('Anonymisiert_%s.txt') % (self.name or '').replace('/', '-'),
+                'datas': base64.b64encode(body.encode('utf-8')),
+                'mimetype': 'text/plain',
+                'description': '%s ersetzt am %s' % (
+                    DSGVO_ANON_MARKER, fields.Date.today().strftime('%d.%m.%Y')),
+            })
+            touched += 1
+        return touched
+
+    @api.model
+    def _cron_anonymize_expired(self):
+        """DSGVO (Speicherbegrenzung): personenbezogene Anteile abgelaufener
+        Einrichtungsbuchungen anonymisieren statt zu löschen (Befund K5).
+
+        Bezugspunkt ist die ABREISE (check_out), also das Ende der Buchung: ab da ist
+        der Vorgang tatsächlich erledigt. Das Anlagedatum wäre der falsche Anker,
+        weil Buchungen lange im Voraus erfasst werden.
+
+        Frist über den Systemparameter 'kjr_facility.booking_retention_years'.
+        Auslieferungszustand 0 = AUS: der Cron läuft, findet nichts und schreibt
+        nichts. Es wird bewusst KEINE Frist vorbelegt (siehe Modulkopf).
+
+        Bewusst NICHT berührt wird die Rechnung: account.move ist hash-verkettet,
+        eine nachträgliche Änderung bricht die Kette. Dort stehen der
+        Rechnungsempfänger (partner_id) und die Positionstexte; die Positionstexte
+        kommen ohne Klarnamen aus (Einrichtung, Nächte, Personenzahl, Beitrag),
+        sodass der personenbezogene Rest vollständig über die Buchung anonymisierbar
+        ist. Der Rechnungsempfänger selbst ist eine Frage von res.partner und
+        account.move, nicht dieses Moduls.
+        TODO(DSGVO): Umgang mit dem Rechnungsempfänger im Buchungsbeleg klären.
+        """
+        cutoff = self._dsgvo_cutoff_date()
+        if not cutoff:
+            # Auslieferungszustand: keine Frist festgelegt → nichts tun. Bewusst nur
+            # auf Debug-Ebene, der Cron läuft monatlich.
+            _logger.debug(
+                'DSGVO-Anonymisierung (Einrichtung) ausgesetzt: %s ist nicht gesetzt.',
+                KJR_FACILITY_RETENTION_PARAM)
+            return
+        # sudo(): internal_note trägt ein serverseitiges groups= (nur wirksame
+        # Zugriffsgrenze in Odoo, readonly wäre keine). Ein Cron-Benutzer ohne diese
+        # Gruppe könnte das Feld sonst weder lesen noch leeren.
+        stale = self.sudo().search([
+            ('data_anonymized', '=', False),
+            ('check_out', '<', cutoff),
+            # Solange eine Rechnung offen oder erst im Entwurf ist, ist der Vorgang
+            # nicht abgeschlossen. Bleibt eine Forderung dauerhaft offen, wird der
+            # Vorgang nicht anonymisiert — das ist so gewollt: er muss dann
+            # buchhalterisch abgeschlossen werden.
+            ('payment_status', 'not in', ('not_paid', 'in_payment', 'partial')),
+        # Mengenbegrenzung wie bei der übrigen Automatik, aber bewusst NICHT über
+        # _automation_search: dessen Aktivierungszeitpunkt filtert auf junge
+        # create_date und würde genau die alten Vorgänge aussparen, um die es hier geht.
+        ], limit=self._automation_batch_limit(), order='id')
+        if not stale:
+            return
+        with_traces = self._dsgvo_traces_enabled()
+        messages = tracking = attachments = 0
+        blank_values = dict.fromkeys(self._ANONYMIZE_FIELDS, False)
+        for rec in stale:
+            # Erst einsammeln, dann leeren: danach sind die Werte weg.
+            literals = rec._dsgvo_personal_literals() if with_traces else set()
+            rec.write(dict(blank_values, data_anonymized=True))
+            if with_traces:
+                messages += rec._dsgvo_anonymize_chatter(literals)
+                tracking += rec._dsgvo_anonymize_tracking()
+                attachments += rec._dsgvo_anonymize_attachments()
+        _logger.info(
+            'DSGVO-Anonymisierung (Einrichtung): %d Buchungen anonymisiert '
+            '(Stichtag %s, Frist %d Jahre ab Abreise, Jahresend-Anker).',
+            len(stale), cutoff, self._dsgvo_retention_years())
+        if with_traces:
+            _logger.info(
+                'DSGVO-Anonymisierung (Einrichtung) Nebenschauplätze: '
+                '%d Chatter-Nachrichten geschwärzt, %d Trackingwerte entfernt, '
+                '%d Anhänge ersetzt.', messages, tracking, attachments)
+        else:
+            _logger.warning(
+                'DSGVO-Anonymisierung (Einrichtung): Chatter, Feldhistorie und '
+                'Anhänge der %d Buchungen wurden NICHT bearbeitet (%s ist aus). '
+                'Dort stehen dieselben Namen weiterhin.',
+                len(stale), KJR_FACILITY_TRACES_PARAM)

@@ -2,9 +2,12 @@
 <odoo>
     <!-- noupdate="1": geplante Aktionen bleiben so, wie die Geschäftsstelle sie
          eingestellt hat (Intervall/aktiv), und werden bei Updates nicht
-         zurückgesetzt.
-         Beide Crons laufen ins Leere, solange der jeweilige Vorlauf in den
-         Systemparametern 0 ist (Default) – siehe data/ir_config_parameter_data.xml. -->
+         zurückgesetzt. Achtung: neue Datensätze legt noupdate="1" bei einem Update
+         trotzdem an – der DSGVO-Cron unten kommt also auch in bestehende
+         Installationen, dort aber im Auslieferungszustand ohne Frist (= wirkungslos).
+         Alle Crons hier laufen ins Leere, solange der jeweilige Vorlauf bzw. die
+         Aufbewahrungsfrist in den Systemparametern 0 ist (Default) – siehe
+         data/ir_config_parameter_data.xml. -->
     <data noupdate="1">
 
         <record id="cron_kjr_event_consent_reminder" model="ir.cron">
@@ -24,6 +27,29 @@
             <field name="code">model._cron_kjr_packing_list()</field>
             <field name="interval_number">1</field>
             <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- DSGVO / Befund K5 des Datenschutz-Audits vom 21.08.2026.
+             active=True, aber im Auslieferungszustand WIRKUNGSLOS: solange
+             kjr_event.registration_retention_years auf 0 steht (Default), liest der
+             Lauf genau einen Systemparameter und kehrt zurück – ohne Suche über die
+             Anmeldungen und ohne Schreibvorgang. Damit ist der tägliche Leerlauf
+             billig, und die Automatik startet erst, wenn der KJR eine Frist einträgt.
+             Hinweis: Odoo 19 kennt die Felder numbercall/doall nicht mehr (mit 17.0
+             entfallen); die Begrenzung je Lauf läuft deshalb über den Parameter
+             kjr_event.registration_anonymize_batch_limit.
+             Der Rückweg ist "aktiv" abschalten – nicht löschen, sonst legt das
+             nächste Modul-Update den Datensatz erneut an.
+             priority=10: nachrangig gegenüber den Versand-Crons. -->
+        <record id="cron_kjr_event_anonymize_registrations" model="ir.cron">
+            <field name="name">KJR Veranstaltung: Anmeldedaten anonymisieren (DSGVO)</field>
+            <field name="model_id" ref="event.model_event_event"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_kjr_anonymize_expired_registrations()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="priority">10</field>
             <field name="active" eval="True"/>
         </record>
 

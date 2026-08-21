@@ -48,7 +48,22 @@
         </t>
     </template>
 
-    <!-- E4: Teilnehmerliste einer Veranstaltung -->
+    <!-- E4: Teilnehmerliste einer Veranstaltung (externe Kooperationspartner)
+
+         Datenschutz (Befund K4, Audit 21.08.2026): Empfaenger dieser Seite sind
+         EXTERNE Stellen. Ausgegeben wird deshalb nur, was fuer die Durchfuehrung
+         der Massnahme erforderlich ist: Name, Alter, Status. Bewusst NICHT
+         ausgegeben werden Gesundheits- und Kontaktangaben, insbesondere der
+         Ernaehrungs-Freitext (dietary_note, dort landen Allergien im Klartext)
+         und das Bemerkungsfeld (notes, unstrukturierter Freitext). Ebenfalls
+         entfernt: der Stand der Einwilligung der Erziehungsberechtigten samt
+         Erinnerungsdatum - das ist ein interner Vorgang zwischen KJR und
+         Familie und fuer die Durchfuehrung durch einen Externen ohne Belang.
+         Die Ernaehrung erscheint ausschliesslich als Anzahl je Kategorie ohne
+         Namensbezug (siehe _kjr_portal_dietary_summary im Controller).
+         Der Controller arbeitet ohne sudo(), damit ein Feldschutz (groups=)
+         serverseitig greift; die Vorlage erhaelt nur vorbereitete Werte und
+         kein Recordset, ueber das weitere Felder nachgeladen werden koennten. -->
     <template id="portal_kjr_event_attendees" name="KJR Kooperationspartner – Teilnehmer/innen">
         <t t-call="portal.portal_layout">
             <div class="o_portal_my_doc_table">
@@ -58,58 +73,62 @@
                     </h3>
                     <a href="/my/kjr-events" class="btn btn-sm btn-secondary">Zurück</a>
                 </div>
-                <t t-if="not registrations">
+                <div class="alert alert-warning" role="alert">
+                    <strong>Hinweis zum Datenschutz:</strong>
+                    Diese Liste enthält personenbezogene Daten von Minderjährigen.
+                    Sie darf ausschließlich für die Durchführung dieser Maßnahme
+                    verwendet werden – nicht für andere Zwecke, nicht zur
+                    Weitergabe an Dritte und nicht länger als für die
+                    Durchführung erforderlich. Bitte drucken Sie die Liste nur bei
+                    Bedarf aus und vernichten Sie Ausdrucke nach der Maßnahme.
+                </div>
+                <t t-if="not attendees">
                     <div class="alert alert-info" role="alert">
-                        Für diese Veranstaltung liegen noch keine Anmeldungen vor.
+                        Für diese Veranstaltung liegen keine bestätigten Anmeldungen vor.
                     </div>
                 </t>
-                <t t-if="registrations">
+                <t t-if="attendees">
                     <table class="table table-sm table-striped">
                         <thead>
                             <tr>
                                 <th>Name</th>
                                 <th>Alter</th>
-                                <th>Einwilligung</th>
-                                <th>Ernährung</th>
-                                <th>Bemerkung</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr t-foreach="registrations" t-as="reg">
-                                <td><t t-esc="reg.name or (reg.partner_id.name or '')"/></td>
+                            <tr t-foreach="attendees" t-as="row">
+                                <td><t t-esc="row['name']"/></td>
                                 <td>
-                                    <t t-if="reg.has_birthdate"><t t-esc="reg.kjr_age"/></t>
+                                    <t t-if="row['age'] is not None"><t t-esc="row['age']"/></t>
                                 </td>
-                                <!-- E7: Stand der Einwilligung inkl. Hinweis, ob die
-                                     Erinnerung bereits hinausgegangen ist. Bewusst ohne
-                                     Angaben zu den Erziehungsberechtigten. -->
-                                <td>
-                                    <t t-if="reg.consent_missing">
-                                        <span class="badge text-bg-warning">fehlt</span>
-                                        <small t-if="reg.kjr_consent_reminder_sent"
-                                               class="d-block text-muted">
-                                            Erinnerung am
-                                            <span t-field="reg.kjr_consent_reminder_date"
-                                                  t-options='{"format": "dd.MM.yyyy"}'/>
-                                        </small>
-                                    </t>
-                                    <t t-elif="reg.event_id.requires_parental_consent and reg.is_minor">
-                                        <span class="badge text-bg-success">liegt vor</span>
-                                    </t>
-                                    <t t-else="">
-                                        <span class="text-muted">–</span>
-                                    </t>
-                                </td>
-                                <td>
-                                    <t t-esc="dict(reg._fields['dietary_requirements'].selection).get(reg.dietary_requirements, '')"/>
-                                    <t t-if="reg.dietary_note"> (<t t-esc="reg.dietary_note"/>)</t>
-                                </td>
-                                <td><t t-esc="reg.notes or ''"/></td>
-                                <td><span t-field="reg.state"/></td>
+                                <td><t t-esc="row['state_label']"/></td>
                             </tr>
                         </tbody>
                     </table>
+                    <p class="text-muted small">
+                        Angezeigt werden ausschließlich bestätigte Anmeldungen.
+                        Abgesagte Anmeldungen und Wartelistenplätze sind nicht enthalten.
+                    </p>
+                    <!-- Verpflegung nur als Summe je Kategorie: der Kooperations-
+                         partner erfährt, wie viele Portionen zu planen sind, aber
+                         nicht, wer welche Angabe gemacht hat. -->
+                    <t t-if="dietary_summary">
+                        <h5 class="mt-4">Verpflegung – Übersicht</h5>
+                        <table class="table table-sm w-auto">
+                            <tbody>
+                                <tr t-foreach="dietary_summary" t-as="item">
+                                    <td><t t-esc="item['label']"/></td>
+                                    <td class="text-end"><t t-esc="item['count']"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p class="text-muted small">
+                            Ohne Namenszuordnung. Einzelheiten zu Allergien und
+                            Unverträglichkeiten erfragen Sie bitte bei der
+                            Geschäftsstelle des KJR.
+                        </p>
+                    </t>
                 </t>
             </div>
         </t>

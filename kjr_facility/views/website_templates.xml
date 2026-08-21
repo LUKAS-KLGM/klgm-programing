@@ -321,6 +321,106 @@
                         </div>
                     </t>
 
+                    <!-- Datenschutzhinweis nach Art. 13 DSGVO (Audit-Befund K2 vom
+                         21.08.2026: das Formular erhob Namen, Kontaktdaten und
+                         Gruppenangaben ohne jede Datenschutzinformation).
+
+                         Platzierung direkt über den Schaltflächen: der Hinweis muss zum
+                         Zeitpunkt der Erhebung sichtbar sein, nicht in einem Popup, das
+                         Werbeblocker unterdrücken oder Screenreader überspringen können
+                         (gleiche Begründung wie bei den Nutzungshinweisen im Verleih).
+
+                         Bewusst OHNE Bestätigungs-Checkbox: hier wird informiert, keine
+                         Einwilligung eingeholt.
+
+                         TODO(KJR): Die mit "wird vom KJR ergänzt" markierten Angaben
+                         füllen Geschäftsstelle bzw. Datenschutzbeauftragte VOR dem
+                         Go-live aus. Sie sind absichtlich nicht vorbelegt, weil sie noch
+                         nicht festgelegt sind: Verantwortlicher, Kontakt der/des
+                         Datenschutzbeauftragten, Rechtsgrundlage (Audit-Befund K1,
+                         offen), Aufbewahrungs-/Löschfrist (nicht entschieden; es läuft
+                         derzeit keine automatische Löschung – bewusst nicht auf der
+                         Seite behauptet, sondern hier vermerkt), technischer Betrieb
+                         (Hosting) und zuständige Aufsichtsbehörde. Alles übrige
+                         beschreibt nur das tatsächliche Verhalten des Systems und ist
+                         KEINE rechtliche Bewertung. -->
+                    <section class="o_kjr_privacy_notice alert alert-light border mt-4 mb-3"
+                             role="region" aria-labelledby="kjr_privacy_facility_heading">
+                        <h2 class="alert-heading h6" id="kjr_privacy_facility_heading">
+                            <i class="fa fa-lock me-2" aria-hidden="true"/>Datenschutz – was mit Ihren Angaben passiert
+                        </h2>
+                        <p class="small mb-3">
+                            Kurz und ohne Fachsprache: Hier steht, was wir speichern, wofür wir
+                            es brauchen und wer es sehen kann. Ausführlich steht das in der
+                            <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
+                        </p>
+                        <dl class="row small mb-0">
+                            <dt class="col-sm-4">Was wir speichern</dt>
+                            <dd class="col-sm-8">An- und Abreisedatum, den Namen der
+                                Ansprechpartnerin bzw. des Ansprechpartners, die
+                                Gruppenbezeichnung, die Anzahl der Teilnehmenden und
+                                Betreuenden, die gewünschte Verpflegung, E-Mail-Adresse,
+                                Telefonnummer und Ihre Anmerkungen.
+                                <span class="d-block mt-1">Namen einzelner Teilnehmender –
+                                    insbesondere von Kindern und Jugendlichen – fragen wir hier
+                                    bewusst nicht ab. Für uns zählen nur Anzahlen.</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Wofür wir sie nutzen</dt>
+                            <dd class="col-sm-8">Um Ihre Buchungsanfrage zu bearbeiten, die
+                                Belegung der Einrichtung zu planen, die Kosten zu berechnen und
+                                Ihnen ein Angebot zu machen, für Rückfragen zum Aufenthalt sowie
+                                für Rechnung und Zahlung. Für den Fremdenverkehrsbeitrag rechnen
+                                wir ausschließlich mit Anzahlen und führen ihn an die Gemeinde ab.</dd>
+
+                            <dt class="col-sm-4">Wer sie sehen kann</dt>
+                            <dd class="col-sm-8">Die Geschäftsstelle des Kreisjugendrings
+                                Oberallgäu und die Personen, die die Einrichtung und die
+                                Abrechnung betreuen.
+                                <span class="d-block mt-1">Technischer Betrieb der Website:
+                                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                                </span>
+                            </dd>
+
+                            <dt class="col-sm-4">Verantwortlich</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                                <span class="d-block text-muted">Name, Anschrift und Kontakt der
+                                    verantwortlichen Stelle.</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                                <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Rechtsgrundlage</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                                <span class="d-block text-muted">Legt der Kreisjugendring gemeinsam
+                                    mit der Datenschutzbeauftragten fest.</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Wie lange wir speichern</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                                <span class="d-block text-muted">Die Aufbewahrungsdauer legt der
+                                    Kreisjugendring fest und trägt sie hier ein.</span>
+                            </dd>
+
+                            <dt class="col-sm-4">Ihre Rechte</dt>
+                            <dd class="col-sm-8">Welche Rechte Sie haben – zum Beispiel Auskunft,
+                                Berichtigung, Löschung oder Einschränkung – und wie Sie sie geltend
+                                machen, steht in der
+                                <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
+                                <span class="d-block mt-1">Zuständige Aufsichtsbehörde:
+                                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                                </span>
+                            </dd>
+                        </dl>
+                    </section>
+
                     <button type="submit" name="action" value="submit" class="btn btn-primary btn-lg">
                         <i class="fa fa-paper-plane me-1"/>Anfrage senden
                     </button>

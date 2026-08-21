@@ -40,5 +40,32 @@
             <field name="interval_type">days</field>
             <field name="active" eval="True"/>
         </record>
+
+        <!-- DSGVO (Befund K5): Anonymisierung abgelaufener Buchungen.
+             Der Cron ist aktiv, tut aber im Auslieferungszustand NICHTS: die
+             Methode steigt aus, solange der Systemparameter
+             'kjr_facility.booking_retention_years' nicht auf einen Wert > 0 steht.
+             Die Frist ist beim KJR nicht festgelegt und wird hier bewusst nicht
+             vorbelegt (TODO(KJR)/TODO(DSGVO) im Modell).
+
+             ACHTUNG, zweiter Schalter: Chatter, Feldhistorie und Anhänge werden nur
+             mitgezogen, wenn zusätzlich 'kjr_facility.booking_anonymize_traces' auf 1
+             steht (ebenfalls nicht ausgeliefert). Wird nur die Frist gesetzt, leert
+             der Lauf die Felder, während dieselben Namen in Chatter, Feldhistorie und
+             abgelegten PDF stehen bleiben; der Lauf protokolliert das als Warnung.
+             TODO(KJR): beide Parameter gemeinsam entscheiden.
+
+             Monatlicher Lauf wie die Anonymisierung in kjr_grant — die Frist zählt
+             in Jahren, häufiger wäre reine Last. -->
+        <record id="cron_kjr_booking_anonymize" model="ir.cron">
+            <field name="name">KJR Einrichtung: Buchungsdaten anonymisieren (DSGVO)</field>
+            <field name="model_id" ref="model_kjr_facility_booking"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_anonymize_expired()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">months</field>
+            <field name="active" eval="True"/>
+        </record>
+
     </data>
 </odoo>

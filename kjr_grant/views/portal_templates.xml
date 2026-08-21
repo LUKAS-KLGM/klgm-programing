@@ -83,6 +83,140 @@
         </t>
     </template>
 
+    <!-- ── Datenschutzhinweis nach Art. 13 DSGVO ────────────────── -->
+    <!-- Wird von beiden Erhebungsformularen dieses Moduls aufgerufen: vom
+         öffentlichen Zuschuss-Antragsformular (website_kjr_apply) und vom
+         Dokumenten-Upload im Portal (portal_kjr_grant_detail).
+
+         Audit-Befund K2 vom 21.08.2026: Das Antragsformular erhebt eine
+         vollständige Teilnahmeliste mit Name, Alter, Geschlecht, PLZ, Wohnort und
+         Kennziffer — regelmäßig von Minderjährigen —, dazu Ansprechpartner mit
+         Kontaktdaten und die Bankverbindung. Der Upload nimmt Teilnahmelisten,
+         Berichte und Belege entgegen, die Klarnamen enthalten. Beides lief bisher
+         ohne Information nach Art. 13 DSGVO.
+
+         Bewusst EIN gemeinsamer Block statt zwei Kopien: der Text ist an beiden
+         Stellen derselbe und muss es auch bleiben, wenn der KJR die offenen Angaben
+         nachträgt. Struktur und Wortwahl sind absichtlich identisch zu
+         kjr_rental.rental_privacy_notice und zum Block in kjr_event, damit die
+         Module nicht auseinanderlaufen.
+
+         Bewusst als eingeblendeter Abschnitt im Formular, nicht als Popup, und
+         bewusst OHNE eigene Bestätigungs-Checkbox: hier wird informiert, nicht
+         eingewilligt. Die bestehende Pflichtbestätigung confirm_privacy im
+         Antragsformular bleibt davon unberührt.
+
+         TODO(KJR): Die mit "wird vom KJR ergänzt" markierten Angaben füllen
+         Geschäftsstelle bzw. Datenschutzbeauftragte VOR dem Go-live aus. Sie sind
+         absichtlich nicht vorbelegt, weil sie noch nicht festgelegt sind:
+           - Verantwortlicher (Name, Anschrift, Kontakt)
+           - Kontakt der/des Datenschutzbeauftragten
+           - Rechtsgrundlage der Verarbeitung (Audit-Befund K1, offen)
+           - Aufbewahrungs-/Löschfrist (nicht entschieden). Technisch anonymisiert
+             das System die Klarnamen der Teilnahmeliste nach der Frist aus dem
+             Systemparameter kjr_grant.participant_retention_years (ausgeliefert mit
+             5 Jahren). Diese Zahl steht bewusst NICHT auf der Seite, solange der KJR
+             die Frist nicht bestätigt hat — beschrieben ist nur, DASS anonymisiert
+             wird, nicht nach welcher Frist.
+           - technischer Betrieb / Auftragsverarbeiter (Hosting)
+           - zuständige Aufsichtsbehörde
+         Alles übrige beschreibt ausschließlich das tatsächliche Verhalten des
+         Systems und ist KEINE rechtliche Bewertung. -->
+    <template id="grant_privacy_notice" name="KJR Zuschuss: Datenschutzhinweis">
+        <section class="o_kjr_privacy_notice alert alert-light border mt-4 mb-3"
+                 role="region" aria-labelledby="kjr_privacy_grant_heading">
+            <h2 class="alert-heading h6" id="kjr_privacy_grant_heading">
+                <i class="fa fa-lock me-2" aria-hidden="true"/>Datenschutz – was mit diesen Angaben passiert
+            </h2>
+            <p class="small mb-3">
+                Kurz und ohne Fachsprache: Hier steht, was wir speichern, wofür wir es
+                brauchen und wer es sehen kann. Ausführlich steht das in der
+                <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
+            </p>
+            <dl class="row small mb-0">
+                <dt class="col-sm-4">Was wir speichern</dt>
+                <dd class="col-sm-8">Die Angaben zur Maßnahme (Bezeichnung, Zeitraum, Ort),
+                    die antragstellende Organisation sowie Name, E-Mail-Adresse und
+                    Telefonnummer der Ansprechpartnerin oder des Ansprechpartners, die
+                    Kostenaufstellung und die Belegliste – und die Teilnahmeliste mit
+                    Name, Alter, Geschlecht, PLZ, Wohnort, Kennziffer und Juleica-Angabe
+                    jeder teilnehmenden Person. Die Teilnahmeliste betrifft in der Regel
+                    auch Minderjährige.
+                    <span class="d-block mt-1">Dazu die Dateien, die Sie hochladen –
+                        Teilnahmeliste, Bericht, Belege und weitere Dokumente. Diese
+                        enthalten meist ebenfalls Klarnamen.</span>
+                    <span class="d-block mt-1">Bitte tragen Sie nur ein und laden Sie nur
+                        hoch, was für Antrag und Nachweis nötig ist – keine Angaben zu
+                        Gesundheit, Herkunft, Religion oder Ähnlichem.</span>
+                </dd>
+
+                <dt class="col-sm-4">Bankverbindung</dt>
+                <dd class="col-sm-8">IBAN, Kontoinhaber, BIC und Geldinstitut erheben wir
+                    allein dafür, einen bewilligten Zuschuss überweisen zu können. Diese
+                    Angaben dienen ausschließlich der Auszahlung und werden zu keinem
+                    anderen Zweck verwendet.</dd>
+
+                <dt class="col-sm-4">Wofür wir sie nutzen</dt>
+                <dd class="col-sm-8">Um den Antrag zu prüfen und zu bewilligen: Aus der
+                    Teilnahmeliste ergeben sich Zahl, Alter und Herkunft der Teilnehmenden
+                    und damit die Höhe des Zuschusses. Kostenaufstellung, Belegliste und
+                    die hochgeladenen Dokumente dienen der Abrechnung und dem
+                    Verwendungsnachweis, die Kontaktdaten den Rückfragen und dem Bescheid,
+                    die Bankverbindung der Auszahlung.</dd>
+
+                <dt class="col-sm-4">Wer sie sehen kann</dt>
+                <dd class="col-sm-8">Die Geschäftsstelle des Kreisjugendrings Oberallgäu und
+                    die Personen, die Zuschussanträge prüfen und abrechnen. Über Ihren
+                    Portalzugang sehen Sie Ihre eigenen Anträge.
+                    <span class="d-block mt-1">Technischer Betrieb der Website:
+                        <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    </span>
+                </dd>
+
+                <dt class="col-sm-4">Verantwortlich</dt>
+                <dd class="col-sm-8">
+                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <span class="d-block text-muted">Name, Anschrift und Kontakt der
+                        verantwortlichen Stelle.</span>
+                </dd>
+
+                <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
+                <dd class="col-sm-8">
+                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
+                </dd>
+
+                <dt class="col-sm-4">Rechtsgrundlage</dt>
+                <dd class="col-sm-8">
+                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <span class="d-block text-muted">Legt der Kreisjugendring gemeinsam mit
+                        der Datenschutzbeauftragten fest.</span>
+                </dd>
+
+                <dt class="col-sm-4">Wie lange wir speichern</dt>
+                <dd class="col-sm-8">
+                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <span class="d-block text-muted">Die Aufbewahrungsdauer legt der
+                        Kreisjugendring fest und trägt sie hier ein. Namen, Wohnort und
+                        Geburtsdatum in der Teilnahmeliste ersetzt das System nach Ablauf
+                        der eingestellten Frist selbsttätig durch „(anonymisiert)“; Alter,
+                        Geschlecht und Kennziffer bleiben für die Förderstatistik
+                        erhalten.</span>
+                </dd>
+
+                <dt class="col-sm-4">Ihre Rechte</dt>
+                <dd class="col-sm-8">Welche Rechte Sie haben – zum Beispiel Auskunft,
+                    Berichtigung, Löschung oder Einschränkung – und wie Sie sie geltend
+                    machen, steht in der
+                    <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
+                    <span class="d-block mt-1">Zuständige Aufsichtsbehörde:
+                        <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    </span>
+                </dd>
+            </dl>
+        </section>
+    </template>
+
     <!-- ── Portal: Antrags-Detail ─────────────────────────────────────── -->
     <template id="portal_kjr_grant_detail" name="KJR Antrag Detail">
         <t t-call="portal.portal_layout">
@@ -212,6 +346,12 @@
                                             <div class="form-text">PDF, Word, Excel/CSV oder Bild (JPG/PNG), max. 10 MB</div>
                                         </div>
                                     </div>
+                                    <!-- Datenschutzhinweis (Audit-Befund K2): Die hier
+                                         hochgeladenen Teilnahmelisten, Berichte und Belege
+                                         enthalten Klarnamen, oft von Minderjährigen. Der
+                                         Hinweis steht direkt über der Schaltfläche, also vor
+                                         der eigentlichen Übermittlung. -->
+                                    <t t-call="kjr_grant.grant_privacy_notice"/>
                                     <button type="submit" class="btn btn-secondary">
                                         <i class="fa fa-upload me-1"/>Dateien hochladen
                                     </button>
@@ -1085,15 +1225,26 @@
                         </div>
                     </div>
 
-                    <!-- Datenschutzhinweis -->
+                    <!-- Der frühere Block an dieser Stelle war mit
+                         "Datenschutzhinweis" überschrieben, enthielt aber im Kern eine
+                         Aussage zum Verwendungsnachweis und zur Aufbewahrung der Belege
+                         durch die antragstellende Organisation. Der Text bleibt
+                         unverändert erhalten, nur die Überschrift ist korrigiert — die
+                         eigentliche Information nach Art. 13 DSGVO steht jetzt im Block
+                         darunter. -->
                     <div class="alert alert-secondary mb-4">
                         <small>
-                            <strong>Datenschutzhinweis:</strong> Ihre Daten werden zum Zwecke
+                            <strong>Hinweis zum Verwendungsnachweis:</strong> Ihre Daten werden zum Zwecke
                             der Bearbeitung des Zuschussantrages erhoben. Der Antragsteller erklärt sich
                             mit einer möglichen Verwendungsprüfung durch den KJR einverstanden.
                             Belege sind 5 Jahre aufzubewahren.
                         </small>
                     </div>
+
+                    <!-- Datenschutzhinweis nach Art. 13 DSGVO (Audit-Befund K2). Bewusst
+                         direkt über den Pflichtbestätigungen: dort wird das Formular
+                         abgeschickt, also erhoben. -->
+                    <t t-call="kjr_grant.grant_privacy_notice"/>
 
                     <!-- Bestätigungen (alle vier Pflicht) -->
                     <div class="form-check mb-3">
@@ -1102,7 +1253,7 @@
                                t-att-checked="values.get('confirm_privacy') and 'checked' or None"/>
                         <label class="form-check-label" for="confirm_privacy">
                             Ich habe die
-                            <a href="/datenschutz" target="_blank">Datenschutzhinweise</a>
+                            <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>
                             gelesen und bin damit einverstanden. *
                         </label>
                     </div>

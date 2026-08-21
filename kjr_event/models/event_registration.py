@@ -9,10 +9,55 @@ from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 
 
+# ---------------------------------------------------------------------------
+# K3 (Datenschutz-Audit vom 21.08.2026) - Feldschutz auf den sensibelsten
+# Angaben dieses Moduls.
+#
+# Odoo 19 wertet ``groups=`` am Feld SERVERSEITIG aus: die Pruefung
+# ``_has_field_access``/``_check_field_access`` greift beim Lesen einzelner
+# Felder, beim Schreiben und bei der Domain-Auswertung
+# (odoo/orm/models.py, odoo/orm/domains.py). ``readonly=True`` oder ein
+# ``invisible`` in der Ansicht ist dagegen NUR Oberflaeche und schuetzt nicht
+# gegen einen direkten RPC-Aufruf.
+#
+# Wirkung im Betrieb:
+#  * Wer die Gruppe nicht hat, bekommt die Felder in Formular und Liste gar
+#    nicht mehr ausgeliefert (Odoo entfernt die Feldknoten beim Aufbereiten der
+#    Ansicht) und laeuft bei direktem Lesen/Schreiben/Suchen in einen
+#    AccessError.
+#  * ``sudo()`` umgeht den Schutz. Gewollt ist das an genau einer Stelle: die
+#    oeffentliche Online-Anmeldung schreibt diese Felder ueber ein
+#    sudo-Recordset (``controllers/website_event.py``) - ohne das koennte
+#    niemand von aussen eine Anmeldung absenden. LESENDE Stellen duerfen
+#    deshalb nicht auf ``sudo()`` ausweichen (siehe ``controllers/portal.py``).
+#  * Gespeicherte Compute-Felder rechnet Odoo als Superuser
+#    (``compute_sudo`` folgt ``store``, odoo/orm/fields.py). ``has_birthdate``,
+#    ``kjr_age`` und ``is_minor`` werden deshalb weiterhin korrekt berechnet,
+#    obwohl ``birthdate`` geschuetzt ist. Sie bleiben bewusst ungeschuetzt: die
+#    Geschaeftsstelle braucht Alter und Minderjaehrigkeit fuer Platzvergabe,
+#    Einwilligungspruefung und die rein aggregierte Statistik - das
+#    Geburtsdatum selbst braucht sie dafuer nicht (Datenminimierung).
+#
+# Wer in der Gruppe ist, entscheidet der KJR (Berechtigungskonzept, im Audit
+# als offene Festlegung gefuehrt). Die Gruppe wird in
+# ``security/kjr_event_security.xml`` angelegt; ``event.group_event_manager``
+# schliesst sie ein, damit die Geschaeftsstelle nichts verliert.
+# ---------------------------------------------------------------------------
+KJR_SENSITIVE_DATA_GROUP = 'kjr_event.group_kjr_event_care'
+
+
 class EventRegistration(models.Model):
     _inherit = 'event.registration'
 
-    birthdate = fields.Date(string='Geburtsdatum')
+    # Alle Felder mit KJR_SENSITIVE_DATA_GROUP sind serverseitig geschützt
+    # (Befund K3) – siehe Erläuterung am Kopf der Datei.
+    birthdate = fields.Date(
+        string='Geburtsdatum',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Nur für die Betreuung/Leitung der Freizeiten sichtbar. Das daraus '
+             'abgeleitete Alter (Feld "Alter (bei Beginn)") bleibt für alle '
+             'Veranstaltungs-Benutzer/innen sichtbar.',
+    )
     has_birthdate = fields.Boolean(
         string='Geburtsdatum erfasst', compute='_compute_kjr_age', store=True,
         help='Hilfsflag, um den Sonderfall Alter 0 (z. B. Säugling) korrekt von '
@@ -20,12 +65,33 @@ class EventRegistration(models.Model):
     )
     kjr_age = fields.Integer(string='Alter (bei Beginn)', compute='_compute_kjr_age', store=True)
     is_minor = fields.Boolean(string='Minderjährig', compute='_compute_kjr_age', store=True)
+    # Bewusst OHNE Feldschutz: der Stand der Einwilligung ist ein Vorgangsmerkmal,
+    # das die Geschäftsstelle für Nachfassen und Platzvergabe braucht; er enthält
+    # selbst keine Gesundheits- oder Kontaktdaten.
     parental_consent = fields.Boolean(string='Einwilligung Erziehungsberechtigte')
-    guardian_name = fields.Char(string='Erziehungsberechtigte/r')
-    guardian_phone = fields.Char(string='Telefon Erziehungsberechtigte/r')
-    emergency_contact = fields.Char(string='Notfallkontakt')
+    guardian_name = fields.Char(
+        string='Erziehungsberechtigte/r',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Kontaktdaten der Erziehungsberechtigten – nur für die Betreuung/Leitung '
+             'der Freizeiten sichtbar.',
+    )
+    guardian_phone = fields.Char(
+        string='Telefon Erziehungsberechtigte/r',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Kontaktdaten der Erziehungsberechtigten – nur für die Betreuung/Leitung '
+             'der Freizeiten sichtbar.',
+    )
+    emergency_contact = fields.Char(
+        string='Notfallkontakt',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Nur für die Betreuung/Leitung der Freizeiten sichtbar; wird ausschließlich '
+             'für den Notfall während der Maßnahme benötigt.',
+    )
 
     # E1/E3 – Ernährung & Bemerkungen
+    # Ernährungsangabe und Freitext können Gesundheits- und Religionsdaten
+    # enthalten (Allergie, halal, koscher) und sind namentlich zugeordnet –
+    # deshalb ebenfalls feldgeschützt.
     dietary_requirements = fields.Selection([
         ('none', 'Keine besonderen'),
         ('vegetarian', 'Vegetarisch'),
@@ -34,9 +100,22 @@ class EventRegistration(models.Model):
         ('kosher', 'Koscher'),
         ('allergy', 'Allergie/Unverträglichkeit'),
         ('other', 'Sonstiges'),
-    ], string='Ernährung')
-    dietary_note = fields.Char(string='Ernährung – Hinweis')
-    notes = fields.Text(string='Bemerkungen')
+    ], string='Ernährung',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Nur für die Betreuung/Leitung der Freizeiten sichtbar.',
+    )
+    dietary_note = fields.Char(
+        string='Ernährung – Hinweis',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Freitext, in dem regelmäßig Allergien und Unverträglichkeiten stehen – '
+             'nur für die Betreuung/Leitung der Freizeiten sichtbar.',
+    )
+    notes = fields.Text(
+        string='Bemerkungen',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Unstrukturierter Freitext, in dem erfahrungsgemäß auch Gesundheits- und '
+             'Familienangaben landen – nur für die Betreuung/Leitung der Freizeiten sichtbar.',
+    )
 
     consent_missing = fields.Boolean(
         string='Einwilligung fehlt', compute='_compute_consent_missing',
@@ -91,6 +170,32 @@ class EventRegistration(models.Model):
     kjr_currency_id = fields.Many2one(
         'res.currency', string='Währung',
         default=lambda self: self.env.company.currency_id.id)
+
+    # ------------------------------------------------------------------
+    # DSGVO – Merker für die Anonymisierung (Befund K5 des Audits vom 21.08.2026)
+    #
+    # Reines Protokollfeld: es hält fest, DASS die Anonymisierung gelaufen ist,
+    # damit der Lauf idempotent bleibt (``models/event_event.py``:
+    # ``_kjr_anonymize_expired_registrations`` /
+    # ``_cron_kjr_anonymize_expired_registrations``
+    # setzen und durchsuchen es). Das Feld trifft KEINE Aussage über eine Frist
+    # und löst von sich aus nichts aus – ob und wann anonymisiert wird, steuert
+    # ausschließlich der Systemparameter ``kjr_event.registration_retention_years``,
+    # der im Auslieferungszustand auf 0 (= keine automatische Anonymisierung)
+    # steht. Die Frist selbst ist eine offene Festlegung des KJR bzw. der
+    # Datenschutzbeauftragten (TODO(KJR)/TODO(DSGVO) dort).
+    #
+    # Bewusst OHNE Feldschutz (``groups=``): der Merker enthält keine
+    # personenbezogene Angabe, und die Geschäftsstelle muss ohne Sonderrecht
+    # erkennen können, dass ein Datensatz bereits anonymisiert wurde.
+    # ------------------------------------------------------------------
+    kjr_data_anonymized = fields.Boolean(
+        string='Daten anonymisiert', readonly=True, copy=False, index=True,
+        help='Kennzeichnet, dass die personenbezogenen Angaben dieser Anmeldung '
+             'nach Ablauf der vom KJR festgelegten Aufbewahrungsfrist geleert '
+             'wurden. Wird ausschließlich von der Anonymisierungsroutine gesetzt; '
+             'ein Zurücksetzen stellt die Daten nicht wieder her, sondern führt '
+             'nur zu einem erneuten Durchlauf.')
 
     @api.depends('birthdate', 'event_id.date_begin')
     def _compute_kjr_age(self):

@@ -132,5 +132,10 @@
             <field name="deposit">0.0</field><field name="icon">fa-puzzle-piece</field>
             <field name="website_published" eval="False"/>
         </record>
+
+        <!-- Der DSGVO-Cron "cron_kjr_rental_anonymize" stand bis 21.08.2026 hier.
+             Er ist nach data/ir_cron_data.xml umgezogen, weil __manifest__.py diese
+             Datei inzwischen laedt und dieselbe XML-ID sonst in zwei Dateien
+             desselben Moduls definiert waere. Fachlich hat sich nichts geaendert. -->
     </data>
 </odoo>
