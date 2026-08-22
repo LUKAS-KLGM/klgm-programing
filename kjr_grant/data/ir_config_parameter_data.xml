@@ -110,22 +110,7 @@
             <field name="name">Portalseite „Mein Konto" aufräumen</field>
             <field name="model_id" ref="base.model_ir_ui_view"/>
             <field name="state">code</field>
-            <field name="code">
-from odoo.addons.kjr_grant.hooks import cleanup_portal_home
-count = cleanup_portal_home(env)
-action = {
-    'type': 'ir.actions.client',
-    'tag': 'display_notification',
-    'params': {
-        'title': 'Portalseite „Mein Konto"',
-        'message': (
-            '%d nicht benötigte Rubrik(en) ausgeblendet.' % count
-            if count else 'Es gab nichts auszublenden.'),
-        'type': 'success',
-        'sticky': False,
-    },
-}
-            </field>
+            <field name="code">action = model.kjr_cleanup_portal_home()</field>
         </record>
     </data>
 </odoo>
