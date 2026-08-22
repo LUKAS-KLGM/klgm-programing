@@ -458,6 +458,8 @@
               inherit_id="portal.portal_my_home" customize_show="True" priority="40">
         <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
             <t t-call="portal.portal_docs_entry">
+                <t t-set="icon" t-value="'/kjr_facility/static/src/img/einrichtung.svg'"/>
+                <t t-set="text">Ihre Belegungen von Jugendtagungshaus und Zeltplatz</t>
                 <t t-set="title">Meine Einrichtungsbuchungen</t>
                 <t t-set="url" t-value="'/my/einrichtungsbuchungen'"/>
                 <t t-set="placeholder_count" t-value="'kjr_booking_count'"/>

@@ -894,6 +894,8 @@
               inherit_id="portal.portal_my_home" customize_show="True" priority="42">
         <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
             <t t-call="portal.portal_docs_entry">
+                <t t-set="icon" t-value="'/kjr_rental/static/src/img/verleih.svg'"/>
+                <t t-set="text">Ausgeliehenes Material, Zeiträume und Rückgabe</t>
                 <t t-set="title">Meine Ausleihen</t>
                 <t t-set="url" t-value="'/my/ausleihen'"/>
                 <t t-set="placeholder_count" t-value="'kjr_rental_count'"/>

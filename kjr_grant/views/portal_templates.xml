@@ -6,6 +6,8 @@
               customize_show="True" inherit_id="portal.portal_my_home" priority="30">
         <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
             <t t-call="portal.portal_docs_entry">
+                <t t-set="icon" t-value="'/kjr_grant/static/src/img/zuschuss.svg'"/>
+                <t t-set="text">Anträge stellen, Unterlagen nachreichen und den Stand verfolgen</t>
                 <t t-set="title">Meine Zuschussanträge</t>
                 <t t-set="url" t-value="'/my/kjr-antraege'"/>
                 <t t-set="placeholder_count" t-value="'kjr_grant_count'"/>
@@ -39,6 +41,8 @@
                t-value="kjr_verband_count or (request.env.user.partner_id.commercial_partner_id.is_kjr_member and 1 or 0)"/>
             <t t-if="kjr_verband_count">
                 <t t-call="portal.portal_docs_entry">
+                    <t t-set="icon" t-value="'/kjr_grant/static/src/img/verband.svg'"/>
+                    <t t-set="text">Anschrift, Ansprechpersonen und Delegierte Ihres Verbands pflegen</t>
                     <t t-set="title">Mein Verband</t>
                     <t t-set="url" t-value="'/my/verband'"/>
                     <t t-set="placeholder_count" t-value="'kjr_verband_count'"/>

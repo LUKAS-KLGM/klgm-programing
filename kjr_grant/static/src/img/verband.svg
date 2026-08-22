@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Mein Verband">
+  <g fill="none" stroke="#6599CD" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="14" r="5.5"/>
+    <path d="M14 33a10 10 0 0 1 20 0"/>
+    <circle cx="9" cy="20" r="4"/>
+    <path d="M2 34a7.5 7.5 0 0 1 8-7.4"/>
+    <circle cx="39" cy="20" r="4"/>
+    <path d="M46 34a7.5 7.5 0 0 0-8-7.4"/>
+    <path d="M8 42h32"/>
+  </g>
+</svg>

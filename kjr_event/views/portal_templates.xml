@@ -13,6 +13,8 @@
               inherit_id="portal.portal_my_home" customize_show="True" priority="44">
         <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
             <t t-call="portal.portal_docs_entry">
+                <t t-set="icon" t-value="'/kjr_event/static/src/img/veranstaltung.svg'"/>
+                <t t-set="text">Teilnehmerlisten der Veranstaltungen, die Sie mit dem KJR durchführen</t>
                 <t t-set="title">KJR-Veranstaltungen</t>
                 <t t-set="url" t-value="'/my/kjr-events'"/>
                 <t t-set="placeholder_count" t-value="'kjr_event_count'"/>
