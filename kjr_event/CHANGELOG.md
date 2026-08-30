@@ -1,5 +1,13 @@
 # Changelog – kjr_event
 
+## 19.0.5.3.0 — Mailvorlagen rendern wieder (Fehlerbericht 30.08.2026)
+
+### Behoben
+- **`{{ … }}` stand sichtbar im Mailtext.** Siehe kjr_grant 19.0.15.3.0 — dieselbe
+  Ursache, 6 Stellen in `data/mail_templates.xml` umgestellt. Betroffen war hier nur
+  die Grußformel, deshalb sind die bisher versendeten Anmeldebestätigungen
+  unauffällig geblieben.
+
 ## 19.0.3.0.0 — Wording, Altersfilter, Statistik-Export
 
 ### Neu

@@ -10,17 +10,17 @@
             <field name="email_to">{{ (object.contact_email or object.partner_id.email or '') }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
-    <p>Sehr geehrte/r {{ object.contact_person or 'Antragsteller/in' }},</p>
-    <p>Ihr Zuschussantrag <strong>{{ object.name }}</strong> wurde erfolgreich eingereicht.</p>
+    <p>Sehr geehrte/r <t t-out="object.contact_person or 'Antragsteller/in'"/>,</p>
+    <p>Ihr Zuschussantrag <strong><t t-out="object.name"/></strong> wurde erfolgreich eingereicht.</p>
     <table style="border-collapse:collapse;margin:10px 0;">
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Maßnahme:</strong></td><td>{{ object.measure_name }}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Zeitraum:</strong></td><td>{{ object.measure_start }} – {{ object.measure_end }}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Förderart:</strong></td><td>{{ object.grant_type_id.name }}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Berechneter Zuschuss:</strong></td><td>{{ '%.2f' % object.grant_calculated }} €</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Maßnahme:</strong></td><td><t t-out="object.measure_name"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Zeitraum:</strong></td><td><t t-out="object.measure_start"/> – <t t-out="object.measure_end"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Förderart:</strong></td><td><t t-out="object.grant_type_id.name"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Berechneter Zuschuss:</strong></td><td><t t-out="'%.2f' % object.grant_calculated"/> €</td></tr>
     </table>
     <p>Wir werden Ihren Antrag schnellstmöglich bearbeiten. Sie können den Status
     jederzeit in Ihrem Portal einsehen.</p>
-    <p>Mit freundlichen Grüßen,<br/>{{ object.company_id.name }}</p>
+    <p>Mit freundlichen Grüßen,<br/><t t-out="object.company_id.name"/></p>
 </div>
             </field>
         </record>
@@ -33,17 +33,17 @@
             <field name="email_to">{{ (object.contact_email or object.partner_id.email or '') }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
-    <p>Sehr geehrte/r {{ object.contact_person or 'Antragsteller/in' }},</p>
-    <p>Ihr Zuschussantrag <strong>{{ object.name }}</strong> wurde <strong>bewilligt</strong>.</p>
+    <p>Sehr geehrte/r <t t-out="object.contact_person or 'Antragsteller/in'"/>,</p>
+    <p>Ihr Zuschussantrag <strong><t t-out="object.name"/></strong> wurde <strong>bewilligt</strong>.</p>
     <table style="border-collapse:collapse;margin:10px 0;">
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Maßnahme:</strong></td><td>{{ object.measure_name }}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Bewilligter Zuschuss:</strong></td><td><strong>{{ '%.2f' % object.grant_approved }} €</strong></td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Bewilligt am:</strong></td><td>{{ object.date_approved }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Maßnahme:</strong></td><td><t t-out="object.measure_name"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Bewilligter Zuschuss:</strong></td><td><strong><t t-out="'%.2f' % object.grant_approved"/> €</strong></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Bewilligt am:</strong></td><td><t t-out="object.date_approved"/></td></tr>
     </table>
     <p>Der Bescheid ist Ihrem Antrag im Portal beigefügt. Die Auszahlung erfolgt
     auf das angegebene Konto.</p>
     <p>Belege sind 5 Jahre zum Zwecke der Nachprüfung aufzubewahren.</p>
-    <p>Mit freundlichen Grüßen,<br/>{{ object.company_id.name }}</p>
+    <p>Mit freundlichen Grüßen,<br/><t t-out="object.company_id.name"/></p>
 </div>
             </field>
         </record>
@@ -56,15 +56,15 @@
             <field name="email_to">{{ (object.contact_email or object.partner_id.email or '') }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
-    <p>Sehr geehrte/r {{ object.contact_person or 'Antragsteller/in' }},</p>
-    <p>Ihr Zuschussantrag <strong>{{ object.name }}</strong> wurde leider <strong>abgelehnt</strong>.</p>
+    <p>Sehr geehrte/r <t t-out="object.contact_person or 'Antragsteller/in'"/>,</p>
+    <p>Ihr Zuschussantrag <strong><t t-out="object.name"/></strong> wurde leider <strong>abgelehnt</strong>.</p>
     <table style="border-collapse:collapse;margin:10px 0;">
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Maßnahme:</strong></td><td>{{ object.measure_name }}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Begründung:</strong></td><td>{{ object.rejection_reason or 'Keine Angabe' }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Maßnahme:</strong></td><td><t t-out="object.measure_name"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Begründung:</strong></td><td><t t-out="object.rejection_reason or 'Keine Angabe'"/></td></tr>
     </table>
     <p>Bei Rückfragen wenden Sie sich bitte an die Geschäftsstelle
-    {{ object.company_id.phone and ('(Tel. ' + object.company_id.phone + ')') or '' }}.</p>
-    <p>Mit freundlichen Grüßen,<br/>{{ object.company_id.name }}</p>
+    <t t-out="object.company_id.phone and ('(Tel. ' + object.company_id.phone + ')') or ''"/>.</p>
+    <p>Mit freundlichen Grüßen,<br/><t t-out="object.company_id.name"/></p>
 </div>
             </field>
         </record>

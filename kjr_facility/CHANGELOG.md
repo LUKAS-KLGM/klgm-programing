@@ -1,5 +1,34 @@
 # Changelog — kjr_facility
 
+## 19.0.7.0.0 — Portalbuchungen bekommen einen Tarif (Fehlerbericht 30.08.2026)
+
+### Behoben
+- **Über das Portal erzeugte Buchungen standen mit 0,00 € in allen Beträgen**, bis in
+  Vertrag und Anzahlungsanforderung. Ursache: `tariff_id` wurde bei Portalbuchungen
+  bewusst nicht vorbelegt, sämtliche Betragsfelder hängen aber am Tarif
+  (`_compute_amounts`). Die Tarifgruppe wird jetzt aus dem Mitgliedskennzeichen des
+  Kontakts abgeleitet — Mitgliedsverband → Mitgliedstarif, sonst Standardtarif.
+  Einrichtungsspezifische Tarife haben weiter Vorrang vor den übergreifenden; für
+  Nicht-Mitglieder ist die Suchreihenfolge unverändert.
+- **Kostenvorschau und Buchung nutzen denselben Tarif.** Vorher rechnete die Vorschau
+  immer mit dem Standardtarif, ein Mitgliedsverband bekam also eine andere Zahl
+  angezeigt als anschließend berechnet.
+
+### Neu
+- `res.partner.is_kjr_member` — namensgleich zu `kjr_grant` und `kjr_rental`, damit
+  alle drei Module sich dieselbe Spalte teilen und kjr_facility trotzdem ohne
+  kjr_grant installierbar bleibt.
+
+### Hinweis
+- Die Feinunterscheidung **Partnerorganisation/kommerziell** bleibt Sache der
+  Geschäftsstelle: am Kontakt gibt es kein Merkmal, aus dem sie sich ableiten ließe.
+  Wird sie im Backend gesetzt, rechnen die Beträge automatisch nach (`tariff_id`
+  steht in `@api.depends`).
+- **Zimmer spielen für den Betrag keine Rolle.** `_compute_amounts` rechnet
+  Personen × Nächte; `room_ids` trägt nur `bed_count` für Kapazitäts- und
+  Doppelbelegungsprüfung bei. Die Zimmerzuordnung bleibt eine Belegungsentscheidung
+  der Geschäftsstelle.
+
 ## 19.0.3.0.0 — Buchungsregeln und Preislogik Diepolz/NiSo
 
 ### Neu

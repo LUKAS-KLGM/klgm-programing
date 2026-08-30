@@ -11,19 +11,19 @@
             <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
-    <p>Hallo {{ object.partner_id.name }},</p>
-    <p>wir haben für Sie <strong>{{ object.facility_id.name }}</strong> im genannten Zeitraum
+    <p>Hallo <t t-out="object.partner_id.name"/>,</p>
+    <p>wir haben für Sie <strong><t t-out="object.facility_id.name"/></strong> im genannten Zeitraum
     <strong>vorgemerkt (reserviert)</strong>. Diese Reservierung ist noch nicht verbindlich.</p>
     <table style="border-collapse:collapse;margin:10px 0;">
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Reservierungsnr.:</strong></td><td>{{ object.name }}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Anreise:</strong></td><td>{{ object.check_in }}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Abreise:</strong></td><td>{{ object.check_out }}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Personen:</strong></td><td>{{ object.participant_count }}</td></tr>
-        <tr t-if="object.reservation_expiry"><td style="padding:4px 12px 4px 0;"><strong>Gültig bis:</strong></td><td>{{ object.reservation_expiry }}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Reservierungsnr.:</strong></td><td><t t-out="object.name"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Anreise:</strong></td><td><t t-out="object.check_in"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Abreise:</strong></td><td><t t-out="object.check_out"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Personen:</strong></td><td><t t-out="object.participant_count"/></td></tr>
+        <tr t-if="object.reservation_expiry"><td style="padding:4px 12px 4px 0;"><strong>Gültig bis:</strong></td><td><t t-out="object.reservation_expiry"/></td></tr>
     </table>
     <p>Bitte bestätigen Sie die Buchung verbindlich, damit wir Ihnen den Vertrag zusenden können.</p>
     <div t-if="object.facility_id.mail_hint"><t t-out="object.facility_id.mail_hint"/></div>
-    <p>Mit freundlichen Grüßen,<br/>{{ object.company_id.name }}</p>
+    <p>Mit freundlichen Grüßen,<br/><t t-out="object.company_id.name"/></p>
 </div>
             </field>
         </record>
@@ -38,17 +38,17 @@
             <field name="report_template_ids" eval="[(6, 0, [ref('kjr_facility.action_report_booking_contract')])]"/>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
-    <p>Hallo {{ object.partner_id.name }},</p>
-    <p>vielen Dank für Ihre verbindliche Buchung von <strong>{{ object.facility_id.name }}</strong>.
-    Im Anhang finden Sie den <strong>Buchungsvertrag</strong> ({{ object.name }}). Bitte senden Sie ihn
+    <p>Hallo <t t-out="object.partner_id.name"/>,</p>
+    <p>vielen Dank für Ihre verbindliche Buchung von <strong><t t-out="object.facility_id.name"/></strong>.
+    Im Anhang finden Sie den <strong>Buchungsvertrag</strong> (<t t-out="object.name"/>). Bitte senden Sie ihn
     unterschrieben an uns zurück.</p>
     <table style="border-collapse:collapse;margin:10px 0;">
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Anreise:</strong></td><td>{{ object.check_in }}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Abreise:</strong></td><td>{{ object.check_out }}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Gesamt (brutto):</strong></td><td>{{ '%.2f' % object.amount_total }} €</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Anreise:</strong></td><td><t t-out="object.check_in"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Abreise:</strong></td><td><t t-out="object.check_out"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Gesamt (brutto):</strong></td><td><t t-out="'%.2f' % object.amount_total"/> €</td></tr>
     </table>
     <div t-if="object.facility_id.mail_hint"><t t-out="object.facility_id.mail_hint"/></div>
-    <p>Mit freundlichen Grüßen,<br/>{{ object.company_id.name }}</p>
+    <p>Mit freundlichen Grüßen,<br/><t t-out="object.company_id.name"/></p>
 </div>
             </field>
         </record>
@@ -62,11 +62,11 @@
             <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
-    <p>Hallo {{ object.partner_id.name }},</p>
-    <p>wir haben Ihren Buchungsvertrag <strong>{{ object.name }}</strong> für {{ object.facility_id.name }}
+    <p>Hallo <t t-out="object.partner_id.name"/>,</p>
+    <p>wir haben Ihren Buchungsvertrag <strong><t t-out="object.name"/></strong> für <t t-out="object.facility_id.name"/>
     bislang noch nicht unterschrieben zurückerhalten. Bitte senden Sie ihn uns baldmöglichst zu, damit
     Ihre Buchung gesichert bleibt.</p>
-    <p>Mit freundlichen Grüßen,<br/>{{ object.company_id.name }}</p>
+    <p>Mit freundlichen Grüßen,<br/><t t-out="object.company_id.name"/></p>
 </div>
             </field>
         </record>
@@ -79,16 +79,16 @@
             <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
-    <p>Hallo {{ object.partner_id.name }},</p>
-    <p>Ihre Buchung <strong>{{ object.name }}</strong> für <strong>{{ object.facility_id.name }}</strong> ist gebucht.</p>
+    <p>Hallo <t t-out="object.partner_id.name"/>,</p>
+    <p>Ihre Buchung <strong><t t-out="object.name"/></strong> für <strong><t t-out="object.facility_id.name"/></strong> ist gebucht.</p>
     <table style="border-collapse:collapse;margin:10px 0;">
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Anreise:</strong></td><td>{{ object.check_in }}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Abreise:</strong></td><td>{{ object.check_out }}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Personen:</strong></td><td>{{ object.participant_count }}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Gesamt (brutto):</strong></td><td>{{ '%.2f' % object.amount_total }} €</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Anreise:</strong></td><td><t t-out="object.check_in"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Abreise:</strong></td><td><t t-out="object.check_out"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Personen:</strong></td><td><t t-out="object.participant_count"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Gesamt (brutto):</strong></td><td><t t-out="'%.2f' % object.amount_total"/> €</td></tr>
     </table>
     <div t-if="object.facility_id.mail_hint"><t t-out="object.facility_id.mail_hint"/></div>
-    <p>Mit freundlichen Grüßen,<br/>{{ object.company_id.name }}</p>
+    <p>Mit freundlichen Grüßen,<br/><t t-out="object.company_id.name"/></p>
 </div>
             </field>
         </record>
@@ -101,10 +101,10 @@
             <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
-    <p>Hallo {{ object.partner_id.name }},</p>
-    <p>für Ihre Buchung <strong>{{ object.name }}</strong> bitten wir um eine Anzahlung von
-    <strong>{{ '%.2f' % object.deposit_amount }} €</strong> ({{ '%.0f' % object.deposit_pct }} %).</p>
-    <p>Mit freundlichen Grüßen,<br/>{{ object.company_id.name }}</p>
+    <p>Hallo <t t-out="object.partner_id.name"/>,</p>
+    <p>für Ihre Buchung <strong><t t-out="object.name"/></strong> bitten wir um eine Anzahlung von
+    <strong><t t-out="'%.2f' % object.deposit_amount"/> €</strong> (<t t-out="'%.0f' % object.deposit_pct"/> %).</p>
+    <p>Mit freundlichen Grüßen,<br/><t t-out="object.company_id.name"/></p>
 </div>
             </field>
         </record>
@@ -117,10 +117,10 @@
             <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
-    <p>Hallo {{ object.partner_id.name }},</p>
-    <p>Ihre Buchung <strong>{{ object.name }}</strong> für {{ object.facility_id.name }} wurde storniert.</p>
+    <p>Hallo <t t-out="object.partner_id.name"/>,</p>
+    <p>Ihre Buchung <strong><t t-out="object.name"/></strong> für <t t-out="object.facility_id.name"/> wurde storniert.</p>
     <p>Bei Rückfragen wenden Sie sich an die KJR-Geschäftsstelle.</p>
-    <p>Mit freundlichen Grüßen,<br/>{{ object.company_id.name }}</p>
+    <p>Mit freundlichen Grüßen,<br/><t t-out="object.company_id.name"/></p>
 </div>
             </field>
         </record>
@@ -133,9 +133,9 @@
             <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
-    <p>Hallo {{ object.partner_id.name }},</p>
-    <p>in 14 Tagen ({{ object.check_in }}) beginnt Ihr Aufenthalt in <strong>{{ object.facility_id.name }}</strong>.</p>
-    <p>Wir freuen uns auf Ihre Gruppe!<br/>{{ object.company_id.name }}</p>
+    <p>Hallo <t t-out="object.partner_id.name"/>,</p>
+    <p>in 14 Tagen (<t t-out="object.check_in"/>) beginnt Ihr Aufenthalt in <strong><t t-out="object.facility_id.name"/></strong>.</p>
+    <p>Wir freuen uns auf Ihre Gruppe!<br/><t t-out="object.company_id.name"/></p>
 </div>
             </field>
         </record>

@@ -319,8 +319,22 @@ class KjrRentalWebsite(http.Controller):
         return clean
 
     def _save_cart(self, cart):
+        # Kein request.session.modified mehr: Session nutzt in Odoo 19 __slots__,
+        # die Zuweisung wirft AttributeError. Nötig ist sie auch nicht —
+        # Session.__setitem__ setzt is_dirty selbst, sobald sich der Wert ändert.
+        # _get_cart() baut dafür eine frische Liste, die Zuweisung ist also ein
+        # echter Wertvergleich und keine Selbstzuweisung des mutierten Objekts.
         request.session[CART_KEY] = cart
-        request.session.modified = True
+
+    def _cart_error(self, message, status=400):
+        """Fehlerantwort des Warenkorbs mit echtem HTTP-Statuscode.
+
+        Wichtig fuer die Ueberwachung: der jsonrpc-Dispatcher beantwortet auch
+        Ausnahmen mit HTTP 200 und legt den Fehler nur in den Rumpf. Ein
+        abgestuerzter Warenkorb sah im Zugriffsprotokoll deshalb wie ein Erfolg
+        aus. Ueber type='json2' liefert die Route jetzt echte Statuscodes.
+        """
+        return request.make_json_response({'error': message}, status=status)
 
     def _cart_count(self):
         return sum(e['qty'] for e in self._get_cart())
@@ -353,18 +367,21 @@ class KjrRentalWebsite(http.Controller):
     # ------------------------------------------------------------------
     # R1: Warenkorb / Sammelbestellung
     # ------------------------------------------------------------------
-    @http.route('/service/verleih/cart/add', type='json', auth='user', website=True, methods=['POST'])
+    # type='json' ist in Odoo 19 nur noch ein veralteter Alias auf 'jsonrpc'
+    # (DeprecationWarning) und antwortet immer mit HTTP 200. 'json2' ist der
+    # Dispatcher fuer schlichtes JSON und gibt echte Statuscodes zurueck.
+    @http.route('/service/verleih/cart/add', type='json2', auth='user', website=True, methods=['POST'])
     def rental_cart_add(self, item_id=None, qty=1, **kw):
         try:
             item_id = int(item_id)
             qty = int(qty)
         except (TypeError, ValueError):
-            return {'error': _('Ungültige Eingabe.')}
+            return self._cart_error(_('Ungültige Eingabe.'))
         if qty <= 0:
-            return {'error': _('Menge muss größer als 0 sein.')}
+            return self._cart_error(_('Menge muss größer als 0 sein.'))
         item = request.env['kjr.rental.item'].sudo().browse(item_id)
         if not item.exists() or not item.website_published:
-            return {'error': _('Artikel nicht verfügbar.')}
+            return self._cart_error(_('Artikel nicht verfügbar.'), status=404)
         cart = self._get_cart()
         for entry in cart:
             if entry['item_id'] == item_id:
