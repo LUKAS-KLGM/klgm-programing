@@ -1,5 +1,15 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.15.3.0 — Mailvorlagen rendern wieder (Fehlerbericht 30.08.2026)
+
+### Behoben
+- **`{{ … }}` stand sichtbar im Mailtext.** `mail.template.body_html` wird als QWeb
+  gerendert, und QWeb interpoliert `{{ }}` nur innerhalb von Attributen, nie in
+  Textknoten. Im Fließtext gehört `<t t-out="…"/>`. 20 Stellen umgestellt.
+  Betreff, Absender und Empfänger bleiben unverändert bei `{{ }}` — die laufen über
+  die Engine `inline_template`, die `{{ }}` sehr wohl ersetzt (genau daran war der
+  Fehler erkennbar: Betreff aufgelöst, Text darunter nicht).
+
 ## 19.0.10.0.0 — Restpaket: Regelversionierung, Vier-Augen-Prinzip, Hilfeseite
 
 Umsetzung der offenen code-lösbaren Punkte aus dem Abgleich „Funktionsideen ↔ Code"

@@ -1,5 +1,31 @@
 # Changelog – KJR Materialverleih
 
+## 19.0.5.2.0 — Warenkorb wieder benutzbar (Fehlerbericht 30.08.2026)
+
+### Behoben
+- **Warenkorb warf bei jedem Hinzufügen `AttributeError` (Odoo-19-Regression).**
+  `request.session.modified = True` war bis Odoo 18 der übliche Weg, eine Session als
+  geändert zu markieren. In Odoo 19 nutzt `Session` `__slots__` — neue Attribute
+  lassen sich nicht mehr setzen, die Zuweisung wirft. Die Zeile ist ersatzlos
+  gestrichen: `Session.__setitem__` setzt `is_dirty` selbst, sobald sich der Wert
+  ändert, und `_get_cart()` liefert dafür eine frische Liste (echter Wertvergleich,
+  keine Selbstzuweisung des mutierten Objekts).
+- **Fehler wurden mit HTTP 200 beantwortet.** `type='json'` ist in Odoo 19 nur noch
+  ein veralteter Alias auf `jsonrpc`; der beantwortet auch Ausnahmen mit 200 und legt
+  den Fehler nur in den Rumpf. Ein abgestürzter Warenkorb sah im Zugriffsprotokoll
+  wie ein Erfolg aus. `/service/verleih/cart/add` läuft jetzt über `type='json2'` und
+  liefert echte Statuscodes (400 bei ungültiger Eingabe, 404 bei unbekanntem Artikel,
+  500 bei unbehandelten Ausnahmen).
+- **`alert()` als Fehlerausgabe ersetzt.** Der Dialog blockierte die ganze Seite,
+  erzeugte keine Konsolenausgabe und war für jede Automatisierung unsichtbar. Die
+  Meldung erscheint jetzt im Seiteninhalt (`role="alert"`, `aria-live`).
+- **Zwei sichtbare Platzhalter auf `/service/spielmobil` entfernt.** „Was ist dabei?"
+  und „Voraussetzungen vor Ort" zeigten öffentlich ein gelbes Etikett
+  „Platzhalter – Text vom KJR zu ergänzen". Die Abschnitte bleiben weg, bis die
+  Geschäftsstelle Text liefert — gleiche Linie wie beim Kostenblock, der ohne
+  freigegebene Preise ebenfalls stumm bleibt. Was hineingehört, steht als Kommentar
+  an der Stelle.
+
 ## 19.0.3.0.0 — Barcode, Nutzungshinweise, Rückgabeprotokoll, Spielmobil
 
 ### Neu

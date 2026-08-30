@@ -714,23 +714,20 @@
                                 Das Spielmobil kann <strong>nur von Gemeinden im Landkreis
                                 Oberallgäu</strong> angefragt werden.
                             </div>
-                            <!-- TODO KJR: Die folgenden Abschnitte müssen von der Geschäftsstelle
-                                 inhaltlich befüllt werden. Bewusst NICHTS erfunden: Ausstattung,
-                                 Einsatzbedingungen und Betreuung sind aus den Projektunterlagen
-                                 nicht belegt. Platzhalter bis zur Freigabe stehen lassen. -->
-                            <h2 class="h5 mt-4">Was ist dabei?</h2>
-                            <p class="text-muted">
-                                <span class="badge text-bg-warning">Platzhalter – Text vom KJR zu ergänzen</span>
-                                Hier beschreibt der Kreisjugendring die Ausstattung des Spielmobils
-                                (Spiel- und Bewegungsgeräte, Materialien, Fahrzeug).
-                            </p>
-                            <h2 class="h5 mt-4">Voraussetzungen vor Ort</h2>
-                            <p class="text-muted">
-                                <span class="badge text-bg-warning">Platzhalter – Text vom KJR zu ergänzen</span>
-                                Hier beschreibt der Kreisjugendring die Anforderungen an den Einsatzort
-                                (benötigte Fläche, Untergrund, Strom- und Wasseranschluss, Auf- und Abbau,
-                                Zahl der benötigten Betreuungspersonen, Versicherung, Absage-/Schlechtwetterregelung).
-                            </p>
+                            <!-- TODO KJR: Hier gehoeren zwei Abschnitte hin, die nur die
+                                 Geschaeftsstelle liefern kann. Bewusst NICHTS erfunden:
+                                 Ausstattung, Einsatzbedingungen und Betreuung sind aus den
+                                 Projektunterlagen nicht belegt.
+                                   1. "Was ist dabei?" — Ausstattung des Spielmobils
+                                      (Spiel- und Bewegungsgeraete, Materialien, Fahrzeug).
+                                   2. "Voraussetzungen vor Ort" — benoetigte Flaeche, Untergrund,
+                                      Strom-/Wasseranschluss, Auf- und Abbau, Zahl der
+                                      Betreuungspersonen, Versicherung, Schlechtwetterregelung.
+                                 Bis dahin stehen die Abschnitte NICHT auf der Seite: diese
+                                 Landingpage ist oeffentlich, und ein gelbes "Platzhalter"-Etikett
+                                 vor Gemeinden zu zeigen ist schlechter als gar kein Abschnitt.
+                                 Gleiche Linie wie beim Kostenblock unten, der ohne freigegebene
+                                 Preise ebenfalls stumm bleibt. -->
                             <h2 class="h5 mt-4">Kosten</h2>
                             <!-- Preise NUR bei freigegebenen Werten (show_prices, siehe
                                  KjrRentalWebsite._spielmobil_prices_confirmed): der Artikel muss

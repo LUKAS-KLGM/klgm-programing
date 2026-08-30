@@ -91,20 +91,51 @@ class KjrFacilityWebsite(http.Controller):
         """Deutsche Ein-/Mehrzahl für Nächte — für gut lesbare Fehlermeldungen."""
         return _('1 Nacht') if count == 1 else _('%d Nächte') % count
 
-    def _website_tariff(self, facility):
-        """Tarif, der dem Formular (Zusatzpositionen + Kostenvorschau) zugrunde liegt.
+    @staticmethod
+    def _request_partner():
+        """Der Verband hinter dem angemeldeten Portalnutzer.
 
-        Die endgültige Tarifgruppe (Mitgliedsverband, Partner, kommerziell) ordnet die
-        Geschäftsstelle im Backend zu — im öffentlichen Formular wird bewusst konservativ
-        der Standardtarif angesetzt. Einrichtungsspezifische Tarife haben Vorrang vor
-        den übergreifenden Tarifen (facility_id leer)."""
+        Das Mitgliedskennzeichen hängt am kaufmännischen Hauptkontakt, nicht am
+        einzelnen Ansprechpartner — deshalb commercial_partner_id.
+        """
+        if request.env.user._is_public():
+            return request.env['res.partner'].browse()
+        return request.env.user.partner_id.commercial_partner_id
+
+    def _website_tariff(self, facility, partner=None):
+        """Tarif für Kostenvorschau UND für die über das Portal angelegte Buchung.
+
+        Die Tarifgruppe wird aus dem Mitgliedskennzeichen des Kontakts abgeleitet:
+        KJR-Mitgliedsverbände bekommen den Mitgliedstarif, alle übrigen den
+        Standardtarif. Die Feinunterscheidung Partnerorganisation/kommerziell
+        bleibt der Geschäftsstelle vorbehalten — am Kontakt gibt es kein Merkmal,
+        aus dem sie sich ableiten ließe. Setzt die Geschäftsstelle sie im Backend,
+        rechnen die Beträge automatisch nach: tariff_id steht in @api.depends von
+        kjr.facility.booking._compute_amounts.
+
+        WARUM ÜBERHAUPT: Früher blieb tariff_id bei Portalbuchungen bewusst leer und
+        die Vorschau rechnete immer mit dem Standardtarif. Beides war falsch. Alle
+        Betragsfelder hängen am Tarif — eine über das Portal erzeugte, reservierte
+        und bestätigte Buchung stand dadurch mit 0,00 € bis in Vertrag und
+        Anzahlungsanforderung. (Die Zimmer spielen für den Betrag keine Rolle:
+        _compute_amounts rechnet Personen × Nächte, room_ids trägt nur bed_count
+        für Kapazitäts- und Doppelbelegungsprüfung bei.)
+
+        Reihenfolge: einrichtungsspezifische Tarife haben Vorrang vor den
+        übergreifenden (facility_id leer), innerhalb der Ebene die passende
+        Tarifgruppe vor dem Standard. Hat eine Einrichtung keinen Mitgliedstarif,
+        bekommt der Mitgliedsverband dort den Standardtarif — dieses Haus bietet
+        dann schlicht keinen Mitgliedssatz an.
+        """
         Tariff = request.env['kjr.facility.tariff'].sudo()
-        for domain in (
-            [('facility_id', '=', facility.id), ('tariff_type', '=', 'standard')],
-            [('facility_id', '=', facility.id)],
-            [('facility_id', '=', False), ('tariff_type', '=', 'standard')],
-            [('facility_id', '=', False)],
-        ):
+        wanted = 'kjr_member' if (partner and partner.sudo().is_kjr_member) else 'standard'
+        groups = [wanted] + (['standard'] if wanted != 'standard' else [])
+        domains = []
+        for scope in (('=', facility.id), ('=', False)):
+            for group in groups:
+                domains.append([('facility_id', scope[0], scope[1]), ('tariff_type', '=', group)])
+            domains.append([('facility_id', scope[0], scope[1])])
+        for domain in domains:
             tariff = Tariff.search(domain, limit=1)
             if tariff:
                 return tariff
@@ -330,7 +361,9 @@ class KjrFacilityWebsite(http.Controller):
     def _render_facility_request(self, facility, values, errors, preview_requested=False):
         """Formular rendern — inkl. bereits erfasster Eingaben, Tarif-Hinweisen und
         (sofern berechenbar) der Kostenvorschau."""
-        tariff = self._website_tariff(facility)
+        # Denselben Tarif wie die spätere Buchung ansetzen, sonst weicht die
+        # Kostenvorschau von dem ab, was der Verband anschließend bekommt.
+        tariff = self._website_tariff(facility, self._request_partner())
         return request.render('kjr_facility.website_facility_request', {
             'facility': facility,
             'page_name': 'kjr_facilities',
@@ -375,14 +408,16 @@ class KjrFacilityWebsite(http.Controller):
             if errors:
                 return self._render_facility_request(facility, values, errors)
 
-            partner = request.env.user.partner_id.commercial_partner_id
+            partner = self._request_partner()
             # @api.onchange feuert hier nicht — alle Werte explizit setzen.
-            # TODO(KJR): tariff_id wird bewusst NICHT vorbelegt; die Tarifgruppe
-            # (Mitgliedsverband/Partner/kommerziell) ordnet die Geschäftsstelle im
-            # Backend zu. Die Kostenvorschau im Formular rechnet mit dem Standardtarif.
+            # tariff_id wird aus dem Mitgliedskennzeichen abgeleitet (siehe
+            # _website_tariff). Ohne Tarif blieben sämtliche Beträge auf 0,00 € —
+            # bis in Vertrag und Anzahlungsanforderung. Die Geschäftsstelle kann die
+            # Gruppe im Backend jederzeit korrigieren, die Beträge rechnen nach.
             booking = request.env['kjr.facility.booking'].sudo().create({
                 'facility_id': facility.id,
                 'partner_id': partner.id,
+                'tariff_id': self._website_tariff(facility, partner).id or False,
                 'group_name': post.get('group_name', '').strip(),
                 'contact_person': post.get('contact_person', '').strip(),
                 'contact_email': post.get('contact_email') or request.env.user.email,
