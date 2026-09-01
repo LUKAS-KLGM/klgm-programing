@@ -1,3 +1,26 @@
+## 19.0.5.4.0 (2026-09-01)
+
+### Behoben
+
+- **Veranstaltungsanmeldung brach beim Rendern ab.** Die Ansicht
+  `registration_attendee_details_kjr_wording` ankerte den Absende-Knopf auf
+  `//div[hasclass('modal-footer')]/button[@type='submit']`. `website_event_sale`
+  ersetzt diesen Knopf durch zwei Knoepfe innerhalb eines `<t t-if>`; sie sind danach
+  keine direkten Kinder des `modal-footer` mehr, der Selektor fand nichts und QWeb
+  brach mit `ValueError: Element ... kann nicht in der uebergeordneten Ansicht
+  lokalisiert werden` ab. Betroffen waren kostenlose und kostenpflichtige
+  Veranstaltungen gleichermassen, weil die Ansicht von `website_event_sale`
+  unabhaengig vom Preis greift.
+
+  Neuer Anker: `(//div[hasclass('modal-footer')]//button[hasclass('btn-primary')])[last()]`.
+  Der trifft ohne Sales-App den einzigen Kernknopf und mit Sales-App den
+  `t-else`-Knopf. Ein blosser Nachfahren-Selektor waere falsch gewesen, weil dessen
+  erster Treffer der Anmelden-Knopf (`Sign In`) ist.
+
+  Der Zahlungsfall wird jetzt selbst aus `tickets` bestimmt statt ueber
+  `has_paying_ticket`, das es nur mit installierter Sales-App gibt. Das Modul haengt
+  bewusst nicht von `website_event_sale` ab.
+
 # Changelog – kjr_event
 
 ## 19.0.5.3.0 — Mailvorlagen rendern wieder (Fehlerbericht 30.08.2026)
