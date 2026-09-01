@@ -545,12 +545,30 @@
             <t t-else="">Sie haben mehr Tickets bestellt als Plätze verfügbar sind.</t>
         </xpath>
         <!-- Absende-Button.
-             Anker: Submit-Button im modal-footer. Der frühere Selektor //button[@type='submit']
-             hätte jeden künftig ergänzten Submit-Button im Formular treffen können.
-             mode="inner": t-if="availability_check and limit_check" bleibt Kernsache. -->
-        <xpath expr="//div[hasclass('modal-footer')]/button[@type='submit']"
+             Anker: der LETZTE Primaerknopf im modal-footer. Bewusst so und nicht
+             //div[hasclass('modal-footer')]/button[@type='submit']:
+
+             website_event_sale (Prioritaet 16, greift wegen kleinerer ID vor dieser
+             Ansicht) ersetzt den einen Kernknopf durch ZWEI Knoepfe innerhalb eines
+             <t t-if>. Sie sind dann keine direkten Kinder des modal-footer mehr, der
+             alte Selektor fand nichts und das Rendern brach ab (Bug 29.08.2026).
+             Ein blosser Nachfahren-Selektor waere ebenfalls falsch: der erste Treffer
+             ist dort der Anmelden-Knopf ("Sign In"), nicht der Absende-Knopf.
+
+             (...)[last()] trifft in beiden Faellen den richtigen: ohne Sales-App den
+             einzigen Kernknopf, mit Sales-App den t-else-Knopf. Das Modul haengt
+             bewusst nicht von website_event_sale ab, deshalb muss der Anker beides
+             tragen.
+
+             Der Zahlungsfall wird selbst bestimmt statt ueber has_paying_ticket, das
+             es nur mit installierter Sales-App gibt. 'tickets' liegt in beiden Faellen
+             im Kontext. -->
+        <xpath expr="(//div[hasclass('modal-footer')]//button[hasclass('btn-primary')])[last()]"
                position="replace" mode="inner">
-            <t t-if="event.is_kjr">Anmeldung abschicken</t>
+            <t t-set="kjr_has_paying_ticket"
+               t-value="any(t.get('price', 0) &gt; 0 for t in tickets)"/>
+            <t t-if="kjr_has_paying_ticket">Weiter zur Zahlung</t>
+            <t t-elif="event.is_kjr">Anmeldung abschicken</t>
             <t t-else="">Registrierung bestätigen</t>
         </xpath>
     </template>
