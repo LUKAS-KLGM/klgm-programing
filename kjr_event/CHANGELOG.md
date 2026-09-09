@@ -1,3 +1,15 @@
+## 19.0.5.5.0 — Gedankenstriche in den Teilnehmertexten (M2 aus dem Fehlerbericht 30.08.2026)
+
+### Geändert
+- **4 Gedankenstriche aus den kundenseitigen Texten entfernt**: Datenschutzhinweis über
+  der Teilnehmerliste im Kooperationspartner-Portal, Hilfetext des Ernährungsfelds und
+  der Zweckabsatz der Datenschutzhinweise im Anmeldeformular.
+- Bewusst **nicht** angefasst: Gruppenüberschriften im Backend („KJR – Warteliste"),
+  Betreffzeilen der Mailvorlagen und die Textbausteine der Datenschutzerklärung.
+- Versionssprung von 5.4.0 auf **5.5.0**: die Demo-Datenbank hatte 19.0.5.4.0 bereits
+  eingetragen. Bei gleicher Nummer fuehrt Odoo kein Upgrade aus, die geaenderten
+  Templates waeren dort stillschweigend nicht neu geladen worden.
+
 ## 19.0.5.4.0 (2026-09-01)
 
 ### Behoben
@@ -22,15 +34,6 @@
   bewusst nicht von `website_event_sale` ab.
 
 # Changelog – kjr_event
-
-## 19.0.5.4.0 — Gedankenstriche in den Teilnehmertexten (M2 aus dem Fehlerbericht 30.08.2026)
-
-### Geändert
-- **4 Gedankenstriche aus den kundenseitigen Texten entfernt**: Datenschutzhinweis über
-  der Teilnehmerliste im Kooperationspartner-Portal, Hilfetext des Ernährungsfelds und
-  der Zweckabsatz der Datenschutzhinweise im Anmeldeformular.
-- Bewusst **nicht** angefasst: Gruppenüberschriften im Backend („KJR – Warteliste"),
-  Betreffzeilen der Mailvorlagen und die Textbausteine der Datenschutzerklärung.
 
 ## 19.0.5.3.0 — Mailvorlagen rendern wieder (Fehlerbericht 30.08.2026)
 
