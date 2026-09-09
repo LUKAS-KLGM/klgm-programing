@@ -1,5 +1,24 @@
 # Changelog – KJR Materialverleih
 
+## 19.0.5.3.0 — Gedankenstriche in den Verleihtexten (M2 aus dem Fehlerbericht 30.08.2026)
+
+### Geändert
+- **9 Gedankenstriche aus den kundenseitigen Texten entfernt** (Katalogkopf,
+  Preishinweis, Mitgliedstarif-Hinweis, Spielmobil-Teaser, Zweck-der-Nutzung-Feld,
+  Datenschutzhinweise der Anfrage, Kautionsabschnitt der Bestätigung). Der
+  eingeschobene Halbsatz im Fließtext ist jeweils zu einem eigenen Satz oder zu einem
+  Komma-Einschub aufgelöst, der Wortlaut bleibt sonst gleich.
+- Bewusst **nicht** angefasst: Bereichsangaben (`Zeitraum ... – ...`), der Strich als
+  Leerwert in Tabellen und Auswahlfeldern, Überschriften und die Textbausteine der
+  Datenschutzerklärung. Ebenso bleiben Hilfetexte im Backend unverändert, der Bericht
+  zielt auf die Texte, die Verbände und Ehrenamtliche lesen.
+
+### Dokumentiert
+- **M4 Sequenz-Präfix bleibt `VL/`.** Im Bestand des KJR stehen Ausleihen als
+  `AL/2026/...`. Diese Nummerierung ist gewachsene Kundendatenlage und keine Erfindung
+  des Moduls, ein Wechsel im Code würde die laufende Folge brechen. Die Begründung
+  steht als Kommentar in `data/ir_sequence_data.xml`.
+
 ## 19.0.5.2.0 — Warenkorb wieder benutzbar (Fehlerbericht 30.08.2026)
 
 ### Behoben

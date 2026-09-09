@@ -23,6 +23,15 @@
 
 # Changelog – kjr_event
 
+## 19.0.5.4.0 — Gedankenstriche in den Teilnehmertexten (M2 aus dem Fehlerbericht 30.08.2026)
+
+### Geändert
+- **4 Gedankenstriche aus den kundenseitigen Texten entfernt**: Datenschutzhinweis über
+  der Teilnehmerliste im Kooperationspartner-Portal, Hilfetext des Ernährungsfelds und
+  der Zweckabsatz der Datenschutzhinweise im Anmeldeformular.
+- Bewusst **nicht** angefasst: Gruppenüberschriften im Backend („KJR – Warteliste"),
+  Betreffzeilen der Mailvorlagen und die Textbausteine der Datenschutzerklärung.
+
 ## 19.0.5.3.0 — Mailvorlagen rendern wieder (Fehlerbericht 30.08.2026)
 
 ### Behoben

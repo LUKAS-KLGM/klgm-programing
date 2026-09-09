@@ -64,7 +64,7 @@
                                     <t t-if="o.facility_offers_catering or o.meal_option != 'none' or o.amount_meals">
                                         <t t-esc="dict(o._fields['meal_option'].selection).get(o.meal_option)"/>
                                     </t>
-                                    <t t-else="">Selbstverpflegung — die Einrichtung ist ein
+                                    <t t-else="">Selbstverpflegung. Die Einrichtung ist ein
                                         Selbstversorgerhaus und stellt keine Verpflegung; die
                                         Gruppe verpflegt sich selbst.</t>
                                 </td>

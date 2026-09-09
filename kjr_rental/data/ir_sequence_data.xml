@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- M4 (Fehlerbericht 30.08.2026), bewusst NICHT geaendert:
+         Im Bestand des KJR stehen Ausleihen als AL/2026/..., diese Sequenz erzeugt
+         VL/2026/.... Das Praefix ist gewachsene Nummerierung des Kunden und keine
+         Erfindung des Moduls; ein Wechsel im Code wuerde die laufende Nummernfolge
+         brechen. Entscheidung 09.09.2026: Sequenzen bleiben unveraendert, die
+         Angleichung erfolgt ggf. am Datensatz der Instanz, nicht hier.
+         noupdate="1" schuetzt bestehende Instanzen ohnehin vor Ueberschreiben. -->
     <data noupdate="1">
         <record id="seq_kjr_rental_order" model="ir.sequence">
             <field name="name">KJR Ausleihe</field>

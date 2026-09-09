@@ -46,7 +46,7 @@
                            t-attf-aria-describedby="#{counter}-dietary_note_help"
                            placeholder="z. B. glutenfrei, ohne Schweinefleisch"/>
                     <div class="form-text" t-attf-id="#{counter}-dietary_note_help">
-                        Bitte nur das eintragen, was wir für das Essen wissen müssen – also
+                        Bitte nur das eintragen, was wir für das Essen wissen müssen, also
                         was nicht auf den Teller darf. Krankheiten, Diagnosen, Medikamente
                         oder Ähnliches gehören <strong>nicht</strong> in dieses Feld. Wenn es
                         für die Freizeit gesundheitlich etwas zu beachten gibt, wenden Sie
@@ -141,8 +141,8 @@
                     <dd class="col-sm-8">Um die Veranstaltung durchzuführen (Anmeldung,
                         Platzvergabe, Warteliste, passende Altersgruppe), um die Verpflegung
                         zu planen, um im Notfall jemanden erreichen zu können, für Rechnung
-                        und Zahlung bei kostenpflichtigen Angeboten und – bei
-                        Juleica-Schulungen – für den Nachweis der Ausbildung.</dd>
+                        und Zahlung bei kostenpflichtigen Angeboten und, bei
+                        Juleica-Schulungen, für den Nachweis der Ausbildung.</dd>
 
                     <dt class="col-sm-4">Wer sie sehen kann</dt>
                     <dd class="col-sm-8">Die Geschäftsstelle des Kreisjugendrings Oberallgäu
