@@ -17,7 +17,7 @@
         <t t-call="website.layout">
             <div id="wrap" class="container mt-4 mb-5">
                 <h1 class="mb-2">Unsere Einrichtungen</h1>
-                <p class="text-muted mb-4">Jugendhaus Diepolz und Jugendzeltplatz NiSo – für Gruppen buchbar.</p>
+                <p class="text-muted mb-4">Jugendhaus Diepolz und Jugendzeltplatz NiSo, beide für Gruppen buchbar.</p>
                 <div class="row">
                     <t t-foreach="facilities" t-as="facility">
                         <div class="col-md-6 col-lg-4 mb-4">
@@ -136,7 +136,7 @@
                                 <strong>Fremdenverkehrsbeitrag:</strong>
                                 <t t-esc="'%.2f €' % tariff.visitor_tax_per_person_night"/> pro
                                 teilnehmender Person und Nacht. Den Beitrag führen wir an die Gemeinde ab.
-                                Ihre Betreuungspersonen sind als Begleitpersonen befreit – sie rechnen wir
+                                Ihre Betreuungspersonen sind als Begleitpersonen befreit. Sie rechnen wir
                                 automatisch heraus, Sie müssen dafür nichts angeben. Sind darüber hinaus
                                 einzelne Teilnehmende befreit (z. B. Einwohnerinnen und Einwohner der
                                 Standortgemeinde, Kinder unter 7 Jahren, Schwerbehinderte), tragen Sie
@@ -186,7 +186,7 @@
                             <label class="form-label">Betreuende (Anzahl)</label>
                             <input type="number" name="leader_count" class="form-control" min="0"
                                    t-att-value="values.get('leader_count','')"/>
-                            <div class="form-text">Anzahl der volljährigen Begleitpersonen – nicht zu
+                            <div class="form-text">Anzahl der volljährigen Begleitpersonen, nicht zu
                                 verwechseln mit der Ansprechpartnerin bzw. dem Ansprechpartner oben.</div>
                         </div>
                         <!-- Verpflegung nur zur Auswahl stellen, wenn die Einrichtung sie
@@ -228,9 +228,9 @@
                                 <div class="form-text">Anzahl der <strong>Teilnehmenden</strong>, die nach
                                     der Satzung der Gemeinde vom Beitrag befreit sind (Einwohnerinnen und
                                     Einwohner der Standortgemeinde, Kinder unter 7 Jahren, Schwerbehinderte).
-                                    Ihre Betreuungspersonen bitte <strong>nicht</strong> mitzählen – sie sind
+                                    Ihre Betreuungspersonen bitte <strong>nicht</strong> mitzählen. Sie sind
                                     ohnehin befreit und werden automatisch herausgerechnet. Im Zweifel leer
-                                    lassen – wir prüfen das gemeinsam mit Ihnen.</div>
+                                    lassen. Wir prüfen das gemeinsam mit Ihnen.</div>
                             </div>
                         </t>
                         <div class="col-md-4 mb-3">
@@ -311,7 +311,7 @@
                                 <p class="small text-muted mb-0">
                                     Berechnet auf Basis des Tarifs „<t t-esc="tariff.name"/>“. Welcher Tarif
                                     für Ihre Gruppe gilt, legt die Geschäftsstelle bei der Bearbeitung Ihrer
-                                    Anfrage fest – der endgültige Betrag kann davon abweichen.
+                                    Anfrage fest. Der endgültige Betrag kann davon abweichen.
                                 </p>
                             </div>
                         </div>
@@ -326,7 +326,7 @@
                              Preisauskunft. -->
                         <div t-if="tariff_unpriced" class="alert alert-info">
                             Für <strong><t t-esc="facility.name"/></strong> sind die Preise derzeit
-                            noch nicht hinterlegt – deshalb können wir Ihnen hier keine
+                            noch nicht hinterlegt. Deshalb können wir Ihnen hier keine
                             Kostenvorschau anzeigen. Bitte senden Sie die Anfrage ab: Die
                             Geschäftsstelle nennt Ihnen die Kosten mit dem Angebot.
                         </div>
@@ -334,7 +334,7 @@
                             Für die Kostenvorschau benötigen wir Anreise, Abreise und die Anzahl der
                             Teilnehmenden.
                             <t t-if="not tariff"> Für diese Einrichtung ist derzeit kein Tarif
-                                hinterlegt – bitte senden Sie die Anfrage ab, wir melden uns mit einem
+                                hinterlegt. Bitte senden Sie die Anfrage ab. Wir melden uns mit einem
                                 Angebot bei Ihnen.</t>
                         </div>
                     </t>
@@ -380,8 +380,8 @@
                                 Betreuenden,<t t-if="facility.offers_catering"> die gewünschte
                                 Verpflegung,</t> E-Mail-Adresse,
                                 Telefonnummer und Ihre Anmerkungen.
-                                <span class="d-block mt-1">Namen einzelner Teilnehmender –
-                                    insbesondere von Kindern und Jugendlichen – fragen wir hier
+                                <span class="d-block mt-1">Namen einzelner Teilnehmender,
+                                    insbesondere von Kindern und Jugendlichen, fragen wir hier
                                     bewusst nicht ab. Für uns zählen nur Anzahlen.</span>
                             </dd>
 

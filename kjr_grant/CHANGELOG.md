@@ -1,5 +1,24 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.15.4.0 — Gedankenstriche in Antragsstrecke und Verbandsportal (M2 aus dem Fehlerbericht 30.08.2026)
+
+### Geändert
+- **31 Gedankenstriche aus den kundenseitigen Texten entfernt**, verteilt auf
+  Verbandsportal (`/my/verband`), Antragsformular, Hilfeseite zum Antrag und die
+  Belegliste-Vorlage. Der eingeschobene Halbsatz im Fließtext ist jeweils zu einem
+  eigenen Satz oder zu einem Komma-Einschub aufgelöst, der Wortlaut bleibt sonst
+  gleich. Einige dabei entstandene Kommasplices sind zu zwei Sätzen getrennt.
+- Bewusst **nicht** angefasst: Paragrafenverweise (`§ 4.9 – Fahrtkosten n. BayRKG`),
+  Bereichsangaben, der Strich als Leerwert in Tabellen und Auswahlfeldern
+  (`— Bitte wählen —`), Überschriften, die Textbausteine der Datenschutzerklärung und
+  Bezeichnungen aus den Zuschussrichtlinien des KJR. Hilfetexte im Backend bleiben
+  ebenfalls unverändert.
+
+### Dokumentiert
+- **M4 Sequenz-Präfix bleibt `ANT/`.** Im Bestand des KJR stehen Anträge als
+  `ZA/2026/...`. Gewachsene Kundennummerierung, kein Codefehler; Begründung als
+  Kommentar in `data/ir_sequence_data.xml`.
+
 ## 19.0.15.3.0 — Mailvorlagen rendern wieder (Fehlerbericht 30.08.2026)
 
 ### Behoben

@@ -1,5 +1,17 @@
 # Changelog — kjr_facility
 
+## 19.0.7.1.0 — Gedankenstriche in Einrichtungsanfrage und Vertrag (M2 aus dem Fehlerbericht 30.08.2026)
+
+### Geändert
+- **11 Gedankenstriche aus den kundenseitigen Texten entfernt**: Einrichtungsübersicht,
+  Buchungsanfrage (Kurbeitrag, Begleitpersonen, Befreiungen, Kostenvorschau,
+  fehlender Tarif), Datenschutzhinweise der Anfrage und die Verpflegungszeile im
+  Buchungsvertrag. Der eingeschobene Halbsatz im Fließtext ist jeweils zu einem
+  eigenen Satz oder zu einem Komma-Einschub aufgelöst.
+- Bewusst **nicht** angefasst: Überschriften der Übergabeprotokoll-Abschnitte
+  („Anreise — Übergabe an die Gruppe"), Betreffzeilen der Mailvorlagen, der Strich als
+  Leerwert im Protokoll und die Textbausteine der Datenschutzerklärung.
+
 ## 19.0.7.0.0 — Portalbuchungen bekommen einen Tarif (Fehlerbericht 30.08.2026)
 
 ### Behoben

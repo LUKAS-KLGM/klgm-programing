@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- M4 (Fehlerbericht 30.08.2026), bewusst NICHT geaendert:
+         Im Bestand des KJR stehen Antraege als ZA/2026/..., diese Sequenz erzeugt
+         ANT/2026/.... Siehe Begruendung in kjr_rental/data/ir_sequence_data.xml:
+         gewachsene Kundennummerierung, kein Codefehler. Entscheidung 09.09.2026:
+         unveraendert lassen. -->
     <data noupdate="1">
 
         <record id="seq_kjr_grant_application" model="ir.sequence">

@@ -63,7 +63,7 @@
             <div id="kjr_purpose_help" class="form-text">
                 Der Verleih ist an Zwecke der Kinder- und Jugendarbeit nach dem SGB VIII
                 (Kinder- und Jugendhilfe) gebunden. Bitte beschreiben Sie kurz die Maßnahme
-                oder Veranstaltung, für die das Material eingesetzt wird – daraus ergibt sich
+                oder Veranstaltung, für die das Material eingesetzt wird. Daraus ergibt sich
                 die Nutzungsberechtigung.
             </div>
         </div>
@@ -213,7 +213,7 @@
     <template id="rental_pricing_hint" name="KJR Verleih: Hinweis zu den Preismodellen">
         <div t-if="pricing_hint" class="alert alert-info small" role="status">
             <i class="fa fa-info-circle me-2" aria-hidden="true"/>
-            Nicht alle Artikel werden pro Tag abgerechnet – je nach Artikel gilt ein
+            Nicht alle Artikel werden pro Tag abgerechnet. Je nach Artikel gilt ein
             Preis pro Nacht, pro Stück (Pauschale), pro Kilometer oder eine
             Mengenstaffel. Der angefragte Zeitraum bestimmt deshalb nicht bei jedem
             Artikel den Betrag. Die genannten Beträge sind Orientierungswerte;
@@ -236,7 +236,7 @@
             <i class="fa fa-info-circle me-2" aria-hidden="true"/>
             Für <strong t-esc="partner.name"/> gilt der <strong>Standardtarif</strong>.
             Ist Ihre Organisation Mitgliedsverband des Kreisjugendrings Oberallgäu?
-            Dann melden Sie sich bitte bei der Geschäftsstelle – der Mitgliedstarif wird
+            Dann melden Sie sich bitte bei der Geschäftsstelle. Der Mitgliedstarif wird
             dann für künftige Anfragen hinterlegt.
         </div>
     </template>
@@ -252,7 +252,7 @@
                         <span class="badge text-bg-primary" id="kjr_cart_count" t-esc="cart_count or 0"/>
                     </a>
                 </div>
-                <p class="text-muted mb-4">Material für eure Jugendarbeit – Mitgliedsverbände zu vergünstigten Tarifen.</p>
+                <p class="text-muted mb-4">Material für eure Jugendarbeit. Mitgliedsverbände zahlen vergünstigte Tarife.</p>
                 <t t-call="kjr_rental.rental_pricing_hint"/>
 
                 <!-- Nutzungsberechtigung, Tarife und Umsatzsteuer -->
@@ -309,7 +309,7 @@
                         <div>
                             <h2 class="h5 mb-1"><i class="fa fa-bus me-2" aria-hidden="true"/>Spielmobil des Kreisjugendrings</h2>
                             <p class="mb-0 text-muted small">
-                                Spiel- und Bewegungsangebote vor Ort – nur für Gemeinden im
+                                Spiel- und Bewegungsangebote vor Ort. Nur für Gemeinden im
                                 Landkreis Oberallgäu, gesondert anzufragen.
                             </p>
                         </div>
@@ -422,11 +422,11 @@
                 <dd class="col-sm-8">Ihren Namen bzw. den der Ansprechpartnerin oder des
                     Ansprechpartners, E-Mail-Adresse und Telefonnummer, den gewünschten
                     Zeitraum, die angefragten Artikel, den Zweck der Nutzung, Ihre
-                    Anmerkungen und – falls abgefragt – die Bestätigung der
+                    Anmerkungen und, falls abgefragt, die Bestätigung der
                     Nutzungshinweise. Beim Spielmobil zusätzlich die Gemeinde, den
                     Wunschtermin, den Einsatzort und die erwartete Teilnehmerzahl.
                     <span class="d-block mt-1">Angaben zu einzelnen Teilnehmenden fragen
-                        wir hier bewusst nicht ab – nur die erwartete Anzahl.</span>
+                        wir hier bewusst nicht ab, sondern nur die erwartete Anzahl.</span>
                 </dd>
 
                 <dt class="col-sm-4">Wofür wir sie nutzen</dt>
@@ -976,7 +976,7 @@
                             Die Kaution ist eine Sicherheitsleistung, kein Entgelt für die
                             Ausleihe. Sie wird bei der Übergabe hinterlegt und nach
                             beanstandungsfreier Rückgabe erstattet. Über Hinterlegung und
-                            Erstattung wird kein eigener Beleg erstellt — maßgeblich ist der
+                            Erstattung wird kein eigener Beleg erstellt. Maßgeblich ist der
                             oben angezeigte Stand. Wird die Kaution einbehalten, hält die
                             Geschäftsstelle den Grund im Vorgang fest und meldet sich bei Ihnen.
                         </p>

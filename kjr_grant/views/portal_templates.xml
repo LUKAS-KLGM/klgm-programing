@@ -237,7 +237,7 @@
                             von <strong><t t-esc="verband.name"/></strong> selbst<t
                             t-if="member_info.get('vr_right')"> und melden, wer Ihren Verband
                             in der Vollversammlung vertritt</t>.
-                            Bisher lief das über die Geschäftsstelle — was Sie hier ändern,
+                            Bisher lief das über die Geschäftsstelle. Was Sie hier ändern,
                             gilt sofort.
                         </p>
                         <div class="alert alert-light border small" role="note">
@@ -289,7 +289,7 @@
                                     Diese Angaben nutzt der Kreisjugendring für Post,
                                     Einladungen und Rückfragen. Änderungen können Sie
                                     selbst vornehmen. Mit <span class="text-danger">*</span>
-                                    gekennzeichnete Felder sind Pflichtangaben — ohne
+                                    gekennzeichnete Felder sind Pflichtangaben. Ohne
                                     Anschrift und E-Mail kann die Geschäftsstelle Ihrem
                                     Verband weder Bescheide zustellen noch Rückfragen
                                     stellen.
@@ -387,7 +387,7 @@
                                                    t-att-aria-describedby="errors.get('email') and 'v_email_help v_email_err' or 'v_email_help'"/>
                                             <div t-if="'email' in locked_fields" class="form-text text-warning">
                                                 An dieser Adresse hängt Ihr Portalzugang. Sie lässt
-                                                sich deshalb hier nicht ändern — bitte wenden Sie sich
+                                                sich deshalb hier nicht ändern. Bitte wenden Sie sich
                                                 an die Geschäftsstelle.
                                             </div>
                                             <div id="v_email_help" class="form-text">
@@ -445,14 +445,14 @@
                             <div class="card-body">
                                 <div class="alert alert-secondary small" role="note">
                                     <i class="fa fa-lock me-1" aria-hidden="true"/>
-                                    <strong>Diese Angaben können Sie hier nicht ändern — und das
+                                    <strong>Diese Angaben können Sie hier nicht ändern, und das
                                     hat einen Grund:</strong>
                                     Sie sind keine Selbstauskunft des Verbands, sondern
                                     Feststellungen des Kreisjugendrings. Aus ihnen ergibt
                                     sich, wer Zuschüsse beantragen und wer in der
                                     Vollversammlung abstimmen darf. Sie folgen aus der
                                     Aufnahme in den KJR und aus der Satzung, nicht aus einer
-                                    Eintragung im Portal — deshalb pflegt sie ausschliesslich
+                                    Eintragung im Portal. Deshalb pflegt sie ausschliesslich
                                     die Geschäftsstelle. Stimmt etwas davon nicht, melden Sie
                                     es bitte dort (Kontakt am Ende dieses Abschnitts).
                                 </div>
@@ -477,7 +477,7 @@
                                         <span class="d-block text-muted small">
                                             Nach § 33 Abs. 1 BJR-Satzung hat jeder
                                             stimmberechtigte Mitgliedsverband in der
-                                            Vollversammlung genau eine Stimme — unabhängig
+                                            Vollversammlung genau eine Stimme, unabhängig
                                             davon, wie viele Delegierte er meldet.
                                         </span>
                                     </dd>
@@ -520,7 +520,7 @@
                                             Über die Bankverbindung laufen die
                                             Zuschussauszahlungen. Sie wird deshalb nicht hier
                                             geändert: Bitte melden Sie eine neue
-                                            Kontoverbindung — etwa nach einem Kassenwechsel —
+                                            Kontoverbindung, etwa nach einem Kassenwechsel,
                                             der Geschäftsstelle.
                                         </span>
                                     </dd>
@@ -553,12 +553,12 @@
                             <div class="card-body">
                                 <p class="text-muted small">
                                     Personen, über die der Kreisjugendring Ihren Verband
-                                    erreicht — Vorstand, Jugendleitung, Kassenführung. Die
+                                    erreicht: Vorstand, Jugendleitung, Kassenführung. Die
                                     Angaben gehören zum Verband; jede eingetragene Person
                                     sollte davon wissen.
                                     <span class="d-block mt-1">Für einen einzelnen
                                         Zuschussantrag können Sie im Antragsformular eine
-                                        abweichende Ansprechperson angeben — diese Liste
+                                        abweichende Ansprechperson angeben. Diese Liste
                                         hier ändert daran nichts, und eine Änderung hier
                                         wirkt nicht auf bereits gestellte Anträge.</span>
                                 </p>
@@ -700,7 +700,7 @@
                                                                                     Angaben gehören zu diesem Zugang: Über die
                                                                                     E-Mail-Adresse läuft das Zurücksetzen des Passworts.
                                                                                     Könnte man sie hier ändern, ließe sich der Zugang
-                                                                                    einer anderen Person übernehmen — deshalb ändert die
+                                                                                    einer anderen Person übernehmen. Deshalb ändert die
                                                                                     Geschäftsstelle beides, nicht der Verband.
                                                                                     Funktion und Telefon pflegen Sie wie gewohnt selbst.
                                                                                 </div>
@@ -775,7 +775,7 @@
                                                                             Der Eintrag wird nur stillgelegt. Bereits gestellte
                                                                             Anträge und Protokolle der Vollversammlung bleiben
                                                                             unverändert, und die Geschäftsstelle kann die Person
-                                                                            jederzeit wieder aufnehmen — melden Sie sich einfach
+                                                                            jederzeit wieder aufnehmen. Melden Sie sich einfach
                                                                             dort, wenn Sie sich vertan haben.
                                                                         </p>
                                                                         <!-- Abweisung (z. B. Portalzugang an dieser Person):
@@ -934,7 +934,7 @@
                                 <p class="text-muted small">
                                     Delegierte vertreten Ihren Verband in der Vollversammlung des
                                     Kreisjugendrings. Diese Liste nutzt die Geschäftsstelle als
-                                    Grundlage für die Einladung und für das Protokoll — halten Sie
+                                    Grundlage für die Einladung und für das Protokoll. Halten Sie
                                     sie deshalb aktuell. Nach § 33 Abs. 1 BJR-Satzung hat Ihr
                                     Verband dabei eine Stimme, gleich wie viele Delegierte Sie
                                     melden.
@@ -983,7 +983,7 @@
                                     </div>
                                     <p class="form-text mb-0">
                                         Das Kennzeichen setzen und entfernen Sie oben bei der jeweiligen
-                                        Person unter „Ansprechpersonen“ — bewusst an einer einzigen
+                                        Person unter „Ansprechpersonen“, bewusst an einer einzigen
                                         Stelle, damit die beiden Listen nicht auseinanderlaufen.
                                     </p>
                                 </t>
@@ -1003,7 +1003,7 @@
                                 Vollversammlung hinterlegt (siehe oben unter „Mitgliedschaft
                                 im Kreisjugendring“). Deshalb gibt es hier nichts zu melden.
                                 Halten Sie das für einen Fehler, wenden Sie sich bitte an die
-                                Geschäftsstelle — das Vertretungsrecht stellt der
+                                Geschäftsstelle. Das Vertretungsrecht stellt der
                                 Kreisjugendring fest, es lässt sich im Portal nicht setzen.
                             </div>
                         </t>
@@ -1092,7 +1092,7 @@
                     vertritt.
                     <span class="d-block mt-1">Sie tragen hier Daten anderer Personen ein.
                         Bitte nur die Kontaktdaten, unter denen die Person für den Verband
-                        erreichbar sein soll, und bitte nur mit deren Wissen – keine
+                        erreichbar sein soll, und bitte nur mit deren Wissen. Keine
                         Angaben zu Gesundheit, Herkunft, Religion oder Ähnlichem.</span>
                 </dd>
 
@@ -1101,7 +1101,7 @@
                     Verbands festgehalten: welches Feld geändert wurde, welcher Wert vorher
                     dort stand, wer die Änderung vorgenommen hat und wann. Die
                     Geschäftsstelle kann damit nachvollziehen, wie die Daten zustande
-                    gekommen sind – das ersetzt die Rückfrage und den Aktenvermerk auf
+                    gekommen sind. Das ersetzt die Rückfrage und den Aktenvermerk auf
                     Papier.</dd>
 
                 <dt class="col-sm-4">Wofür wir sie nutzen</dt>
@@ -1226,15 +1226,15 @@
                 <dd class="col-sm-8">Die Angaben zur Maßnahme (Bezeichnung, Zeitraum, Ort),
                     die antragstellende Organisation sowie Name, E-Mail-Adresse und
                     Telefonnummer der Ansprechpartnerin oder des Ansprechpartners, die
-                    Kostenaufstellung und die Belegliste – und die Teilnahmeliste mit
+                    Kostenaufstellung und die Belegliste sowie die Teilnahmeliste mit
                     Name, Alter, Geschlecht, PLZ, Wohnort, Kennziffer und Juleica-Angabe
                     jeder teilnehmenden Person. Die Teilnahmeliste betrifft in der Regel
                     auch Minderjährige.
-                    <span class="d-block mt-1">Dazu die Dateien, die Sie hochladen –
+                    <span class="d-block mt-1">Dazu die Dateien, die Sie hochladen:
                         Teilnahmeliste, Bericht, Belege und weitere Dokumente. Diese
                         enthalten meist ebenfalls Klarnamen.</span>
                     <span class="d-block mt-1">Bitte tragen Sie nur ein und laden Sie nur
-                        hoch, was für Antrag und Nachweis nötig ist – keine Angaben zu
+                        hoch, was für Antrag und Nachweis nötig ist. Keine Angaben zu
                         Gesundheit, Herkunft, Religion oder Ähnlichem.</span>
                 </dd>
 
@@ -2038,8 +2038,8 @@
                                 Lieber auf Papier sammeln?
                                 <a href="/service/zuschuss/belegliste-vorlage" target="_blank">
                                     Vorlage zum Ausdrucken
-                                </a>
-                                — ausgefüllt und unterschrieben können Sie sie unter
+                                </a>.
+                                Ausgefüllt und unterschrieben können Sie sie unter
                                 „8. Dokumente“ als Scan hochladen.
                             </p>
                             <div id="rc_wrapper" class="d-none">
@@ -2095,7 +2095,7 @@
                                     </table>
                                 </div>
                                 <p class="text-muted small mb-0">
-                                    Die Position bestimmt die Art (Einnahme/Ausgabe) — sie wird bei der
+                                    Die Position bestimmt die Art (Einnahme/Ausgabe). Sie wird bei der
                                     Auswahl automatisch gesetzt.
                                 </p>
                             </div>
@@ -2240,7 +2240,7 @@
                                         PDF, Word, Excel/CSV oder Bild (JPG/PNG), max. 10 MB.
                                     </div>
                                     <div class="form-text text-success d-none" id="receipt_optional_hint">
-                                        Bei der gewählten Förderart ist keine Belegliste nötig — das Feld
+                                        Bei der gewählten Förderart ist keine Belegliste nötig. Das Feld
                                         ist optional.
                                     </div>
                                 </div>
@@ -2485,7 +2485,7 @@
                                 Der Verband muss <strong>Vertretungsrecht in der
                                 Vollversammlung</strong> haben (§ 3.1 der Richtlinien).
                                 Fehlt das Vertretungsrecht, weist das System den Antrag beim
-                                Einreichen ab — bitte in diesem Fall vorab die
+                                Einreichen ab. Bitte in diesem Fall vorab die
                                 Geschäftsstelle ansprechen.
                             </li>
                             <li>
@@ -2496,7 +2496,7 @@
                             <li>
                                 Im Antragsformular wählen Sie unter „2. Antragsteller/in" die
                                 Organisation aus. Erscheint Ihr Verband dort nicht, ist er
-                                noch nicht als Mitgliedsverband hinterlegt — bitte bei der
+                                noch nicht als Mitgliedsverband hinterlegt. Bitte bei der
                                 Geschäftsstelle melden.
                             </li>
                         </ul>
@@ -2679,7 +2679,7 @@
                             </li>
                             <li>
                                 <strong>Belegliste:</strong> entweder digital im Formular
-                                (Block 7) oder als Datei — beides zusammen ist nicht nötig.
+                                (Block 7) oder als Datei. Beides zusammen ist nicht nötig.
                                 Eine
                                 <a href="/service/zuschuss/belegliste-vorlage" target="_blank">Vorlage
                                 zum Ausdrucken</a>
@@ -2717,7 +2717,7 @@
                                 <strong>Erinnerung:</strong> Anträge, die
                                 <t t-esc="reminder_days"/> Tage vor Fristablauf noch im
                                 Entwurf liegen, werden der Geschäftsstelle zur Erinnerung
-                                vorgelegt. Verlassen Sie sich nicht darauf — maßgeblich ist
+                                vorgelegt. Verlassen Sie sich nicht darauf. Maßgeblich ist
                                 Ihr rechtzeitiges Einreichen.
                             </li>
                             <li>
@@ -2732,7 +2732,7 @@
                                 Höchstzahl an Anträgen pro Kalenderjahr (siehe Tabelle unter
                                 Punkt 2). Maßgeblich ist das Jahr des Maßnahmenbeginns.
                                 <strong>Achtung:</strong> Einige Förderarten teilen sich diese
-                                Höchstzahl — die Anträge zählen dann zusammen und nicht je
+                                Höchstzahl. Die Anträge zählen dann zusammen und nicht je
                                 Förderart einzeln. Die Tabelle unter Punkt 2 nennt in diesem
                                 Fall die beteiligten Förderarten hinter „gemeinsam mit".
                             </li>
@@ -2799,7 +2799,7 @@
                             <div class="list-group-item">
                                 <strong>Unvollständige Teilnahmeliste.</strong>
                                 Fehlen Alter oder Wohnort, lassen sich Altersgrenzen und der
-                                Anteil auswärtiger Teilnehmender nicht prüfen — der Zuschuss
+                                Anteil auswärtiger Teilnehmender nicht prüfen. Der Zuschuss
                                 kann dann nicht in voller Höhe anerkannt werden. Auch die
                                 Gruppenleitung gehört mit Kennziffer in die Liste; anerkannt
                                 wird nur eine begrenzte Zahl an Leitungspersonen im Verhältnis
@@ -2810,7 +2810,7 @@
                                 Häufigster Rückläufer: Kostenaufstellung ausgefüllt, aber weder
                                 digitale Belegliste erfasst noch Datei hochgeladen. Bei allen
                                 Förderarten mit Belegliste-Pflicht (siehe Tabelle unter Punkt 3)
-                                ist eines von beidem nötig — die Kostenaufstellung allein
+                                ist eines von beidem nötig. Die Kostenaufstellung allein
                                 genügt nicht.
                             </div>
                             <div class="list-group-item">
@@ -2889,7 +2889,7 @@
                     <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center">
                         <div class="me-3">
                             Leere Belegliste zum Ausdrucken. Ausgefüllt und unterschrieben
-                            können Sie sie als Scan zum Antrag hochladen — oder Sie erfassen
+                            können Sie sie als Scan zum Antrag hochladen, oder Sie erfassen
                             die Belege direkt im
                             <a href="/service/antrag-stellen">Antragsformular</a>
                             (Block 7 „Belegliste").
