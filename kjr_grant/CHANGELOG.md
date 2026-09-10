@@ -1,5 +1,13 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.15.5.0 (2026-09-10)
+
+- Beispieltexte im Zuschussantrag ersetzt. Die Platzhalter nannten mit
+  „Sommerausflug Skylinepark", „86871" und „Skylinepark, Rammingen" einen fremden
+  Fall. Jetzt neutral: „z. B. Sommerfreizeit der Jungschar 2026" und
+  „z. B. Jugendzeltplatz", die PLZ ohne Platzhalter.
+- Offenen TODO-Kommentar zum Skylinepark entfernt.
+
 ## 19.0.15.4.0 — Gedankenstriche in Antragsstrecke und Verbandsportal (M2 aus dem Fehlerbericht 30.08.2026)
 
 ### Geändert
