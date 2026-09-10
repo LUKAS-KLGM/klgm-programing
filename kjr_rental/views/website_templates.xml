@@ -439,33 +439,33 @@
                 <dd class="col-sm-8">Die Geschäftsstelle des Kreisjugendrings Oberallgäu
                     und die Personen, die den Verleih und die Abrechnung betreuen.
                     <span class="d-block mt-1">Technischer Betrieb der Website:
-                        <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.operator')"/><span t-if="kjr_dsw" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
                     </span>
                 </dd>
 
                 <dt class="col-sm-4">Verantwortlich</dt>
                 <dd class="col-sm-8">
-                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.controller')"/><span t-if="kjr_dsw" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
                     <span class="d-block text-muted">Name, Anschrift und Kontakt der
                         verantwortlichen Stelle.</span>
                 </dd>
 
                 <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
                 <dd class="col-sm-8">
-                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
                     <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
                 </dd>
 
                 <dt class="col-sm-4">Rechtsgrundlage</dt>
                 <dd class="col-sm-8">
-                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.legal_basis')"/><span t-if="kjr_dsw" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
                     <span class="d-block text-muted">Legt der Kreisjugendring gemeinsam mit
                         der Datenschutzbeauftragten fest.</span>
                 </dd>
 
                 <dt class="col-sm-4">Wie lange wir speichern</dt>
                 <dd class="col-sm-8">
-                    <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.retention')"/><span t-if="kjr_dsw" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
                     <span class="d-block text-muted">Die Aufbewahrungsdauer legt der
                         Kreisjugendring fest und trägt sie hier ein.</span>
                 </dd>
@@ -476,7 +476,7 @@
                     machen, steht in der
                     <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
                     <span class="d-block mt-1">Zuständige Aufsichtsbehörde:
-                        <span class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.authority')"/><span t-if="kjr_dsw" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
                     </span>
                 </dd>
             </dl>

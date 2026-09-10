@@ -1,5 +1,17 @@
 # Changelog — kjr_facility
 
+## 19.0.7.2.0 (2026-09-10)
+
+- **Die Angaben im Datenschutzblock kommen jetzt aus der Konfiguration.** Bisher
+  standen dort feste Platzhalter „wird vom KJR ergänzt", die kein Kunde füllen
+  konnte, ohne die Vorlage zu ändern, und deren Änderung jedes Modulupdate wieder
+  überschrieben hätte.
+- Gelesen werden sechs Systemparameter: `kjr.privacy.operator`,
+  `kjr.privacy.controller`, `kjr.privacy.dpo`, `kjr.privacy.legal_basis`,
+  `kjr.privacy.retention`, `kjr.privacy.authority`.
+- Ist ein Parameter leer, bleibt der bisherige Warnhinweis stehen. Nichts
+  verschwindet unbemerkt.
+
 ## 19.0.7.1.0 — Gedankenstriche in Einrichtungsanfrage und Vertrag (M2 aus dem Fehlerbericht 30.08.2026)
 
 ### Geändert

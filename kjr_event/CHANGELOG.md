@@ -1,5 +1,17 @@
 ## 19.0.5.5.0 — Gedankenstriche in den Teilnehmertexten (M2 aus dem Fehlerbericht 30.08.2026)
 
+## 19.0.5.6.0 (2026-09-10)
+
+- **Die Angaben im Datenschutzblock kommen jetzt aus der Konfiguration.** Bisher
+  standen dort feste Platzhalter „wird vom KJR ergänzt", die kein Kunde füllen
+  konnte, ohne die Vorlage zu ändern, und deren Änderung jedes Modulupdate wieder
+  überschrieben hätte.
+- Gelesen werden sechs Systemparameter: `kjr.privacy.operator`,
+  `kjr.privacy.controller`, `kjr.privacy.dpo`, `kjr.privacy.legal_basis`,
+  `kjr.privacy.retention`, `kjr.privacy.authority`.
+- Ist ein Parameter leer, bleibt der bisherige Warnhinweis stehen. Nichts
+  verschwindet unbemerkt.
+
 ### Geändert
 - **4 Gedankenstriche aus den kundenseitigen Texten entfernt**: Datenschutzhinweis über
   der Teilnehmerliste im Kooperationspartner-Portal, Hilfetext des Ernährungsfelds und
