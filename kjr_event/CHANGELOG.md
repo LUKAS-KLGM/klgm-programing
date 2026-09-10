@@ -1,5 +1,9 @@
 ## 19.0.5.5.0 — Gedankenstriche in den Teilnehmertexten (M2 aus dem Fehlerbericht 30.08.2026)
 
+## 19.0.5.6.1 (2026-09-10)
+
+- Abstand zwischen Label und Wert im Datenschutzblock.
+
 ## 19.0.5.6.0 (2026-09-10)
 
 - **Die Angaben im Datenschutzblock kommen jetzt aus der Konfiguration.** Bisher

@@ -1,5 +1,9 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.15.6.1 (2026-09-10)
+
+- Abstand zwischen Label und Wert im Datenschutzblock.
+
 ## 19.0.15.6.0 (2026-09-10)
 
 - **Die Angaben im Datenschutzblock kommen jetzt aus der Konfiguration.** Bisher

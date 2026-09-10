@@ -1,5 +1,9 @@
 # Changelog – KJR Materialverleih
 
+## 19.0.5.4.1 (2026-09-10)
+
+- Abstand zwischen Label und Wert im Datenschutzblock.
+
 ## 19.0.5.4.0 (2026-09-10)
 
 - **Die Angaben im Datenschutzblock kommen jetzt aus der Konfiguration.** Bisher

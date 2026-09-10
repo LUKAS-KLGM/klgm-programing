@@ -1,5 +1,9 @@
 # Changelog — kjr_facility
 
+## 19.0.7.2.1 (2026-09-10)
+
+- Abstand zwischen Label und Wert im Datenschutzblock.
+
 ## 19.0.7.2.0 (2026-09-10)
 
 - **Die Angaben im Datenschutzblock kommen jetzt aus der Konfiguration.** Bisher
