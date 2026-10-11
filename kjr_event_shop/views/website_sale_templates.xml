@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- "Communication" ist im deutschen Odoo als "Mitteilungen" uebersetzt.
+         Gemeint ist der Verwendungszweck der Ueberweisung, also die Referenz. -->
+    <template id="payment_confirmation_status_kjr_reference"
+              inherit_id="website_sale.payment_confirmation_status"
+              name="KJR: Referenz statt Mitteilungen (Shop)">
+        <xpath expr="//div[@id='order_reference']/b" position="replace">
+            <b>Referenz (Verwendungszweck): </b>
+        </xpath>
+    </template>
+
+    <template id="custom_state_header_kjr_reference"
+              inherit_id="payment_custom.custom_state_header"
+              name="KJR: Referenz statt Mitteilungen (Zahlungsstatus)">
+        <xpath expr="//div[@id='o_payment_status_message_details']//strong" position="replace">
+            <strong class="mt-auto">Referenz (Verwendungszweck): </strong>
+        </xpath>
+    </template>
+
+</odoo>
