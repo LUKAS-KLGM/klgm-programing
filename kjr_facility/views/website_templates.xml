@@ -430,14 +430,14 @@
                             <dt class="col-sm-4">Rechtsgrundlage</dt>
                             <dd class="col-sm-8">
                                 <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.legal_basis')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
-                                <span class="d-block text-muted">Legt der Betreiber gemeinsam
+                                <span t-if="not kjr_dsw and request.env.user._is_internal()" class="d-block text-muted">Legt der Betreiber gemeinsam
                                     mit der Datenschutzbeauftragten fest.</span>
                             </dd>
 
                             <dt class="col-sm-4">Wie lange wir speichern</dt>
                             <dd class="col-sm-8">
                                 <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.retention')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
-                                <span class="d-block text-muted">Die Aufbewahrungsdauer legt der
+                                <span t-if="not kjr_dsw and request.env.user._is_internal()" class="d-block text-muted">Die Aufbewahrungsdauer legt der
                                     Betreiber fest und trägt sie hier ein.</span>
                             </dd>
 

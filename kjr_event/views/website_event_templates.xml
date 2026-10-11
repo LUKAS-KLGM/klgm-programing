@@ -6,7 +6,11 @@
               inherit_id="website_event.registration_attendee_details"
               name="KJR Anmeldedetails">
         <xpath expr="//t[@name='attendee_loop']" position="inside">
-            <div class="row g-2 mt-2 o_kjr_attendee_fields">
+            <!-- Eigener modal-body: Odoos Fragen stehen in einem modal-body mit
+                 Innenabstand; ohne diese Huelle liefen die KJR-Felder bis an den
+                 Dialogrand und standen links versetzt zu Name/E-Mail. -->
+            <div class="modal-body pt-0">
+            <div class="row g-3 o_kjr_attendee_fields">
                 <div class="col-md-4">
                     <label t-attf-for="#{counter}-birthdate" class="form-label">Geburtsdatum</label>
                     <input type="date" class="form-control"
@@ -126,6 +130,7 @@
                               t-attf-id="#{counter}-notes"/>
                 </div>
             </div>
+            </div>
         </xpath>
     </template>
 
@@ -161,11 +166,33 @@
            - zuständige Aufsichtsbehörde
          Alles übrige beschreibt ausschließlich das tatsächliche Verhalten des
          Systems und ist KEINE rechtliche Bewertung. -->
+    <!-- Anmeldedialog breiter (modal-xl statt modal-lg): drei Spalten KJR-Felder
+         plus Hilfetexte und der Datenschutzblock waren in 800 px zu eng. -->
+    <template id="registration_attendee_details_kjr_modal_width"
+              inherit_id="website_event.registration_attendee_details"
+              name="KJR Anmeldung: breiterer Dialog">
+        <xpath expr="//div[hasclass('modal-dialog')]" position="attributes">
+            <attribute name="class" separator=" " add="modal-xl" remove="modal-lg"/>
+        </xpath>
+        <!-- Beide Footer-Knoepfe gleiche Form: das Theme formt btn-primary und
+             btn-secondary unterschiedlich (Pille/fett vs. eckiger/normal).
+             Abbrechen bleibt als Outline-Knopf erkennbar nachrangig. -->
+        <xpath expr="//div[hasclass('modal-footer')]//button[hasclass('js_goto_event')]" position="attributes">
+            <attribute name="class" separator=" " add="btn-outline-primary rounded-pill fw-bold px-4" remove="btn-secondary"/>
+        </xpath>
+        <xpath expr="(//div[hasclass('modal-footer')]//button[hasclass('btn-primary')])[last()]" position="attributes">
+            <attribute name="class" separator=" " add="rounded-pill fw-bold px-4"/>
+        </xpath>
+    </template>
+
     <template id="registration_attendee_details_kjr_privacy"
               inherit_id="website_event.registration_attendee_details"
               name="KJR Anmeldung: Datenschutzhinweis">
         <xpath expr="//div[hasclass('modal-footer')]" position="before">
-            <section class="o_kjr_privacy_notice alert alert-light border mt-3"
+            <!-- Huelle modal-body: direkt in modal-content stand der Block ohne
+                 Innenabstand am Dialogrand und wurde links abgeschnitten. -->
+            <div class="modal-body pt-0">
+            <section class="o_kjr_privacy_notice alert alert-light border mb-0"
                      role="region" aria-labelledby="kjr_privacy_event_heading">
                 <h5 class="alert-heading h6" id="kjr_privacy_event_heading">
                     <i class="fa fa-lock me-2" aria-hidden="true"/>Datenschutz: was mit diesen Angaben passiert
@@ -218,14 +245,14 @@
                     <dt class="col-sm-4">Rechtsgrundlage</dt>
                     <dd class="col-sm-8">
                         <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.legal_basis')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
-                        <span class="d-block text-muted">Legt der Veranstalter gemeinsam mit
+                        <span t-if="not kjr_dsw and request.env.user._is_internal()" class="d-block text-muted">Legt der Veranstalter gemeinsam mit
                             der Datenschutzbeauftragten fest.</span>
                     </dd>
 
                     <dt class="col-sm-4">Wie lange wir speichern</dt>
                     <dd class="col-sm-8">
                         <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.retention')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
-                        <span class="d-block text-muted">Die Aufbewahrungsdauer legt der
+                        <span t-if="not kjr_dsw and request.env.user._is_internal()" class="d-block text-muted">Die Aufbewahrungsdauer legt der
                             Veranstalter fest und trägt sie hier ein.</span>
                     </dd>
 
@@ -240,6 +267,7 @@
                     </dd>
                 </dl>
             </section>
+            </div>
         </xpath>
     </template>
 
