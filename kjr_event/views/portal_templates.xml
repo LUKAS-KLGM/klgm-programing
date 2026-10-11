@@ -22,7 +22,7 @@
         </xpath>
     </template>
 
-    <template id="portal_kjr_events" name="KJR Kooperationspartner – Veranstaltungen">
+    <template id="portal_kjr_events" name="KJR Kooperationspartner: Veranstaltungen">
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True"/>
             <div class="o_portal_my_doc_table">
@@ -84,12 +84,12 @@
          Der Controller arbeitet ohne sudo(), damit ein Feldschutz (groups=)
          serverseitig greift; die Vorlage erhaelt nur vorbereitete Werte und
          kein Recordset, ueber das weitere Felder nachgeladen werden koennten. -->
-    <template id="portal_kjr_event_attendees" name="KJR Kooperationspartner – Teilnehmer/innen">
+    <template id="portal_kjr_event_attendees" name="KJR Kooperationspartner: Teilnehmer/innen">
         <t t-call="portal.portal_layout">
             <div class="o_portal_my_doc_table">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="mb-0">
-                        Teilnehmer/innen – <t t-esc="event.name"/>
+                        Teilnehmer/innen: <t t-esc="event.name"/>
                     </h3>
                     <a href="/my/kjr-events" class="btn btn-sm btn-secondary">Zurück</a>
                 </div>
@@ -134,7 +134,7 @@
                          partner erfährt, wie viele Portionen zu planen sind, aber
                          nicht, wer welche Angabe gemacht hat. -->
                     <t t-if="dietary_summary">
-                        <h5 class="mt-4">Verpflegung – Übersicht</h5>
+                        <h5 class="mt-4">Verpflegung: Übersicht</h5>
                         <table class="table table-sm w-auto">
                             <tbody>
                                 <tr t-foreach="dietary_summary" t-as="item">

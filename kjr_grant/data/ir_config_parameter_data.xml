@@ -79,7 +79,7 @@
             <field name="value">1</field>
         </record>
 
-        <!-- Auszahlungs-Stichtag (KJR-OA: 15.11.) – Anträge bis dahin im selben Jahr -->
+        <!-- Auszahlungs-Stichtag (Voreinstellung 15.11.) – Anträge bis dahin im selben Jahr -->
         <record id="param_payout_cutoff_day" model="ir.config_parameter">
             <field name="key">kjr_grant.payout_cutoff_day</field>
             <field name="value">15</field>

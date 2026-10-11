@@ -45,15 +45,15 @@
              Der Cron ist aktiv, tut aber im Auslieferungszustand NICHTS: die
              Methode steigt aus, solange der Systemparameter
              'kjr_facility.booking_retention_years' nicht auf einen Wert > 0 steht.
-             Die Frist ist beim KJR nicht festgelegt und wird hier bewusst nicht
-             vorbelegt (TODO(KJR)/TODO(DSGVO) im Modell).
+             Die Frist ist beim Betreiber nicht festgelegt und wird hier bewusst nicht
+             vorbelegt (TODO(Kunde)/TODO(DSGVO) im Modell).
 
              ACHTUNG, zweiter Schalter: Chatter, Feldhistorie und Anhänge werden nur
              mitgezogen, wenn zusätzlich 'kjr_facility.booking_anonymize_traces' auf 1
              steht (ebenfalls nicht ausgeliefert). Wird nur die Frist gesetzt, leert
              der Lauf die Felder, während dieselben Namen in Chatter, Feldhistorie und
              abgelegten PDF stehen bleiben; der Lauf protokolliert das als Warnung.
-             TODO(KJR): beide Parameter gemeinsam entscheiden.
+             TODO(Kunde): beide Parameter gemeinsam entscheiden.
 
              Monatlicher Lauf wie die Anonymisierung in kjr_grant — die Frist zählt
              in Jahren, häufiger wäre reine Last. -->
@@ -64,6 +64,35 @@
             <field name="code">model._cron_anonymize_expired()</field>
             <field name="interval_number">1</field>
             <field name="interval_type">months</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Befund 01.09.2026: doppelte Schlafraeume je Einrichtung.
+             Die Pruefung lag zuerst nur in migrations/19.0.7.3.0/. Ein
+             Migrationsskript laeuft aber genau EINMAL, naemlich beim Schritt auf
+             seine Ordnerversion (odoo/modules/migration.py). Ein spaeterer
+             Vorfall waere nie wieder gemeldet worden. Deshalb hier zusaetzlich
+             ein wiederholbarer Lauf.
+
+             Der Lauf aendert NICHTS: welcher der beiden Saetze die realen
+             Zimmernummern traegt, entscheidet die Geschaeftsstelle. Gemeldet wird
+             nur ins Log, und nur wenn mindestens ZWEI AKTIVE Raeume denselben
+             Vergleichsschluessel tragen.
+
+             Woechentlich: die Dublette entsteht ausschliesslich bei einem
+             Modul-Update, ein taeglicher Lauf waere reine Last.
+
+             Hinweis zur noupdate-Datei: NEUE Datensaetze aus einer
+             <data noupdate="1">-Datei werden beim Update sehr wohl angelegt
+             (convert.py, forcecreate). Dieser Cron erreicht Bestandsinstanzen
+             deshalb ohne Migrationsskript. -->
+        <record id="cron_kjr_room_duplicates" model="ir.cron">
+            <field name="name">KJR Einrichtung: doppelte Räume prüfen</field>
+            <field name="model_id" ref="model_kjr_facility"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_room_duplicates()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">weeks</field>
             <field name="active" eval="True"/>
         </record>
 

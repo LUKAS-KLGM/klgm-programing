@@ -39,9 +39,9 @@ class KjrGrantBudget(models.Model):
     def _compute_display_name(self):
         for rec in self:
             if rec.grant_type_id:
-                rec.display_name = f'{rec.year} — {rec.grant_type_id.name}'
+                rec.display_name = f'{rec.year}: {rec.grant_type_id.name}'
             else:
-                rec.display_name = f'{rec.year} — Gesamtbudget'
+                rec.display_name = f'{rec.year}: Gesamtbudget'
 
     @api.depends('amount_total', 'year', 'grant_type_id')
     def _compute_amounts(self):

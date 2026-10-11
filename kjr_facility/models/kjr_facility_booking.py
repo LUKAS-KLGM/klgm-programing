@@ -30,7 +30,7 @@ _logger = logging.getLogger(__name__)
 #   • Verwendungsnachweise: 5 Jahre (ANBest-P Nr. 6.6)
 #   • "1 Jahr Ferienprogramm" ist eine selbstdefinierte Policy des KJR und
 #     ausdrücklich keine gesetzliche Frist.
-# TODO(KJR): Frist festlegen und KJR_FACILITY_RETENTION_PARAM setzen.
+# TODO(Kunde): Frist festlegen und KJR_FACILITY_RETENTION_PARAM setzen.
 # TODO(DSGVO): Festlegung und Verfahren von der Datenschutzbeauftragten
 # bestätigen lassen, insbesondere den Umgang mit Chatter und Feldhistorie.
 KJR_FACILITY_RETENTION_PARAM = 'kjr_facility.booking_retention_years'
@@ -119,15 +119,19 @@ class KjrFacilityBooking(models.Model):
              'Mindestaufenthalt, Zielgruppe und Buchungsvorlauf: Die Geschäftsstelle darf '
              'abweichende Buchungen im Backend bewusst erfassen. Hart durchgesetzt werden '
              'diese Regeln nur im Website-Anfrageformular.')
+    # Benennung: kundensichtbar heisst die Position ueberall "Kurbeitrag"
+    # (Entscheidung vom 11.10.2026, Begruendung am Tarifeld
+    # kjr.facility.tariff.visitor_tax_per_person_night). Der technische Feldname
+    # bleibt bewusst visitor_tax_*.
     visitor_tax_exempt_count = fields.Integer(
-        string='Zusätzlich vom Fremdenverkehrsbeitrag befreit', default=0,
-        help='Anzahl der TEILNEHMENDEN, für die zusätzlich kein Fremdenverkehrsbeitrag '
+        string='Zusätzlich vom Kurbeitrag befreit', default=0,
+        help='Anzahl der TEILNEHMENDEN, für die zusätzlich kein Kurbeitrag '
              'anfällt: Einwohnerinnen und Einwohner der Standortgemeinde, Kinder unter '
              '7 Jahren sowie Schwerbehinderte. ACHTUNG: Betreuerinnen und Betreuer '
              '(Feld „Betreuer") sind nach der Satzungslage ohnehin befreit und gehen '
-             'gar nicht erst in die Berechnung ein — sie dürfen hier NICHT noch einmal '
+             'gar nicht erst in die Berechnung ein. Sie dürfen hier NICHT noch einmal '
              'eingetragen werden, sonst wird doppelt abgezogen. '
-             'Beitragspflichtig sind: Teilnehmer − dieser Wert.')
+             'Beitragspflichtig sind: Teilnehmer minus dieser Wert.')
     room_ids = fields.Many2many(
         'kjr.facility.room', 'kjr_booking_room_rel', 'booking_id', 'room_id',
         string='Räume',
@@ -173,9 +177,10 @@ class KjrFacilityBooking(models.Model):
     amount_accommodation = fields.Monetary(string='Unterkunft', compute='_compute_amounts', store=True)
     amount_meals = fields.Monetary(string='Verpflegung (Betrag)', compute='_compute_amounts', store=True)
     amount_equipment = fields.Monetary(string='Ausstattung', compute='_compute_amounts', store=True)
-    # F2: Fremdenverkehrsbeitrag (pro Person und Nacht) und einmalige Endreinigung.
+    # F2: Kurbeitrag (pro Person und Nacht) und einmalige Endreinigung.
+    # Technischer Feldname bleibt amount_visitor_tax (siehe Kommentar am Tarifeld).
     amount_visitor_tax = fields.Monetary(
-        string='Fremdenverkehrsbeitrag', compute='_compute_amounts', store=True)
+        string='Kurbeitrag', compute='_compute_amounts', store=True)
     amount_cleaning = fields.Monetary(
         string='Endreinigung', compute='_compute_amounts', store=True)
     amount_untaxed = fields.Monetary(string='Netto', compute='_compute_amounts', store=True)
@@ -242,7 +247,7 @@ class KjrFacilityBooking(models.Model):
     #
     # Zählerstände sind bewusst freie Zahlenfelder ohne Vorbelegung und ohne
     # Verbrauchs-/Preislogik.
-    # TODO(KJR): Ob und wie Mehrverbrauch (Strom/Wasser/Gas) abgerechnet wird, ist
+    # TODO(Kunde): Ob und wie Mehrverbrauch (Strom/Wasser/Gas) abgerechnet wird, ist
     # nicht entschieden. Es gibt dafür weder einen belegten Arbeitspreis noch eine
     # belegte Freimenge, deshalb wird hier ausschließlich dokumentiert.
 
@@ -277,7 +282,7 @@ class KjrFacilityBooking(models.Model):
     handover_in_meter_electricity = fields.Float(
         string='Zählerstand Strom Anreise (kWh)', digits=(12, 2), copy=False,
         help='Ablesewert bei der Übergabe. Reine Dokumentation, es wird nichts daraus '
-             'berechnet (siehe TODO(KJR) zur Verbrauchsabrechnung).')
+             'berechnet.')
     handover_in_meter_water = fields.Float(
         string='Zählerstand Wasser Anreise (m³)', digits=(12, 2), copy=False,
         help='Ablesewert bei der Übergabe. Reine Dokumentation.')
@@ -287,7 +292,7 @@ class KjrFacilityBooking(models.Model):
              'Reine Dokumentation.')
     handover_in_damage = fields.Boolean(
         string='Schaden festgestellt (Anreise)', tracking=True, copy=False,
-        help='Bei der Übergabe wurde ein Schaden oder Mangel festgestellt — z. B. ein '
+        help='Bei der Übergabe wurde ein Schaden oder Mangel festgestellt, z. B. ein '
              'Vorschaden, den die Gruppe nicht zu vertreten hat. Dann ist die '
              'Schadensbeschreibung Pflicht.')
     handover_in_damage_note = fields.Text(
@@ -314,8 +319,8 @@ class KjrFacilityBooking(models.Model):
     handover_out_condition = fields.Selection(
         _HANDOVER_CONDITIONS, string='Zustand bei Rücknahme', tracking=True, copy=False,
         help='Festgestellter Zustand bei der Rücknahme. Leer = noch nicht erfasst. '
-             'Auch „Erhebliche Mängel" hindert den Abschluss der Buchung nicht — es '
-             'verlangt einen Vermerk.')
+             'Auch „Erhebliche Mängel" hindert den Abschluss der Buchung nicht, es '
+             'verlangt nur einen Vermerk.')
     handover_out_keys = fields.Integer(
         string='Schlüssel zurück (Anzahl)', default=0, copy=False,
         help='Anzahl der bei der Abreise zurückgegebenen Schlüssel/Transponder. Weicht die '
@@ -324,7 +329,7 @@ class KjrFacilityBooking(models.Model):
         string='Gereinigt übergeben', copy=False,
         help='Das Objekt wurde im vereinbarten Reinigungszustand zurückgegeben. Das '
              'Häkchen dokumentiert nur den Zustand; bleibt es leer, ist die Rücknahme '
-             'trotzdem abschließbar — dann bitte mit Vermerk. Unabhängig davon werden '
+             'trotzdem abschließbar, dann bitte mit Vermerk. Unabhängig davon werden '
              'die Räume der Buchung beim Abschluss auf „Zu reinigen" gesetzt.')
     handover_out_meter_electricity = fields.Float(
         string='Zählerstand Strom Abreise (kWh)', digits=(12, 2), copy=False,
@@ -339,7 +344,7 @@ class KjrFacilityBooking(models.Model):
         string='Schaden festgestellt (Abreise)', tracking=True, copy=False,
         help='Bei der Rücknahme wurde ein Schaden oder Verlust festgestellt. Dann ist die '
              'Schadensbeschreibung Pflicht. Ob daraus eine Forderung entsteht, entscheidet '
-             'die Geschäftsstelle — automatisch passiert nichts.')
+             'die Geschäftsstelle, automatisch passiert nichts.')
     handover_out_damage_note = fields.Text(
         string='Schadensbeschreibung (Abreise)', copy=False,
         help='Was genau ist beschädigt, fehlt oder wurde vereinbart? Pflicht, sobald '
@@ -431,9 +436,9 @@ class KjrFacilityBooking(models.Model):
             return t.weekday_price_per_person_night or 0.0
         return t.price_per_person_night or 0.0
 
-    # ── Fremdenverkehrsbeitrag: Bemessung und steuerliche Behandlung ─────────
+    # ── Kurbeitrag: Bemessung und steuerliche Behandlung ────────────────────
     #
-    # TODO(Steuer): Der Fremdenverkehrsbeitrag wird DERZEIT als DURCHLAUFENDER
+    # TODO(Steuer): Der Kurbeitrag wird DERZEIT als DURCHLAUFENDER
     # POSTEN behandelt, d. h. ohne Umsatzsteuer gerechnet und ohne Steuerschlüssel
     # auf die Rechnung gestellt. Grundlage ist die Zusage auf der Website ("Den
     # Beitrag führen wir an die Gemeinde ab") — für eine an die Standortgemeinde
@@ -449,7 +454,7 @@ class KjrFacilityBooking(models.Model):
     _visitor_tax_pass_through = True
 
     def _visitor_tax_taxes(self):
-        """Steuerschlüssel der Position „Fremdenverkehrsbeitrag“.
+        """Steuerschlüssel der Position „Kurbeitrag“.
 
         Leeres Recordset = durchlaufender Posten (kein Steuerausweis).
         Siehe TODO(Steuer) oben.
@@ -462,8 +467,8 @@ class KjrFacilityBooking(models.Model):
     def _visitor_tax_person_count(self):
         """Anzahl der beitragspflichtigen Personen (Bemessungsgrundlage).
 
-        Nach der Immenstädter Satzungslage sind Betreuende und Begleitpersonen vom
-        Fremdenverkehrsbeitrag BEFREIT; sie gehen deshalb gar nicht erst in die
+        Nach der Satzungslage der Standortgemeinde sind Betreuende und
+        Begleitpersonen vom Kurbeitrag BEFREIT; sie gehen deshalb gar nicht erst in die
         Grundmenge ein (``leader_count`` wird bewusst nicht addiert).
         ``visitor_tax_exempt_count`` erfasst ausschließlich ZUSÄTZLICH befreite
         Teilnehmende (Einwohner der Standortgemeinde, Kinder unter 7 Jahren,
@@ -503,7 +508,7 @@ class KjrFacilityBooking(models.Model):
             equipment = nights * sum(rec.equipment_ids.mapped('price_per_day'))
             # F2: Endreinigung fällt EINMALIG je Buchung an (nicht je Nacht/Person).
             cleaning = (t.final_cleaning_fee or 0.0) if (t and nights > 0) else 0.0
-            # F2: Fremdenverkehrsbeitrag je beitragspflichtiger Person und Nacht.
+            # F2: Kurbeitrag je beitragspflichtiger Person und Nacht.
             # Bemessungsgrundlage siehe _visitor_tax_person_count(): Betreuende sind
             # satzungsgemäß befreit und zählen nicht mit, visitor_tax_exempt_count
             # zieht zusätzlich befreite Teilnehmende ab (nie negativ).
@@ -525,7 +530,7 @@ class KjrFacilityBooking(models.Model):
                 res = taxes.compute_all(component, currency=currency, quantity=1.0)
                 untaxed += res['total_excluded']
                 tax += res['total_included'] - res['total_excluded']
-            # Fremdenverkehrsbeitrag getrennt: er kann (Default) als durchlaufender
+            # Kurbeitrag getrennt: er kann (Default) als durchlaufender
             # Posten ohne Steuer laufen — siehe TODO(Steuer) bei
             # _visitor_tax_pass_through. Die Rechnungsposition in
             # action_create_invoice verwendet exakt denselben Steuerschlüssel, damit
@@ -581,8 +586,8 @@ class KjrFacilityBooking(models.Model):
                         'die Einrichtung darf nur an organisierte Jugend-/Bildungsgruppen '
                         'vergeben werden'
                     ))
-                # B4: Buchungsvorlauf (Vorstandsbeschluss vom 21.07.2026) ist wie die
-                # übrigen Belegungsregeln nur ein weicher Hinweis. Die Geschäftsstelle
+                # B4: Der Buchungsvorlauf ist wie die übrigen Belegungsregeln nur
+                # ein weicher Hinweis. Die Geschäftsstelle
                 # muss begründete Ausnahmen (z. B. Stammgruppen mit langfristiger
                 # Planung) erfassen können; hart durchgesetzt wird die Frist allein im
                 # Website-Anfrageformular. 0 Monate = unbegrenzt; Anreisen in der
@@ -593,8 +598,7 @@ class KjrFacilityBooking(models.Model):
                     if rec.check_in > latest:
                         issues.append(_(
                             'der Buchungsvorlauf von %(m)d Monaten ist überschritten '
-                            '(Anreise %(wish)s, laut Vorstandsbeschluss vom 21.07.2026 '
-                            'spätestens %(latest)s)'
+                            '(Anreise %(wish)s, spätestens %(latest)s)'
                         ) % {
                             'm': months,
                             'wish': rec.check_in.strftime('%d.%m.%Y'),
@@ -687,8 +691,8 @@ class KjrFacilityBooking(models.Model):
                     p=rec.participant_count, b=rec.bed_count,
                 ))
 
-    # B4: Der Buchungsvorlauf (Vorstandsbeschluss vom 21.07.2026) war hier bis
-    # 19.0.3.0.0 ein @api.constrains und galt damit auch im Backend. Das widerspricht
+    # B4: Der Buchungsvorlauf war hier bis 19.0.3.0.0 ein @api.constrains und
+    # galt damit auch im Backend. Das widerspricht
     # dem Projektstandard — die Schwesterregeln (Mindestbelegung, Mindestaufenthalt,
     # organisierte Gruppe) sind bewusst nur weiche Hinweise — und machte begründete
     # Ausnahmen der Geschäftsstelle unmöglich; Altbuchungen jenseits der Frist
@@ -732,7 +736,7 @@ class KjrFacilityBooking(models.Model):
             own = (rec.participant_count or 0) + (rec.leader_count or 0)
             if others + own > capacity:
                 raise ValidationError(_(
-                    'Überbelegung: Im Zeitraum %(ci)s–%(co)s sind in %(fac)s bereits '
+                    'Überbelegung: Im Zeitraum %(ci)s bis %(co)s sind in %(fac)s bereits '
                     '%(others)d Personen aus %(cnt)d anderen Buchungen (z. B. %(other)s) '
                     'eingeplant. Zusammen mit dieser Buchung (%(own)d Personen) wird die '
                     'Kapazität von %(cap)d Plätzen überschritten.'
@@ -826,7 +830,7 @@ class KjrFacilityBooking(models.Model):
         absichtlich nicht aus, damit Altvorgaenge weiterhin bestaetigt, berechnet
         und abgeschlossen werden koennen.
 
-        TODO(KJR): Ob Altbuchungen auf den beiden Selbstversorgerhaeusern, die noch
+        TODO(Kunde): Ob Altbuchungen auf den beiden Selbstversorgerhaeusern, die noch
         eine Verpflegung tragen, nachtraeglich bereinigt werden sollen, ist nicht
         entschieden. Eine Bereinigung wuerde ueber das gespeicherte Compute-Feld
         amount_meals die Betraege dieser Vorgaenge aendern und darf deshalb nur nach
@@ -971,9 +975,9 @@ class KjrFacilityBooking(models.Model):
         lines = []
         if self.amount_accommodation:
             # F2: Kenntlich machen, wenn der günstigere Mo–Fr-Tarif angewandt wurde.
-            weekday_hint = _(' – Mo–Fr-Tarif') if self._uses_weekday_rate() else ''
+            weekday_hint = _(' (Mo-Fr-Tarif)') if self._uses_weekday_rate() else ''
             lines.append((0, 0, {
-                'name': _('Unterkunft %(fac)s, %(n)d Nächte, %(p)d Pers. (%(ci)s–%(co)s)') % {
+                'name': _('Unterkunft %(fac)s, %(n)d Nächte, %(p)d Pers. (%(ci)s bis %(co)s)') % {
                     'fac': self.facility_id.name, 'n': self.nights, 'p': self.participant_count,
                     'ci': self.check_in, 'co': self.check_out,
                 } + weekday_hint,
@@ -990,9 +994,9 @@ class KjrFacilityBooking(models.Model):
                 'name': _('Zusatzausstattung'),
                 'quantity': 1.0, 'price_unit': self.amount_equipment, 'tax_ids': tax_cmd,
             }))
-        # F2: Endreinigung (einmalig) und Fremdenverkehrsbeitrag als eigene Positionen.
+        # F2: Endreinigung (einmalig) und Kurbeitrag als eigene Positionen.
         # Die Endreinigung wird wie die übrigen Leistungen mit dem Tarif-Steuersatz
-        # abgerechnet; der Fremdenverkehrsbeitrag folgt _visitor_tax_taxes() (Default:
+        # abgerechnet; der Kurbeitrag folgt _visitor_tax_taxes() (Default:
         # ohne Steuer, siehe TODO(Steuer)). In beiden Fällen entspricht die
         # Rechnungssumme exakt dem in der Buchung ausgewiesenen Gesamtbetrag, weil
         # _compute_amounts dieselbe Fallunterscheidung verwendet.
@@ -1010,7 +1014,13 @@ class KjrFacilityBooking(models.Model):
             visitor_tax_hint = '' if visitor_taxes else _(
                 ' (durchlaufender Posten, wird an die Gemeinde abgeführt)')
             lines.append((0, 0, {
-                'name': _('Fremdenverkehrsbeitrag, %(p)d Pers. × %(n)d Nächte') % {
+                # Befund 6/14: KEIN Zusatz "(je Person und Nacht)" an dieser Zeile.
+                # Sie wird mit quantity = 1,0 und price_unit = amount_visitor_tax
+                # angelegt, trägt also den GESAMTBETRAG. Ein Zusatz, der einen Satz je
+                # Person und Nacht behauptet, widerspricht den Spalten Menge und
+                # Einzelpreis der Rechnung. Die Bemessung steht in der Mengenangabe
+                # "N Pers. × M Nächte"; der Satz selbst steht am Tarif.
+                'name': _('Kurbeitrag, %(p)d Pers. × %(n)d Nächte') % {
                     'p': self._visitor_tax_person_count(), 'n': self.nights,
                 } + visitor_tax_hint,
                 'quantity': 1.0, 'price_unit': self.amount_visitor_tax,
@@ -1179,7 +1189,7 @@ class KjrFacilityBooking(models.Model):
                     'Im Übergabeprotokoll %(dir)s von %(name)s ist „Schaden festgestellt" '
                     'angekreuzt. Bitte die Schadensbeschreibung ausfüllen: was ist '
                     'beschädigt, seit wann, wer hat es festgestellt. Das Kennzeichen bitte '
-                    'nicht entfernen, um die Erfassung abzukürzen — es hält den '
+                    'nicht entfernen, um die Erfassung abzukürzen. Es hält den '
                     'tatsächlichen Zustand fest.',
                     dir=label, name=rec.name,
                 ))
@@ -1191,7 +1201,7 @@ class KjrFacilityBooking(models.Model):
                     '(%(findings)s). Bitte den Vermerk im Reiter „Übergabe" ausfüllen: was '
                     'wurde festgestellt, was wurde vereinbart. War alles in Ordnung, bitte '
                     'den Zustand entsprechend setzen (bei der Abreise auch „Gereinigt '
-                    'übergeben") — nur wahrheitsgemäß.',
+                    'übergeben"), aber nur wahrheitsgemäß.',
                     dir=label, name=rec.name, findings=', '.join(findings),
                 ))
 
@@ -1206,7 +1216,9 @@ class KjrFacilityBooking(models.Model):
         conditions = dict(self._HANDOVER_CONDITIONS)
         condition = self._handover_field(direction, 'condition')
         date = self._handover_field(direction, 'date')
-        dash = _('–')
+        # Leerwert im Protokoll: einfacher Bindestrich, kein Halbgeviertstrich
+        # (Projektkonvention fuer kundensichtbaren Text).
+        dash = '-'
         rows = [
             (_('Datum'), date.strftime('%d.%m.%Y') if date else dash),
             (_('Zustand'), conditions.get(condition, dash)),
@@ -1554,7 +1566,7 @@ class KjrFacilityBooking(models.Model):
 
         Fehlt der Parameter oder ist er nicht als ganze Zahl lesbar, gilt 0 — also
         KEINE Verarbeitung. Das ist die konservative Seite: solange der KJR keine
-        Frist festgelegt hat, darf nichts passieren (TODO(KJR) am Modulkopf)."""
+        Frist festgelegt hat, darf nichts passieren (TODO(Kunde) am Modulkopf)."""
         raw = self.env['ir.config_parameter'].sudo().get_param(
             KJR_FACILITY_RETENTION_PARAM, '0')
         try:
@@ -1650,7 +1662,7 @@ class KjrFacilityBooking(models.Model):
 
         Grenze, die der Code nicht überwinden kann: Namen aus einem FRÜHEREN Lauf
         sind nicht mehr bekannt und im Chatter nicht mehr erkennbar.
-        TODO(KJR): Einmalige manuelle Durchsicht der Altbestände einplanen.
+        TODO(Kunde): Einmalige manuelle Durchsicht der Altbestände einplanen.
 
         Idempotent: nach dem Ersetzen findet der nächste Lauf nichts mehr."""
         self.ensure_one()

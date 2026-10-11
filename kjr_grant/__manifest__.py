@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR App',
-    'version': '19.0.15.6.1',
+    'version': '19.0.15.7.0',
     'category': 'Custom/KJR',
     'summary': 'Zuschussverwaltung, Juleica, Vollversammlung, Fördermittel-Akquise und Verwendungsnachweis für Kreisjugendringe (Odoo 19)',
     'author': 'KLGM UG (haftungsbeschränkt)',
@@ -17,9 +17,10 @@
     'data': [
         'security/kjr_grant_security.xml',
         'security/ir.model.access.csv',
-        # Seed-/Stammdaten für den ersten Staging-Build deaktiviert (Build hatte
-        # geskippt). Nach erfolgreicher Installation einzeln wieder aktivieren und
-        # die Daten ggf. per UI/Import nachpflegen.
+        # Seed-/Stammdaten. Alle Dateien sind aktiv. Sie liegen jeweils unter
+        # <data noupdate="1">, damit im Backend gepflegte Werte ein Modulupdate
+        # überleben. Kehrseite: Änderungen an bereits ausgelieferten Datensätzen
+        # erreichen Bestandsinstanzen nur über ein Migrationsskript (migrations/).
         'data/ir_sequence_data.xml',
         'data/ir_config_parameter_data.xml',
         'data/kjr_grant_type_data.xml',
@@ -37,6 +38,7 @@
         'views/kjr_funding_views.xml',
         'views/res_partner_views.xml',
         'views/kjr_volunteer_log_views.xml',
+        'views/res_config_settings_views.xml',
         'views/menu.xml',
         'views/portal_templates.xml',
         'report/kjr_report_actions.xml',
@@ -53,7 +55,11 @@
             'kjr_grant/static/src/css/portal.css',
         ],
     },
-    'images': ['static/description/icon.png'],
+    # Kein 'images'-Eintrag: der Schlüssel benennt die Screenshots bzw. das
+    # Titelbild für den App Store, nicht das Icon. Das Icon zieht Odoo fest aus
+    # static/description/icon.png (odoo/modules/module.py: get_module_icon()).
+    # Ein Titelbild gibt es für dieses Kundenmodul nicht; der bisherige Eintrag
+    # zeigte auf das Icon und hätte es als Screenshot ausgeliefert.
     # Blendet bei der Installation die nicht benötigten Standardrubriken
     # auf der Portalseite „Mein Konto" aus (siehe hooks.py).
     'post_init_hook': 'post_init_hook',

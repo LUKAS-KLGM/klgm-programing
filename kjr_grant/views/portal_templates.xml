@@ -93,7 +93,7 @@
                                         <td><t t-esc="grant.grant_type_id.name"/></td>
                                         <td>
                                             <t t-esc="grant.measure_start" t-options="{'widget':'date','format':'dd.MM.yyyy'}"/>
-                                            –
+                                            bis
                                             <t t-esc="grant.measure_end"   t-options="{'widget':'date','format':'dd.MM.yyyy'}"/>
                                         </td>
                                         <td><t t-esc="'%.2f €' % grant.grant_calculated"/></td>
@@ -101,7 +101,7 @@
                                             <t t-if="grant.grant_approved">
                                                 <strong><t t-esc="'%.2f €' % grant.grant_approved"/></strong>
                                             </t>
-                                            <t t-else="">—</t>
+                                            <t t-else="">-</t>
                                         </td>
                                         <td>
                                             <span t-att-class="'badge rounded-pill kjr-badge-' + grant.state">
@@ -444,7 +444,7 @@
                             </div>
                             <div class="card-body">
                                 <div class="alert alert-secondary small" role="note">
-                                    <i class="fa fa-lock me-1" aria-hidden="true"/>
+                                    <i class="fa fa-lock me-1" title="Gesperrt" aria-hidden="true"/>
                                     <strong>Diese Angaben können Sie hier nicht ändern, und das
                                     hat einen Grund:</strong>
                                     Sie sind keine Selbstauskunft des Verbands, sondern
@@ -458,13 +458,13 @@
                                 </div>
                                 <dl class="row mb-0">
                                     <dt class="col-sm-4">Name des Verbands</dt>
-                                    <dd class="col-sm-8"><t t-esc="member_info.get('name') or '—'"/></dd>
+                                    <dd class="col-sm-8"><t t-esc="member_info.get('name') or '-'"/></dd>
 
                                     <dt class="col-sm-4">Mitgliedsnummer</dt>
-                                    <dd class="col-sm-8"><t t-esc="member_info.get('member_number') or '—'"/></dd>
+                                    <dd class="col-sm-8"><t t-esc="member_info.get('member_number') or '-'"/></dd>
 
                                     <dt class="col-sm-4">Verbandstyp</dt>
-                                    <dd class="col-sm-8"><t t-esc="member_info.get('member_type') or '—'"/></dd>
+                                    <dd class="col-sm-8"><t t-esc="member_info.get('member_type') or '-'"/></dd>
 
                                     <dt class="col-sm-4">Vertretungsrecht in der Vollversammlung</dt>
                                     <dd class="col-sm-8">
@@ -504,7 +504,7 @@
                                     </t>
 
                                     <dt class="col-sm-4">Mitglied seit</dt>
-                                    <dd class="col-sm-8"><t t-esc="member_info.get('active_since') or '—'"/></dd>
+                                    <dd class="col-sm-8"><t t-esc="member_info.get('active_since') or '-'"/></dd>
 
                                     <!-- Die Bankverbindung ist bewusst weder hier noch im
                                          Formular oben zu finden: über sie laufen
@@ -539,7 +539,7 @@
                                         <a t-attf-href="mailto:{{ office.get('email') }}"><t t-esc="office.get('email')"/></a>
                                     </t>
                                     <t t-if="not office.get('phone') and not office.get('email')">
-                                        <span class="badge text-bg-warning">Kontaktdaten werden vom KJR ergänzt</span>
+                                        <span class="badge text-bg-warning">Kontaktdaten folgen</span>
                                     </t>
                                 </p>
                             </div>
@@ -616,20 +616,20 @@
                                                        t-value="contact.id in locked_contact_ids"/>
                                                     <tr t-attf-id="kontakt_#{contact.id}">
                                                         <th scope="row" class="fw-normal"><t t-esc="contact.name"/></th>
-                                                        <td><t t-esc="contact.function or '—'"/></td>
+                                                        <td><t t-esc="contact.function or '-'"/></td>
                                                         <td>
                                                             <t t-if="contact.email">
                                                                 <a t-attf-href="mailto:{{ contact.email }}"><t t-esc="contact.email"/></a>
                                                             </t>
-                                                            <t t-else="">—</t>
+                                                            <t t-else="">-</t>
                                                         </td>
-                                                        <td><t t-esc="contact.phone or '—'"/></td>
+                                                        <td><t t-esc="contact.phone or '-'"/></td>
                                                         <td t-if="member_info.get('vr_right')">
                                                             <t t-if="contact in delegates">
                                                                 <span class="badge text-bg-info">Delegierte/r</span>
                                                             </t>
                                                             <t t-else="">
-                                                                <span class="text-muted">—</span>
+                                                                <span class="text-muted">-</span>
                                                             </t>
                                                         </td>
                                                     </tr>
@@ -694,7 +694,7 @@
                                                                             <div class="col-12 mb-2">
                                                                                 <div class="alert alert-secondary small mb-0"
                                                                                      t-attf-id="c#{contact.id}_locked" role="note">
-                                                                                    <i class="fa fa-lock me-1" aria-hidden="true"/>
+                                                                                    <i class="fa fa-lock me-1" title="Gesperrt" aria-hidden="true"/>
                                                                                     <strong>Name und E-Mail-Adresse sind hier gesperrt.</strong>
                                                                                     Diese Person hat einen eigenen Portalzugang, und beide
                                                                                     Angaben gehören zu diesem Zugang: Über die
@@ -967,14 +967,14 @@
                                                         <th scope="row" class="fw-normal">
                                                             <a t-attf-href="#kontakt_#{delegate.id}"><t t-esc="delegate.name"/></a>
                                                         </th>
-                                                        <td><t t-esc="delegate.function or '—'"/></td>
+                                                        <td><t t-esc="delegate.function or '-'"/></td>
                                                         <td>
                                                             <t t-if="delegate.email">
                                                                 <a t-attf-href="mailto:{{ delegate.email }}"><t t-esc="delegate.email"/></a>
                                                             </t>
-                                                            <t t-else="">—</t>
+                                                            <t t-else="">-</t>
                                                         </td>
-                                                        <td><t t-esc="delegate.phone or '—'"/></td>
+                                                        <td><t t-esc="delegate.phone or '-'"/></td>
                                                         <td><span class="badge text-bg-info">Delegierte/r</span></td>
                                                     </tr>
                                                 </t>
@@ -997,7 +997,7 @@
                                  warum ein Verband kein Vertretungsrecht hat, steht
                                  dem Portal nicht zu, das klaert die Geschaeftsstelle. -->
                             <div class="alert alert-light border small" role="note">
-                                <i class="fa fa-info-circle me-1" aria-hidden="true"/>
+                                <i class="fa fa-info-circle me-1" title="Hinweis" aria-hidden="true"/>
                                 <strong>Delegierte für die Vollversammlung:</strong>
                                 Für Ihren Verband ist derzeit kein Vertretungsrecht in der
                                 Vollversammlung hinterlegt (siehe oben unter „Mitgliedschaft
@@ -1061,22 +1061,27 @@
          Entscheidung des KJR, keine des Moduls, und deshalb hier NICHT
          vorweggenommen.
 
-         TODO(KJR): Die mit "wird vom KJR ergänzt" markierten Angaben füllen
-         Geschäftsstelle bzw. Datenschutzbeauftragte VOR dem Go-live aus. Sie
-         sind absichtlich nicht vorbelegt, weil sie noch nicht festgelegt sind:
-           - Verantwortlicher (Name, Anschrift, Kontakt)
-           - Kontakt der/des Datenschutzbeauftragten
-           - Rechtsgrundlage der Verarbeitung (Audit-Befund K1, offen)
-           - Aufbewahrungs-/Löschfrist (nicht entschieden)
-           - technischer Betrieb / Auftragsverarbeiter (Hosting)
-           - zuständige Aufsichtsbehörde
+         TODO(KJR): Die sechs unten noch mit dem Warnhinweis markierten Angaben
+         trägt die Geschäftsstelle bzw. die/der Datenschutzbeauftragte VOR dem
+         Go-live in den Systemparametern nach, NICHT in dieser Vorlage. Die
+         Eingabemaske dafür steht in Einstellungen > Allgemeine Einstellungen,
+         Abschnitt „KJR Datenschutzangaben" (models/res_config_settings.py);
+         dieselben Werte liegen in Einstellungen > Technisch > Systemparameter:
+           - kjr.privacy.operator ....... technischer Betrieb / Auftragsverarbeiter
+           - kjr.privacy.controller ..... Verantwortlicher (Name, Anschrift, Kontakt)
+           - kjr.privacy.dpo ............ Kontakt der/des Datenschutzbeauftragten
+           - kjr.privacy.legal_basis .... Rechtsgrundlage (Audit-Befund K1, offen)
+           - kjr.privacy.retention ...... Aufbewahrungs-/Löschfrist
+           - kjr.privacy.authority ...... zuständige Aufsichtsbehörde
+         Solange ein Parameter leer ist, steht an seiner Stelle sichtbar der
+         Warnhinweis. Die Angaben sind bewusst nicht vorbelegt.
          Alles übrige beschreibt ausschliesslich das tatsächliche Verhalten des
          Systems und ist KEINE rechtliche Bewertung. -->
     <template id="verband_privacy_notice" name="KJR Verbandsdaten: Datenschutzhinweis">
         <section class="o_kjr_privacy_notice alert alert-light border mt-4 mb-3"
                  role="region" aria-labelledby="kjr_privacy_verband_heading">
             <h2 class="alert-heading h6" id="kjr_privacy_verband_heading">
-                <i class="fa fa-lock me-2" aria-hidden="true"/>Datenschutz – was mit diesen Angaben passiert
+                <i class="fa fa-lock me-2" aria-hidden="true"/>Datenschutz: was mit diesen Angaben passiert
             </h2>
             <p class="small mb-3">
                 Kurz und ohne Fachsprache: Hier steht, was wir speichern, wofür wir es
@@ -1119,39 +1124,39 @@
                      Verbands per ID nicht. Fuer /my/verband gibt es bisher
                      keinen Test. -->
                 <dt class="col-sm-4">Wer sie sehen kann</dt>
-                <dd class="col-sm-8">Die Geschäftsstelle des Kreisjugendrings Oberallgäu und
+                <dd class="col-sm-8">Die Geschäftsstelle von <t t-out="res_company.name"/> und
                     die Personen, die Mitgliederverwaltung, Vollversammlung und
                     Zuschussanträge bearbeiten. Über Ihren Portalzugang sehen Sie die Daten
                     Ihres eigenen Verbands; Daten anderer Mitgliedsverbände sind für Sie
                     nicht einsehbar.
                     <span class="d-block mt-1">Technischer Betrieb der Website:
-                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.operator')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.operator')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     </span>
                 </dd>
 
                 <dt class="col-sm-4">Verantwortlich</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.controller')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.controller')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Name, Anschrift und Kontakt der
                         verantwortlichen Stelle.</span>
                 </dd>
 
                 <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
                 </dd>
 
                 <dt class="col-sm-4">Rechtsgrundlage</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.legal_basis')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.legal_basis')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Legt der Kreisjugendring gemeinsam mit
                         der Datenschutzbeauftragten fest.</span>
                 </dd>
 
                 <dt class="col-sm-4">Wie lange wir speichern</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.retention')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.retention')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Die Aufbewahrungsdauer legt der
                         Kreisjugendring fest und trägt sie hier ein. Wenn Sie eine
                         Ansprechperson aus der Liste nehmen, verschwindet sie aus dieser
@@ -1159,12 +1164,12 @@
                 </dd>
 
                 <dt class="col-sm-4">Ihre Rechte</dt>
-                <dd class="col-sm-8">Welche Rechte Sie haben – zum Beispiel Auskunft,
-                    Berichtigung, Löschung oder Einschränkung – und wie Sie sie geltend
+                <dd class="col-sm-8">Welche Rechte Sie haben, zum Beispiel Auskunft,
+                    Berichtigung, Löschung oder Einschränkung, und wie Sie sie geltend
                     machen, steht in der
                     <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
                     <span class="d-block mt-1">Zuständige Aufsichtsbehörde:
-                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.authority')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.authority')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     </span>
                 </dd>
             </dl>
@@ -1194,27 +1199,32 @@
          eingewilligt. Die bestehende Pflichtbestätigung confirm_privacy im
          Antragsformular bleibt davon unberührt.
 
-         TODO(KJR): Die mit "wird vom KJR ergänzt" markierten Angaben füllen
-         Geschäftsstelle bzw. Datenschutzbeauftragte VOR dem Go-live aus. Sie sind
-         absichtlich nicht vorbelegt, weil sie noch nicht festgelegt sind:
-           - Verantwortlicher (Name, Anschrift, Kontakt)
-           - Kontakt der/des Datenschutzbeauftragten
-           - Rechtsgrundlage der Verarbeitung (Audit-Befund K1, offen)
-           - Aufbewahrungs-/Löschfrist (nicht entschieden). Technisch anonymisiert
-             das System die Klarnamen der Teilnahmeliste nach der Frist aus dem
-             Systemparameter kjr_grant.participant_retention_years (ausgeliefert mit
-             5 Jahren). Diese Zahl steht bewusst NICHT auf der Seite, solange der KJR
-             die Frist nicht bestätigt hat — beschrieben ist nur, DASS anonymisiert
-             wird, nicht nach welcher Frist.
-           - technischer Betrieb / Auftragsverarbeiter (Hosting)
-           - zuständige Aufsichtsbehörde
+         TODO(KJR): Die sechs unten noch mit dem Warnhinweis markierten Angaben
+         trägt die Geschäftsstelle bzw. die/der Datenschutzbeauftragte VOR dem
+         Go-live in den Systemparametern nach, NICHT in dieser Vorlage. Die
+         Eingabemaske dafür steht in Einstellungen > Allgemeine Einstellungen,
+         Abschnitt „KJR Datenschutzangaben" (models/res_config_settings.py);
+         dieselben Werte liegen in Einstellungen > Technisch > Systemparameter:
+           - kjr.privacy.operator ....... technischer Betrieb / Auftragsverarbeiter
+           - kjr.privacy.controller ..... Verantwortlicher (Name, Anschrift, Kontakt)
+           - kjr.privacy.dpo ............ Kontakt der/des Datenschutzbeauftragten
+           - kjr.privacy.legal_basis .... Rechtsgrundlage (Audit-Befund K1, offen)
+           - kjr.privacy.retention ...... Aufbewahrungs-/Löschfrist
+           - kjr.privacy.authority ...... zuständige Aufsichtsbehörde
+         Solange ein Parameter leer ist, steht an seiner Stelle sichtbar der
+         Warnhinweis. Die Angaben sind bewusst nicht vorbelegt.
+         Zur Aufbewahrungsfrist: technisch anonymisiert das System die Klarnamen
+         der Teilnahmeliste nach der Frist aus dem Systemparameter
+         kjr_grant.participant_retention_years (ausgeliefert mit 5 Jahren). Diese
+         Zahl steht bewusst NICHT auf der Seite, solange die Frist nicht bestätigt
+         ist; beschrieben ist nur, DASS anonymisiert wird, nicht nach welcher Frist.
          Alles übrige beschreibt ausschließlich das tatsächliche Verhalten des
          Systems und ist KEINE rechtliche Bewertung. -->
     <template id="grant_privacy_notice" name="KJR Zuschuss: Datenschutzhinweis">
         <section class="o_kjr_privacy_notice alert alert-light border mt-4 mb-3"
                  role="region" aria-labelledby="kjr_privacy_grant_heading">
             <h2 class="alert-heading h6" id="kjr_privacy_grant_heading">
-                <i class="fa fa-lock me-2" aria-hidden="true"/>Datenschutz – was mit diesen Angaben passiert
+                <i class="fa fa-lock me-2" aria-hidden="true"/>Datenschutz: was mit diesen Angaben passiert
             </h2>
             <p class="small mb-3">
                 Kurz und ohne Fachsprache: Hier steht, was wir speichern, wofür wir es
@@ -1253,37 +1263,37 @@
                     die Bankverbindung der Auszahlung.</dd>
 
                 <dt class="col-sm-4">Wer sie sehen kann</dt>
-                <dd class="col-sm-8">Die Geschäftsstelle des Kreisjugendrings Oberallgäu und
+                <dd class="col-sm-8">Die Geschäftsstelle von <t t-out="res_company.name"/> und
                     die Personen, die Zuschussanträge prüfen und abrechnen. Über Ihren
                     Portalzugang sehen Sie Ihre eigenen Anträge.
                     <span class="d-block mt-1">Technischer Betrieb der Website:
-                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.operator')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.operator')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     </span>
                 </dd>
 
                 <dt class="col-sm-4">Verantwortlich</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.controller')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.controller')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Name, Anschrift und Kontakt der
                         verantwortlichen Stelle.</span>
                 </dd>
 
                 <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
                 </dd>
 
                 <dt class="col-sm-4">Rechtsgrundlage</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.legal_basis')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.legal_basis')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Legt der Kreisjugendring gemeinsam mit
                         der Datenschutzbeauftragten fest.</span>
                 </dd>
 
                 <dt class="col-sm-4">Wie lange wir speichern</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.retention')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.retention')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Die Aufbewahrungsdauer legt der
                         Kreisjugendring fest und trägt sie hier ein. Namen, Wohnort und
                         Geburtsdatum in der Teilnahmeliste ersetzt das System nach Ablauf
@@ -1293,12 +1303,12 @@
                 </dd>
 
                 <dt class="col-sm-4">Ihre Rechte</dt>
-                <dd class="col-sm-8">Welche Rechte Sie haben – zum Beispiel Auskunft,
-                    Berichtigung, Löschung oder Einschränkung – und wie Sie sie geltend
+                <dd class="col-sm-8">Welche Rechte Sie haben, zum Beispiel Auskunft,
+                    Berichtigung, Löschung oder Einschränkung, und wie Sie sie geltend
                     machen, steht in der
                     <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
                     <span class="d-block mt-1">Zuständige Aufsichtsbehörde:
-                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.authority')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.authority')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     </span>
                 </dd>
             </dl>
@@ -1325,7 +1335,7 @@
                                         <dt class="col-5">Maßnahme</dt>
                                         <dd class="col-7"><t t-esc="grant.measure_name"/></dd>
                                         <dt class="col-5">Ort</dt>
-                                        <dd class="col-7"><t t-esc="grant.measure_location or '—'"/></dd>
+                                        <dd class="col-7"><t t-esc="grant.measure_location or '-'"/></dd>
                                     </dl>
                                 </div>
                                 <div class="col-md-6">
@@ -1503,7 +1513,7 @@
                     <div class="col-md-5 mb-4">
                         <div class="card shadow h-100">
                             <div class="card-body text-center p-5">
-                                <i class="fa fa-sign-in text-primary" style="font-size:3rem;"/>
+                                <i class="fa fa-sign-in text-primary" style="font-size:3rem;" title="Anmelden" aria-hidden="true"/>
                                 <h3 class="mt-3 mb-3">Anmelden</h3>
                                 <p class="text-muted">
                                     Sie haben bereits ein Konto? Melden Sie sich an,
@@ -1519,7 +1529,7 @@
                     <div class="col-md-5 mb-4">
                         <div class="card shadow h-100">
                             <div class="card-body text-center p-5">
-                                <i class="fa fa-user-plus text-success" style="font-size:3rem;"/>
+                                <i class="fa fa-user-plus text-success" style="font-size:3rem;" title="Registrieren" aria-hidden="true"/>
                                 <h3 class="mt-3 mb-3">Registrieren</h3>
                                 <p class="text-muted">
                                     Erstmalig hier? Erstellen Sie ein Konto.
@@ -1575,7 +1585,7 @@
                      Erstantragsteller die Anleitung finden, bevor sie ausfüllen. -->
                 <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center mb-4">
                     <div class="me-3">
-                        <i class="fa fa-info-circle me-1"/>
+                        <i class="fa fa-info-circle me-1" title="Hinweis" aria-hidden="true"/>
                         <strong>Zum ersten Mal hier?</strong>
                         In der Anleitung finden Sie, wer antragsberechtigt ist, welche
                         Förderart passt, welche Unterlagen nötig sind und welche Fristen gelten.
@@ -1692,7 +1702,7 @@
                                 <div class="col-12 mb-3">
                                     <label for="partner_id" class="form-label fw-bold">Organisation (KJR-Mitgliedsverband) *</label>
                                     <select name="partner_id" id="partner_id" class="form-select" required="required">
-                                        <option value="">— Bitte wählen —</option>
+                                        <option value="">Bitte wählen</option>
                                         <t t-foreach="kjr_members" t-as="member">
                                             <option t-att-value="member.id"
                                                     t-att-selected="values.get('partner_id') and int(values.get('partner_id',0)) == member.id">
@@ -1757,13 +1767,23 @@
                                         </tr>
                                     </thead>
                                     <tbody id="tn_rows">
+                                        <!-- Pflichtkennzeichnung: Zeile 1 verlangt Name und Alter im
+                                             Browser (required), der Server prüft die Teilnahmeliste
+                                             NICHT (controllers/website.py: _handle_participants nimmt
+                                             auch null Zeilen an). Ob mindestens eine Teilnehmerzeile
+                                             fachlich Pflicht ist, ist eine offene Frage an den Kunden;
+                                             bis zur Entscheidung bleibt beides unverändert.
+                                             tests/test_form_fields.py hält diese Ausnahme ausdrücklich
+                                             fest (TEMPLATE_ONLY_REQUIRED), damit sie nicht unbemerkt
+                                             wächst. Die per JavaScript angehängten Zeilen 2..n tragen
+                                             bewusst kein required. -->
                                         <tr class="tn-row">
                                             <td class="tn-nr">1</td>
                                             <td><input type="text" name="tn_name_1" class="form-control form-control-sm" t-att-value="values.get('tn_name_1','')" required="required"/></td>
                                             <td><input type="number" name="tn_age_1" class="form-control form-control-sm" style="width:80px" min="0" max="120" t-att-value="values.get('tn_age_1','')" required="required"/></td>
                                             <td>
                                                 <select name="tn_gender_1" class="form-select form-select-sm">
-                                                    <option value="">—</option>
+                                                    <option value="">-</option>
                                                     <option value="male"    t-att-selected="values.get('tn_gender_1') == 'male'">männlich</option>
                                                     <option value="female"  t-att-selected="values.get('tn_gender_1') == 'female'">weiblich</option>
                                                     <option value="diverse" t-att-selected="values.get('tn_gender_1') == 'diverse'">divers</option>
@@ -1773,7 +1793,7 @@
                                             <td><input type="text" name="tn_city_1" class="form-control form-control-sm" t-att-value="values.get('tn_city_1','')"/></td>
                                             <td>
                                                 <select name="tn_role_1" class="form-select form-select-sm">
-                                                    <option value="">—</option>
+                                                    <option value="">-</option>
                                                     <option value="EA" t-att-selected="values.get('tn_role_1') == 'EA'">EA</option>
                                                     <option value="HA" t-att-selected="values.get('tn_role_1') == 'HA'">HA</option>
                                                     <option value="HO" t-att-selected="values.get('tn_role_1') == 'HO'">HO</option>
@@ -1782,7 +1802,7 @@
                                                 </select>
                                             </td>
                                             <td class="text-center"><input type="checkbox" name="tn_juleica_1" class="form-check-input" t-att-checked="values.get('tn_juleica_1') and 'checked' or None"/></td>
-                                            <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeParticipantRow(this)"><i class="fa fa-trash"/></button></td>
+                                            <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeParticipantRow(this)" aria-label="Teilnehmerzeile entfernen"><i class="fa fa-trash" title="Teilnehmerzeile entfernen"/></button></td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -1804,7 +1824,7 @@
                                         '&lt;td&gt;&lt;input type="text" name="tn_name_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;input type="number" name="tn_age_' + nr + '" class="form-control form-control-sm" style="width:80px" min="0" max="120"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;select name="tn_gender_' + nr + '" class="form-select form-select-sm"&gt;' +
-                                        '&lt;option value=""&gt;—&lt;/option&gt;' +
+                                        '&lt;option value=""&gt;-&lt;/option&gt;' +
                                         '&lt;option value="male"&gt;männlich&lt;/option&gt;' +
                                         '&lt;option value="female"&gt;weiblich&lt;/option&gt;' +
                                         '&lt;option value="diverse"&gt;divers&lt;/option&gt;' +
@@ -1812,7 +1832,7 @@
                                         '&lt;td&gt;&lt;input type="text" name="tn_zip_' + nr + '" class="form-control form-control-sm" style="width:80px"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;input type="text" name="tn_city_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;select name="tn_role_' + nr + '" class="form-select form-select-sm"&gt;' +
-                                        '&lt;option value=""&gt;—&lt;/option&gt;' +
+                                        '&lt;option value=""&gt;-&lt;/option&gt;' +
                                         '&lt;option value="EA"&gt;EA&lt;/option&gt;' +
                                         '&lt;option value="HA"&gt;HA&lt;/option&gt;' +
                                         '&lt;option value="HO"&gt;HO&lt;/option&gt;' +
@@ -1820,7 +1840,7 @@
                                         '&lt;option value="SO"&gt;SO&lt;/option&gt;' +
                                         '&lt;/select&gt;&lt;/td&gt;' +
                                         '&lt;td class="text-center"&gt;&lt;input type="checkbox" name="tn_juleica_' + nr + '" class="form-check-input"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;button type="button" class="btn btn-sm btn-outline-danger" onclick="removeParticipantRow(this)"&gt;&lt;i class="fa fa-trash"&gt;&lt;/i&gt;&lt;/button&gt;&lt;/td&gt;';
+                                        '&lt;td&gt;&lt;button type="button" class="btn btn-sm btn-outline-danger" aria-label="Teilnehmerzeile entfernen" onclick="removeParticipantRow(this)"&gt;&lt;i class="fa fa-trash" title="Teilnehmerzeile entfernen"&gt;&lt;/i&gt;&lt;/button&gt;&lt;/td&gt;';
                                     tbody.appendChild(row);
                                 }
                                 function removeParticipantRow(btn) {
@@ -1849,7 +1869,7 @@
                         <div class="card-body">
                             <div class="alert alert-info">
                                 Nur Organisationskonto. Bitte exakten Namen angeben.
-                                Ausnahme: Jugendleiterschulung (§ 4.4) — Privatkonto möglich.
+                                Ausnahme: Bei der Jugendleiterschulung (§ 4.4) ist ein Privatkonto möglich.
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
@@ -1893,7 +1913,7 @@
                                  Datei-Upload in Block 8) Pflicht ist. Ohne Auswahl wird
                                  konservativ „Pflicht" angenommen — genauso prüft der Server. -->
                             <select name="grant_type_id" id="grant_type_id" class="form-select" required="required">
-                                <option value="" data-code="" data-requires-receipt="1">— Bitte wählen —</option>
+                                <option value="" data-code="" data-requires-receipt="1">Bitte wählen</option>
                                 <t t-foreach="grant_types" t-as="gt">
                                     <option t-att-value="gt.id"
                                             t-att-data-code="gt.code"
@@ -1904,7 +1924,7 @@
                                 </t>
                             </select>
                             <div class="form-text">
-                                s. Zuschussrichtlinien KJR OA — Erforderliche Unterlagen werden je nach Förderart geprüft.
+                                s. Zuschussrichtlinien, erforderliche Unterlagen werden je nach Förderart geprüft.
                             </div>
                         </div>
                     </div>
@@ -1912,7 +1932,7 @@
                     <!-- 5b. Delegiertenförderung § 4.9 (nur bei Bedarf ausfüllen) -->
                     <div class="card mb-4">
                         <div class="card-header bg-light">
-                            <h6 class="mb-0">Nur bei Delegiertenförderung (§ 4.9 – Fahrtkosten n. BayRKG)</h6>
+                            <h6 class="mb-0">Nur bei Delegiertenförderung (§ 4.9, Fahrtkosten n. BayRKG)</h6>
                         </div>
                         <div class="card-body">
                             <p class="text-muted small">
@@ -1925,7 +1945,7 @@
                                 <div class="col-md-4 mb-2">
                                     <label class="form-label">Verkehrsmittel</label>
                                     <select name="delegate_transport_mode" class="form-select">
-                                        <option value="">—</option>
+                                        <option value="">-</option>
                                         <option value="car"    t-att-selected="values.get('delegate_transport_mode') == 'car'">PKW</option>
                                         <option value="public" t-att-selected="values.get('delegate_transport_mode') == 'public'">Öffentliche Verkehrsmittel</option>
                                         <option value="other"  t-att-selected="values.get('delegate_transport_mode') == 'other'">Sonstiges</option>
@@ -2072,7 +2092,7 @@
                                                 </td>
                                                 <td>
                                                     <select name="rc_category_1" class="form-select form-select-sm" onchange="syncReceiptDirection(this)">
-                                                        <option value="">—</option>
+                                                        <option value="">-</option>
                                                         <option value="tn_fees"       t-att-selected="values.get('rc_category_1') == 'tn_fees'">Einnahme: Teilnehmerbeiträge</option>
                                                         <option value="municipality"  t-att-selected="values.get('rc_category_1') == 'municipality'">Einnahme: Zuschuss Gemeinde</option>
                                                         <option value="association"   t-att-selected="values.get('rc_category_1') == 'association'">Einnahme: Zuschuss Verband</option>
@@ -2088,7 +2108,7 @@
                                                     </select>
                                                 </td>
                                                 <td><input type="number" name="rc_amount_1" class="form-control form-control-sm" style="width:110px" min="0" step="0.01" t-att-value="values.get('rc_amount_1','')"/></td>
-                                                <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeReceiptRow(this)"><i class="fa fa-trash"/></button></td>
+                                                <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeReceiptRow(this)" aria-label="Belegzeile entfernen"><i class="fa fa-trash" title="Belegzeile entfernen"/></button></td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -2101,7 +2121,7 @@
                             <script type="text/javascript">
                                 var RC_INCOME_CATEGORIES = ['tn_fees', 'municipality', 'association', 'bjr', 'income_other'];
                                 var RC_CATEGORY_OPTIONS =
-                                    '&lt;option value=""&gt;—&lt;/option&gt;' +
+                                    '&lt;option value=""&gt;-&lt;/option&gt;' +
                                     '&lt;option value="tn_fees"&gt;Einnahme: Teilnehmerbeiträge&lt;/option&gt;' +
                                     '&lt;option value="municipality"&gt;Einnahme: Zuschuss Gemeinde&lt;/option&gt;' +
                                     '&lt;option value="association"&gt;Einnahme: Zuschuss Verband&lt;/option&gt;' +
@@ -2135,7 +2155,7 @@
                                         RC_CATEGORY_OPTIONS +
                                         '&lt;/select&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;input type="number" name="rc_amount_' + nr + '" class="form-control form-control-sm" style="width:110px" min="0" step="0.01"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;button type="button" class="btn btn-sm btn-outline-danger" onclick="removeReceiptRow(this)"&gt;&lt;i class="fa fa-trash"&gt;&lt;/i&gt;&lt;/button&gt;&lt;/td&gt;';
+                                        '&lt;td&gt;&lt;button type="button" class="btn btn-sm btn-outline-danger" aria-label="Belegzeile entfernen" onclick="removeReceiptRow(this)"&gt;&lt;i class="fa fa-trash" title="Belegzeile entfernen"&gt;&lt;/i&gt;&lt;/button&gt;&lt;/td&gt;';
                                     tbody.appendChild(row);
                                 }
                                 function removeReceiptRow(btn) {
@@ -2226,6 +2246,15 @@
                                         PDF, Word, Excel/CSV oder Bild (JPG/PNG), max. 10 MB.
                                     </div>
                                 </div>
+                                <!-- Pflichtkennzeichnung: required steht hier statisch, der
+                                     Server verlangt die Datei nur bedingt (Förderart mit
+                                     requires_receipt UND keine digitale Belegliste). Das
+                                     JavaScript weiter unten setzt inp.required beim Laden und
+                                     bei jedem Wechsel der Förderart exakt auf die Serverregel;
+                                     der statische Wert entspricht der konservativen Annahme
+                                     „ohne gewählte Förderart Pflicht", die der Controller
+                                     genauso trifft. tests/test_form_fields.py führt das Feld
+                                     deshalb in TEMPLATE_ONLY_REQUIRED. -->
                                 <div class="col-md-6 mb-3" id="receipt_file_group">
                                     <label class="form-label">
                                         Belegliste / Kostenaufstellung
@@ -2333,7 +2362,7 @@
                          abgeschickt, also erhoben. -->
                     <t t-call="kjr_grant.grant_privacy_notice"/>
 
-                    <!-- Bestätigungen (alle vier Pflicht) -->
+                    <!-- Bestätigungen (alle drei Pflicht; die vierte ist 2026 entfallen, siehe unten) -->
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" value="1"
                                name="confirm_privacy" id="confirm_privacy" required="required"
@@ -2366,7 +2395,7 @@
                     </div>
 
                     <!-- Die frühere Checkbox "Einwilligung der Erziehungsberechtigten liegt vor"
-                         wurde auf Wunsch des KJR entfernt (Mail Bora Berlinger vom 31.07.2026):
+                         wurde auf Wunsch des Kunden entfernt (Mail der Kassenleitung vom 31.07.2026):
                          Der KJR ist für die Richtigkeit des Datenschutzes in den Vereinen nicht
                          zuständig und darf sie nicht prüfen — eine Bestätigung einzuholen, die man
                          nicht prüfen darf, erzeugt Scheinsicherheit. Das Feld participant_consent
@@ -2389,7 +2418,7 @@
             <div id="wrap" class="container mt-5 mb-5 text-center">
                 <div class="card shadow mx-auto" style="max-width: 600px;">
                     <div class="card-body p-5">
-                        <i class="fa fa-check-circle text-success" style="font-size:4rem;"/>
+                        <i class="fa fa-check-circle text-success" style="font-size:4rem;" title="Erfolgreich" aria-hidden="true"/>
                         <h2 class="mt-3 mb-3">Antrag gespeichert!</h2>
                         <t t-if="application">
                             <p class="lead">
@@ -2423,7 +2452,7 @@
     <!-- Öffentlich (ohne Login) erreichbar. Förderarten, Höchstbeträge und
          Pflichtunterlagen werden aus den Stammdaten gelesen — nichts hartkodiert,
          damit die Seite mit den im Backend gepflegten Sätzen mitläuft.
-         TODO: Mit Bora klären, ob die Anleitung zusätzlich als eigener Eintrag ins
+         TODO(KJR): Mit der Geschäftsstelle klären, ob die Anleitung zusätzlich ins
          Website-Hauptmenü soll (data/website_menu_data.xml). Bis dahin bewusst nur
          von der Landingpage und vom Antragsformular aus verlinkt. -->
     <template id="website_kjr_apply_help" name="KJR Zuschussantrag Hilfe">
@@ -2441,7 +2470,7 @@
                 <p class="text-muted mb-4">
                     Schritt-für-Schritt-Anleitung zum Zuschussantrag bei
                     <t t-out="res_company.name"/>. Maßgeblich sind in jedem Fall die
-                    Zuschussrichtlinien des KJR Oberallgäu.
+                    Zuschussrichtlinien von <t t-out="res_company.name"/>.
                 </p>
 
                 <div class="d-flex flex-wrap gap-2 mb-4">
@@ -2476,8 +2505,8 @@
                     <div class="card-body">
                         <ul>
                             <li>
-                                Antragsberechtigt sind die <strong>Mitgliedsverbände des
-                                Kreisjugendrings Oberallgäu</strong>. Der Antrag wird immer
+                                Antragsberechtigt sind die <strong>Mitgliedsverbände von
+                                <t t-out="res_company.name"/></strong>. Der Antrag wird immer
                                 für die Organisation gestellt, nicht für Einzelpersonen.
                             </li>
                             <li>
@@ -2545,13 +2574,13 @@
                                                 </td>
                                                 <td class="small">
                                                     <t t-if="gt.description"><t t-esc="gt.description"/></t>
-                                                    <t t-else="">—</t>
+                                                    <t t-else="">-</t>
                                                 </td>
                                                 <td class="text-nowrap">
                                                     <t t-if="gt.max_amount">
                                                         <t t-esc="'%.2f €' % gt.max_amount"/>
                                                     </t>
-                                                    <t t-else="">—</t>
+                                                    <t t-else="">-</t>
                                                 </td>
                                                 <td class="small">
                                                     <t t-if="gt.min_age or gt.max_age">
@@ -2586,7 +2615,7 @@
                                                         <div>
                                                             Max. <t t-esc="gt.max_per_year"/> Anträge pro Kalenderjahr
                                                             <t t-if="limit_siblings">
-                                                                — gemeinsam mit:
+                                                                gemeinsam mit:
                                                                 <t t-foreach="limit_siblings" t-as="sib"><t t-esc="sib.name"/><t t-if="not sib_last">, </t></t>
                                                                 (die Anträge zählen zusammen, nicht je Förderart einzeln)
                                                             </t>
@@ -2636,25 +2665,25 @@
                                                     <t t-if="gt.requires_tn_list">
                                                         <span class="badge bg-secondary">Pflicht</span>
                                                     </t>
-                                                    <t t-else="">—</t>
+                                                    <t t-else="">-</t>
                                                 </td>
                                                 <td class="text-center">
                                                     <t t-if="gt.requires_report">
                                                         <span class="badge bg-secondary">Pflicht</span>
                                                     </t>
-                                                    <t t-else="">—</t>
+                                                    <t t-else="">-</t>
                                                 </td>
                                                 <td class="text-center">
                                                     <t t-if="gt.requires_receipt">
                                                         <span class="badge bg-secondary">Pflicht</span>
                                                     </t>
-                                                    <t t-else="">—</t>
+                                                    <t t-else="">-</t>
                                                 </td>
                                                 <td class="small">
                                                     <t t-if="gt.requires_other_docs">
                                                         <t t-esc="gt.requires_other_docs"/>
                                                     </t>
-                                                    <t t-else="">—</t>
+                                                    <t t-else="">-</t>
                                                 </td>
                                             </tr>
                                         </t>
@@ -2902,7 +2931,7 @@
 
                 <h2 class="mb-1">Belegliste zum Zuschussantrag</h2>
                 <p class="small text-muted">
-                    <t t-out="res_company.name"/> — Nachweis der Einnahmen und Ausgaben
+                    <t t-out="res_company.name"/>: Nachweis der Einnahmen und Ausgaben
                     nach ANBest-P. Die Originalbelege sind vom Antragsteller 5 Jahre
                     aufzubewahren und auf Verlangen vorzulegen.
                 </p>

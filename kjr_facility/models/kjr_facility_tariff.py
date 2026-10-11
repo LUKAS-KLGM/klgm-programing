@@ -42,55 +42,66 @@ class KjrFacilityTariff(models.Model):
         string='Verpflegungspreise anzeigen', compute='_compute_show_meal_prices',
         help='Technisches Hilfsfeld: steuert nur, ob die Verpflegungssätze in der '
              'Tarifmaske sichtbar sind. Es zeigt sie, wenn die zugeordnete '
-             'Einrichtung "Verpflegung anbieten" aktiviert hat — und bei einem Tarif '
-             'ohne Einrichtung (gilt für alle) dann, wenn mindestens eine '
+             'Einrichtung "Verpflegung anbieten" aktiviert hat. Bei einem Tarif '
+             'ohne Einrichtung (gilt für alle) zeigt es sie, wenn mindestens eine '
              'Einrichtung verpflegt.')
-    # F1: Zusatzpositionen (Fremdenverkehrsbeitrag, Endreinigung) und Wochentagstarif.
+    # F1: Zusatzpositionen (Kurbeitrag, Endreinigung) und Wochentagstarif.
     # Die Berechnung selbst liegt in kjr.facility.booking._compute_amounts.
+    #
+    # BENENNUNG: Kundensichtbar heisst die Position ueberall "Kurbeitrag"
+    # (Entscheidung vom 11.10.2026). Sachlich ist es ein kommunaler Gaestebeitrag;
+    # ein Fremdenverkehrsbeitrag waere eine Abgabe der BETRIEBE, nicht der Gaeste,
+    # und war deshalb die falsche Bezeichnung. Der technische Feldname bleibt
+    # bewusst visitor_tax_*, weil eine Umbenennung eine Spaltenmigration und ein
+    # Nachziehen aller Verweise in @api.depends, Views, Report und Controller
+    # erzwaenge, ohne fachlich etwas zu aendern. Umgestellt sind nur
+    # Beschriftungen und Texte.
+    #
+    # TODO(Kunde): Der SATZ ist nicht belegt. Der Preisblock nennt keinen Betrag,
+    # die Vertragsbedingungen einen davon abweichenden. Der Satz ist bei der
+    # Standortgemeinde bzw. der Geschaeftsstelle zu erfragen und erst danach hier
+    # einzutragen; bis dahin bleibt das Feld bewusst auf 0. Offen ist ebenso,
+    # welche Befreiungen die Satzung der Standortgemeinde tatsaechlich vorsieht.
     visitor_tax_per_person_night = fields.Float(
-        string='Fremdenverkehrsbeitrag p. P./Nacht (€)', digits=(8, 2),
-        help='Kommunaler Beitrag je Person und Übernachtung, je Einrichtung zu pflegen.\n'
-             'TODO(KJR): Weder die Bezeichnung noch der Satz sind belegt. Die Auftritte '
-             'des KJR verwenden "Kurbeitrag" und "Fremdenverkehrsbeitrag" für dieselbe '
-             'Sache, der Preisblock nennt keinen Betrag, die Vertragsbedingungen einen '
-             'davon abweichenden. Begriff und Satz sind deshalb bei der Standortgemeinde '
-             'bzw. der Geschäftsstelle zu klären und erst danach hier einzutragen; '
-             'bis dahin bleibt das Feld bewusst auf 0. '
+        string='Kurbeitrag p. P./Nacht (€)', digits=(8, 2),
+        help='Kurbeitrag: kommunaler Gästebeitrag je Person und Übernachtung, je '
+             'Einrichtung zu pflegen. '
              'ACHTUNG zur Berechnung: Der Beitrag fällt NICHT pauschal für '
-             'alle Gäste an. Berechnet wird er nur auf die Teilnehmenden — '
-             'Betreuende/Begleitpersonen sind als solche befreit und gehen gar nicht '
-             'erst in die Grundmenge ein. Im Buchungsfeld "Von Fremdenverkehrsbeitrag '
-             'befreit" werden ausschließlich die WEITEREN Befreiungen unter den '
-             'Teilnehmenden erfasst (nach bisheriger Praxis z. B. Einwohner der '
-             'Standortgemeinde, kleine Kinder, Schwerbehinderte — welche Befreiungen die '
-             'Satzung der Standortgemeinde tatsächlich vorsieht, gehört zur selben '
-             'offenen Klärung); Betreuende dort NICHT mitzählen, sonst '
-             'werden sie doppelt abgezogen. '
-             '0 = es wird kein solcher Beitrag berechnet.')
+             'alle Gäste an. Berechnet wird er nur auf die Teilnehmenden. '
+             'Betreuende und Begleitpersonen sind als solche befreit und gehen gar '
+             'nicht erst in die Grundmenge ein. Im Buchungsfeld "Zusätzlich vom '
+             'Kurbeitrag befreit" werden ausschließlich die WEITEREN Befreiungen '
+             'unter den Teilnehmenden erfasst (nach bisheriger Praxis z. B. '
+             'Einwohnerinnen und Einwohner der Standortgemeinde, kleine Kinder, '
+             'Schwerbehinderte); Betreuende dort NICHT mitzählen, sonst werden sie '
+             'doppelt abgezogen. '
+             '0 = es wird kein Kurbeitrag berechnet.')
     final_cleaning_fee = fields.Float(
         string='Endreinigung (einmalig, €)', digits=(8, 2),
-        help='Pauschale für die Endreinigung. Sie wird EINMALIG je Buchung berechnet — '
+        help='Pauschale für die Endreinigung. Sie wird EINMALIG je Buchung berechnet, '
              'NICHT pro Nacht und NICHT pro Person. Bisher wurde die Endreinigung über '
              'die Ausstattung (Preis/Tag) abgebildet und dadurch pro Nacht vervielfacht; '
              'genau dafür gibt es dieses eigene Feld. 0 = keine Endreinigungspauschale.')
     weekday_price_per_person_night = fields.Float(
-        string='Preis p. P./Nacht Mo–Fr (€)', digits=(8, 2),
+        string='Preis p. P./Nacht Mo-Fr (€)', digits=(8, 2),
         help='Reduzierter Personenpreis für Aufenthalte, die vollständig von Montag bis '
              'Freitag liegen (Wochentagsbelegung außerhalb der Wochenend-Nachfrage). '
-             'Gilt erst ab der unter "Mindestnächte für Mo–Fr-Preis" hinterlegten Dauer. '
+             'Gilt erst ab der unter "Mindestnächte für Mo-Fr-Preis" hinterlegten Dauer. '
              '0 = kein Wochentagstarif, es gilt immer der reguläre Personenpreis.')
     weekday_min_nights = fields.Integer(
-        string='Mindestnächte für Mo–Fr-Preis', default=0,
-        help='Ab wie vielen Nächten der reduzierte Mo–Fr-Preis greift. '
+        string='Mindestnächte für Mo-Fr-Preis', default=0,
+        help='Ab wie vielen Nächten der reduzierte Mo-Fr-Preis greift. '
              '0 = kein Wochentagstarif.')
+    # TODO(Kunde): Die umsatzsteuerliche Einordnung der Beherbergung ist noch
+    # ungeklaert und kann sich je Tarifgruppe unterscheiden (Befreiung, ermaessigter
+    # Satz oder Regelsatz). Sie ist mit der Steuerberatung des Betreibers zu klaeren;
+    # der bestaetigte Steuersatz wird anschliessend hier je Tarifgruppe hinterlegt.
+    # Bewusst als Kommentar und nicht im Hilfetext: eine interne Arbeitsnotiz gehoert
+    # nicht in den Tooltip, den jede Geschaeftsstelle sieht.
     tax_id = fields.Many2one(
         'account.tax', string='Umsatzsteuer',
         domain="[('type_tax_use', '=', 'sale')]",
-        help='TODO(KJR): Die umsatzsteuerliche Einordnung der Beherbergung ist noch '
-             'ungeklärt und kann sich je Tarifgruppe unterscheiden (Befreiung, '
-             'ermäßigter Satz oder Regelsatz). Sie ist mit der Steuerberatung des KJR '
-             'zu klären; der bestätigte Steuersatz wird anschließend hier je '
-             'Tarifgruppe hinterlegt. Solange das Feld leer ist, greift die '
+        help='Umsatzsteuer dieser Tarifgruppe. Solange das Feld leer ist, greift die '
              'Vorgabesteuer der Gesellschaft.',
     )
 
@@ -146,18 +157,18 @@ class KjrFacilityTariff(models.Model):
         for rec in self:
             if rec.weekday_min_nights < 0:
                 raise ValidationError(_(
-                    'Die Mindestnächte für den Mo–Fr-Preis dürfen nicht negativ sein '
+                    'Die Mindestnächte für den Mo-Fr-Preis dürfen nicht negativ sein '
                     '(0 = kein Wochentagstarif).'))
             has_price = bool(rec.weekday_price_per_person_night)
             has_nights = rec.weekday_min_nights > 0
             if has_price and not has_nights:
                 raise ValidationError(_(
-                    'Tarif "%(name)s": Es ist ein Mo–Fr-Preis hinterlegt, aber keine '
+                    'Tarif "%(name)s": Es ist ein Mo-Fr-Preis hinterlegt, aber keine '
                     'Mindestzahl an Nächten. Der reduzierte Preis würde nie greifen. '
-                    'Bitte "Mindestnächte für Mo–Fr-Preis" setzen oder den Mo–Fr-Preis '
+                    'Bitte "Mindestnächte für Mo-Fr-Preis" setzen oder den Mo-Fr-Preis '
                     'auf 0 zurücksetzen.', name=rec.name or ''))
             if has_nights and not has_price:
                 raise ValidationError(_(
-                    'Tarif "%(name)s": Es sind Mindestnächte für den Mo–Fr-Preis '
-                    'hinterlegt, aber kein Mo–Fr-Preis. Bitte den Preis erfassen oder '
+                    'Tarif "%(name)s": Es sind Mindestnächte für den Mo-Fr-Preis '
+                    'hinterlegt, aber kein Mo-Fr-Preis. Bitte den Preis erfassen oder '
                     'die Mindestnächte auf 0 zurücksetzen.', name=rec.name or ''))

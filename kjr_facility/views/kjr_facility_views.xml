@@ -35,7 +35,7 @@
                     <field name="image_1920" widget="image" class="oe_avatar"/>
                     <div class="oe_title">
                         <label for="name"/>
-                        <h1><field name="name" placeholder="z. B. Jugendhaus Diepolz"/></h1>
+                        <h1><field name="name" placeholder="z. B. Jugendhaus am See"/></h1>
                     </div>
                     <group>
                         <group string="Eckdaten">
@@ -113,6 +113,9 @@
         <field name="model">kjr.facility</field>
         <field name="arch" type="xml">
             <kanban>
+                <!-- Nur im Template per raw_value ausgewertet, deshalb hier explizit
+                     deklariert (gleiches Muster wie res.partner.kanban im Kern). -->
+                <field name="facility_type"/>
                 <templates>
                     <t t-name="card">
                         <div class="o_kanban_image_fill_left" t-if="record.image_1920.value">
@@ -121,7 +124,11 @@
                         <div>
                             <strong><field name="name"/></strong>
                             <div class="text-muted"><field name="city"/></div>
-                            <div><i class="fa fa-bed me-1"/><field name="bed_total"/> <field name="capacity_label"/> · max. <field name="capacity"/> Pers.</div>
+                            <div>
+                                <i t-if="record.facility_type.raw_value == 'campsite'" class="fa fa-street-view me-1" title="Zeltplätze"/>
+                                <i t-else="" class="fa fa-bed me-1" title="Betten"/>
+                                <field name="bed_total"/> <field name="capacity_label"/> · max. <field name="capacity"/> Pers.
+                            </div>
                         </div>
                     </t>
                 </templates>

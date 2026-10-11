@@ -45,7 +45,7 @@
         <!-- Schließt die Standardrolle "Veranstaltungen / Benutzer" ein: die
              Betreuung arbeitet ohnehin mit Veranstaltungen und Anmeldungen. -->
         <field name="implied_ids" eval="[(4, ref('event.group_event_user'))]"/>
-        <field name="comment">Darf zusätzlich zu den Veranstaltungsdaten die besonders schutzbedürftigen Angaben der Teilnehmenden sehen und pflegen: Geburtsdatum, Ernährung samt Hinweis-Freitext (dort stehen regelmäßig Allergien), Erziehungsberechtigte und deren Telefonnummer, Notfallkontakt sowie das Bemerkungsfeld. Diese Angaben sind für die Durchführung einer Freizeit erforderlich, nicht für die allgemeine Veranstaltungsverwaltung. Ohne diese Gruppe sind die Felder serverseitig nicht lesbar – auch nicht über eine direkte Datenabfrage.</field>
+        <field name="comment">Darf zusätzlich zu den Veranstaltungsdaten die besonders schutzbedürftigen Angaben der Teilnehmenden sehen und pflegen: Geburtsdatum, Ernährung samt Hinweis-Freitext (dort stehen regelmäßig Allergien), Erziehungsberechtigte und deren Telefonnummer, Notfallkontakt sowie das Bemerkungsfeld. Diese Angaben sind für die Durchführung einer Freizeit erforderlich, nicht für die allgemeine Veranstaltungsverwaltung. Ohne diese Gruppe sind die Felder serverseitig nicht lesbar, auch nicht über eine direkte Datenabfrage.</field>
     </record>
 
     <!-- Die Geschäftsstelle (Rolle "Veranstaltungen / Administrator") führt die

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Teilnehmerliste für Zuschussanträge (lt. KJR OA TN-Liste)."""
+"""Teilnehmerliste für Zuschussanträge (lt. Teilnahmeliste des Trägers)."""
 import logging
 
 from dateutil.relativedelta import relativedelta
@@ -25,7 +25,7 @@ class KjrGrantParticipant(models.Model):
     age = fields.Integer(
         string='Alter', compute='_compute_age', store=True, readonly=False,
         help='Alter zu Beginn der Maßnahme. Wird aus dem Geburtsdatum berechnet, '
-             'sofern eines erfasst ist — sonst direkt eingeben.',
+             'sofern eines erfasst ist, sonst direkt eingeben.',
     )
     gender = fields.Selection([
         ('male',    'männlich'),
@@ -35,14 +35,14 @@ class KjrGrantParticipant(models.Model):
     zip_code = fields.Char(string='PLZ')
     city = fields.Char(string='Wohnort')
     role_code = fields.Selection([
-        ('EA', 'EA – ehrenamtliche/r Mitarbeiter/in'),
-        ('HA', 'HA – haupt-/nebenberufliche/r Mitarbeiter/in'),
-        ('HO', 'HO – Honorarkraft'),
-        ('PR', 'PR – Praktikant/in'),
-        ('SO', 'SO – sonstige'),
+        ('EA', 'EA (ehrenamtliche/r Mitarbeiter/in)'),
+        ('HA', 'HA (haupt-/nebenberufliche/r Mitarbeiter/in)'),
+        ('HO', 'HO (Honorarkraft)'),
+        ('PR', 'PR (Praktikant/in)'),
+        ('SO', 'SO (sonstige)'),
     ], string='Kennziffer',
-        help='Kennziffer laut Teilnahmeliste des KJR Oberallgäu. '
-             'Nur für Mitarbeitende/Leitung — Teilnehmende bleiben leer.')
+        help='Kennziffer laut Teilnahmeliste. '
+             'Nur für Mitarbeitende/Leitung, Teilnehmende bleiben leer.')
     is_leader = fields.Boolean(string='Gruppenleitung', default=False)
     has_juleica = fields.Boolean(string='Juleica', default=False)
     note = fields.Char(string='Bemerkung')

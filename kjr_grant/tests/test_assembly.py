@@ -35,7 +35,7 @@ class TestKjrAssemblyElection(TransactionCase):
         cls.assembly = cls.env['kjr.assembly'].create({
             'name': 'Vollversammlung 2026',
             'date': '2026-03-01 18:00:00',
-            'location': 'Sonthofen',
+            'location': 'Geschäftsstelle',
         })
 
     def _election(self, **kw):

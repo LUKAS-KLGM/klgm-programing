@@ -87,13 +87,13 @@ class ResPartner(models.Model):
         ('group',          'Jugendgruppe (§ 30 Abs. 2c BJR-Satzung)'),
         ('open',           'Offene Jugendeinrichtung'),
     ], string='Verbandstyp', groups='base.group_user',
-        help='Einstufung nach § 30 BJR-Satzung. Feststellung des KJR — im Portal '
-             'nur sichtbar, Änderungen laufen über die Geschäftsstelle.',
+        help='Einstufung nach § 30 BJR-Satzung. Stellt die Geschäftsstelle fest; '
+             'im Portal nur sichtbar und dort nicht änderbar.',
     )
     kjr_member_number = fields.Char(
         string='Mitgliedsnummer KJR', copy=False, groups='base.group_user',
-        help='Vergibt die Geschäftsstelle. Feststellung des KJR — im Portal nur '
-             'sichtbar, Änderungen laufen über die Geschäftsstelle.',
+        help='Vergibt die Geschäftsstelle; im Portal nur sichtbar und dort nicht '
+             'änderbar.',
     )
     # TODO(KJR): Die Gap-Analyse (Vault, "KJR Funktions-Gap-Analyse 2026-06.md",
     # Abschnitt Antragsberechtigung) haelt fest, dass Antragsberechtigung und
@@ -105,9 +105,9 @@ class ResPartner(models.Model):
     # gegen die gueltige KJR-Richtlinie § 3.1 verifizieren.
     kjr_vr_right = fields.Boolean(
         string='Vertretungsrecht in Vollversammlung', default=False,
-        help='Kennzeichnet Verbände mit Sitz und Stimme in der KJR-Vollversammlung. '
+        help='Kennzeichnet Verbände mit Sitz und Stimme in der Vollversammlung. '
              'Dient derzeit zusätzlich als Prüfkriterium der Antragsberechtigung '
-             '(§ 3.1 Richtlinien) — siehe TODO(KJR) im Code.',
+             '(§ 3.1 Richtlinien).',
     )
     kjr_vr_delegate_ids = fields.Many2many(
         'res.partner', 'kjr_partner_delegate_rel', 'partner_id', 'delegate_id',
@@ -135,9 +135,9 @@ class ResPartner(models.Model):
     )
     kjr_active_since = fields.Date(
         string='Mitglied seit', groups='base.group_user',
-        help='Beginn der Mitgliedschaft laut Aufnahmebeschluss. Feststellung des '
-             'KJR — im Portal nur sichtbar, Änderungen laufen über die '
-             'Geschäftsstelle.',
+        help='Beginn der Mitgliedschaft laut Aufnahmebeschluss. Stellt die '
+             'Geschäftsstelle fest; im Portal nur sichtbar und dort nicht '
+             'änderbar.',
     )
     kjr_grant_ids = fields.One2many(
         'kjr.grant.application', 'partner_id', string='Zuschussanträge',

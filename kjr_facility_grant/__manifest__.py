@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Brücke: Einrichtung ↔ Zuschuss',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'category': 'Custom/KJR',
     'summary': 'Verknüpft Einrichtungsbuchungen mit Zuschussanträgen und erzeugt '
                'aus einer geförderten Buchung direkt einen vorbefüllten Antrag.',

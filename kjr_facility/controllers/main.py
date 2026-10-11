@@ -68,8 +68,9 @@ class KjrFacilityWebsite(http.Controller):
         """Verpflegungsauswahl serverseitig auf das Angebot der Einrichtung begrenzen.
 
         Erbringt die Einrichtung keine Verpflegung (`kjr.facility.offers_catering`
-        ist nicht gesetzt — beide Häuser des KJR sind Selbstversorgerhäuser), wird ein
-        trotzdem übermittelter Wert VERWORFEN und 'none' (Selbstverpflegung) gesetzt.
+        ist nicht gesetzt — beide Einrichtungen des Erstbetreibers sind
+        Selbstversorgerhäuser), wird ein trotzdem übermittelter Wert VERWORFEN und
+        'none' (Selbstverpflegung) gesetzt.
 
         Bewusst OHNE Fehlermeldung: Das Formular bietet die Auswahl bei
         Selbstverpflegung gar nicht erst an (siehe website_facility_request). Ein
@@ -147,7 +148,7 @@ class KjrFacilityWebsite(http.Controller):
 
         Ein Betrag von 0,00 € ist KEINE Preisaussage, solange er auch schlicht der
         Startwert eines nie gepflegten Feldes sein kann: Die Tarife der Stammdaten
-        stehen bewusst auf 0,00 € (siehe TODO(KJR) in
+        stehen bewusst auf 0,00 € (siehe TODO(Kunde) in
         data/kjr_facility_data.xml — die Sätze der Live-Seite sind nicht belegt).
         Ohne diese Prüfung rechnet die Kostenvorschau daraus eine vollständige
         Aufstellung mit „Unterkunft 0,00 €" und „Gesamt (brutto) 0,00 €" — für die
@@ -157,7 +158,7 @@ class KjrFacilityWebsite(http.Controller):
         Anker ist der Übernachtungssatz (Personenpreis, Mo–Fr-Preis oder Pauschale
         je Nacht) — dieselbe Regel wie im Materialverleih, wo der Standardbetrag
         derselben Betragsart darüber entscheidet, ob eine Zahl genannt werden darf.
-        Verpflegung, Endreinigung und Fremdenverkehrsbeitrag taugen NICHT als Anker:
+        Verpflegung, Endreinigung und Kurbeitrag taugen NICHT als Anker:
         ohne Übernachtungssatz stünde in der Aufstellung weiterhin „Unterkunft
         0,00 €".
         """
@@ -261,10 +262,9 @@ class KjrFacilityWebsite(http.Controller):
             latest = today + relativedelta(months=facility.max_advance_months)
             if check_in > latest:
                 errors['check_in'] = _(
-                    'Laut Vorstandsbeschluss vom 21.07.2026 nehmen wir Anfragen für %(fac)s '
-                    'höchstens %(m)d Monate im Voraus an. Die Anreise darf daher spätestens '
-                    'am %(d)s liegen. Für spätere Termine wenden Sie sich bitte an die '
-                    'Geschäftsstelle.'
+                    'Wir nehmen Anfragen für %(fac)s höchstens %(m)d Monate im Voraus '
+                    'an. Die Anreise darf daher spätestens am %(d)s liegen. Für spätere '
+                    'Termine wenden Sie sich bitte an die Geschäftsstelle.'
                 ) % {'fac': facility.name, 'm': facility.max_advance_months,
                      'd': latest.strftime('%d.%m.%Y')}
 
@@ -296,11 +296,11 @@ class KjrFacilityWebsite(http.Controller):
         if facility.requires_organized_group and not self._to_bool(post.get('is_organized_group')):
             errors['is_organized_group'] = _(
                 '%s wird nur an organisierte Jugend- und Bildungsgruppen vergeben. Bitte '
-                'bestätigen Sie, dass Ihre Gruppe diese Voraussetzung erfüllt — andernfalls '
-                'wenden Sie sich bitte direkt an die Geschäftsstelle.'
+                'bestätigen Sie, dass Ihre Gruppe diese Voraussetzung erfüllt. '
+                'Andernfalls wenden Sie sich bitte direkt an die Geschäftsstelle.'
             ) % facility.name
 
-        # ── Befreiungen vom Fremdenverkehrsbeitrag ───────────────────────────
+        # ── Befreiungen vom Kurbeitrag ───────────────────────────────────────
         # B3: Betreuende sind als Begleitpersonen ohnehin beitragsfrei und gehen gar
         # nicht erst in die Grundmenge ein (siehe _compute_amounts). Das Feld erfasst
         # deshalb nur die WEITEREN Befreiungen unter den Teilnehmenden — die Obergrenze
@@ -309,14 +309,14 @@ class KjrFacilityWebsite(http.Controller):
         exempt = self._to_int(post.get('visitor_tax_exempt_count'))
         if exempt < 0 or (pax > 0 and exempt > pax):
             errors['visitor_tax_exempt_count'] = _(
-                'Es können höchstens %(p)d teilnehmende Personen vom Fremdenverkehrsbeitrag '
-                'befreit sein — so viele Teilnehmende umfasst Ihre Anfrage. Betreuende sind '
+                'Es können höchstens %(p)d teilnehmende Personen vom Kurbeitrag '
+                'befreit sein, so viele Teilnehmende umfasst Ihre Anfrage. Betreuende sind '
                 'als Begleitpersonen bereits automatisch befreit und hier nicht mitzuzählen.'
             ) % {'p': pax}
 
         # BUG-a / B1: Verfügbarkeit VOR dem Anlegen prüfen — aber gegen die KAPAZITÄT,
-        # nicht gegen die blosse Existenz einer Überschneidung. Ein Haus wie Diepolz
-        # (42 Betten) darf nicht durch eine einzige 8-Personen-Anfrage gesperrt werden.
+        # nicht gegen die blosse Existenz einer Überschneidung. Ein Haus mit 42
+        # Betten darf nicht durch eine einzige 8-Personen-Anfrage gesperrt werden.
         #
         # Zählweise bewusst identisch zu kjr.facility.booking._check_double_booking:
         # dieselbe Hilfsmethode `_find_overlapping` (ohne Raumauswahl, da das Formular
@@ -328,9 +328,9 @@ class KjrFacilityWebsite(http.Controller):
         # Fehler abweisen würde; der Gast bekäme statt einer Meldung einen Serverfehler.
         # Die Geschäftsstelle kann abgelaufene Vormerkungen jederzeit stornieren und so
         # Plätze wieder freigeben.
-        # TODO(KJR): Ohne gepflegte "Max. Personen" (capacity = 0) kann die Auslastung
+        # TODO(Kunde): Ohne gepflegte "Max. Personen" (capacity = 0) kann die Auslastung
         # nicht bewertet werden — dann findet wie im Backend keine Prüfung statt. Die
-        # Kapazität je Einrichtung ist vom KJR zu bestätigen (Diepolz: 42 Betten).
+        # Kapazität je Einrichtung ist vom Betreiber zu bestätigen.
         if not errors and facility.capacity:
             overlapping = request.env['kjr.facility.booking'].sudo()._find_overlapping(
                 facility.id, check_in, check_out)
@@ -353,7 +353,7 @@ class KjrFacilityWebsite(http.Controller):
                 else:
                     errors['check_in'] = _(
                         'Im gewählten Zeitraum ist %(fac)s mit %(occ)d von %(cap)d Plätzen '
-                        'ausgebucht — es sind derzeit keine Plätze frei. Bitte wählen Sie '
+                        'ausgebucht, es sind derzeit keine Plätze frei. Bitte wählen Sie '
                         'einen anderen Zeitraum oder wenden Sie sich an die Geschäftsstelle.'
                     ) % {'fac': facility.name, 'occ': occupied, 'cap': facility.capacity}
         return errors, check_in, check_out
@@ -386,7 +386,7 @@ class KjrFacilityWebsite(http.Controller):
     # HINWEIS (offene Produktentscheidung): Die Anfrage setzt bewusst einen Login
     # voraus (auth='user'), damit die Buchung einem Partner zugeordnet und im Portal
     # nachverfolgt werden kann. Ob Anfragen auch ohne Konto möglich sein sollen, ist
-    # mit dem KJR noch zu klären — bis dahin NICHT auf auth='public' umstellen.
+    # mit dem Betreiber noch zu klären — bis dahin NICHT auf auth='public' umstellen.
     @http.route('/service/einrichtung/<int:facility_id>/anfrage', type='http', auth='user',
                 website=True, methods=['GET', 'POST'])
     def facility_request(self, facility_id, **post):
@@ -480,9 +480,17 @@ class KjrFacilityPortal(CustomerPortal):
             ('res_id', '=', booking.id),
             ('mimetype', '=', 'application/pdf'),
         ]))
+        # Befund 11: Der Kopf der Detailseite zeigte Logo und Namen aus `res_company`.
+        # Das ist laut ir_qweb.py (`values.setdefault('res_company', self.env.company
+        # .sudo())`) IMMER die aktive Gesellschaft des BETRACHTERS, nicht die der
+        # Buchung. Bei mehreren Trägergesellschaften stand damit der falsche Absender
+        # über den Daten einer fremden Buchung. sudo() ist nötig, weil Portalnutzer auf
+        # res.company kein Leserecht haben; ohne gepflegtes company_id bleibt es beim
+        # bisherigen Verhalten.
         return request.render('kjr_facility.portal_booking_detail', {
             'booking': booking, 'page_name': 'kjr_booking',
             'has_contract': has_contract,
+            'booking_company': (booking.company_id or request.env.company).sudo(),
         })
 
     @http.route('/my/einrichtungsbuchungen/<int:booking_id>/vertrag', type='http',

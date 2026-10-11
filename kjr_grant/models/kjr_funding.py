@@ -36,9 +36,9 @@ class KjrFunding(models.Model):
     name = fields.Char(string='Förderprogramm', required=True, tracking=True)
     funder = fields.Selection([
         ('bjr', 'Bayerischer Jugendring (BJR)'),
-        ('bezjr', 'Bezirksjugendring Schwaben'),
+        ('bezjr', 'Bezirksjugendring'),
         ('stmas', 'Staatsministerium (StMAS)'),
-        ('landkreis', 'Landkreis Oberallgäu'),
+        ('landkreis', 'Landkreis'),
         ('bund', 'Bundesministerium (BMFSFJ)'),
         ('eu', 'EU-Förderprogramm'),
         ('stiftung', 'Stiftung'),
@@ -64,7 +64,7 @@ class KjrFunding(models.Model):
     note = fields.Text(string='Anmerkungen')
     verwendungsnachweis_deadline = fields.Date(string='Verwendungsnachweis bis')
 
-    # ── Förderabrechnung Bezirksjugendring Schwaben (Exportparameter) ────────
+    # ── Förderabrechnung Bezirksjugendring (Exportparameter) ─────────────────
     # Der KJR rechnet seine Mittel (u. a. AEJ und JBM) mit dem BezJR ab und baut
     # die Aufstellung der geförderten Maßnahmen bisher von Hand in Fremdvordrucke.
     # Die Parameter sind bewusst Felder am Förderprogramm und keine Eingaben in
@@ -89,7 +89,7 @@ class KjrFunding(models.Model):
         ('paid', 'Auszahlungsdatum'),
     ], string='Zeitraum bezogen auf', default='start', required=True,
         help='Nach welchem Datum die Maßnahmen dem Abrechnungszeitraum zugeordnet '
-             'werden. Vorbelegt mit dem Maßnahmenbeginn — gefördert wird die '
+             'werden. Vorbelegt mit dem Maßnahmenbeginn, denn gefördert wird die '
              'Maßnahme, nicht der Verwaltungsvorgang. Welche Abgrenzung der '
              'Bezirksjugendring erwartet, ist mit dem BezJR abzustimmen.')
     export_state = fields.Selection([
@@ -196,7 +196,7 @@ class KjrFunding(models.Model):
     # FÖRDERABRECHNUNG BEZIRKSJUGENDRING SCHWABEN (CSV-EXPORT)
     # ══════════════════════════════════════════════════════════════════════════
     # Der KJR rechnet seine Fördermittel (u. a. AEJ und JBM) mit dem
-    # Bezirksjugendring Schwaben ab. Bisher wird die Aufstellung der geförderten
+    # Bezirksjugendring ab. Bisher wird die Aufstellung der geförderten
     # Maßnahmen von Hand in Fremdvordrucke übertragen.
     #
     # TODO(KJR): Der jeweils gültige BezJR-Vordruck liegt diesem Modul NICHT vor.

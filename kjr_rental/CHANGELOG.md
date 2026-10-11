@@ -1,5 +1,135 @@
 # Changelog – KJR Materialverleih
 
+## 19.0.5.5.0 (2026-10-11)
+
+### Geändert
+- **Firmenlogo im Kopf der Ausleih-Detailseite im Portal.** Das Logo kommt aus
+  `res.company` (Gesellschaft des Vorgangs, ersatzweise `res_company`),
+  Alternativtext und Titel aus dem Firmennamen. Ohne eigenes hinterlegtes Logo
+  bleibt nur die Überschrift stehen, statt den Odoo-Platzhalter zu zeigen.
+- **Kunden- und Ortsbezüge aus dem Modul entfernt (White Label).** Die drei
+  Seed-Lagerorte heißen jetzt Hauptlager, Nebenlager und Außenlager; die echten
+  Lagerorte sind Instanzdaten. In Katalog, Spielmobilseite, Datenschutzblock,
+  Rückgabe- und Anonymisierungshinweisen sowie in den Fehlermeldungen des
+  öffentlichen Formulars nennt der Text die Organisation über `res.company`
+  bzw. spricht von „der Geschäftsstelle" und „dem Betreiber". Die sechs
+  Platzhalter im Datenschutzblock heißen jetzt „wird noch ergänzt" statt „wird
+  vom KJR ergänzt": die sechs `kjr.privacy.*`-Parameter werden bewusst nicht
+  ausgeliefert, der Auslieferungszustand ist also genau dieser Platzhalter, und
+  er stand bis hierher als Kürzel des Erstkunden auf der öffentlichen Seite
+  jedes weiteren Betreibers. Ebenso im Katalogtext: dort stand das interne
+  Feldlabel „KJR-Mitgliedsverband" im Fließtext, jetzt steht dort neutral
+  „das bei Ihrer Organisation hinterlegte Mitgliedskennzeichen". Das Feldlabel
+  selbst (`models/res_partner.py`) bleibt unverändert, es ist in drei Modulen
+  wortgleich und eine einseitige Änderung machte das Verhalten von der
+  Ladereihenfolge abhängig.
+- **Einzugsgebiet des Spielmobils ist konfigurierbar.** Neuer Systemparameter
+  `kjr_rental.spielmobil_area` (Freitext, z. B. „im Kreisgebiet"). Er wird nur
+  gelesen und bewusst nicht ausgeliefert, genau wie die sechs
+  `kjr.privacy.*`-Parameter. Ist er leer, steht dort „im Einzugsgebiet". Der
+  enge Adressatenkreis selbst bleibt unverändert, er ist eine Zusage aus dem
+  Website-Termin vom 23.07.2026.
+- **Kategorie-Icons geprüft und geschärft.** Zelte stehen nicht mehr unter einem
+  Haus (`fa-bed` statt `fa-home`), Technik nicht mehr unter einem
+  Lautstärkeregler (`fa-sliders` statt `fa-volume-up`, deckt Ton und Licht ab),
+  und „Sonstiges" hat überhaupt erst ein Icon (`fa-cube`). Der Beispielartikel
+  „Gruppenzelt" läuft mit seiner Kategorie mit. Der Spielmobil-Teaser auf der
+  Katalogseite zeigt einen Anhänger statt eines Busses (`fa-truck`, im Gleichlauf
+  mit dem Artikel).
+- **Die Katalogrubrik für Artikel ohne Kategorie heißt jetzt „Ohne Kategorie".**
+  Der Katalog gruppiert nach `item.category_id`; für einen veröffentlichten
+  Artikel ohne Kategorie ist der Schlüssel ein leeres Recordset, und die
+  Überschrift fiel auf den Literaltext „Sonstiges" zurück. Weil es eine
+  gleichnamige Seed-Kategorie gibt, standen damit zwei Blöcke mit derselben
+  Überschrift untereinander, einer mit Symbol und einer ohne. Die Rubrik hat
+  jetzt einen eigenen Namen und dasselbe `fa-cube` wie `cat_other`.
+- **App-Icon und Portalsymbol neu gezeichnet.** Das App-Icon war bisher eine
+  leere orange Fläche ohne Motiv, 140 x 140 Pixel groß. Es zeigt jetzt den
+  Anhänger mit Zugdeichsel und kommt mit 256 x 256 Pixeln aus dem
+  Icon-Generator des Repos (`tools/icons/build_icons.py`, `motiv_rental`), wie
+  die Icons der fünf Schwestermodule auch. Damit ist die Datei auf einem
+  HiDPI-Bildschirm scharf, sie passt in die Icon-Familie und der nächste Lauf
+  des Generators erzeugt sie unverändert wieder, statt sie zu überschreiben. Ein
+  zwischenzeitlich von Hand gezeichnetes Kistenmotiv wurde dafür aufgegeben; der
+  Generator ist die einzige Quelle der sechs Icons.
+  `static/src/img/verleih.svg` zeigt dasselbe Motiv (bisher ein modulfremdes
+  Türkis).
+  - **Die Palette der Icon-Familie ist Navy `#1B3A6B` mit Orange `#E8952E`:**
+    weißer Kasten auf Navy, Deckelband im Orange. Die zwischenzeitlich im
+    Generator stehenden Aubergine-Töne `#714B67` / `#5E3F56` waren im Repo durch
+    nichts gedeckt und widersprachen dem, was die Module im Frontend zeigen
+    (`kjr_facility/static/src/css/facility.css`, der Rückfallwert in
+    `rental.css`, die Slogan-Zeilen der `index.html`). Zwei der drei
+    Aubergine-Töne lagen außerdem nur 1,25:1 auseinander und waren am Icon nicht
+    zu unterscheiden. Gemessen jetzt: Weiß auf Navy 11,3:1, Orange auf Navy
+    4,7:1, beides über den 3:1 aus WCAG 1.4.11 für bedeutungstragende Grafik.
+    *Offen:* `static/src/img/verleih.svg` trägt noch `#5E3F56` und gehört bei
+    der nächsten Gelegenheit auf dieselbe Palette gezogen.
+  - **Das neue Bild erreicht die App-Leiste nur über ein Modul-Update.**
+    `views/menu.xml` setzt `web_icon` am Wurzelmenü, und
+    `ir.ui.menu.web_icon_data` ist ein gespeichertes Feld, das Odoo nur in
+    `create()`/`write()` neu aus der Datei liest
+    (`odoo/addons/base/models/ir_ui_menu.py`). In der Apps-Übersicht
+    (`icon_image`, nicht gespeichert) erscheint es sofort. Ohne die
+    Versionsanhebung dieser Lieferung stünden auf einer Bestandsinstanz altes
+    und neues Icon nebeneinander.
+- **Kartenakzente kommen aus dem Theme.** `rental.css` nutzt `var(--bs-primary)`
+  statt der festen Hausfarbe, mit dem bisherigen Wert als Rückfall.
+- **Interne Arbeitsnotizen aus den sichtbaren Feldhilfen entfernt.** Die
+  TODO-Marken in fünf Tooltips des Artikelmodells und der Hinweis im Infokasten
+  der Mengenstaffel stehen jetzt als Kommentar im Quelltext; die Sachaussage
+  bleibt im Tooltip.
+- **Restliche Gedankenstriche aus kundenseitigen Texten entfernt** (Überschrift
+  des Verleihvertrags, Leerwerte in Tabellen, Zeitraumangaben, Bezeichnungen der
+  Rechnungszeilen, Fehler- und Hinweismeldungen). Der Durchgang 19.0.5.3.0 hatte
+  Report, Backend-Hilfetexte und Chatter-Meldungen ausgenommen.
+
+### Dokumentiert
+- **Odoo 19 liefert FontAwesome 4.7.0 aus**, nicht 5 oder 6
+  (`addons/web/static/src/libs/fontawesome/css/font-awesome.css`). `fa-futbol-o`
+  und `fa-cutlery` sind daher korrekt und bleiben; die FA-5/6-Namen `fa-futbol`
+  und `fa-utensils` existieren dort nicht und würden als leerer Kasten rendern.
+  Der Hinweis steht als Kommentar über den Seed-Kategorien und in den beiden
+  Feldhilfen zum Icon.
+- **Die Barrierefreiheitsprüfung von Odoo läuft nicht auf Website-Vorlagen**
+  (`ir.ui.view._check_xml` überspringt `type == 'qweb'`). Die Icons der
+  Website-Vorlagen sind deshalb von Hand geprüft; genau eines (`fa-arrow-left`
+  im Zurück-Link der Detailseite) hatte kein `aria-hidden`. In den Backend-Views
+  gab es keinen Verstoß.
+- **Das Portalsymbol ist in Odoo 19 sichtbar.** `portal.portal_docs_entry` legt
+  es zwar in `<div class="o_portal_icon d-none">`, die mitgelieferte Vorlage
+  `portal.portal_docs_entry_layout` („Use Pictograms",
+  `addons/portal/views/portal_templates.xml`) ist aber mit `active="True"`
+  ausgeliefert und ersetzt das `d-none` durch `d-block align-self-start`. Die
+  Kachel „Meine Ausleihen" unter `/my` zeigt `verleih.svg` also genauso wie die
+  Kernkacheln (`portal-addresses.svg`, `portal-connection.svg`); die Gestaltung
+  der Datei ist kundensichtbar und gehört mitgeprüft. Eine eigene Regel zu
+  `o_portal_icon` bleibt trotzdem falsch: sie wäre überflüssig, und weil es eine
+  Kernklasse ist, träfe sie die Kacheln aller Module. (Korrigiert die
+  gegenteilige Behauptung, die zwischenzeitlich hier und als Kommentar in
+  `views/website_templates.xml` stand.)
+
+### Getestet
+- Neue Datei `tests/test_seed_data.py`: alle ausgelieferten Kategorien tragen
+  ein Icon, das mit `fa-` beginnt, und die ausgelieferte Stammdatendatei nennt
+  keinen Kunden- oder Ortsnamen (die drei historischen XML-IDs ausgenommen).
+- Beide Zusicherungen lesen die AUSGELIEFERTE Datei
+  (`data/kjr_rental_data.xml`), nicht den Zustand der Instanz. Der Icon-Test
+  griff zunächst über `env.ref` auf die lebenden Datensätze zu und wäre damit
+  rot geworden, sobald die Geschäftsstelle ein Icon leert oder anders schreibt.
+  Das ist ausdrücklich erlaubt: `icon` ist optional, die Sätze stehen unter
+  `noupdate="1"`, und das Migrationsskript lässt gepflegte Werte bewusst stehen.
+  Ein Upgrade darf daran nicht scheitern.
+
+### Hinweis zum Upgrade
+- Die Stammdaten stehen unter `noupdate="1"`. Das Skript
+  `migrations/19.0.5.5.0/post-migration.py` zieht die neuen Lagerortnamen und
+  die vier Icon-Korrekturen in Bestandsinstanzen nach, aber nur dort, wo noch
+  der unveränderte Auslieferungswert steht. Von Hand gepflegte Werte bleiben
+  unangetastet, jede Änderung wird protokolliert. Ohne dieses Skript bliebe der
+  Ortsbezug auf der Bestandsinstanz stehen. Der Icon-Test hängt nicht daran, er
+  prüft die ausgelieferte Datei.
+
 ## 19.0.5.4.1 (2026-09-10)
 
 - Abstand zwischen Label und Wert im Datenschutzblock.

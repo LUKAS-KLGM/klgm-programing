@@ -13,7 +13,7 @@ class TestKjrFacilityBooking(TransactionCase):
         super().setUpClass()
         cls.partner = cls.env['res.partner'].create({'name': 'Gruppe Test'})
         cls.facility = cls.env['kjr.facility'].create({
-            'name': 'Jugendhaus Diepolz', 'facility_type': 'house',
+            'name': 'Testhaus', 'facility_type': 'house',
             'capacity': 42, 'supervision_ratio': 5,
         })
         cls.room = cls.env['kjr.facility.room'].create({
@@ -110,11 +110,11 @@ class TestKjrFacilityBooking(TransactionCase):
         self.assertEqual(len(found), 1)
 
     # ── Verpflegung je Einrichtung abschaltbar ────────────────────────────────
-    # Kundenwunsch vom 21.08.2026: Beide KJR-Einrichtungen sind reine
-    # Selbstversorgerhäuser; das Buchungsformular bot bis dahin Frühstück, Halb-
-    # und Vollpension an — Leistungen, die der KJR gar nicht erbringt. Der
-    # Schalter kjr.facility.offers_catering bleibt im Modul, weil es White-Label
-    # auch an Jugendringe MIT eigener Verpflegung geht.
+    # Kundenwunsch vom 21.08.2026: Beide Einrichtungen des Erstbetreibers sind
+    # reine Selbstversorgerhäuser; das Buchungsformular bot bis dahin Frühstück,
+    # Halb- und Vollpension an — Leistungen, die der Betreiber gar nicht erbringt.
+    # Der Schalter kjr.facility.offers_catering bleibt im Modul, weil es
+    # White-Label auch an Träger MIT eigener Verpflegung geht.
     #
     # Der Schalter steuert die SICHTBARKEIT und die AUSWAHLBARKEIT — er steuert
     # NICHT rückwirkend die Berechnung. amount_meals ist ein gespeichertes
@@ -128,7 +128,7 @@ class TestKjrFacilityBooking(TransactionCase):
         """Einrichtung MIT Verpflegung samt gepflegten Sätzen (White-Label-Fall).
 
         Der Satz von 15,00 € ist ein reiner Testwert und bewusst NICHT der Seed:
-        die Verpflegungssätze der Auslieferung stehen mit TODO(KJR) auf 0,00 €.
+        die Verpflegungssätze der Auslieferung stehen mit TODO(Kunde) auf 0,00 €.
         """
         facility = self.env['kjr.facility'].create({
             'name': 'Jugendhaus mit Küchenbetrieb', 'facility_type': 'house',

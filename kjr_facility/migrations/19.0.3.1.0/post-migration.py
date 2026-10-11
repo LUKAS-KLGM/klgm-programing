@@ -3,10 +3,9 @@
 
 Ausgangslage: Der Seed lieferte für das Jugendtagungshaus Diepolz drei
 Platzhalterzimmer („Zimmer 1", „Zimmer 2", „Schlafsaal") mit zusammen 24 Betten,
-während der Beschreibungstext von 42 Betten in 12 Zimmern sprach. Marvin
-Gutknecht hat das am 17.08.2026 auf der Kundeninstanz von Hand korrigiert
-(Quelle: „KJR Website - Ist-Zustand 2026-08-17", Abschnitt 10); der Seed im Repo
-zieht jetzt nach.
+während der Beschreibungstext von 42 Betten in 12 Zimmern sprach. Die
+Projektleitung hat das am 17.08.2026 auf der Kundeninstanz von Hand korrigiert
+(Quelle: Projektunterlagen, Stand 17.08.2026); der Seed im Repo zieht jetzt nach.
 
 Warum dieses Skript nötig ist: Die Stammdaten liegen unter <data noupdate="1">.
 Bestehende Datensätze werden dadurch beim Upgrade zwar nicht überschrieben — NEUE
@@ -36,7 +35,7 @@ LEGACY_ROOMS = [
 def _room_key(room):
     """Vergleichsschlüssel: führende Zimmernummer, sonst der normalisierte Name.
 
-    Marvin hat die Zimmer als „Zimmer 11" o. ä. angelegt, der Seed als
+    Von Hand wurden die Zimmer als „Zimmer 11" o. ä. angelegt, der Seed schreibt
     „Zimmer 11 (1. OG)". Über die Nummer greifen beide Schreibweisen ineinander.
     """
     name = (room.name or '').strip().lower()

@@ -265,7 +265,7 @@ class TestKjrRentalPricing(TransactionCase):
         ], limit=1)
         if not journal:
             self.skipTest('Kein Verkaufsjournal im Test-Mandanten '
-                          '(kein Kontenplan installiert) – Rechnungsfall nicht prüfbar.')
+                          '(kein Kontenplan installiert), Rechnungsfall nicht prüfbar.')
         item = self._item(name='Fakturiert', price_per_day=10.0,
                           has_member_price=True, price_member_per_day=5.0)
         order = self._order(item, quantity=2)

@@ -54,7 +54,7 @@
                             <field name="meal_full" invisible="not show_meal_prices"/>
                         </group>
                         <!-- F1: Einmal- und Zusatzpositionen sowie der reduzierte
-                             Mo–Fr-Satz. Berechnet wird das in der Buchung. -->
+                             Mo-Fr-Satz. Berechnet wird das in der Buchung. -->
                         <group string="Zusatzpositionen und Wochentagstarif" name="extras" colspan="2">
                             <group>
                                 <field name="visitor_tax_per_person_night"/>
@@ -67,11 +67,11 @@
                         </group>
                     </group>
                     <div class="alert alert-info" role="alert">
-                        Der Fremdenverkehrsbeitrag wird je Nacht nur auf die Teilnehmenden
+                        Der Kurbeitrag (je Person und Nacht) wird nur auf die Teilnehmenden
                         berechnet. Betreuende sind als Begleitpersonen befreit und werden
                         automatisch nicht mitgerechnet. Zusätzlich abgezogen wird die in der
                         Buchung erfasste Anzahl weiterer befreiter Teilnehmender (Einwohner
-                        der Standortgemeinde, Kinder unter 7 Jahren, Schwerbehinderte) —
+                        der Standortgemeinde, Kinder unter 7 Jahren, Schwerbehinderte).
                         Betreuende dort bitte NICHT erneut eintragen. Die Endreinigung fällt
                         einmalig je Buchung an, nicht pro Nacht.
                     </div>

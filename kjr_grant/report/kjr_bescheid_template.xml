@@ -48,7 +48,7 @@
 
                         <!-- Betreff -->
                         <h4 class="text-center mb-4">
-                            Zuschussbescheid — <t t-esc="o.name"/>
+                            Zuschussbescheid: <t t-esc="o.name"/>
                         </h4>
 
                         <!-- Maßnahmendetails -->

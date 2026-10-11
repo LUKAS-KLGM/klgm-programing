@@ -28,7 +28,12 @@ class KjrRentalCategory(models.Model):
     name = fields.Char(string='Bezeichnung', required=True, translate=True)
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
-    icon = fields.Char(string='FontAwesome-Icon', help='z. B. fa-bus, fa-music')
+    icon = fields.Char(
+        string='FontAwesome-Icon',
+        help='FontAwesome-4-Klasse, z. B. fa-bus oder fa-music. Odoo 19 liefert '
+             'FontAwesome 4.7.0 aus; die neueren FA-5/6-Namen (fa-futbol, fa-utensils) '
+             'gibt es dort nicht und sie rendern als leerer Kasten.',
+    )
     item_count = fields.Integer(string='Artikel', compute='_compute_item_count')
 
     def _compute_item_count(self):
@@ -75,7 +80,7 @@ class KjrRentalItem(models.Model):
     quantity_total = fields.Integer(string='Bestand gesamt', default=1)
 
     # --- Preismodell -----------------------------------------------------------
-    # Die echte Preisliste des KJR kennt mehr als den Tagespreis: Fahrzeuge werden
+    # Die echte Preisliste des Betreibers kennt mehr als den Tagespreis: Fahrzeuge werden
     # nach gefahrenen Kilometern abgerechnet, Kisten und Sätze als Stückpreis ohne
     # Zeitbezug, Zelte je Nacht, Mobiliar in Mengenstaffeln. Umsetzung bewusst
     # zweigeteilt:
@@ -107,11 +112,11 @@ class KjrRentalItem(models.Model):
     ], string='Zeitbezug des Grundpreises', default='flat', required=True,
         help='Gilt nur für die Preismodelle "Grundgebühr + Kilometerpreis" und '
              '"Mengenstaffel": ob der Grund- bzw. Staffelpreis einmalig je Ausleihe, '
-             'je Tag oder je Nacht anfällt. Voreingestellt ist "pauschal" — die '
+             'je Tag oder je Nacht anfällt. Voreingestellt ist "pauschal", die '
              'zurückhaltende Variante, weil eine unbeabsichtigte Multiplikation mit '
-             'dem Zeitraum die Rechnung erhöhen würde. '
-             'TODO(KJR): je Artikelgruppe mit der echten Preisliste abgleichen.',
+             'dem Zeitraum die Rechnung erhöhen würde.',
     )
+    # TODO Betreiber: Zeitbezug je Artikelgruppe mit der echten Preisliste abgleichen.
     unit_label = fields.Char(
         string='Bezeichnung der Einheit',
         help='Wie heißt EINE Einheit dieses Artikels in der Preisliste (z. B. "Kiste", '
@@ -132,28 +137,29 @@ class KjrRentalItem(models.Model):
     )
     price_member_per_day = fields.Float(
         string='Grundpreis Mitglied (€)', digits=(8, 2),
-        help='Grundpreis für KJR-Mitglieder, gleiche Bezugsgröße wie der Standardpreis.',
+        help='Grundpreis für Mitglieder, gleiche Bezugsgröße wie der Standardpreis.',
     )
-    # TODO(KJR): Kilometersätze der echten Preisliste eintragen — Startwert bewusst 0,00 €,
-    # damit kein erfundener Satz in Angebot oder Rechnung landet.
+    # TODO Betreiber: Kilometersätze der echten Preisliste eintragen. Startwert ist
+    # bewusst 0,00 €, damit kein erfundener Satz in Angebot oder Rechnung landet.
     price_per_km = fields.Float(
         string='Kilometerpreis Standard (€/km)', digits=(8, 2),
         help='Nur beim Preismodell "Grundgebühr + Kilometerpreis": Satz je gefahrenem '
-             'Kilometer für Nicht-Mitglieder. Startwert 0,00 € — die echte Preisliste '
+             'Kilometer für Nicht-Mitglieder. Startwert 0,00 €, die echte Preisliste '
              'pflegt die Geschäftsstelle.',
     )
     price_member_per_km = fields.Float(
         string='Kilometerpreis Mitglied (€/km)', digits=(8, 2),
-        help='Kilometersatz für KJR-Mitglieder (nur bei aktivem Mitgliedstarif). '
-             'Startwert 0,00 € — TODO(KJR): echte Preisliste eintragen.',
+        help='Kilometersatz für Mitglieder (nur bei aktivem Mitgliedstarif). '
+             'Startwert 0,00 €, die Preisliste pflegt die Geschäftsstelle.',
     )
+    # TODO Betreiber: echte Kilometersätze für den Mitgliedstarif eintragen.
     min_billable_units = fields.Integer(
         string='Mindestberechnete Einheiten', default=0,
         help='Mindestzahl berechneter Tage bzw. Nächte (0 = keine Mindestberechnung, '
              'bisheriges Verhalten). Relevant vor allem bei "Pro Nacht": eine Ausleihe '
-             'ohne Übernachtung ergibt 0 Nächte und damit 0 €. '
-             'TODO(KJR): Ist eine Mindestberechnung gewünscht und mit welchem Wert?',
+             'ohne Übernachtung ergibt 0 Nächte und damit 0 €.',
     )
+    # TODO Betreiber: Ist eine Mindestberechnung gewünscht und mit welchem Wert?
     tier_ids = fields.One2many(
         'kjr.rental.price.tier', 'item_id', string='Mengenstaffel', copy=True,
         help='Staffelpreise dieses Artikels. Wirken nur beim Preismodell '
@@ -177,7 +183,7 @@ class KjrRentalItem(models.Model):
     # einzelne Zahl der Website falsch ausgezeichnet — genau der Befund der Abnahme.
     price_base_unit_label = fields.Char(
         string='Einheit des Grundpreises', compute='_compute_price_unit_label', store=False,
-        help='Einheit, die AUSSCHLIESSLICH zum Grundpreis (price_per_day) gehört — '
+        help='Einheit, die AUSSCHLIESSLICH zum Grundpreis (price_per_day) gehört, '
              'z. B. "pro Tag" oder beim Kilometermodell "Grundgebühr pauschal je '
              'Ausleihe". Für Preisangaben, die genau einen Betrag ausweisen.',
     )
@@ -198,7 +204,12 @@ class KjrRentalItem(models.Model):
              'angezeigt und muss von ihm bestätigt werden.',
     )
     website_published = fields.Boolean(string='Auf Website', default=True)
-    icon = fields.Char(string='FontAwesome-Icon', help='z. B. fa-bus')
+    icon = fields.Char(
+        string='FontAwesome-Icon',
+        help='FontAwesome-4-Klasse, z. B. fa-bus. Odoo 19 liefert FontAwesome 4.7.0 '
+             'aus; die neueren FA-5/6-Namen (fa-futbol, fa-utensils) gibt es dort '
+             'nicht und sie rendern als leerer Kasten.',
+    )
 
     # --- Eindeutigkeit von Inventarnummer und Barcode -------------------------
     # Partieller UNIQUE-Index statt einfacher UNIQUE-Constraint: PostgreSQL lässt
@@ -534,7 +545,7 @@ class KjrRentalPriceTier(models.Model):
     Eigenes Kindmodell statt weiterer Felder am Artikel, weil die Staffel als
     einziges Preismodell echt 1:n ist: Zahl und Grenzen der Stufen sind je Artikel
     verschieden und sollen von der Geschäftsstelle frei gepflegt werden können.
-    Preise starten bei 0,00 € — die echte Preisliste trägt der KJR ein.
+    Preise starten bei 0,00 €; die echte Preisliste trägt der Betreiber ein.
     """
     _name = 'kjr.rental.price.tier'
     _description = 'Verleih-Mengenstaffel'
@@ -544,17 +555,18 @@ class KjrRentalPriceTier(models.Model):
         'kjr.rental.item', string='Artikel', required=True, ondelete='cascade', index=True)
     min_quantity = fields.Integer(
         string='Ab Menge', required=True, default=1,
-        help='Ab dieser Menge gilt der hinterlegte Staffelpreis — und zwar für ALLE '
+        help='Ab dieser Menge gilt der hinterlegte Staffelpreis, und zwar für ALLE '
              'Stück der Position, nicht nur für die darüber liegenden.')
     price = fields.Float(
         string='Staffelpreis Standard (€)', digits=(8, 2),
         help='Preis je Einheit ab der angegebenen Menge für Nicht-Mitglieder. '
-             'TODO(KJR): echte Staffelpreise eintragen, Startwert ist bewusst 0,00 €.')
+             'Startwert ist bewusst 0,00 €; die Preise pflegt die Geschäftsstelle.')
     price_member = fields.Float(
         string='Staffelpreis Mitglied (€)', digits=(8, 2),
-        help='Preis je Einheit ab der angegebenen Menge für KJR-Mitglieder. Wird nur '
+        help='Preis je Einheit ab der angegebenen Menge für Mitglieder. Wird nur '
              'verwendet, wenn am Artikel "Eigener Mitgliedstarif" aktiv ist. '
-             'TODO(KJR): echte Staffelpreise eintragen.')
+             'Startwert ist bewusst 0,00 €; die Preise pflegt die Geschäftsstelle.')
+    # TODO Betreiber: echte Staffelpreise für Standard- und Mitgliedstarif eintragen.
 
     _min_quantity_unique = models.Constraint(
         'UNIQUE(item_id, min_quantity)',

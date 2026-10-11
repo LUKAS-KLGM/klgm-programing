@@ -1,5 +1,192 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.15.7.0 (2026-10-11)
+
+### Behoben
+- **Die Mailvorlagen-Korrektur aus 19.0.15.3.0 erreicht jetzt auch bestehende
+  Instanzen.** Die Vorlagen liegen unter `<data noupdate="1">`; Odoo überspringt
+  solche Datensätze im Update-Modus vollständig (`odoo/tools/convert.py`:
+  `if self.noupdate and self.mode != 'init'` mit `return None`, zweiter Riegel in
+  `models._load_records`). Das neue `migrations/19.0.15.7.0/post-migration.py`
+  baut `{{ ... }}` im gespeicherten Mailrumpf auf `<t t-out="..."/>` um, statt die
+  Auslieferungswerte zurückzuschreiben. Eigene Formulierungen der Geschäftsstelle
+  bleiben erhalten. Idempotent; Platzhalter in HTML-Attributen bleiben stehen und
+  werden protokolliert.
+- Das Skript lag bisher im Ordner `19.0.15.4.0`. Diese Nummer ist seit der
+  Gedankenstrich-Korrektur belegt und installiert, ein Skript darunter wäre nie
+  gelaufen (`odoo/modules/migration.py`: die Ordnerversion muss grösser als die
+  installierte und kleiner/gleich der neuen Manifestversion sein). Es liegt jetzt
+  auf der neuen Manifestversion. **Wird die Version erneut angehoben, muss der
+  Ordner mitwandern.**
+- Die ausgelieferte `data/mail_template_data.xml` war bereits in Ordnung: `{{ }}`
+  steht dort nur noch in Betreff, Absender und Empfänger, wo es hingehört. Im
+  Mailrumpf stand allerdings noch ein Halbgeviertstrich zwischen Beginn und Ende
+  der Massnahme; er ist zu "bis" geworden. **Dieselbe Korrektur zieht das
+  Migrationsskript jetzt auch in Bestandsinstanzen nach** (`_ziehe_zeitraumstrich_nach`),
+  nach derselben Vorsichtsregel wie die Förderart-Texte: getauscht wird nur, wo
+  noch wörtlich die ausgelieferte Zeitraumzeile steht, sonst bleibt der gepflegte
+  Text stehen und es gibt einen Protokolleintrag. Die Reihenfolge in `migrate`
+  ist wesentlich: erst der `{{ }}`-Umbau, dann der Strich - so greift der
+  Exakt-Vergleich auch auf Instanzen aus der Zeit vor 19.0.15.3.0. Ohne diesen
+  Nachzug wäre die Regel "keine Geviert-/Halbgeviertstriche in kundensichtbarem
+  Text" ausgerechnet auf Demo und Produktion nicht erfüllt gewesen.
+- **Zehn FontAwesome-Icons ohne `title`** nachgerüstet: neun in
+  `views/portal_templates.xml`, eines in `views/kjr_grant_application_views.xml`
+  (`fa-exclamation-triangle`). Gezählt mit einem Nachbau von
+  `ir_ui_view._validate_fa_class_accessibility` über `views/`, `report/` und
+  `data/`: auf `kjr/main` zehn Verstösse, im Arbeitsbaum null. (`aria-hidden`
+  zählt dort nicht als gültige Angabe.) Dazu kommen zwei Treffer in den
+  JavaScript-Zeilen der Vorlage, die neue Tabellenzeilen zusammenbauen; die
+  prüft der Validator nicht, weil sie erst im Browser zu Markup werden. Die beiden Löschknöpfe im Antragsformular tragen
+  jetzt zusätzlich ein `aria-label`: ihr Icon war ihr einziger Inhalt, für
+  Screenreader waren sie namenlos.
+- **Kein Platzhalterzeichen mehr in der Altersfenster-Warnung.** Beim Entfernen
+  der Gedankenstriche war der Leerwert der Altersgrenze von "-" auf "?" gewandert.
+  Bei den ausgelieferten Förderarten mit `min_age = 0` las die Geschäftsstelle im
+  Chatter deshalb "ausserhalb des förderfähigen Altersbereichs (? bis 27 Jahre)" -
+  wie ein Datenfehler oder ein nicht ersetzter Platzhalter. Die fehlende Grenze
+  wird jetzt ausformuliert: "bis 27 Jahre, ohne Untergrenze" bzw. "ab 5 Jahren,
+  ohne Obergrenze"; sind beide Grenzen gesetzt, bleibt es bei "5 bis 27 Jahre".
+
+### Geändert
+- **Datenschutzangaben sind jetzt konfigurierbar statt nur lesbar.** Die sechs
+  Systemparameter `kjr.privacy.*` wurden an 30 Stellen gelesen, aber von keinem
+  Modul angelegt und von keiner Oberfläche gepflegt. Neu: Einstellungen,
+  Abschnitt "KJR Datenschutzangaben" (`models/res_config_settings.py`,
+  `views/res_config_settings_views.xml`). Die Felder tragen `config_parameter`,
+  legen also bei der Installation nichts an und kollidieren nicht mit dem
+  UNIQUE-Index auf `ir.config_parameter.key`. Ein geleertes Feld entfernt den
+  Parameter wieder, dann steht auf den Formularen erneut der Warnhinweis.
+  **Reichweite:** Die Maske liegt in `kjr_grant`. Sie schliesst die Lücke damit
+  für jede Datenbank, in der `kjr_grant` installiert ist - und nur dort.
+  `kjr_event`, `kjr_facility` und `kjr_rental` lesen dieselben sechs Schlüssel,
+  hängen aber nicht von `kjr_grant` ab (siehe "Offen").
+- **White Label**: Kundenname und Ortsbezug sind aus allen kundensichtbaren
+  Texten verschwunden. Datenschutzblöcke, Anleitungsseite und Teilnahmeliste
+  ziehen den Namen jetzt aus `res_company` bzw. `o.company_id`; Feldbeschriftungen,
+  Hilfetexte und Nutzermeldungen nennen Rolle oder Voreinstellung statt Träger.
+  Betroffen sind unter anderem `kjr_funding.funder` (Auswahlwert "Landkreis",
+  technischer Schlüssel unverändert), `kjr_grant_participant.role_code`,
+  vier Hilfetexte in `kjr_grant_type` und zwei Nutzertexte in
+  `kjr_grant_application`.
+  - Nachgezogen: der Nachbarwert derselben Auswahlliste hiess weiter
+    "Bezirksjugendring Schwaben" und nannte damit die Region des Erstkunden auf
+    jedem Fördergeber-Formular. Jetzt "Bezirksjugendring"; der technische
+    Schlüssel `bezjr` bleibt, also keine Datenmigration.
+  - Nachgezogen: der Landkreisbezug und rund fünfzehn `KJR-OA`-Kürzel standen
+    weiter in Kommentaren, Docstrings und Testbeschreibungen - der Quelltext geht
+    beim Verkauf mit aus. Sie heissen jetzt "Richtlinie des Trägers",
+    "Voreinstellung" bzw. "Geschäftsstelle". **Nicht** angefasst ist
+    `STARTHILFE_DOCS_ALT` in `migrations/19.0.15.7.0/post-migration.py`: das ist
+    der wörtliche Altwert, an dem der Exakt-Vergleich hängt; er wird verglichen,
+    nie angezeigt, und ein "Aufräumen" dort würde den Nachzug stillschweigend
+    wirkungslos machen. Ein Kommentar sagt das jetzt an Ort und Stelle.
+  - **Der Platzhalter im Datenschutzblock ist nicht mehr an den Träger
+    adressiert.** Solange ein Systemparameter leer ist, stand auf den
+    öffentlichen Formularen zwölfmal das gelbe Etikett "wird vom KJR ergänzt" -
+    ein interner Arbeitsauftrag im Text einer Pflichtangabe nach Art. 13 DSGVO,
+    der ausserdem eine bestimmte Organisationsform nennt. Jetzt steht dort
+    "Angabe folgt"; die Zuständigkeit steht in der Einstellungsmaske. Dasselbe
+    gilt für das dreizehnte Etikett im Verbandsportal, das bei fehlenden
+    Kontaktdaten der Geschäftsstelle erschien ("Kontaktdaten folgen").
+  - **"Träger" bezeichnet wieder genau eine Partei.** Drei Hilfetexte in
+    `res_partner` sagten neu "Feststellung des Trägers" und meinten den
+    Zuschussgeber, während dasselbe Wort im Modul sonst den Antragsteller
+    bezeichnet (Teilnahmeliste, Export-Spaltenköpfe "Träger / Antragsteller").
+    Auf einem Verbandsdatensatz las sich das als Selbstauskunft des Verbands -
+    das Gegenteil dessen, was das Portal daneben erklärt. Die drei Texte nennen
+    jetzt die Geschäftsstelle, das im Modul durchgängige Wort für den
+    Zuschussgeber.
+- **Personennamen und ein wörtliches Zitat** aus einem Terminmitschnitt sind aus
+  dem ausgelieferten Quellcode entfernt (Seed-Daten, beide Migrationsskripte,
+  Modelle, Controller, Vorlagen, Changelog). Sie standen teils im Server-Logstrom.
+  An ihrer Stelle steht die Rolle ("die Kassenleitung") bzw. die Sachaussage.
+  Das Skript `migrations/19.0.10.0.0` wurde dabei NICHT inhaltlich verändert und
+  behält seinen Ordnernamen, sonst liefe es auf Bestandsinstanzen erneut.
+- **Seed-Förderart "Investitionszuschuss"**: Name und Beschreibung nannten einen
+  konkreten Fördergeber und trugen das Wort PLATZHALTER in Grossbuchstaben im
+  Kundentext. Beides ist jetzt trägerneutral. Weil die Datei unter `noupdate="1"`
+  liegt, zieht dasselbe Migrationsskript den Text in Bestandsinstanzen nach, aber
+  nur dort, wo noch wörtlich der alte Auslieferungswert steht. Genauso behandelt
+  ist die Pflichtunterlage der Gruppenstarthilfe (§ 4.7), die das Kürzel des
+  Trägers trug und auf der öffentlichen Hilfeseite erscheint.
+- **Gedankenstriche** aus den verbliebenen kundensichtbaren Texten entfernt:
+  Datenschutz-Prosa, Überschriften, Leerwerte in Tabellen ("-" statt Geviertstrich),
+  Auswahlplatzhalter ("Bitte wählen"), Quartalsbezeichnungen, Kennziffer-Labels,
+  Feldhilfen und Fehlermeldungen. Bewusst unangetastet bleiben Kommentare und
+  reine Logmeldungen.
+  - Nachgezogen: `static/description/index.html`, die Seite, die Odoo in "Apps"
+    beim Anklicken des Moduls zeigt. Sie stand nicht im Suchraum der Prüfung
+    (nur `*.xml` und `*.py`) und enthielt drei Halbgeviertstriche im Fliesstext.
+    `.html` gehört ab sofort in den Suchraum.
+- **Pflichtfelder des Antragsformulars**: Die Liste des Controllers steht jetzt
+  als Konstante `WEBSITE_REQUIRED_FIELDS` in `controllers/website.py` und wird von
+  `tests/test_form_fields.py` gegen die `required`-Felder der Vorlage geprüft, in
+  beide Richtungen. Es war nichts zu verschieben: alle 19 geprüften Felder waren
+  bereits gekennzeichnet. Die drei Felder, die die Vorlage strenger kennzeichnet
+  (`receipt_file`, `tn_name_1`, `tn_age_1`), sind als Ausnahme festgenagelt und
+  an Ort und Stelle begründet.
+  - **Die Konstanten sind jetzt auch die Prüfquelle.** `REQUIRED_CONFIRMATIONS`
+    und `REQUIRED_BANK_FIELDS` wurden vom Controller gar nicht gelesen: die fünf
+    Namen standen ein zweites Mal als Literale in `_process_application` und
+    `_check_bank_details`. Für diese fünf der 19 Pflichtfelder prüfte der Test
+    also nur eine handgepflegte Kopie. Beide Stellen laufen jetzt über die
+    Konstante mit einem `messages`-Wörterbuch, wie es `REQUIRED_MEASURE_FIELDS`
+    schon tat. Eine vierte Pflichtbestätigung, die jemand nur im Controller
+    ergänzt, fällt damit im Test auf statt beim Antragsteller.
+  - **Bedingte Pflichtfelder sind benannt**: `foundation_file` (Pflicht nur bei
+    der Gruppenstarthilfe § 4.7) stand in keiner der Listen, der Test konnte es
+    also aus beiden Richtungen nicht sehen. Neu: `CONDITIONAL_REQUIRED_FIELDS`
+    mit `receipt_file` und `foundation_file` samt Bedingung im Klartext. Ein
+    statisches `required` wäre für `foundation_file` falsch: es liegt in einem
+    ausgeblendeten `div`, und ein ausgeblendetes Pflichtfeld lässt der Browser
+    überhaupt nicht mehr absenden. Der Kommentar über den Konstanten behauptet
+    nicht länger, `WEBSITE_REQUIRED_FIELDS` sei der vollständige Vertrag.
+- **Neues Modul-Icon** statt des blauen Platzhalterkreises: 256x256 RGBA,
+  Antragsblatt mit Siegel und Haken, Weiß und Orange auf der Navy-Fläche der
+  Modul-CI. Der bisherige `images`-Eintrag im Manifest ist entfallen: er benennt
+  die Screenshots für den App Store, nicht das Icon; das Icon findet Odoo fest
+  unter `static/description/icon.png` (`odoo/modules/module.py`,
+  `get_module_icon`).
+  - **Erzeugt wird es aus `tools/icons/build_icons.py`**, gemeinsam mit den fünf
+    anderen KJR-Icons: ein Skript, eine Palette, ein Aufbau. Vorher hatte dieses
+    Modul daneben eine `static/description/icon.svg` als zweite „Quelle der
+    Wahrheit", die eine andere Geometrie und einen blauen Verlauf zeichnete als
+    das ausgelieferte PNG. Die SVG ist **entfallen**; Odoo hat sie ohne
+    Manifest-Key `icon` ohnehin nie herangezogen.
+  - **Das neue Bild erreicht die App-Leiste nur über ein Modul-Update.**
+    `views/menu.xml` setzt `web_icon` am Wurzelmenü, und
+    `ir.ui.menu.web_icon_data` ist ein gespeichertes Feld, das Odoo nur in
+    `create()`/`write()` neu aus der Datei liest
+    (`odoo/addons/base/models/ir_ui_menu.py`). In der Apps-Übersicht
+    (`icon_image`, nicht gespeichert) erscheint es sofort. Ohne die
+    Versionsanhebung dieser Lieferung stünden auf einer Bestandsinstanz altes
+    und neues Icon nebeneinander.
+
+### Dokumentiert
+- Kommentare auf den Ist-Stand gebracht: Die Bestätigungen am Formularende sind
+  seit 2026 zu dritt, nicht zu viert. Die Seed-Daten im Manifest sind alle aktiv,
+  nicht deaktiviert. Die offenen Datenschutzangaben werden in Systemparametern
+  gepflegt, nicht in der Vorlage, und der Kommentar sagt jetzt auch, wo.
+
+### Offen
+- **Datenschutzangaben in den drei Geschwistermodulen.** `kjr_event`,
+  `kjr_facility` und `kjr_rental` lesen dieselben sechs Systemparameter
+  `kjr.privacy.*` per `get_param`, hängen aber nicht von `kjr_grant` ab
+  (`kjr_event`: `event`/`website_event`/`account`; `kjr_facility` und
+  `kjr_rental`: `base`/`mail`/`portal`/`website`/`account`). In einer Datenbank,
+  in der nur eines dieser Module installiert ist, gibt es für die sechs Angaben
+  weiterhin keine Eingabemaske, und auf dem Buchungs- bzw. Veranstaltungsformular
+  steht sechsmal der Platzhalter. Der Audit-Punkt "Datenschutzparameter nirgends
+  anlegbar" ist damit **nicht** modulfamilienweit geschlossen. Nötig ist derselbe
+  `_inherit = 'res.config.settings'`-Block in den drei Modulen oder ein
+  gemeinsames Basismodul `kjr_base`, von dem alle vier abhängen. Beides greift in
+  fremde Manifeste ein und gehört deshalb in ein eigenes Arbeitspaket.
+- **Teilnahmeliste**: Der Browser verlangt in Zeile 1 Name und Alter, der Server
+  prüft die Liste gar nicht. Ob mindestens eine Teilnehmerzeile fachlich Pflicht
+  ist, braucht eine Kundenentscheidung; bis dahin bleibt beides unverändert und
+  der Test hält den Zustand fest.
+
 ## 19.0.15.6.1 (2026-09-10)
 
 - Abstand zwischen Label und Wert im Datenschutzblock.
@@ -87,11 +274,11 @@ Umsetzung der offenen code-lösbaren Punkte aus dem Abgleich „Funktionsideen �
 
 ### Geändert
 - **§ 4.4 Jugendleiterschulung**: Höchstbetrag von 75 € auf **50 €**. Beleg:
-  Terminmitschnitt vom 30.07.2026, 00:16:19 — Bora Berlinger wörtlich: „bei
-  Jugendleiterschulung, da ist der Maximalbetrag zum Beispiel 50 und nicht 75."
+  Kundentermin vom 30.07.2026 mit der Kassenleitung: Höchstbetrag der
+  Jugendleiterschulung 50 € statt 75 €.
   Auch `jl_max_with_juleica` und der Beschreibungstext wurden angeglichen, sonst
   hätte die globale Deckelung eine im Portal zugesagte Leistung stillschweigend
-  gekappt. **Auslegung — bitte von Bora bestätigen**, beide Varianten stehen als
+  gekappt. **Auslegung — bitte von der Kassenleitung bestätigen**, beide Varianten stehen als
   TODO im Code.
 - **Förderart „Investitionszuschuss (Landkreis)"** deaktiviert (Entscheidung
   30.07.2026).
@@ -118,11 +305,11 @@ Umsetzung der offenen code-lösbaren Punkte aus dem Abgleich „Funktionsideen �
 - `action_reset_draft` ließ die Bearbeitungsvermerke stehen; nach Zurücksetzen und
   erneuter Bewilligung galt die alte Zahlungsanweisung weiter.
 
-## 19.0.9.0.0 — Zuschussantrag: Feldbezeichnungen & digitale Belegliste (Bora-Abstimmung 30.07.2026)
+## 19.0.9.0.0 — Zuschussantrag: Feldbezeichnungen & digitale Belegliste (Kundenabstimmung 30.07.2026)
 
-Ergebnis des Kundentermins mit Barbora „Bora" Berlinger (Kassenleitung KJR Oberallgäu)
-am 30.07.2026 zu den Feldbezeichnungen im öffentlichen Zuschuss-Antragsformular
-(`/service/antrag-stellen`). Alle Wortlaute sind mit ihr abgestimmt.
+Ergebnis des Kundentermins mit der Kassenleitung am 30.07.2026 zu den
+Feldbezeichnungen im öffentlichen Zuschuss-Antragsformular
+(`/service/antrag-stellen`). Alle Wortlaute sind abgestimmt.
 
 ### Neu
 - **Digitale Belegliste** als neues Modell `kjr.grant.receipt` (Datum, Beleg-Nr.,
@@ -140,7 +327,7 @@ am 30.07.2026 zu den Feldbezeichnungen im öffentlichen Zuschuss-Antragsformular
   (`confirm_privacy`, mit Link auf `/datenschutz`), Zuschussrichtlinien (`confirm_guidelines`),
   Vollständigkeit/Wahrheit inkl. Rückzahlungshinweis (`confirm_truthful`) sowie die bestehende
   Einwilligung der Erziehungsberechtigten (`participant_consent`, Wortlaut unverändert).
-- **PLZ des Maßnahmenorts** als eigenes Feld `measure_zip` — getrennt vom Ort, für Boras Statistik.
+- **PLZ des Maßnahmenorts** als eigenes Feld `measure_zip` — getrennt vom Ort, für die Statistik der Geschäftsstelle.
 - Teilnahmeliste: **Geschlecht** (`gender`) und **Kennziffer** (`role_code`: EA/HA/HO/PR/SO
   laut Papier-Teilnahmeliste) je Teilnehmer/in. Die Kennziffer setzt `is_leader` automatisch
   (weiterhin manuell überschreibbar).
@@ -187,7 +374,7 @@ am 30.07.2026 zu den Feldbezeichnungen im öffentlichen Zuschuss-Antragsformular
   weiterhin unvollständige Papieranträge im Backend erfassen können.
 - `participant_consent` bleibt bewusst unverändert, bis die Datenschutzbeauftragte des KJR
   den Wortlaut geprüft hat.
-- Offen: PLZ/Ort des Skylineparks (Platzhalterbeispiel) mit Bora gegenprüfen.
+- Offen: PLZ/Ort des Platzhalterbeispiels mit der Geschäftsstelle gegenprüfen.
 
 ## 19.0.8.3.0
 
@@ -218,7 +405,7 @@ am 30.07.2026 zu den Feldbezeichnungen im öffentlichen Zuschuss-Antragsformular
 ## 19.0.6.0.0 (2026-06-19) — Richtlinien-Feinabgleich, § 4.9 BayRKG & Härtung
 
 Vollständiger Abgleich der Zuschussverwaltung gegen den verifizierten Wortlaut der
-KJR-OA-Zuschussrichtlinie (Fassung gültig ab 01.12.2022, als „2026" republiziert) und
+Zuschussrichtlinie des Trägers (Fassung gültig ab 01.12.2022, als „2026" republiziert) und
 die einschlägigen BJR-Regeln. Statisch geprüft (py_compile, xmllint, Feld-/Methoden-
 Referenzcheck), Berechnungslogik numerisch gegen Richtlinien-Beispiele getestet, in einem
 3-fachen adversarialen Review (Odoo-19-Laufzeit / Richtlinien / Vollständigkeit) gehärtet.
@@ -299,7 +486,7 @@ Referenzcheck), Berechnungslogik numerisch gegen Richtlinien-Beispiele getestet,
 - `<chatter/>` statt `oe_chatter` (5 Forms); `portal.pager` statt `web.pager`; Portal-Searchbar verdrahtet; `measure_end` Pflichtfeld.
 
 ### Neue Funktionen
-- **Förderregeln konfigurierbar** (`kjr.grant.type`): Juleica-Zuschlag, Betreuungsschlüssel, Herkunftsquote, Alter, Dauer — statt hartcodiert (verifiziert gegen KJR-OA-Zuschussrichtlinie).
+- **Förderregeln konfigurierbar** (`kjr.grant.type`): Juleica-Zuschlag, Betreuungsschlüssel, Herkunftsquote, Alter, Dauer — statt hartcodiert (verifiziert gegen die Zuschussrichtlinie des Trägers).
 - **Förderfähigkeits-Hinweise** beim Einreichen.
 - **Verwendungsnachweis-PDF** (Soll/Ist) + **„Abrechnung erstellen"** aus dem Antrag.
 - **Vollversammlung**: Quorum + automatisches Beschlussergebnis.

@@ -382,7 +382,7 @@ class KjrGrantApplication(models.Model):
         help='Verbleibendes Jahresbudget der Förderart (Live-Anzeige für die Bewilligung).',
     )
 
-    # ── Bearbeitungsvermerke KJR OA ──────────────────────────────────────────
+    # ── Bearbeitungsvermerke der Geschäftsstelle ─────────────────────────────
     # copy=False auf allen Bearbeitungsvermerken: sonst nimmt "Duplizieren"
     # (copy/copy_data) Prüfvermerk, Bewilligung und Zahlungsanweisung mit. Eine
     # Sachbearbeiterin könnte einen von einer Kollegin bewilligten Antrag
@@ -395,7 +395,7 @@ class KjrGrantApplication(models.Model):
     date_paid = fields.Date(string='Auszahlungsdatum', readonly=True, copy=False, tracking=True)
     payout_year = fields.Integer(
         string='Auszahlungsjahr', compute='_compute_payout_schedule', store=True,
-        help='Haushaltsjahr der Auszahlung. Anträge bis zum Stichtag (KJR-OA: 15.11.) '
+        help='Haushaltsjahr der Auszahlung. Anträge bis zum Stichtag (Voreinstellung: 15.11.) '
              'gelangen im selben Jahr zur Auszahlung, ab 16.11. erst im Folgejahr.',
     )
     payout_schedule_info = fields.Char(
@@ -434,7 +434,7 @@ class KjrGrantApplication(models.Model):
 
     @api.depends('measure_start', 'measure_end', 'measure_start_time', 'measure_end_time')
     def _compute_measure_days(self):
-        """Förderfähige Maßnahmentage nach KJR-OA-Richtlinie.
+        """Förderfähige Maßnahmentage nach der Richtlinie des Trägers.
 
         Grundregel: Kalendertage inklusive (Ende − Beginn + 1).
         An-/Abreise-Regel (Ziff. zu § 4.1/4.2/4.3): An- und Abreisetag gelten
@@ -475,7 +475,8 @@ class KjrGrantApplication(models.Model):
 
     @api.depends('date_submitted')
     def _compute_payout_schedule(self):
-        """Auszahlungs-Stichtag nach KJR-OA-Richtlinie (knüpft an den Antragseingang):
+        """Auszahlungs-Stichtag nach der Richtlinie des Trägers (knüpft an den
+        Antragseingang):
         Anträge, die bis zum Stichtag (Default 15.11.) eingehen, gelangen im selben
         Jahr (bis 31.12.) zur Auszahlung; ab dem Folgetag eingehende ab dem 1.1. des
         Folgejahres. Stichtag über System-Parameter konfigurierbar (Vertrieb)."""
@@ -495,12 +496,12 @@ class KjrGrantApplication(models.Model):
             rec.payout_year = d.year + 1 if after_cutoff else d.year
             if after_cutoff:
                 rec.payout_schedule_info = _(
-                    'Eingang nach dem %(day)02d.%(month)02d. – Auszahlung ab 1.1.%(year)d '
+                    'Eingang nach dem %(day)02d.%(month)02d.: Auszahlung ab 1.1.%(year)d '
                     '(vierteljährlich).'
                 ) % {'day': cutoff_day, 'month': cutoff_month, 'year': rec.payout_year}
             else:
                 rec.payout_schedule_info = _(
-                    'Eingang bis %(day)02d.%(month)02d. – Auszahlung bis 31.12.%(year)d '
+                    'Eingang bis %(day)02d.%(month)02d.: Auszahlung bis 31.12.%(year)d '
                     '(vierteljährlich).'
                 ) % {'day': cutoff_day, 'month': cutoff_month, 'year': rec.payout_year}
 
@@ -533,7 +534,7 @@ class KjrGrantApplication(models.Model):
                 rec.applicable_type_warning = _(
                     'Regelstand: Zum Maßnahmenbeginn %(start)s galt die Fassung '
                     '"%(valid)s"%(group)s, gewählt ist aber "%(chosen)s". Bitte prüfen, '
-                    'welche Fassung der Berechnung zugrunde zu legen ist – die Förderart '
+                    'welche Fassung der Berechnung zugrunde zu legen ist. Die Förderart '
                     'wird bewusst nicht automatisch umgestellt.'
                 ) % {
                     'start': rec.measure_start.strftime('%d.%m.%Y'),
@@ -594,7 +595,7 @@ class KjrGrantApplication(models.Model):
         """Tagessatz-Berechnung (TN × Tage × Satz) inkl. anerkannter Gruppenleitungen.
 
         Gruppenleitungen erhalten ebenfalls den Tagessatz; mit gültiger Juleica erhöht
-        er sich um den Juleica-Zuschlag (KJR-OA: +50 %, konfigurierbar). Diese Logik
+        er sich um den Juleica-Zuschlag (Voreinstellung +50 %, konfigurierbar). Diese Logik
         gilt einheitlich für alle tagessatz-basierten Förderarten (§ 4.1b/4.2/4.3/4.5)."""
         leaders_no_juleica = leaders - leaders_juleica
         base = tn * days * t.rate_per_tn_day
@@ -610,7 +611,7 @@ class KjrGrantApplication(models.Model):
         """
         Zentrale Berechnungslogik für alle 12 Förderarten (§ 4.1a–§ 4.9).
 
-        Globale Deckelungsregeln (lt. Richtlinien KJR OA):
+        Globale Deckelungsregeln (lt. Richtlinie des Trägers):
           1. Höchstbetrag der Förderart (max_amount)
           2. Max. Förderquote der förderfähigen Kosten (max_cofinancing_pct, Standard 50%)
              — Ausnahme: §4.7 Pauschale ist davon ausgenommen
@@ -624,7 +625,7 @@ class KjrGrantApplication(models.Model):
 
         days = max(self.measure_days or 1, 1)
         tn = max(self.tn_count or 0, 0)
-        # Max. 1 anerkannte Gruppenleitung je 'leader_ratio' TN (konfigurierbar, KJR-OA: 5)
+        # Max. 1 anerkannte Gruppenleitung je 'leader_ratio' TN (Voreinstellung 5)
         ratio = t.leader_ratio if t.leader_ratio and t.leader_ratio > 0 else 5
         max_leaders = math.ceil(tn / ratio) if tn > 0 else 0
         leaders = min(self.tn_leader_count or 0, max_leaders)
@@ -1241,7 +1242,7 @@ class KjrGrantApplication(models.Model):
         # Wer "sachlich richtig" zeichnet, ist die prüfende Person: ist noch keine
         # Prüfung vermerkt, wird sie hier festgehalten. Sonst könnte man den Haken
         # setzen, ohne "in Prüfung" zu nehmen, und anschließend selbst bewilligen.
-        # TODO(Bora): konservativ gewählt (kassenrechtlich sauber: wer zeichnet,
+        # TODO(KJR): konservativ gewählt (kassenrechtlich sauber: wer zeichnet,
         # hat geprüft). Wenn die Geschäftsstelle den Haken auch ohne Zuordnung
         # setzen können soll, diesen Block entfernen – dann greift das Vier-Augen-
         # Prinzip erst ab "Zur Prüfung annehmen".
@@ -1288,7 +1289,7 @@ class KjrGrantApplication(models.Model):
         return _(
             'Hinweis: Das Vier-Augen-Prinzip lässt sich für eine Ein-Personen-'
             'Geschäftsstelle über den Systemparameter "kjr_grant.enforce_four_eyes" '
-            '(Wert "0") abschalten – Einstellungen ▸ Technisch ▸ Systemparameter.'
+            '(Wert "0") abschalten: Einstellungen ▸ Technisch ▸ Systemparameter.'
         )
 
     def action_submit(self):
@@ -1327,7 +1328,7 @@ class KjrGrantApplication(models.Model):
                 raise UserError(_('Nur eingereichte Anträge können bewilligt werden.'))
             # Sachliche Prüfung ist der Bewilligung zwingend vorgelagert – ohne den
             # Vermerk "sachlich richtig" fehlt die Grundlage für die Anordnung.
-            # TODO(Bora): bewusst auch bei abgeschaltetem Vier-Augen-Prinzip zwingend
+            # TODO(KJR): bewusst auch bei abgeschaltetem Vier-Augen-Prinzip zwingend
             # (konservative Variante, kassenrechtlich sauber). Falls die Ein-Personen-
             # Geschäftsstelle das anders wünscht, hier an _four_eyes_enabled() koppeln.
             if not rec.sachlich_richtig:
@@ -1354,8 +1355,8 @@ class KjrGrantApplication(models.Model):
                     ))
                 if rec.reviewed_by.id == self.env.user.id:
                     raise UserError(_(
-                        'Vier-Augen-Prinzip: Antrag %(name)s wurde von %(user)s geprüft – '
-                        'dieselbe Person darf ihn nicht auch bewilligen. Bitte eine zweite '
+                        'Vier-Augen-Prinzip: Antrag %(name)s wurde von %(user)s geprüft. '
+                        'Dieselbe Person darf ihn nicht auch bewilligen. Bitte eine zweite '
                         'Person der Geschäftsstelle bewilligen lassen.\n\n%(hint)s',
                         name=rec.name, user=rec.reviewed_by.name, hint=rec._four_eyes_hint(),
                     ))
@@ -1402,7 +1403,7 @@ class KjrGrantApplication(models.Model):
                 pass
 
     def action_order_payment(self):
-        """Bearbeitungsvermerk 'zur Zahlung angewiesen' setzen (KJR-OA-Antragsformular).
+        """Bearbeitungsvermerk 'zur Zahlung angewiesen' setzen (Antragsformular).
         Zwischenschritt zwischen Bewilligung und Auszahlung; steuert das Dashboard
         'Zur Auszahlung'. Bei aktivem Vier-Augen-Prinzip darf die anweisende Person
         nicht dieselbe sein, die den Antrag sachlich geprüft hat."""
@@ -1414,8 +1415,8 @@ class KjrGrantApplication(models.Model):
             if (rec._four_eyes_enabled() and rec.reviewed_by
                     and rec.reviewed_by.id == self.env.user.id):
                 raise UserError(_(
-                    'Vier-Augen-Prinzip: Antrag %(name)s wurde von %(user)s geprüft – '
-                    'dieselbe Person darf die Zahlung nicht anweisen. Bitte die '
+                    'Vier-Augen-Prinzip: Antrag %(name)s wurde von %(user)s geprüft. '
+                    'Dieselbe Person darf die Zahlung nicht anweisen. Bitte die '
                     'Anweisung durch eine zweite Person erteilen lassen.\n\n%(hint)s',
                     name=rec.name, user=rec.reviewed_by.name, hint=rec._four_eyes_hint(),
                 ))
@@ -1455,7 +1456,7 @@ class KjrGrantApplication(models.Model):
                 raise UserError(_(
                     'Antrag %(name)s: Zur Zahlungsanweisung ist keine anweisende '
                     'Person vermerkt. Bitte die Anweisung über die Schaltfläche '
-                    '"Zur Zahlung anweisen" erteilen lassen – erst danach kann die '
+                    '"Zur Zahlung anweisen" erteilen lassen. Erst danach kann die '
                     'Auszahlung vermerkt werden.\n\n%(hint)s',
                     name=rec.name, hint=rec._four_eyes_hint(),
                 ))
@@ -1463,7 +1464,7 @@ class KjrGrantApplication(models.Model):
                     and rec.payment_ordered_by.id == self.env.user.id):
                 raise UserError(_(
                     'Vier-Augen-Prinzip: Die Zahlung für Antrag %(name)s wurde von '
-                    '%(user)s angewiesen – dieselbe Person darf die Auszahlung nicht '
+                    '%(user)s angewiesen. Dieselbe Person darf die Auszahlung nicht '
                     'selbst vollziehen. Bitte durch eine zweite Person ausführen lassen.'
                     '\n\n%(hint)s',
                     name=rec.name, user=rec.payment_ordered_by.name,
@@ -1569,7 +1570,7 @@ class KjrGrantApplication(models.Model):
             'params': {
                 'title': _('PDF erstellt'),
                 'message': _('Das Antrags-PDF wurde angehängt. Die App „Sign" ist nicht '
-                             'installiert – bitte das Dokument manuell zur Unterschrift versenden.'),
+                             'installiert, bitte das Dokument manuell zur Unterschrift versenden.'),
                 'type': 'warning',
                 'sticky': False,
             },
@@ -1635,7 +1636,7 @@ class KjrGrantApplication(models.Model):
             'move_type': 'entry',
             'journal_id': t.journal_id.id,
             'date': self.date_approved or fields.Date.today(),
-            'ref': f'Zuschuss {self.name} — {self.measure_name}',
+            'ref': f'Zuschuss {self.name}: {self.measure_name}',
             'line_ids': [
                 (0, 0, {
                     'name': f'Zuschuss {self.name} ({t.name})',
@@ -1711,7 +1712,7 @@ class KjrGrantApplication(models.Model):
             'journal_id': pay_journal.id,
             'date': self.date_paid or fields.Date.today(),
             # Odoo 19: account.payment nutzt 'memo' (nicht mehr 'ref').
-            'memo': f'Zuschuss {self.name} — {self.measure_name}',
+            'memo': f'Zuschuss {self.name}: {self.measure_name}',
         })
         self.payment_id = payment.id
         self.message_post(
@@ -1916,7 +1917,7 @@ class KjrGrantApplication(models.Model):
         return _(
             'Diese Datei wurde am %(day)s im Rahmen der DSGVO-Anonymisierung '
             '(Belegklasse "%(cls)s") durch diesen Platzhalter ersetzt. '
-            'Maßgeblich war die vom KJR Oberallgäu im Systemparameter '
+            'Maßgeblich war die im Systemparameter '
             '"%(param)s" hinterlegte Aufbewahrungsfrist von %(years)d Jahren '
             '(gerechnet ab dem Ende des Jahres, in dem die Maßnahme endete). '
             'Der Vorgang selbst bleibt als Nachweis erhalten; die '
@@ -2272,7 +2273,7 @@ class KjrGrantApplication(models.Model):
 
         # Teilnahmeliste: digital oder als Datei. 'teilnahme' muss mitgeprüft werden —
         # seit 07/2026 heißt das Feld im Formular „Teilnahmeliste", die Dateien der
-        # Antragsteller heißen entsprechend (Bora-Abstimmung 30.07.2026).
+        # Antragsteller heißen entsprechend (Kundenabstimmung 30.07.2026).
         if t.requires_tn_list and not self.participant_ids:
             attachments = self.env['ir.attachment'].search([
                 ('res_model', '=', self._name), ('res_id', '=', self.id),
@@ -2312,7 +2313,7 @@ class KjrGrantApplication(models.Model):
             return
         year = self.measure_start.year if self.measure_start else date.today().year
         # Förderarten mit gemeinsamer Jahreslimit-Gruppe zählen zusammen
-        # (KJR-OA: § 4.1 eintägig und mehrtägig = max. 4 Freizeitmaßnahmen/Jahr gemeinsam).
+        # (Richtlinie § 4.1: eintägig und mehrtägig = max. 4 Freizeitmaßnahmen/Jahr gemeinsam).
         if t.year_limit_group:
             type_ids = self.env['kjr.grant.type'].search([
                 ('year_limit_group', '=', t.year_limit_group),
@@ -2337,7 +2338,8 @@ class KjrGrantApplication(models.Model):
             ))
 
     def _post_compliance_warnings(self):
-        """Nicht-blockierende Hinweise zur Förderfähigkeit (BJR/KJR-OA-Richtlinien).
+        """Nicht-blockierende Hinweise zur Förderfähigkeit (BJR-Standards und
+        Richtlinie des Trägers).
         Bewusst als Hinweis (kein Fehler), da der KJR im Einzelfall Ausnahmen zulassen kann.
         Schwellenwerte stammen aus der konfigurierbaren Förderart (kjr.grant.type)."""
         self.ensure_one()
@@ -2350,7 +2352,7 @@ class KjrGrantApplication(models.Model):
         if t.max_external_pct and self.tn_external_pct > t.max_external_pct:
             warnings.append(_(
                 'Hoher Anteil auswärtiger Teilnehmer (%(pct).0f %%, zulässig max. %(max).0f %%). '
-                'Die Teilnehmer sollen überwiegend aus dem Landkreis Oberallgäu stammen.'
+                'Die Teilnehmer sollen überwiegend aus dem eigenen Einzugsgebiet stammen.'
             ) % {'pct': self.tn_external_pct, 'max': t.max_external_pct})
         # Betreuungsschlüssel.
         ratio = t.leader_ratio if t.leader_ratio and t.leader_ratio > 0 else 5
@@ -2374,7 +2376,7 @@ class KjrGrantApplication(models.Model):
         # Alter (nur wenn Grenzen gesetzt und das Alter erfasst ist).
         # Maßgeblich ist das Feld 'age': es wird in der Teilnahmeliste direkt eingegeben
         # und nur dann aus dem Geburtsdatum berechnet, wenn eines hinterlegt ist.
-        # Gruppenleitungen sind von der Teilnehmer-Altersgrenze ausgenommen (KJR-OA: für
+        # Gruppenleitungen sind von der Teilnehmer-Altersgrenze ausgenommen (Richtlinie: für
         # Gruppenleitungen besteht keine Altersgrenze) und werden hier nicht gezählt.
         if (t.min_age or t.max_age) and self.participant_ids:
             out = 0
@@ -2388,12 +2390,26 @@ class KjrGrantApplication(models.Model):
                 elif t.max_age and p.age > t.max_age:
                     out += 1
             if out:
+                # Eine fehlende Grenze (0) wird AUSFORMULIERT und nicht mit einem
+                # Platzhalterzeichen gefuellt: Foerderarten mit min_age = 0 sind
+                # ausgeliefert, und ein '-' oder '?' an dieser Stelle liest die
+                # Geschaeftsstelle als Datenfehler statt als "keine Untergrenze".
+                if t.min_age and t.max_age:
+                    bereich = _('%(min)d bis %(max)d Jahre') % {
+                        'min': t.min_age, 'max': t.max_age}
+                elif t.max_age:
+                    bereich = _('bis %(max)d Jahre, ohne Untergrenze') % {
+                        'max': t.max_age}
+                else:
+                    bereich = _('ab %(min)d Jahren, ohne Obergrenze') % {
+                        'min': t.min_age}
                 warnings.append(_(
                     '%(n)d Teilnehmer (ohne Gruppenleitungen) liegen außerhalb des förderfähigen '
-                    'Altersbereichs (%(min)s–%(max)s Jahre).'
-                ) % {'n': out, 'min': t.min_age or '–', 'max': t.max_age or '–'})
+                    'Altersbereichs (%(bereich)s).'
+                ) % {'n': out, 'bereich': bereich})
         # Subsidiarität: anderweitige Zuschussmöglichkeiten sind auszuschöpfen und
-        # anzugeben; eine angemessene Eigenleistung wird vorausgesetzt (KJR-OA Grundsätze).
+        # anzugeben; eine angemessene Eigenleistung wird vorausgesetzt (Grundsätze der
+        # Richtlinie).
         other_income = (self.income_municipality + self.income_association
                         + self.income_bjr + self.income_other)
         if t.code not in ('4_4', '4_7', '4_9') and self.cost_total >= 200 and other_income <= 0:
@@ -2408,10 +2424,10 @@ class KjrGrantApplication(models.Model):
             if self.partner_id not in (a.invited_member_ids | a.attendee_ids):
                 warnings.append(_(
                     'Der Verband "%s" ist für die gewählte Vollversammlung weder als '
-                    'eingeladen noch als anwesend erfasst – bitte die Delegierten-'
+                    'eingeladen noch als anwesend erfasst. Bitte die Delegierten-'
                     'berechtigung prüfen.'
                 ) % self.partner_id.name)
-        # Hinweis auf nicht förderfähige Kosten (KJR-OA Ziff. 2 / 3.3).
+        # Hinweis auf nicht förderfähige Kosten (Richtlinie Ziff. 2 / 3.3).
         if t.code not in ('4_7', '4_9') and self.cost_total > 0:
             warnings.append(_(
                 'Bitte beachten: Nicht förderfähig sind u. a. Alkohol und Tabakwaren, '

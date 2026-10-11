@@ -263,7 +263,7 @@ class KjrGrantSettlement(models.Model):
             'move_type': 'entry',
             'journal_id': t.journal_id.id,
             'date': fields.Date.today(),
-            'ref': _('Rückforderung %s — %s') % (app.name, self.name),
+            'ref': _('Rückforderung %s: %s') % (app.name, self.name),
             'line_ids': lines,
         })
         self.repayment_move_id = move.id

@@ -133,8 +133,7 @@
                                 Es greift die Zeile mit der höchsten „Ab Menge", die die
                                 bestellte Menge nicht überschreitet; der Staffelpreis gilt
                                 dann für alle Stück der Position. Ohne passende Zeile bleibt
-                                es beim Grundpreis. Die Preise sind noch nicht befüllt —
-                                sie stammen aus der Preisliste des KJR.
+                                es beim Grundpreis. Die Preise pflegt die Geschäftsstelle.
                             </div>
                             <field name="tier_ids" nolabel="1">
                                 <list editable="bottom">

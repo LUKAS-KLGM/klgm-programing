@@ -62,7 +62,7 @@ class KjrVolunteerLog(models.Model):
         labels = dict(self._fields['category'].selection)
         for rec in self:
             d = fields.Date.to_string(rec.date) or ''
-            rec.display_name = '%s – %s (%.1f h, %s)' % (
+            rec.display_name = '%s, %s (%.1f h, %s)' % (
                 d, rec.partner_id.name or '', rec.hours or 0.0,
                 labels.get(rec.category, rec.category or ''),
             )

@@ -11,4 +11,5 @@ from . import kjr_funding
 from . import kjr_volunteer_log
 from . import res_partner
 from . import res_company
+from . import res_config_settings
 from . import ir_ui_view
