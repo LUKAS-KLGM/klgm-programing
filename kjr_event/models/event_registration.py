@@ -607,16 +607,31 @@ class EventRegistration(models.Model):
           dieser abgebrochenen Transaktion weiterschreiben und den
           ursprünglichen Fehler hinter einem "current transaction is aborted"
           verstecken.
-        * Die Notiz im Chatter wird selbst abgesichert und mit ``sudo()``
-          geschrieben. ``_kjr_auto_invoice`` läuft mit den Rechten des
-          Auslösers, auf dem Website-Pfad also möglicherweise mit denen eines
-          unprivilegierten Benutzers. Ein Fehlschlag beim Schreiben der Notiz
-          darf die Anmeldung nicht kippen - er wird nur protokolliert.
+        * Die Rechnungserzeugung läuft mit ``sudo()`` und mit der Firma der
+          Veranstaltung. ``_kjr_auto_invoice`` wird auch auf dem Website-Pfad
+          ausgelöst, dort also möglicherweise von einem Portal- oder
+          öffentlichen Benutzer ohne Schreibrecht auf ``account.move``. Ohne
+          die Erhöhung scheitert ``account.move.create`` mit ``AccessError``,
+          der Fehlerzweig fängt das ab - und es entstünde still keine Rechnung.
+          Erhöht wird nur die Erzeugung, nicht die Anmeldung selbst.
+        * Die Notiz im Chatter wird ebenfalls mit ``sudo()`` geschrieben. Ein
+          Fehlschlag beim Schreiben der Notiz darf die Anmeldung nicht kippen -
+          er wird nur protokolliert.
         """
         if self.env.context.get('kjr_auto_invoice_running'):
             return  # Rekursionsschutz: die Erzeugung schreibt selbst an der Anmeldung
         for reg in self._kjr_auto_invoice_candidates():
-            reg_ctx = reg.with_context(
+            # Rechte: Die Erzeugung laeuft bewusst mit Systemrechten. Ausgeloest
+            # wird sie auch auf dem Website-Pfad, also moeglicherweise von einem
+            # Portal- oder oeffentlichen Benutzer, der auf account.move kein
+            # Schreibrecht hat - ohne sudo() scheitert account.move.create mit
+            # AccessError, der Fehlerzweig unten faengt das ab und es entstuende
+            # STILL KEINE Rechnung. Die Erhoehung ist auf die Rechnungserzeugung
+            # begrenzt: die Anmeldung selbst wurde schon im Benutzerkontext
+            # geschrieben. Die Firma kommt aus der Veranstaltung und nicht aus
+            # dem Benutzer, damit die Rechnung in der richtigen Firma landet.
+            reg_company = reg.event_id.company_id or reg.company_id or self.env.company
+            reg_ctx = reg.sudo().with_company(reg_company).with_context(
                 kjr_auto_invoice_running=True,
                 kjr_skip_registration_confirm_mail=True)
             # Savepoint bewusst VOR dem try (Begründung im Docstring).

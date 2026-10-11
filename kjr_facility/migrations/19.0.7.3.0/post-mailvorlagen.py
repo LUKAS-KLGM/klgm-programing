@@ -105,7 +105,15 @@ def _to_t_out(expr):
         return '<t t-out="%s"/>' % expr
     if "'" not in expr:
         return "<t t-out='%s'/>" % expr
-    return '<t t-out="%s"/>' % expr.replace('"', '&quot;')
+    # Maskierung in dieser Reihenfolge: '&' MUSS zuerst, sonst wuerde der
+    # Ampersand der folgenden Entities selbst noch ersetzt. Ohne '&' und '<'
+    # entsteht aus einem Ausdruck mit rohem Ampersand kein gueltiges XML; der
+    # Vorlagenrumpf bricht dann erst beim RENDERN ab, also beim Mailversand,
+    # nicht beim Upgrade.
+    sicher = (expr.replace('&', '&amp;')
+                  .replace('<', '&lt;')
+                  .replace('"', '&quot;'))
+    return '<t t-out="%s"/>' % sicher
 
 
 def _convert(body):

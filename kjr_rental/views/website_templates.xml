@@ -414,7 +414,7 @@
          Bewusst OHNE Bestätigungs-Checkbox: hier wird informiert, keine
          Einwilligung eingeholt.
 
-         TODO Betreiber: Die mit "wird noch ergänzt" markierten Angaben füllen
+         TODO Betreiber: Die mit "Angabe folgt" markierten Angaben füllen
          Geschäftsstelle bzw. Datenschutzbeauftragte VOR dem Go-live aus. Sie sind
          absichtlich nicht vorbelegt, weil sie noch nicht festgelegt sind:
          Verantwortlicher, Kontakt der/des Datenschutzbeauftragten, Rechtsgrundlage
@@ -456,33 +456,33 @@
                 <dd class="col-sm-8">Die Geschäftsstelle von <t t-esc="res_company.name"/>
                     und die Personen, die den Verleih und die Abrechnung betreuen.
                     <span class="d-block mt-1">Technischer Betrieb der Website:
-                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.operator')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird noch ergänzt</span>
+                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.operator')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     </span>
                 </dd>
 
                 <dt class="col-sm-4">Verantwortlich</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.controller')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird noch ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.controller')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Name, Anschrift und Kontakt der
                         verantwortlichen Stelle.</span>
                 </dd>
 
                 <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird noch ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
                 </dd>
 
                 <dt class="col-sm-4">Rechtsgrundlage</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.legal_basis')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird noch ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.legal_basis')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Legt die verantwortliche Stelle gemeinsam
                         mit der Datenschutzbeauftragten fest.</span>
                 </dd>
 
                 <dt class="col-sm-4">Wie lange wir speichern</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.retention')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird noch ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.retention')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Die Aufbewahrungsdauer legt die
                         verantwortliche Stelle fest und trägt sie hier ein.</span>
                 </dd>
@@ -493,7 +493,7 @@
                     machen, steht in der
                     <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
                     <span class="d-block mt-1">Zuständige Aufsichtsbehörde:
-                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.authority')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird noch ergänzt</span>
+                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.authority')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     </span>
                 </dd>
             </dl>

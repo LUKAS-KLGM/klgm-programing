@@ -12,7 +12,11 @@ _logger = logging.getLogger(__name__)
 # Eine Zimmernummer steht am ANFANG des Namens ("Zimmer 12"). Zahlen in einem
 # Klammerzusatz ("(12 Betten)", "(1. OG)") sind Bettenzahlen oder Stockwerke und
 # dürfen nie als Zimmernummer gelesen werden.
-ROOM_NUMBER_RE = re.compile(r'^\D*(\d+)')
+# Wortstamm UND Nummer: '^\D*(\d+)' hat die erste Ziffernfolge an BELIEBIGER
+# Stelle genommen, dadurch galten 'Zimmer 3' und 'Schlafsaal 3' als dieselbe
+# Nummer und der Dubletten-Cron haette aufgefordert, einen echten Raum zu
+# archivieren. Verglichen wird jetzt das Paar (Wort, Nummer).
+ROOM_NUMBER_RE = re.compile(r'^(?P<wort>\D*?)\s*(?P<nr>\d+)')
 
 
 class KjrFacility(models.Model):
@@ -204,19 +208,27 @@ class KjrFacility(models.Model):
 
     @staticmethod
     def _room_compare_key(name):
-        """Vergleichsschlüssel eines Raumnamens: führende Zimmernummer, sonst Name.
+        """Vergleichsschlüssel eines Raumnamens: Raumwort und Nummer, sonst Name.
 
         Verglichen wird nur der Teil VOR der ersten Klammer. Würde der
         Klammerzusatz mittokenisiert, bekäme „Schlafsaal (12 Betten)" den
         Schlüssel „12" und kollidierte mit dem völlig korrekten „Zimmer 12
-        (1. OG)" — eine Dublette, die keine ist. Aus demselben Grund zählt nur
-        eine Zahl am Namensanfang als Zimmernummer.
+        (1. OG)" — eine Dublette, die keine ist.
+
+        In den Schlüssel geht das Raumwort MIT ein, nicht nur die Nummer. Zählte
+        allein die Nummer, hätten „Zimmer 3" und „Schlafsaal 3" denselben
+        Schlüssel; der Dubletten-Cron hätte die Geschäftsstelle wöchentlich
+        aufgefordert, einen der beiden echten Räume zu archivieren, und
+        ``bed_total`` wäre um dessen Betten gesunken.
         """
         name = (name or '').strip().lower()
         base = name.split('(')[0].strip()
         treffer = ROOM_NUMBER_RE.match(base)
         if treffer:
-            return treffer.group(1)
+            wort = ' '.join(treffer.group('wort').split())
+            # Nummer ohne führende Nullen, damit „Zimmer 03" und „Zimmer 3"
+            # dieselbe Dublette bleiben.
+            return '%s %s' % (wort, str(int(treffer.group('nr'))))
         return ' '.join((base or name).split())
 
     def _find_duplicate_rooms(self):

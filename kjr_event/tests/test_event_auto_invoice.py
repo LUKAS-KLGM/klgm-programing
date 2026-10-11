@@ -339,3 +339,41 @@ class TestKjrEventAutoInvoice(TransactionCase):
             reg.kjr_training_invoice_id.state, 'draft',
             'Der Automatikpfad darf die Rechnung nicht buchen, auch nicht mit '
             'eingeschaltetem kjr_event.invoice_auto_post.')
+
+    def test_automatic_path_runs_with_system_rights_and_event_company(self):
+        """Der Automatikpfad erzeugt die Rechnung mit Systemrechten.
+
+        Ausgelöst wird ``_kjr_auto_invoice`` auch dort, wo der auslösende
+        Benutzer auf ``account.move`` kein Schreibrecht hat: über die Website
+        und im Backend durch eine Sachbearbeitung ohne Buchhaltungsrechte.
+        Ohne ``sudo()`` scheitert ``account.move.create`` mit ``AccessError``,
+        der Fehlerzweig fängt ihn ab, die Anmeldung bleibt bestehen - und es
+        entsteht STILL KEINE Rechnung. Genau dieser stille Ausfall wird hier
+        festgeschrieben.
+
+        Geprüft wird am übergebenen Recordset statt über echte Rechte: der
+        Rechnungskern muss ein ``sudo``-Recordset bekommen, und die Firma muss
+        aus der VERANSTALTUNG kommen, nicht aus dem Benutzer, damit die
+        Rechnung nicht in der falschen Firma landet.
+        """
+        gesehen = {}
+
+        def _merker(self, allow_send=True, allow_post=True):
+            gesehen['su'] = self.env.su
+            gesehen['company'] = self.env.company
+            return self.env['account.move'], {}
+
+        event = self._make_event(product=self.product)
+        reg = self._reg(event)
+        with self._patched_core(side_effect=_merker):
+            reg.write({'state': 'open'})
+
+        self.assertTrue(
+            gesehen.get('su'),
+            'Die Rechnungserzeugung muss mit Systemrechten laufen (sudo), sonst '
+            'entsteht auf dem Website-Pfad still keine Rechnung.')
+        self.assertEqual(
+            gesehen.get('company'),
+            event.company_id or reg.company_id or self.env.company,
+            'Die Rechnung muss in der Firma der Veranstaltung entstehen, nicht in '
+            'der des auslösenden Benutzers.')
