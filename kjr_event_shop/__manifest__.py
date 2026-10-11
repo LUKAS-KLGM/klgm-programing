@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Brücke: Veranstaltungen ↔ Shop',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Custom/KJR',
     'summary': 'Bestellbestätigung im Shop: Kursname statt Ticketname, '
-               '"Referenz" statt "Mitteilungen", vollständige Bankverbindung.',
+               '"Referenz" statt "Mitteilungen", vollständige Bankverbindung, Kursbild.',
     'author': 'KLGM UG (haftungsbeschränkt)',
     'website': 'https://www.klgm-consulting.de',
     'license': 'OPL-1',

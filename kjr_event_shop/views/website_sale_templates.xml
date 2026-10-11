@@ -19,4 +19,36 @@
         </xpath>
     </template>
 
+    <!-- Titelbild des Kurses statt Produktbild (das Ticket-Produkt hat meist
+         keins, dann erschien nur ein grauer Platzhalter). -->
+    <template id="cart_summary_content_kjr_event_image"
+              inherit_id="website_sale.cart_summary_content"
+              name="KJR: Kursbild in der Bestelluebersicht">
+        <xpath expr="//td[hasclass('td-img')]/div[hasclass('o_cart_product_image')]/span[img[contains(@t-att-src, 'image_data_uri')]]" position="before">
+            <t t-set="kjr_img" t-value="line._kjr_event_image_url()"/>
+            <span t-if="kjr_img">
+                <img t-att-src="kjr_img" class="img rounded" t-att-alt="line.name_short"
+                     style="width:64px;height:64px;object-fit:cover;"/>
+            </span>
+        </xpath>
+        <xpath expr="//td[hasclass('td-img')]/div[hasclass('o_cart_product_image')]/span[img[contains(@t-att-src, 'image_data_uri')]]" position="attributes">
+            <attribute name="t-elif">not line._is_sellable() and line.product_id.image_128</attribute>
+            <attribute name="t-if"/>
+        </xpath>
+    </template>
+
+    <template id="cart_lines_kjr_event_image"
+              inherit_id="website_sale.cart_lines"
+              name="KJR: Kursbild im Warenkorb">
+        <xpath expr="//div[hasclass('o_cart_product_image')]//img[contains(@t-att-src, 'image_data_uri')]" position="before">
+            <t t-set="kjr_img" t-value="line._kjr_event_image_url()"/>
+            <img t-if="kjr_img" t-att-src="kjr_img" class="img border rounded"
+                 t-att-alt="line.name_short" style="width:64px;height:64px;object-fit:cover;"/>
+        </xpath>
+        <xpath expr="//div[hasclass('o_cart_product_image')]//img[contains(@t-att-src, 'image_data_uri')]" position="attributes">
+            <attribute name="t-elif">not line._is_sellable() and line.product_id.image_128</attribute>
+            <attribute name="t-if"/>
+        </xpath>
+    </template>
+
 </odoo>
