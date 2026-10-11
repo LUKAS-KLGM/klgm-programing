@@ -87,12 +87,14 @@
             <field name="name">Jugendleiterschulung (§ 4.4)</field>
             <field name="code">4_4</field>
             <field name="sequence">50</field>
-            <!-- Höchstfördersumme laut Entscheidung Bora Berlinger (KJR OA) vom 30.07.2026
-                 (Beleg: Terminmitschnitt „KJR Felderbesprechung" vom 30.07.2026, 00:16:19 — Bora Berlinger woertlich: „bei Jugendleiterschulung, da ist der Maximalbetrag zum Beispiel 50 und nicht 75.") von 75 € auf 50 € korrigiert. Wirkt wegen noupdate="1"
+            <!-- Höchstfördersumme laut Kundenentscheidung vom 30.07.2026 (Kassenleitung)
+                 von 75 € auf 50 € korrigiert. Belegt durch den Kundentermin vom
+                 30.07.2026: Höchstbetrag der Jugendleiterschulung 50 € statt 75 €.
+                 Wirkt wegen noupdate="1"
                  nur auf Neuinstallationen – bestehende DBs zieht das
                  Migrationsskript migrations/19.0.10.0.0/post-migration.py nach.
 
-                 TODO (Bora) – BITTE BESTÄTIGEN, betrifft ausgezahlte Beträge:
+                 TODO (Kassenleitung) – BITTE BESTÄTIGEN, betrifft ausgezahlte Beträge:
                  Aus dem Termin ist überliefert „Höchstbetrag der Jugendleiter-
                  schulung = 50 €". Offen blieb, ob die 50 € auch für Teilnehmende
                  MIT Juleica gelten, die bisher bis 75 € erhalten konnten.
@@ -123,7 +125,7 @@
             <field name="jl_pct_no_juleica">50.0</field>
             <field name="jl_max_no_juleica">50.0</field>
             <field name="jl_pct_with_juleica">75.0</field>
-            <!-- Von 75 € auf 50 € gesenkt: siehe TODO (Bora) oben, Variante A.
+            <!-- Von 75 € auf 50 € gesenkt: siehe TODO (Kassenleitung) oben, Variante A.
                  Die Quote (75 %) bleibt unverändert – die Kundenvorgabe betraf
                  den Höchstbetrag, nicht den Prozentsatz. -->
             <field name="jl_max_with_juleica">50.0</field>
@@ -181,7 +183,7 @@
             <field name="requires_tn_list">False</field>
             <field name="requires_report">False</field>
             <field name="requires_receipt">False</field>
-            <field name="requires_other_docs">Formular Neugründung (Beilage KJR OA)</field>
+            <field name="requires_other_docs">Formular Neugründung (Beilage der Geschäftsstelle)</field>
             <field name="description">Einmalige Starthilfe von 150 € für Neugründungen in Orten ohne bestehende Gruppe dieses Verbandes.</field>
         </record>
 
@@ -248,19 +250,21 @@
             <field name="description">Jeder stimmberechtigte Delegierte, der zur KJR-Vollversammlung anreist, erhält auf Antrag Fahrtkostenerstattung nach dem Bayerischen Reisekostengesetz (BayRKG): PKW = Wegstreckenentschädigung je km (Hin- und Rückfahrt) zzgl. Mitnahmeentschädigung je Mitfahrer/in; ÖPNV = belegte Fahrtkosten. Antrag durch Unterschrift auf der bei der Vollversammlung ausliegenden Antragsliste. Kein eigener Höchstbetrag (Höhe nach BayRKG). Auszahlung auf das Konto des/der Delegierten möglich.</field>
         </record>
 
-        <!-- Investitionszuschuss (Landkreis-Programm). KEIN Teil der KJR-OA-§4-
-             Zuschussrichtlinie, sondern ein generischer, konfigurierbarer Antragstyp
-             für Investitionsförderungen Dritter (z. B. Landkreis). Die hier gesetzten
-             Werte sind PLATZHALTER und vor Go-live gegen das jeweils gültige
-             Förderprogramm zu bestätigen (Förderquote + Höchstbetrag).
-             DEAKTIVIERT: Bora Berlinger (KJR OA) hat am 30.07.2026 entschieden,
+        <!-- Investitionszuschuss nach einem externen Förderprogramm. KEIN Teil der
+             § 4-Zuschussrichtlinie, sondern ein generischer, konfigurierbarer Antragstyp
+             für Investitionsförderungen Dritter. Die hier gesetzten Werte sind
+             Voreinstellungen und vor Go-live gegen das jeweils gültige
+             Förderprogramm zu bestätigen (Förderquote + Höchstbetrag). Hinweis darauf
+             steht seit 19.0.15.7.0 im Beschreibungstext als ganzer Satz, nicht mehr
+             als Wort PLATZHALTER in Großbuchstaben im Kundentext.
+             DEAKTIVIERT: Die Kundenentscheidung vom 30.07.2026 hat festgelegt,
              dass diese Förderart nicht mehr angeboten wird. Der Record bleibt
              bewusst erhalten (nur active=False), weil bestehende Anträge ihn über
              grant_type_id referenzieren – ein Löschen würde diese Anträge zerreißen.
              Wegen noupdate="1" wirkt das active-Flag nur auf Neuinstallationen;
              bestehende DBs deaktiviert migrations/19.0.10.0.0/post-migration.py. -->
         <record id="grant_type_invest" model="kjr.grant.type">
-            <field name="name">Investitionszuschuss (Landkreis – konfigurierbar)</field>
+            <field name="name">Investitionszuschuss (externes Programm, konfigurierbar)</field>
             <field name="code">invest</field>
             <field name="sequence">200</field>
             <field name="active">False</field>
@@ -273,7 +277,7 @@
             <field name="requires_report">True</field>
             <field name="requires_receipt">True</field>
             <field name="requires_other_docs">Kostenvoranschläge/Rechnungen der Investition, Bewilligung des Förderprogramms</field>
-            <field name="description">Generischer Investitionszuschuss für Anschaffungen/Baumaßnahmen nach einem externen Förderprogramm (z. B. Landkreis). Berechnung: konfigurierbarer Anteil der nachgewiesenen Investitionskosten (Förderquote), gedeckelt auf den Höchstbetrag (0 = ohne Deckel). PLATZHALTER-Werte – Förderquote und Höchstbetrag vor Nutzung an das gültige Programm anpassen.</field>
+            <field name="description">Generischer Investitionszuschuss für Anschaffungen und Baumaßnahmen nach einem externen Förderprogramm. Berechnung: konfigurierbarer Anteil der nachgewiesenen Investitionskosten (Förderquote), gedeckelt auf den Höchstbetrag (0 = ohne Deckel). Förderquote und Höchstbetrag sind vor der Nutzung an das gültige Programm anzupassen.</field>
         </record>
 
     </data>

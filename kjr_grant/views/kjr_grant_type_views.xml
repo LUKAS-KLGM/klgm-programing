@@ -96,7 +96,7 @@
                             </div>
                         </group>
                     </group>
-                    <group string="Förderregeln &amp; Schwellenwerte (KJR-OA)">
+                    <group string="Förderregeln &amp; Schwellenwerte">
                         <group>
                             <field name="leader_ratio"/>
                             <field name="juleica_uplift_pct" invisible="not juleica_bonus"/>
@@ -109,7 +109,7 @@
                             <field name="max_days"/>
                         </group>
                     </group>
-                    <group string="Jugendleiterschulung — nur § 4.4" invisible="code != '4_4'">
+                    <group string="Jugendleiterschulung (nur § 4.4)" invisible="code != '4_4'">
                         <group>
                             <field name="jl_pct_no_juleica"/>
                             <field name="jl_max_no_juleica"/>
@@ -119,7 +119,7 @@
                             <field name="jl_max_with_juleica"/>
                         </group>
                     </group>
-                    <group string="Referenten- und Sachkosten — § 4.3 / § 4.6"
+                    <group string="Referenten- und Sachkosten (§ 4.3 / § 4.6)"
                            invisible="code not in ['4_3', '4_6']">
                         <group>
                             <field name="referee_pct"/>

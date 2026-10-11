@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <menuitem id="menu_kjr_kommja_root" name="KommJA" sequence="98"/>
+    <!-- web_icon fuellt ir.ui.menu.web_icon_data, das Bild in der App-Leiste.
+         Ohne das Attribut bleibt das Feld leer und Odoo zeigt dort das
+         Standardsymbol, waehrend die Apps-Uebersicht (icon_image, nicht
+         gespeichert) schon das Modul-Icon zeigt. Das Feld wird nur in
+         create()/write() neu aus der Datei gelesen, Aenderungen am PNG
+         brauchen deshalb eine Versionsanhebung. -->
+    <menuitem id="menu_kjr_kommja_root" name="KommJA" sequence="98"
+              web_icon="kjr_kommja,static/description/icon.png"/>
     <menuitem id="menu_kjr_kommja_facilities" name="Jugendeinrichtungen"
               parent="menu_kjr_kommja_root" action="action_kjr_youth_facility" sequence="10"/>
 

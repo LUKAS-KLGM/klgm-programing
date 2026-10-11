@@ -283,7 +283,7 @@ class KjrAssemblyDecision(models.Model):
     ], string='Ergebnis', compute='_compute_result', store=True, readonly=False,
         help='Wird aus den Stimmen vorbelegt (Mehrheit der Ja-/Nein-Stimmen), '
              'kann aber manuell überschrieben werden. Bei Wahlen bleibt dieses '
-             'Feld leer — dort gilt das Wahlergebnis (Feld "Wahlergebnis").')
+             'Feld leer, dort gilt das Wahlergebnis (Feld "Wahlergebnis").')
 
     # ── Wahl (geheim, § 34 Abs. 3 BJR-Satzung) ───────────────────────────────
     election_office = fields.Char(
@@ -325,7 +325,7 @@ class KjrAssemblyDecision(models.Model):
     )
     majority_rule = fields.Selection([
         ('absolute', 'Absolute Mehrheit der gültigen Stimmen'),
-        ('relative', 'Einfache (relative) Mehrheit — meiste Stimmen'),
+        ('relative', 'Einfache (relative) Mehrheit, meiste Stimmen'),
     ], string='Erforderliche Mehrheit', default='absolute',
         help='Berechnungsgrundlage sind ausschließlich die auf Kandidat/innen '
              'entfallenen gültigen Stimmen; Enthaltungen und ungültige Stimmen '
@@ -339,7 +339,7 @@ class KjrAssemblyDecision(models.Model):
     election_valid_votes = fields.Integer(
         string='Gültige Kandidatenstimmen', compute='_compute_election',
         help='Summe der auf Kandidat/innen entfallenen Stimmen. Grundlage der '
-             'Mehrheitsberechnung — ohne Enthaltungen und ungültige Stimmen.',
+             'Mehrheitsberechnung, ohne Enthaltungen und ungültige Stimmen.',
     )
     election_majority_needed = fields.Integer(
         string='Erforderliche Stimmen', compute='_compute_election',
@@ -513,7 +513,7 @@ class KjrAssemblyDecision(models.Model):
             if attendees and counted > attendees:
                 hints.append(_(
                     'Mehr Stimmen erfasst (%(counted)s) als Mitglieder anwesend '
-                    '(%(att)s) — § 33 Abs. 1 BJR-Satzung: eine Stimme je Mitglied.'
+                    '(%(att)s). § 33 Abs. 1 BJR-Satzung: eine Stimme je Mitglied.'
                 ) % {'counted': counted, 'att': attendees})
             rec.plausibility_hint = ' '.join(hints) or False
 
@@ -533,7 +533,7 @@ class KjrAssemblyDecision(models.Model):
         office = self.election_office or self.name
         runoff = self.create({
             'assembly_id': self.assembly_id.id,
-            'name': _('%(office)s — Stichwahl (%(round)s. Wahlgang)') % {
+            'name': _('%(office)s: Stichwahl (%(round)s. Wahlgang)') % {
                 'office': office, 'round': (self.ballot_round or 1) + 1,
             },
             'decision_type': 'election',
@@ -608,7 +608,7 @@ class KjrAssemblyCandidate(models.Model):
     )
     partner_id = fields.Many2one(
         'res.partner', string='Kontakt', domain="[('is_company', '=', False)]",
-        help='Optionale Verknüpfung mit dem Kontakt. Nicht erforderlich — '
+        help='Optionale Verknüpfung mit dem Kontakt. Nicht erforderlich, '
              'Kandidaturen dürfen auch ohne angelegten Kontakt erfasst werden.',
     )
     votes = fields.Integer(

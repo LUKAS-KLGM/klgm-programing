@@ -15,7 +15,20 @@ _logger = logging.getLogger(__name__)
 KJR_VALUE_FIELDS = (
     'birthdate', 'guardian_name', 'guardian_phone',
     'emergency_contact', 'dietary_requirements', 'dietary_note', 'notes',
+    'kjr_gender',
 )
+
+# Auswahlfelder unter KJR_VALUE_FIELDS. Ihr Wert kommt aus einem <select> des
+# öffentlichen Formulars und wird deshalb VOR dem Schreiben gegen den
+# tatsächlichen Wertevorrat geprüft (siehe _kjr_valid_selection_value).
+#
+# Grund: die Formularwerte wurden bisher ungeprüft durchgeschrieben. Ein
+# präparierter POST mit einem unbekannten Schlüssel lief damit in Odoos
+# ValueError "Wrong value for event.registration.dietary_requirements" und brach
+# die öffentliche Anmeldung ab - eine Altlast, die sich mit einem zweiten
+# Auswahlfeld verdoppelt hätte. Ein unbekannter Wert wird jetzt verworfen (das
+# Feld bleibt leer), die Anmeldung läuft durch.
+KJR_SELECTION_FIELDS = ('dietary_requirements', 'kjr_gender')
 
 # Kernfelder des STANDARD-Anmeldeformulars (website_event), über die eine Formularzeile
 # wieder genau einer erzeugten Anmeldung zugeordnet wird. Sie stammen aus demselben POST
@@ -56,10 +69,10 @@ KJR_EVENTS_PER_PAGE = 12
 # Einteilung stützt sich deshalb allein auf das Förderfenster 5–27. Änderungen betreffen
 # ausschließlich diese Liste — die Filterlogik selbst bleibt unberührt.
 KJR_AGE_GROUPS = (
-    ('5-7', '5–7 Jahre'),
-    ('8-10', '8–10 Jahre'),
-    ('11-13', '11–13 Jahre'),
-    ('14-17', '14–17 Jahre'),
+    ('5-7', '5-7 Jahre'),
+    ('8-10', '8-10 Jahre'),
+    ('11-13', '11-13 Jahre'),
+    ('14-17', '14-17 Jahre'),
     ('18-', 'ab 18 Jahre'),
 )
 
@@ -92,6 +105,30 @@ class KjrWebsiteEventController(WebsiteEventController):
     # Online-Anmeldung (E1)
     # ------------------------------------------------------------------
 
+    def _kjr_valid_selection_value(self, field, value):
+        """True, wenn ``value`` ein gültiger Auswahlschlüssel von ``field`` ist.
+
+        Der Wertevorrat wird zur Laufzeit am Modell gelesen und NICHT hier
+        kopiert: er darf nur an einer Stelle gepflegt werden
+        (models/event_registration.py).
+
+        GELESEN WIRD MIT ``sudo()``, und das ist hier zwingend: ``fields_get``
+        überspringt jedes Feld, auf das der ausführende Benutzer keinen
+        Lesezugriff hat (``odoo/orm/models.py``, ``fields_get`` ->
+        ``_has_field_access``). ``dietary_requirements`` trägt
+        ``groups=KJR_SENSITIVE_DATA_GROUP``; der öffentliche Website-Benutzer ist
+        in dieser Gruppe nicht, ohne ``sudo()`` käme also ein LEERER Wertevorrat
+        zurück und JEDE Ernährungsangabe aus dem Online-Formular wäre "ungültig"
+        und würde verworfen. Die Küchenplanung der Freizeiten hätte dann leere
+        Felder. Zulässig ist das, weil hier nur der Wertevorrat des Feldes
+        gelesen wird (eine feste Liste von Schlüsseln, kein personenbezogenes
+        Datum) und weil der anschließende Schreibvorgang ohnehin über ein
+        sudo-Recordset läuft (siehe ``_kjr_write_attendee_values``).
+        """
+        info = request.env['event.registration'].sudo().fields_get(
+            [field], ['selection']).get(field) or {}
+        return value in {key for key, _label in (info.get('selection') or [])}
+
     def _kjr_extract_attendee_values(self, registrations):
         """Sammelt die KJR-Felder je Teilnehmer/in aus den geposteten Formulardaten.
 
@@ -110,8 +147,20 @@ class KjrWebsiteEventController(WebsiteEventController):
             values = {}
             for field in KJR_VALUE_FIELDS:
                 key = prefix + field
-                if key in registrations and registrations[key] not in (None, ''):
-                    values[field] = registrations[key]
+                if key not in registrations or registrations[key] in (None, ''):
+                    continue
+                value = registrations[key]
+                if field in KJR_SELECTION_FIELDS and \
+                        not self._kjr_valid_selection_value(field, value):
+                    # Unbekannter Auswahlschlüssel: verwerfen statt die Anmeldung
+                    # mit einem ValueError abzubrechen. Bewusst OHNE den Wert im
+                    # Protokoll (er kommt von aussen und kann personenbezogene
+                    # oder eingeschleuste Inhalte tragen).
+                    _logger.warning(
+                        'Unbekannter Auswahlwert im oeffentlichen Anmeldeformular '
+                        'fuer Feld %s (Teilnehmer/in %d) verworfen.', field, counter)
+                    continue
+                values[field] = value
             consent_key = prefix + 'parental_consent'
             if consent_key in registrations:
                 values['parental_consent'] = _truthy(registrations[consent_key])
@@ -331,7 +380,7 @@ class KjrWebsiteEventController(WebsiteEventController):
             return 'ab %d Jahre' % age_from
         if age_from == age_to:
             return '%d Jahre' % age_from
-        return '%d–%d Jahre' % (age_from, age_to)
+        return '%d-%d Jahre' % (age_from, age_to)
 
     def _kjr_age_matches(self, event_min, event_max, age_from, age_to):
         """True, wenn sich die Altersspanne der Veranstaltung mit [age_from, age_to] überschneidet.

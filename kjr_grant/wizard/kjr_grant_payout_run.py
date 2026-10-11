@@ -54,7 +54,7 @@ QUARTER_BOUNDS = {
 
 class KjrGrantPayoutRun(models.TransientModel):
     _name = 'kjr.grant.payout.run'
-    _description = 'KJR – Auszahlungslauf (quartalsweise)'
+    _description = 'KJR Auszahlungslauf (quartalsweise)'
 
     # ── Vorgabewerte ─────────────────────────────────────────────────────────
 
@@ -90,14 +90,14 @@ class KjrGrantPayoutRun(models.TransientModel):
     fiscal_year = fields.Integer(
         string='Haushaltsjahr', required=True, default=_default_fiscal_year,
         help='Haushaltsjahr, dem der Auszahlungslauf zugeordnet ist. Steuert die '
-             'Quartalsgrenzen und – bei aktiver Stichtagsregel – welche Anträge '
+             'Quartalsgrenzen und, bei aktiver Stichtagsregel, welche Anträge '
              'noch in diesem Jahr zur Auszahlung gelangen.',
     )
     period_type = fields.Selection([
-        ('q1', '1. Quartal (Januar–März)'),
-        ('q2', '2. Quartal (April–Juni)'),
-        ('q3', '3. Quartal (Juli–September)'),
-        ('q4', '4. Quartal (Oktober–Dezember)'),
+        ('q1', '1. Quartal (Januar bis März)'),
+        ('q2', '2. Quartal (April bis Juni)'),
+        ('q3', '3. Quartal (Juli bis September)'),
+        ('q4', '4. Quartal (Oktober bis Dezember)'),
         ('year', 'Gesamtes Haushaltsjahr'),
         ('custom', 'Freier Zeitraum'),
     ], string='Zeitraum', required=True, default=_default_period_type,
@@ -219,7 +219,7 @@ class KjrGrantPayoutRun(models.TransientModel):
         cutoff = self._payout_cutoff()
         if cutoff:
             text = _(
-                'Stichtag %(day)02d.%(month)02d. – Anträge mit Eingang bis dahin '
+                'Stichtag %(day)02d.%(month)02d.: Anträge mit Eingang bis dahin '
                 'gehören zum Haushaltsjahr des Eingangs, spätere zum Folgejahr.',
                 day=cutoff[0], month=cutoff[1],
             )
@@ -346,7 +346,7 @@ class KjrGrantPayoutRun(models.TransientModel):
             ref_date = rec[self.period_basis]
             if not ref_date:
                 blocked.append((rec, _(
-                    'Kein %(label)s hinterlegt – der Antrag fällt in keinen '
+                    'Kein %(label)s hinterlegt, der Antrag fällt in keinen '
                     'Auszahlungslauf und muss von Hand geklärt werden.',
                     label=Application._fields[self.period_basis].string,
                 )))
@@ -379,7 +379,7 @@ class KjrGrantPayoutRun(models.TransientModel):
                 continue
             if four_eyes and rec.reviewed_by and rec.reviewed_by.id == self.env.user.id:
                 blocked.append((rec, _(
-                    'Vier-Augen-Prinzip: von %(user)s selbst sachlich geprüft – '
+                    'Vier-Augen-Prinzip: von %(user)s selbst sachlich geprüft, '
                     'die Zahlung muss eine zweite Person anweisen.',
                     user=rec.reviewed_by.name,
                 )))
@@ -405,7 +405,7 @@ class KjrGrantPayoutRun(models.TransientModel):
         label = dict(self._fields['period_type'].selection).get(
             self.period_type, self.period_type)
         return _(
-            '%(period)s %(year)s (%(start)s–%(end)s)',
+            '%(period)s %(year)s (%(start)s bis %(end)s)',
             period=label, year=self.fiscal_year,
             start=self.date_from and self.date_from.strftime('%d.%m.%Y') or '',
             end=self.date_to and self.date_to.strftime('%d.%m.%Y') or '',
@@ -521,7 +521,7 @@ class KjrGrantPayoutRun(models.TransientModel):
         if skipped:
             lines.append(self._format_reasons(skipped))
         else:
-            lines.append(_('– keine –'))
+            lines.append(_('(keine)'))
         return '\n'.join(lines)
 
     def _reopen(self):

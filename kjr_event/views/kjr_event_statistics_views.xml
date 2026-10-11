@@ -11,8 +11,27 @@
                     Erzeugt die Auswertung als CSV-Datei (Semikolon-getrennt, für Excel
                     vorbereitet). Ausgewertet werden alle Veranstaltungen, die als
                     KJR-Veranstaltung markiert sind und deren Beginn im gewählten Zeitraum
-                    liegt. Die Altersverteilung zählt stornierte Anmeldungen nicht mit;
-                    Anmeldungen ohne Geburtsdatum erscheinen in einer eigenen Spalte.
+                    liegt.
+                    <ul class="mb-0 mt-2">
+                        <li>Altersklassen und Geschlecht zählen alle nicht stornierten
+                            Anmeldungen, also auch Entwürfe. Das steht auch in den
+                            Beschriftungen der Geschlechtsspalten, weil die Spalte
+                            "Anmeldungen gesamt" daneben alle Status einschließlich
+                            Storno zählt. Anmeldungen ohne Geburtsdatum erscheinen in
+                            einer eigenen Spalte, ein leeres Geschlechtsfeld in der
+                            Spalte "Geschlecht nicht erfasst" (die Stufe "keine Angabe"
+                            bedeutet dagegen: bewusst nicht angegeben).</li>
+                        <li>Die Teilnahmebeiträge beruhen auf den bestätigten Anmeldungen
+                            (registriert und teilgenommen); Entwürfe und Stornos zählen
+                            nicht mit. Ohne Zahlungspflicht sind Beitrag und Summe 0,00.
+                            Gerechnet wird der aktuelle Listenpreis des Schulungsprodukts
+                            mal der Anzahl dieser Anmeldungen, also ein SOLLWERT und kein
+                            vereinnahmter Betrag.</li>
+                        <li>Die Altersklassen sind konfigurierbar (Einstellungen,
+                            Technisch, Systemparameter: kjr_event.statistics_age_buckets).
+                            Ist der Wert unbrauchbar, gelten die sechs Standardklassen und
+                            im Protokoll steht eine Warnung.</li>
+                    </ul>
                 </div>
                 <group>
                     <group string="Zeitraum">

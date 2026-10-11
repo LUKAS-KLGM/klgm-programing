@@ -22,16 +22,16 @@ _logger = logging.getLogger(__name__)
 #
 # WICHTIG: Für Ausleihen ist KEINE Aufbewahrungsfrist entschieden. Die Parameter
 # sind im Auslieferungszustand NICHT gesetzt; der Code liest dann '0', und '0'
-# bedeutet: es passiert GAR NICHTS. Erst ein vom KJR eingetragener Wert > 0
+# bedeutet: es passiert GAR NICHTS. Erst ein vom Betreiber eingetragener Wert > 0
 # schaltet die Verarbeitung ein.
 #
 # Anhaltspunkte aus dem Projektvault — ausschließlich Entscheidungshilfe für den
-# KJR, bewusst NICHT als Default gesetzt und hier ausdrücklich keine Rechtsaussage:
+# Betreiber, bewusst NICHT als Default gesetzt und hier ausdrücklich keine Rechtsaussage:
 #   • Buchungsbelege: 8 Jahre (§ 147 AO, § 257 HGB)
 #   • Verwendungsnachweise: 5 Jahre (ANBest-P Nr. 6.6)
-#   • "1 Jahr Ferienprogramm" ist eine selbstdefinierte Policy des KJR und
+#   • "1 Jahr Ferienprogramm" ist eine selbstdefinierte Policy des Betreibers und
 #     ausdrücklich keine gesetzliche Frist.
-# TODO(KJR): Frist festlegen und KJR_RENTAL_RETENTION_PARAM setzen.
+# TODO Betreiber: Frist festlegen und KJR_RENTAL_RETENTION_PARAM setzen.
 # TODO(DSGVO): Festlegung und Verfahren von der Datenschutzbeauftragten
 # bestätigen lassen, insbesondere den Umgang mit Chatter und Feldhistorie.
 KJR_RENTAL_RETENTION_PARAM = 'kjr_rental.order_retention_years'
@@ -126,7 +126,7 @@ class KjrRentalOrder(models.Model):
         string='Nutzungshinweise bestätigt', readonly=True, copy=False, tracking=True,
         help='Nachweis, dass der Entleiher die Nutzungshinweise zu den ausgeliehenen '
              'Artikeln bestätigt hat (Haftung, Aufsicht, Rückgabezustand). Wird beim '
-             'Absenden des Online-Formulars gesetzt und ist deshalb kein Eingabefeld — '
+             'Absenden des Online-Formulars gesetzt und ist deshalb kein Eingabefeld, '
              'der Zeitpunkt der Bestätigung steht im Chatter.',
     )
 
@@ -136,7 +136,7 @@ class KjrRentalOrder(models.Model):
     return_checked_complete = fields.Boolean(
         string='Vollständig zurückgegeben', tracking=True,
         help='Alle Positionen inklusive Zubehör wurden bei der Rücknahme gezählt und '
-             'sind vollständig. Das Häkchen dokumentiert den festgestellten Zustand — '
+             'sind vollständig. Das Häkchen dokumentiert den festgestellten Zustand, '
              'es ist KEINE Freigabebedingung: bleibt es leer, ist die Rücknahme '
              'trotzdem abschließbar, dann aber mit Rückgabevermerk.',
     )
@@ -150,7 +150,7 @@ class KjrRentalOrder(models.Model):
     return_damage = fields.Boolean(
         string='Schaden festgestellt', tracking=True,
         help='Bei der Rücknahme wurde ein Schaden oder Verlust festgestellt. Wie bei '
-             'jeder anderen Abweichung ist dann ein Rückgabevermerk zwingend — er ist '
+             'jeder anderen Abweichung ist dann ein Rückgabevermerk zwingend. Er ist '
              'die dokumentierte Feststellung und zugleich eine mögliche Begründung für '
              'einen Kautionseinbehalt.',
     )
@@ -159,7 +159,7 @@ class KjrRentalOrder(models.Model):
         help='Beschreibung des Zustands bei der Rücknahme: was fehlt, was ist beschädigt, '
              'was wurde vereinbart. Pflicht, sobald eine Abweichung vorliegt '
              '(unvollständig, nicht gereinigt oder Schaden). Dient außerdem als '
-             'Begründung für einen Einbehalt der Kaution — ein Einbehalt setzt eine '
+             'Begründung für einen Einbehalt der Kaution. Ein Einbehalt setzt eine '
              'Begründung voraus, aber nicht zwingend einen Schaden (z. B. verspätete '
              'Rückgabe oder Nichtabholung).',
     )
@@ -274,8 +274,8 @@ class KjrRentalOrder(models.Model):
                 avail = item.quantity_available(rec.date_from, rec.date_to, exclude_order=rec)
                 if qty > avail:
                     raise UserError(_(
-                        'Nicht genügend verfügbar: "%(item)s" – angefragt %(req)d, verfügbar %(av)d '
-                        'im Zeitraum %(df)s–%(dt)s.',
+                        'Nicht genügend verfügbar: "%(item)s", angefragt %(req)d, verfügbar %(av)d '
+                        'im Zeitraum %(df)s bis %(dt)s.',
                         item=item.name, req=qty, av=avail,
                         df=rec.date_from, dt=rec.date_to,
                     ))
@@ -327,7 +327,7 @@ class KjrRentalOrder(models.Model):
                     'was ist beschädigt, was wurde vereinbart. Der Vermerk ist die '
                     'dokumentierte Feststellung und zugleich die Begründung für einen '
                     'möglichen Einbehalt der Kaution. Die Häkchen bitte NICHT '
-                    'wahrheitswidrig setzen, um den Abschluss zu erzwingen — sie halten '
+                    'wahrheitswidrig setzen, um den Abschluss zu erzwingen. Sie halten '
                     'den tatsächlichen Zustand fest.',
                     name=rec.name, findings=', '.join(findings),
                 ))
@@ -354,7 +354,7 @@ class KjrRentalOrder(models.Model):
             'complete': _('ja') if self.return_checked_complete else _('nein'),
             'clean': _('ja') if self.return_checked_clean else _('nein'),
             'damage': _('ja') if self.return_damage else _('nein'),
-            'note': note or _('–'),
+            'note': note or _('-'),
         }
 
     def action_return(self):
@@ -377,13 +377,13 @@ class KjrRentalOrder(models.Model):
                 # Rückgabevermerk dient dabei als Begründung (action_withhold_deposit).
                 # Der Hinweis hängt an JEDER Abweichung, nicht nur am Schaden — auch
                 # fehlende oder ungereinigte Rückgaben können einen Einbehalt tragen.
-                # TODO Kundenentscheidung KJR: Soll bei Abweichungen (insbesondere
+                # TODO Kundenentscheidung Betreiber: Soll bei Abweichungen (insbesondere
                 # "Schaden festgestellt") die Kaution automatisch einbehalten werden?
                 # Bis zur Klärung bleibt die konservative Variante (Hinweis +
                 # manuelle Entscheidung).
                 rec.message_post(
                     body=_('Abweichung dokumentiert (%(findings)s): Bitte über die '
-                           'erhaltene Kaution (%(amount).2f) entscheiden — '
+                           'erhaltene Kaution (%(amount).2f) entscheiden. '
                            '"Kaution einbehalten" übernimmt den Rückgabevermerk als '
                            'Begründung, "Kaution erstatten" schließt den Vorgang ohne '
                            'Einbehalt ab.',
@@ -399,7 +399,7 @@ class KjrRentalOrder(models.Model):
                 rec.message_post(
                     body=_('Bei folgenden Positionen wird nach Kilometern abgerechnet, es '
                            'sind aber noch keine gefahrenen Kilometer erfasst: %(items)s. '
-                           'Bitte den abgelesenen Stand in der Position nachtragen — sonst '
+                           'Bitte den abgelesenen Stand in der Position nachtragen, sonst '
                            'enthält die Rechnung nur die Grundgebühr.',
                            items=', '.join(km_missing.mapped('item_id.name'))),
                     subtype_xmlid='mail.mt_note')
@@ -566,7 +566,7 @@ class KjrRentalOrder(models.Model):
                     'Der Einbehalt der Kaution von %(name)s muss begründet sein. Bitte '
                     'den Grund im Rückgabevermerk (Reiter "Rückgabe") festhalten und '
                     'den Einbehalt danach erneut auslösen. Ein Schaden ist dafür keine '
-                    'Voraussetzung — auch eine verspätete Rückgabe, eine Nichtabholung '
+                    'Voraussetzung. Auch eine verspätete Rückgabe, eine Nichtabholung '
                     'oder unvollständig bzw. ungereinigt zurückgegebenes Material ist '
                     'eine tragfähige Begründung, sie muss nur dokumentiert sein.',
                     name=rec.name))
@@ -630,15 +630,15 @@ class KjrRentalOrder(models.Model):
         """Aufbewahrungsfrist in Jahren aus dem Systemparameter; 0 = abgeschaltet.
 
         Fehlt der Parameter oder ist er nicht als ganze Zahl lesbar, gilt 0 — also
-        KEINE Verarbeitung. Das ist die konservative Seite: solange der KJR keine
-        Frist festgelegt hat, darf nichts passieren (TODO(KJR) am Modulkopf)."""
+        KEINE Verarbeitung. Das ist die konservative Seite: solange der Betreiber keine
+        Frist festgelegt hat, darf nichts passieren (TODO Betreiber am Modulkopf)."""
         raw = self.env['ir.config_parameter'].sudo().get_param(
             KJR_RENTAL_RETENTION_PARAM, '0')
         try:
             years = int(raw)
         except (TypeError, ValueError):
             _logger.warning(
-                'DSGVO: Systemparameter %s ist keine ganze Zahl (%r) — die '
+                'DSGVO: Systemparameter %s ist keine ganze Zahl (%r), die '
                 'Anonymisierung der Ausleihen bleibt abgeschaltet.',
                 KJR_RENTAL_RETENTION_PARAM, raw)
             return 0
@@ -734,7 +734,7 @@ class KjrRentalOrder(models.Model):
 
         Grenze, die der Code nicht überwinden kann: Werte aus einem FRÜHEREN Lauf
         sind nicht mehr bekannt und im Chatter nicht mehr erkennbar.
-        TODO(KJR): Einmalige manuelle Durchsicht der Altbestände einplanen.
+        TODO Betreiber: Einmalige manuelle Durchsicht der Altbestände einplanen.
 
         Idempotent: nach dem Ersetzen findet der nächste Lauf nichts mehr."""
         self.ensure_one()
@@ -807,8 +807,8 @@ class KjrRentalOrder(models.Model):
             if att.type != 'binary':
                 continue  # URL-Anhänge tragen keinen Dateiinhalt
             body = _(
-                'Der Inhalt dieses Anhangs (%(orig)s) wurde nach Ablauf der vom KJR '
-                'festgelegten Aufbewahrungsfrist entfernt. Erhalten bleibt nur die '
+                'Der Inhalt dieses Anhangs (%(orig)s) wurde nach Ablauf der vom '
+                'Betreiber festgelegten Aufbewahrungsfrist entfernt. Erhalten bleibt nur die '
                 'Tatsache, dass zur Ausleihe %(order)s ein Dokument abgelegt war.'
             ) % {'orig': att.name or '', 'order': self.name or ''}
             att.write({
@@ -830,7 +830,7 @@ class KjrRentalOrder(models.Model):
         eigenes Rückgabedatum führt das Modell nicht; date_to ist der vertraglich
         vereinbarte Rückgabetag und damit der nächstliegende belastbare Anker. Das
         Anlagedatum wäre falsch, weil Ausleihen im Voraus erfasst werden.
-        TODO(KJR): Falls das TATSÄCHLICHE Rückgabedatum als Anker gewünscht ist,
+        TODO Betreiber: Falls das TATSÄCHLICHE Rückgabedatum als Anker gewünscht ist,
         muss dafür erst ein Feld erfasst werden — das ist eine Fachentscheidung und
         wird hier nicht unterstellt.
 
@@ -935,7 +935,7 @@ class KjrRentalOrderLine(models.Model):
         help='Nur beim Preismodell "Grundgebühr + Kilometerpreis": die bei DIESER '
              'Position insgesamt gefahrenen Kilometer über alle Stück, abgelesen bei '
              'der Rückgabe. Der Kilometeranteil wird deshalb NICHT zusätzlich mit der '
-             'Menge multipliziert. Nachtragen ist auch nach der Rücknahme möglich — '
+             'Menge multipliziert. Nachtragen ist auch nach der Rücknahme möglich, '
              'nach einer bereits erstellten Rechnung erscheint dazu ein Hinweis im '
              'Protokoll.',
     )
@@ -1124,10 +1124,10 @@ class KjrRentalOrderLine(models.Model):
         values['kind'] = _('Grundgebühr') if model == 'per_km' else _('Mengenstaffel')
         basis = item.price_time_basis or 'flat'
         if basis == 'day':
-            return _('%(item)s – %(kind)s (%(q)d × %(u)d Tage)') % values
+            return _('%(item)s, %(kind)s (%(q)d × %(u)d Tage)') % values
         if basis == 'night':
-            return _('%(item)s – %(kind)s (%(q)d × %(u)d Nächte)') % values
-        return _('%(item)s – %(kind)s (%(q)d %(unit)s)') % values
+            return _('%(item)s, %(kind)s (%(q)d × %(u)d Nächte)') % values
+        return _('%(item)s, %(kind)s (%(q)d %(unit)s)') % values
 
     def write(self, vals):
         res = super().write(vals)

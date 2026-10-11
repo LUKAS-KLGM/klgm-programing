@@ -68,7 +68,7 @@
                         <field name="partner_id"/>
                         <field name="measure_name"/>
                         <div class="text-muted small">
-                            <field name="measure_start"/> – <field name="measure_end"/>
+                            <field name="measure_start"/> bis <field name="measure_end"/>
                         </div>
                         <field name="grant_type_id" widget="badge"/>
                         <div class="mt-1 fw-bold">
@@ -166,7 +166,7 @@
                          wird – nicht nur im Chatter beim Einreichen. -->
                     <div class="alert alert-warning" role="alert"
                          invisible="not applicable_type_warning">
-                        <i class="fa fa-exclamation-triangle me-1" aria-hidden="true"/>
+                        <i class="fa fa-exclamation-triangle me-1" title="Warnung" aria-hidden="true"/>
                         <field name="applicable_type_warning" readonly="1"/>
                     </div>
                     <div class="oe_title">
@@ -228,7 +228,7 @@
                                     <field name="tn_external_pct"   readonly="1"/>
                                 </group>
                             </group>
-                            <group string="Delegiertenförderung (§ 4.9 – Fahrtkosten n. BayRKG)"
+                            <group string="Delegiertenförderung (§ 4.9, Fahrtkosten n. BayRKG)"
                                    invisible="grant_type_code != '4_9'">
                                 <field name="assembly_id" readonly="state not in ('draft','submitted')"
                                        options="{'no_create': True}"/>
@@ -273,7 +273,7 @@
                             <div class="text-muted small mt-2">
                                 Kennziffer: EA = ehrenamtliche/r Mitarbeiter/in, HA = haupt-/nebenberufliche/r
                                 Mitarbeiter/in, HO = Honorarkraft, PR = Praktikant/in, SO = sonstige.
-                                Teilnehmende bleiben leer — eine gesetzte Kennziffer markiert den Eintrag
+                                Teilnehmende bleiben leer, eine gesetzte Kennziffer markiert den Eintrag
                                 automatisch als „Gruppenleitung" (Betreuungsschlüssel).
                                 Das Geburtsdatum ist optional; maßgeblich für die Förderprüfung ist das Alter.
                             </div>
@@ -362,7 +362,7 @@
                                 </group>
                             </group>
                             <div class="text-muted" invisible="use_digital_receipts">
-                                Die Belegliste wurde nicht digital erfasst — es gilt die als Datei
+                                Die Belegliste wurde nicht digital erfasst, es gilt die als Datei
                                 hochgeladene Belegliste (Dokumente).
                             </div>
                         </page>
@@ -430,7 +430,7 @@
                             </group>
                             <group string="Interne Notizen">
                                 <field name="note_internal" nolabel="1"
-                                       placeholder="Interne Notizen — nicht für Antragsteller sichtbar..."/>
+                                       placeholder="Interne Notizen, nicht für Antragsteller sichtbar..."/>
                             </group>
                         </page>
                     </notebook>

@@ -369,18 +369,40 @@ class EventRegistrationAutomation(models.Model):
     # ------------------------------------------------------------------
     # E9 – Sammelaktion Schulungsrechnung (Listenauswahl)
     # ------------------------------------------------------------------
-    def action_kjr_create_training_invoices(self):
-        """Erzeugt Schulungsrechnungen für mehrere Anmeldungen auf einmal.
+    def _kjr_create_training_invoices(self, allow_send=True, allow_post=True):
+        """Kern der Rechnungserzeugung: filtern, erzeugen, optional buchen.
+
+        Herausgehoben aus ``action_kjr_create_training_invoices``, damit die
+        automatische Erzeugung bei Bestätigung einer Anmeldung
+        (``event.registration._kjr_auto_invoice``) GENAU DIESE Logik benutzt und
+        keine zweite Fassung entsteht. Die Handaktion verhält sich unverändert.
 
         Buchen und Versenden sind optional und laufen über Systemparameter –
         gleiches Muster wie ``kjr_facility.invoice_auto_post`` (Default: NICHT
         buchen, das Buchen bleibt eine bewusste Entscheidung der
         Geschäftsstelle).
 
+        :param allow_send: Wenn False, wird der Auto-Versand
+            (``kjr_event.invoice_auto_send``) NICHT ausgewertet. Das braucht der
+            Automatikpfad: wer den Versand-Parameter eingeschaltet hat, soll
+            durch die neue Automatik nicht plötzlich Rechnungsmails verschicken,
+            die er nie beauftragt hat. Erzeugen und Versenden bleiben getrennt.
+        :param allow_post: Wenn False, wird das Auto-Buchen
+            (``kjr_event.invoice_auto_post``) NICHT ausgewertet. Aus demselben
+            Grund wie beim Versand, nur mit härterer Folge: eine gebuchte
+            Rechnung trägt eine Nummer aus der Rechnungssequenz, ist nicht mehr
+            löschbar und nur noch über eine Gutschrift zurückzudrehen. Der
+            Automatikpfad ruft deshalb mit ``allow_post=False`` auf und erzeugt
+            ausschließlich Entwürfe - genau das, was der Schalter "Rechnung
+            automatisch erzeugen" zusagt. Beide Parameter gelten damit nur für
+            die von Hand ausgelöste Sammelaktion.
+
         Anmeldungen, denen etwas fehlt (kein Schulungsprodukt, kein Kontakt),
-        brechen die Sammelaktion NICHT ab: sie werden übersprungen und
+        brechen die Verarbeitung NICHT ab: sie werden übersprungen und
         erhalten einen Hinweis im Chatter (Projektstandard: im Backend nur
         Hinweise, harte Pflichten nur im Website-Formular).
+
+        :return: Tupel ``(neu verknüpfte Rechnungen, Kennzahlen-dict)``.
         """
         candidates = self.browse()
         skipped_not_required = 0
@@ -424,8 +446,10 @@ class EventRegistrationAutomation(models.Model):
             candidates.action_create_training_invoice()
         new_moves = candidates.mapped('kjr_training_invoice_id')
 
+        # Auto-Buchen nur auf dem bewusst ausgelösten Weg (Handaktion), siehe
+        # Docstring zu allow_post. Der Automatikpfad ruft mit allow_post=False.
         posted = 0
-        if new_moves and self._kjr_param_bool(PARAM_INVOICE_AUTO_POST, False):
+        if allow_post and new_moves and self._kjr_param_bool(PARAM_INVOICE_AUTO_POST, False):
             for move in new_moves.filtered(lambda m: m.state == 'draft'):
                 try:
                     move.action_post()
@@ -433,7 +457,9 @@ class EventRegistrationAutomation(models.Model):
                 except Exception as e:  # noqa: BLE001 - Buchen darf den Ablauf nicht abbrechen
                     _logger.warning('Auto-Buchen der Rechnung %s fehlgeschlagen: %s',
                                     move.name or move.id, e)
-        if candidates and self._kjr_param_bool(PARAM_INVOICE_AUTO_SEND, False):
+        # Auto-Versand nur auf dem bewusst ausgelösten Weg (Handaktion). Der
+        # Automatikpfad ruft mit allow_send=False auf, siehe Docstring.
+        if allow_send and candidates and self._kjr_param_bool(PARAM_INVOICE_AUTO_SEND, False):
             candidates.action_kjr_send_training_invoice()
 
         _logger.info(
@@ -442,6 +468,25 @@ class EventRegistrationAutomation(models.Model):
             len(new_moves), posted, skipped_not_required, skipped_already, skipped_sale,
             len(skipped_product), len(skipped_partner))
 
+        return new_moves, {
+            'created': len(new_moves),
+            'posted': posted,
+            'skipped_not_required': skipped_not_required,
+            'skipped_already': skipped_already,
+            'skipped_sale': skipped_sale,
+            'skipped_product': len(skipped_product),
+            'skipped_partner': len(skipped_partner),
+        }
+
+    def action_kjr_create_training_invoices(self):
+        """Erzeugt Schulungsrechnungen für mehrere Anmeldungen auf einmal.
+
+        Reine Oberflächenaktion: die Arbeit macht
+        :meth:`_kjr_create_training_invoices`. Verhalten unverändert gegenüber
+        19.0.5.6.1 (einschließlich Auto-Buchen und Auto-Versand nach
+        Systemparameter).
+        """
+        self._kjr_create_training_invoices(allow_send=True, allow_post=True)
         invoices = self.mapped('kjr_training_invoice_id')
         if not invoices:
             return self._kjr_notification(
@@ -494,7 +539,7 @@ class EventRegistrationAutomation(models.Model):
         message = _('%(sent)s Rechnung(en) in die Warteschlange gestellt.', sent=sent)
         details = []
         if drafts:
-            details.append(_('%(count)s Rechnung(en) im Entwurf – bitte zuerst buchen.',
+            details.append(_('%(count)s Rechnung(en) im Entwurf: bitte zuerst buchen.',
                              count=drafts))
         if missing:
             details.append(_('%(count)s Anmeldung(en) ohne Rechnung.', count=missing))

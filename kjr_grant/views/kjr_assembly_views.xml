@@ -73,7 +73,7 @@
                             <div class="text-muted mb-2">
                                 Geheime Wahl nach § 34 Abs. 3 BJR-Satzung: Es werden
                                 ausschließlich die ausgezählten Stimmensummen je
-                                Kandidatur erfasst — nicht, wer wie gestimmt hat.
+                                Kandidatur erfasst, nicht, wer wie gestimmt hat.
                                 Enthaltungen und ungültige Stimmen zählen nach
                                 § 33 Abs. 2 nicht zur Mehrheit.
                             </div>
@@ -148,7 +148,7 @@
                         <page string="Anwesenheit">
                             <div class="text-muted mb-2">
                                 Erfasst werden die anwesenden <strong>Mitgliedsverbände</strong>
-                                (§ 33 Abs. 1 BJR-Satzung: eine Stimme je Mitglied) — nicht
+                                (§ 33 Abs. 1 BJR-Satzung: eine Stimme je Mitglied), nicht
                                 einzelne Delegierte oder Gäste. Nur diese Liste trägt die
                                 Beschlussfähigkeit.
                             </div>

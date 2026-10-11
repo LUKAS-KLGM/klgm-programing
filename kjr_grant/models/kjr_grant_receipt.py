@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Digitale Belegliste zum Zuschussantrag (Alternative zum Datei-Upload).
 
-Bildet die Papier-Belegliste des KJR Oberallgäu 1:1 ab: je Zeile ein Beleg mit
+Bildet die Papier-Belegliste des Trägers 1:1 ab: je Zeile ein Beleg mit
 Datum, Beleg-Nr., Empfänger/Einzahler (ANBest-P-Pflichtspalte), Bezeichnung,
 Art (Einnahme/Ausgabe), Position und Betrag. Die Positionen spiegeln die
 Kostenaufstellung des Antrags, damit Belege und Summen zusammenpassen.
@@ -69,7 +69,7 @@ class KjrGrantReceipt(models.Model):
                 raise ValidationError(_(
                     'Der Betrag eines Belegs muss größer als 0,00 € sein '
                     '(Beleg „%(desc)s"). Ob es sich um eine Einnahme oder eine '
-                    'Ausgabe handelt, wird über das Feld „Art" gesteuert — bitte '
+                    'Ausgabe handelt, wird über das Feld „Art" gesteuert. Bitte '
                     'keine negativen Beträge erfassen.',
                     desc=rec.description or _('ohne Bezeichnung'),
                 ))

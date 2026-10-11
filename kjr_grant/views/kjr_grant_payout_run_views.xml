@@ -19,7 +19,7 @@
                     Weist alle bewilligten Anträge des gewählten Zeitraums gebündelt
                     zur Zahlung an. Anträge, die Sie selbst sachlich geprüft haben,
                     werden übersprungen und im Reiter "Nicht einbezogen" mit Begründung
-                    aufgeführt (Vier-Augen-Prinzip). Es wird nichts gebucht – gesetzt
+                    aufgeführt (Vier-Augen-Prinzip). Es wird nichts gebucht, gesetzt
                     wird derselbe Vermerk wie über die Schaltfläche
                     "Zur Zahlung anweisen" am einzelnen Antrag.
                 </div>
@@ -80,7 +80,7 @@
                             </list>
                         </field>
                         <div class="text-muted">
-                            Nicht gewünschte Anträge hier entfernen – sie bleiben
+                            Nicht gewünschte Anträge hier entfernen, sie bleiben
                             bewilligt und laufen im nächsten Lauf wieder mit.
                         </div>
                     </page>

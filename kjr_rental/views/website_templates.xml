@@ -11,7 +11,7 @@
 
     <!-- Bewusst KEIN eigener Website-Menüeintrag für /service/spielmobil: die Seite
          ist über den Materialverleih verlinkt und über die Sitemap auffindbar. Ob
-         das Spielmobil einen eigenen Hauptmenüpunkt bekommt, entscheidet der KJR. -->
+         das Spielmobil einen eigenen Hauptmenüpunkt bekommt, entscheidet der Betreiber. -->
 
     <!-- ── Wiederverwendbare Blöcke ───────────────────────────────────── -->
 
@@ -182,7 +182,7 @@
                 <t t-set="amount_unit" t-value="pinfo.get('unit')"/>
                 <t t-call="kjr_rental.rental_price_amount"/>
             </t>
-            <span t-else="" class="text-muted">—</span>
+            <span t-else="" class="text-muted">-</span>
             <div t-if="pinfo.get('has_member') and pinfo.get('km_member') is not None" class="small">
                 Kilometersatz:
                 <t t-set="amount" t-value="pinfo['km_member']"/>
@@ -230,12 +230,12 @@
         <div t-if="is_member" class="alert alert-success" role="status">
             <i class="fa fa-check-circle me-2" aria-hidden="true"/>
             Für <strong t-esc="partner.name"/> gilt der <strong>Mitgliedstarif</strong>
-            (Mitgliedsverband des Kreisjugendrings Oberallgäu).
+            (Mitgliedsverband von <t t-esc="res_company.name"/>).
         </div>
         <div t-else="" class="alert alert-info" role="status">
             <i class="fa fa-info-circle me-2" aria-hidden="true"/>
             Für <strong t-esc="partner.name"/> gilt der <strong>Standardtarif</strong>.
-            Ist Ihre Organisation Mitgliedsverband des Kreisjugendrings Oberallgäu?
+            Ist Ihre Organisation Mitgliedsverband von <t t-esc="res_company.name"/>?
             Dann melden Sie sich bitte bei der Geschäftsstelle. Der Mitgliedstarif wird
             dann für künftige Anfragen hinterlegt.
         </div>
@@ -260,18 +260,20 @@
                     <div class="card-body">
                         <h2 class="h5 mb-3">Wer darf ausleihen?</h2>
                         <p class="mb-3">
-                            Der Materialverleih richtet sich an die Mitgliedsverbände des Kreisjugendrings
-                            Oberallgäu sowie an Jugendgruppen, Gemeinden, Schulen und Einrichtungen der
-                            Kinder- und Jugendarbeit im Landkreis. Voraussetzung ist, dass das Material für
+                            Der Materialverleih richtet sich an die Mitgliedsverbände von
+                            <t t-esc="res_company.name"/> sowie an Jugendgruppen, Gemeinden, Schulen und
+                            Einrichtungen der Kinder- und Jugendarbeit im Einzugsgebiet. Voraussetzung ist,
+                            dass das Material für
                             Zwecke der Kinder- und Jugendarbeit nach dem SGB VIII eingesetzt wird. Deshalb
                             ist bei jeder Anfrage der Zweck der Nutzung anzugeben. Über die Ausleihe
                             entscheidet die Geschäftsstelle; eine Anfrage ist noch keine Zusage.
                         </p>
                         <h2 class="h5 mb-3">Mitglieds- und Standardtarif</h2>
                         <p class="mb-3">
-                            Mitgliedsverbände des Kreisjugendrings erhalten den vergünstigten Mitgliedstarif.
-                            Maßgeblich ist das bei Ihrer Organisation hinterlegte Kennzeichen
-                            „KJR-Mitgliedsverband"; alle übrigen Ausleihen erfolgen zum Standardtarif.
+                            Mitgliedsverbände von <t t-esc="res_company.name"/> erhalten den
+                            vergünstigten Mitgliedstarif.
+                            Maßgeblich ist das bei Ihrer Organisation hinterlegte
+                            Mitgliedskennzeichen; alle übrigen Ausleihen erfolgen zum Standardtarif.
                             Beide Tarife sind unten je Artikel angegeben.
                             <t t-if="is_public_user">
                                 Nach der Anmeldung wird Ihnen der für Sie geltende Tarif angezeigt.
@@ -281,7 +283,7 @@
                             <t t-call="kjr_rental.rental_tariff_notice"/>
                         </t>
                         <h2 class="h5 mb-3">Hinweis zur Umsatzsteuer</h2>
-                        <!-- TODO KJR: Die umsatzsteuerliche Einordnung des Materialverleihs
+                        <!-- TODO Betreiber: Die umsatzsteuerliche Einordnung des Materialverleihs
                              (Betrieb gewerblicher Art / § 2b UStG) ist laut Projektunterlagen
                              noch nicht abschließend geklärt. Solange bewusst OHNE Steuersatz und
                              ohne Aussage „netto/brutto" formuliert. Nach Klärung mit der
@@ -289,8 +291,8 @@
                         <p class="mb-0 text-muted small">
                             Die angegebenen Beträge sind Orientierungswerte für die Anfrage. Ob und in
                             welchem Umfang auf die Verleihentgelte Umsatzsteuer entfällt, wird derzeit
-                            geklärt. Eine gegebenenfalls anfallende Umsatzsteuer weist der Kreisjugendring
-                            auf der Rechnung gesondert aus. Verbindlich ist stets die Rechnung der
+                            geklärt. Eine gegebenenfalls anfallende Umsatzsteuer weisen wir auf der
+                            Rechnung gesondert aus. Verbindlich ist stets die Rechnung der
                             Geschäftsstelle.
                         </p>
                     </div>
@@ -307,10 +309,17 @@
                 <div class="card border-primary mb-4">
                     <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <div>
-                            <h2 class="h5 mb-1"><i class="fa fa-bus me-2" aria-hidden="true"/>Spielmobil des Kreisjugendrings</h2>
+                            <h2 class="h5 mb-1"><i class="fa fa-truck me-2" aria-hidden="true"/>Unser Spielmobil</h2>
+                            <!-- Adressatenkreis aus dem Systemparameter
+                                 `kjr_rental.spielmobil_area` (Freitext, z. B. "im Kreisgebiet").
+                                 Bewusst NICHT geseedet, genau wie die sechs
+                                 kjr.privacy.*-Parameter: so bleibt der Wert von
+                                 noupdate-Effekten verschont und jede Instanz pflegt ihr
+                                 eigenes Gebiet. Ist er leer, steht dort "im Einzugsgebiet". -->
+                            <t t-set="kjr_sm_area" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr_rental.spielmobil_area') or 'im Einzugsgebiet'"/>
                             <p class="mb-0 text-muted small">
-                                Spiel- und Bewegungsangebote vor Ort. Nur für Gemeinden im
-                                Landkreis Oberallgäu, gesondert anzufragen.
+                                Spiel- und Bewegungsangebote vor Ort. Nur für Gemeinden
+                                <t t-esc="kjr_sm_area"/>, gesondert anzufragen.
                             </p>
                         </div>
                         <a href="/service/spielmobil" class="btn btn-primary">Zum Spielmobil</a>
@@ -318,7 +327,15 @@
                 </div>
 
                 <t t-foreach="items_by_category" t-as="cat">
-                    <h2 class="h4 mt-4"><i t-if="cat.icon" t-attf-class="fa #{cat.icon} me-2" aria-hidden="true"/><t t-esc="cat.name or 'Sonstiges'"/></h2>
+                    <!-- Rubrik ohne Kategorie: der Controller gruppiert nach
+                         item.category_id, fuer Artikel ohne Kategorie ist der Schluessel
+                         also ein LEERES Recordset (cat.name und cat.icon sind False).
+                         Diese Rubrik heisst bewusst "Ohne Kategorie" und NICHT
+                         "Sonstiges": es gibt eine gleichnamige Seed-Kategorie, und zwei
+                         Bloecke mit derselben Ueberschrift sahen auf der Katalogseite wie
+                         ein Darstellungsfehler aus. Das Symbol ist dasselbe fa-cube, das
+                         cat_other und die Artikelkachel ohne Foto verwenden. -->
+                    <h2 class="h4 mt-4"><i t-if="cat.icon or not cat" t-attf-class="fa #{cat.icon or 'fa-cube'} me-2" aria-hidden="true"/><t t-esc="cat.name or 'Ohne Kategorie'"/></h2>
                     <div class="row">
                         <t t-foreach="items_by_category[cat]" t-as="item">
                             <div class="col-md-6 col-lg-4 mb-3">
@@ -390,14 +407,14 @@
          Datenschutzinformation.
 
          Bewusst EIN gemeinsamer Block statt drei Kopien: der Text ist an allen drei
-         Stellen derselbe und muss es auch bleiben, wenn der KJR die offenen Angaben
+         Stellen derselbe und muss es auch bleiben, wenn der Betreiber die offenen Angaben
          nachträgt. Bewusst als eingeblendeter Abschnitt im Formular, nicht als
          Popup – gleiche Begründung wie beim Nutzungshinweis-Block darüber.
 
          Bewusst OHNE Bestätigungs-Checkbox: hier wird informiert, keine
          Einwilligung eingeholt.
 
-         TODO(KJR): Die mit "wird vom KJR ergänzt" markierten Angaben füllen
+         TODO Betreiber: Die mit "wird noch ergänzt" markierten Angaben füllen
          Geschäftsstelle bzw. Datenschutzbeauftragte VOR dem Go-live aus. Sie sind
          absichtlich nicht vorbelegt, weil sie noch nicht festgelegt sind:
          Verantwortlicher, Kontakt der/des Datenschutzbeauftragten, Rechtsgrundlage
@@ -410,7 +427,7 @@
         <section class="o_kjr_privacy_notice alert alert-light border mt-4 mb-3"
                  role="region" aria-labelledby="kjr_privacy_rental_heading">
             <h2 class="alert-heading h6" id="kjr_privacy_rental_heading">
-                <i class="fa fa-lock me-2" aria-hidden="true"/>Datenschutz – was mit Ihren Angaben passiert
+                <i class="fa fa-lock me-2" aria-hidden="true"/>Datenschutz: was mit Ihren Angaben passiert
             </h2>
             <p class="small mb-3">
                 Kurz und ohne Fachsprache: Hier steht, was wir speichern, wofür wir es
@@ -436,47 +453,47 @@
                     zurückzunehmen, für Rückfragen sowie für Rechnung und Zahlung.</dd>
 
                 <dt class="col-sm-4">Wer sie sehen kann</dt>
-                <dd class="col-sm-8">Die Geschäftsstelle des Kreisjugendrings Oberallgäu
+                <dd class="col-sm-8">Die Geschäftsstelle von <t t-esc="res_company.name"/>
                     und die Personen, die den Verleih und die Abrechnung betreuen.
                     <span class="d-block mt-1">Technischer Betrieb der Website:
-                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.operator')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.operator')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird noch ergänzt</span>
                     </span>
                 </dd>
 
                 <dt class="col-sm-4">Verantwortlich</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.controller')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.controller')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird noch ergänzt</span>
                     <span class="d-block text-muted">Name, Anschrift und Kontakt der
                         verantwortlichen Stelle.</span>
                 </dd>
 
                 <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird noch ergänzt</span>
                     <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
                 </dd>
 
                 <dt class="col-sm-4">Rechtsgrundlage</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.legal_basis')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
-                    <span class="d-block text-muted">Legt der Kreisjugendring gemeinsam mit
-                        der Datenschutzbeauftragten fest.</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.legal_basis')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird noch ergänzt</span>
+                    <span class="d-block text-muted">Legt die verantwortliche Stelle gemeinsam
+                        mit der Datenschutzbeauftragten fest.</span>
                 </dd>
 
                 <dt class="col-sm-4">Wie lange wir speichern</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.retention')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
-                    <span class="d-block text-muted">Die Aufbewahrungsdauer legt der
-                        Kreisjugendring fest und trägt sie hier ein.</span>
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.retention')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird noch ergänzt</span>
+                    <span class="d-block text-muted">Die Aufbewahrungsdauer legt die
+                        verantwortliche Stelle fest und trägt sie hier ein.</span>
                 </dd>
 
                 <dt class="col-sm-4">Ihre Rechte</dt>
-                <dd class="col-sm-8">Welche Rechte Sie haben – zum Beispiel Auskunft,
-                    Berichtigung, Löschung oder Einschränkung – und wie Sie sie geltend
+                <dd class="col-sm-8">Welche Rechte Sie haben, zum Beispiel Auskunft,
+                    Berichtigung, Löschung oder Einschränkung, und wie Sie sie geltend
                     machen, steht in der
                     <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
                     <span class="d-block mt-1">Zuständige Aufsichtsbehörde:
-                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.authority')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
+                        <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.authority')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird noch ergänzt</span>
                     </span>
                 </dd>
             </dl>
@@ -544,7 +561,7 @@
                                                 <input type="number" min="0" t-attf-id="kjr_cart_qty_#{l['item'].id}" t-attf-name="qty_#{l['item'].id}" t-att-value="l['qty']" class="form-control form-control-sm"/>
                                             </td>
                                             <td>
-                                                <t t-if="l['available'] is None"><span class="text-muted">—</span></t>
+                                                <t t-if="l['available'] is None"><span class="text-muted">-</span></t>
                                                 <t t-else="">
                                                     <span t-attf-class="badge #{'text-bg-success' if l['available'] >= l['qty'] else 'text-bg-danger'}">
                                                         <t t-esc="l['available']"/>
@@ -684,7 +701,7 @@
                         <h2 class="h5 alert-heading">Vielen Dank für Ihre Anfrage.</h2>
                         <p class="mb-0">
                             Ihre Anfrage ist unter der Nummer <strong t-esc="order.name"/> eingegangen.
-                            Die Geschäftsstelle des Kreisjugendrings prüft den Termin und meldet sich
+                            Die Geschäftsstelle prüft den Termin und meldet sich
                             bei Ihnen. Diese Bestätigung ist noch keine Zusage.
                         </p>
                     </div>
@@ -700,21 +717,26 @@
                                  t-attf-alt="Foto: #{item.name}"
                                  width="960" height="640" loading="lazy"/>
                             <p class="lead">
-                                Das Spielmobil des Kreisjugendrings Oberallgäu bringt Spiel- und
+                                Das Spielmobil von <t t-esc="res_company.name"/> bringt Spiel- und
                                 Bewegungsangebote direkt in die Gemeinden und Ortsteile.
                             </p>
-                            <!-- Adressatenkreis bewusst eng: Entscheidung aus dem Website-Termin
-                                 am 23.07.2026 — „Spielmobil NICHT in den allgemeinen Verleih-Shop
-                                 integrieren … Infobox 'nur für Gemeinden im Landkreis Oberallgäu'".
-                                 Den Kreis hier NICHT eigenmächtig auf Verbände, Schulen oder
-                                 sonstige Einrichtungen ausweiten — das wäre eine öffentliche
-                                 Zusage, die der KJR so nicht getroffen hat. -->
+                            <!-- Adressatenkreis bewusst eng: Das Spielmobil ist ausdruecklich
+                                 NICHT Teil des allgemeinen Verleih-Shops, sondern nur fuer
+                                 Gemeinden eines umgrenzten Gebiets freigegeben (Entscheidung
+                                 des Betreibers vom 23.07.2026). Den Kreis hier NICHT
+                                 eigenmaechtig auf Verbaende, Schulen oder sonstige
+                                 Einrichtungen ausweiten — das waere eine oeffentliche Zusage,
+                                 die der Betreiber so nicht getroffen hat.
+                                 Welches Gebiet gemeint ist, steht im Systemparameter
+                                 `kjr_rental.spielmobil_area` (Freitext, nicht geseedet);
+                                 ist er leer, steht dort "im Einzugsgebiet". -->
+                            <t t-set="kjr_sm_area" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr_rental.spielmobil_area') or 'im Einzugsgebiet'"/>
                             <div class="alert alert-info" role="note">
                                 <i class="fa fa-info-circle me-2" aria-hidden="true"/>
-                                Das Spielmobil kann <strong>nur von Gemeinden im Landkreis
-                                Oberallgäu</strong> angefragt werden.
+                                Das Spielmobil kann <strong>nur von Gemeinden
+                                <t t-esc="kjr_sm_area"/></strong> angefragt werden.
                             </div>
-                            <!-- TODO KJR: Hier gehoeren zwei Abschnitte hin, die nur die
+                            <!-- TODO Betreiber: Hier gehoeren zwei Abschnitte hin, die nur die
                                  Geschaeftsstelle liefern kann. Bewusst NICHTS erfunden:
                                  Ausstattung, Einsatzbedingungen und Betreuung sind aus den
                                  Projektunterlagen nicht belegt.
@@ -733,7 +755,7 @@
                                  KjrRentalWebsite._spielmobil_prices_confirmed): der Artikel muss
                                  veröffentlicht sein UND einen gepflegten Betrag in seiner
                                  eigenen Abrechnungsart haben (Tag, Nacht, Stück, Kilometer).
-                                 Die Seed-Daten stehen bewusst auf 0,00 € (vom KJR noch nicht
+                                 Die Seed-Daten stehen bewusst auf 0,00 € (vom Betreiber noch nicht
                                  bestätigt) und der Artikel ist deshalb nicht veröffentlicht —
                                  diese Landingpage ist aber trotzdem öffentlich. Ohne die Prüfung
                                  stünde hier für jeden lesbar "0,00 € pro Tag", also eine
@@ -778,7 +800,7 @@
                                     <i class="fa fa-info-circle me-1" aria-hidden="true"/>Die Endabrechnung
                                     erfolgt nach den tatsächlich gefahrenen Kilometern.
                                 </p>
-                                <!-- TODO KJR: Steuerhinweis nach abschließender Klärung der
+                                <!-- TODO Betreiber: Steuerhinweis nach abschließender Klärung der
                                      umsatzsteuerlichen Einordnung ersetzen (siehe Katalogseite). -->
                                 <p class="text-muted small">
                                     Die Beträge sind Orientierungswerte für die Anfrage. Ob und in welchem
@@ -789,7 +811,7 @@
                             <t t-else="">
                                 <p class="text-muted">
                                     Die Konditionen für den Einsatz des Spielmobils teilen wir Ihnen auf
-                                    Anfrage mit: Die Geschäftsstelle des Kreisjugendrings nennt Ihnen die
+                                    Anfrage mit: Die Geschäftsstelle nennt Ihnen die
                                     Kosten mit der Terminbestätigung. Auf dieser Seite sind noch keine
                                     Preise hinterlegt.
                                 </p>
@@ -812,8 +834,8 @@
                                     <t t-if="not item">
                                         <div class="alert alert-warning" role="alert">
                                             Das Spielmobil ist derzeit nicht für Online-Anfragen hinterlegt.
-                                            Bitte wenden Sie sich direkt an die Geschäftsstelle des
-                                            Kreisjugendrings Oberallgäu.
+                                            Bitte wenden Sie sich direkt an die Geschäftsstelle
+                                            von <t t-esc="res_company.name"/>.
                                         </div>
                                     </t>
                                     <t t-if="item">
@@ -890,6 +912,17 @@
     <template id="portal_my_home_kjr_rental" name="Portal: Ausleihen"
               inherit_id="portal.portal_my_home" customize_show="True" priority="42">
         <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <!-- HINWEIS zum Symbol: portal.portal_docs_entry legt das Bild in einen
+                 <div class="o_portal_icon d-none">, die mitgelieferte Vorlage
+                 portal.portal_docs_entry_layout ("Use Pictograms", active="True",
+                 addons/portal/views/portal_templates.xml) nimmt das `d-none` aber
+                 wieder weg und setzt `d-block align-self-start`. Das Symbol ist im
+                 Auslieferungszustand also SICHTBAR, genau wie die Kernkacheln
+                 (portal-addresses.svg, portal-connection.svg). Die Gestaltung von
+                 verleih.svg ist damit kundensichtbar und gehoert mitgeprueft.
+                 AUSDRUECKLICH NICHT selbst einblenden: eine eigene Regel zu
+                 `o_portal_icon` waere ueberfluessig, und weil es eine Kernklasse ist,
+                 wuerde sie die Portalkacheln ALLER Module veraendern. -->
             <t t-call="portal.portal_docs_entry">
                 <t t-set="icon" t-value="'/kjr_rental/static/src/img/verleih.svg'"/>
                 <t t-set="text">Ausgeliehenes Material, Zeiträume und Rückgabe</t>
@@ -928,10 +961,29 @@
     <template id="portal_rental_detail" name="Ausleih-Detail">
         <t t-call="portal.portal_layout">
             <div class="card mt-3">
-                <div class="card-header bg-primary text-white"><h4 class="mb-0">Ausleihe <t t-esc="order.name"/></h4></div>
+                <div class="card-header bg-primary text-white d-flex align-items-center gap-3">
+                    <!-- Firmenlogo aus res.company statt eines festen Bildes.
+                         `res_company` steht in jedem QWeb-Rendering als
+                         self.env.company.sudo() bereit (odoo/addons/base/models/ir_qweb.py),
+                         Portalnutzer brauchen also kein Leserecht auf res.company;
+                         massgeblich ist aber die Gesellschaft des Vorgangs
+                         (kjr.rental.order.company_id ist Pflichtfeld).
+                         Die Route /logo.png liefert bei fehlendem Logo den Odoo-
+                         Platzhalter statt eines Fehlers (addons/web/controllers/binary.py),
+                         deshalb wird das Bild nur ausgegeben, wenn wirklich ein eigenes
+                         Logo hinterlegt ist. Ohne Logo bleibt schlicht die Ueberschrift
+                         stehen. -->
+                    <t t-set="rental_company" t-value="order.company_id or res_company"/>
+                    <img t-if="not rental_company.uses_default_logo"
+                         t-attf-src="/logo.png?company=#{rental_company.id}"
+                         t-att-alt="rental_company.name" t-att-title="rental_company.name"
+                         class="bg-white rounded p-1 flex-shrink-0"
+                         style="max-height:40px;width:auto;"/>
+                    <h4 class="mb-0">Ausleihe <t t-esc="order.name"/></h4>
+                </div>
                 <div class="card-body">
                     <dl class="row mb-0">
-                        <dt class="col-4">Zeitraum</dt><dd class="col-8"><span t-field="order.date_from" t-options='{"widget":"date"}'/> – <span t-field="order.date_to" t-options='{"widget":"date"}'/> (<t t-esc="order.rental_days"/> Tage)</dd>
+                        <dt class="col-4">Zeitraum</dt><dd class="col-8"><span t-field="order.date_from" t-options='{"widget":"date"}'/> bis <span t-field="order.date_to" t-options='{"widget":"date"}'/> (<t t-esc="order.rental_days"/> Tage)</dd>
                         <dt class="col-4">Gebühr</dt><dd class="col-8"><t t-esc="'%.2f €' % order.amount_total"/></dd>
                         <dt class="col-4">Status</dt><dd class="col-8"><span class="badge text-bg-secondary"><t t-esc="dict(order._fields['state'].selection).get(order.state)"/></span></dd>
                         <!-- Die Gebührenrechnung ist der EINZIGE Beleg, den das System zum
@@ -1011,7 +1063,7 @@
                             </t>
                         </tbody>
                     </table>
-                    <a href="/my/ausleihen" class="btn btn-outline-secondary btn-sm"><i class="fa fa-arrow-left me-1"/>Zur Übersicht</a>
+                    <a href="/my/ausleihen" class="btn btn-outline-secondary btn-sm"><i class="fa fa-arrow-left me-1" aria-hidden="true"/>Zur Übersicht</a>
                 </div>
             </div>
         </t>

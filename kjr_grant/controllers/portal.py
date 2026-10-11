@@ -98,9 +98,9 @@ PARTNER_FIELD_LABELS = {
 }
 
 # PLZ-Plausibilität, bewusst grob: 4 oder 5 Ziffern. Fünf für Deutschland, vier
-# für Österreich — das Oberallgäu grenzt an Tirol und Vorarlberg, einzelne
-# Verbände haben dort ihren Sitz. Keine Prüfung gegen ein Ortsverzeichnis; es
-# geht nur darum, Tippfehler und Freitext abzufangen.
+# für Österreich — in Grenzregionen können einzelne Mitgliedsverbände ihren
+# Sitz jenseits der Staatsgrenze haben. Keine Prüfung gegen ein
+# Ortsverzeichnis; es geht nur darum, Tippfehler und Freitext abzufangen.
 #
 # TODO(KJR): Gibt es tatsächlich Mitgliedsverbände mit Sitz außerhalb
 # Deutschlands? Solange das offen ist, bleibt die Prüfung so, wie sie ist — aber
@@ -121,7 +121,7 @@ PHONE_RE = re.compile(r'^[0-9 +()/.\-]{5,32}$')
 VERBAND_MESSAGES = {
     'saved': 'Ihre Verbandsdaten wurden gespeichert. Die Geschäftsstelle sieht die '
              'Änderung in der Verlaufsnotiz Ihres Verbands.',
-    'unchanged': 'Es gab nichts zu speichern — die Angaben waren unverändert.',
+    'unchanged': 'Es gab nichts zu speichern, die Angaben waren unverändert.',
     'contact_created': 'Die Ansprechperson wurde angelegt.',
     'contact_saved': 'Die Ansprechperson wurde gespeichert.',
     'contact_saved_locked': 'Die Ansprechperson wurde gespeichert. Name und '
@@ -401,7 +401,7 @@ class KjrPortalController(CustomerPortal):
         """
         items = Markup('').join(
             Markup('<li><b>%s</b>: „%s" → „%s"</li>') % (
-                change['label'], change['old'] or '—', change['new'] or '—',
+                change['label'], change['old'] or '-', change['new'] or '-',
             )
             for change in changes
         )
@@ -556,8 +556,8 @@ class KjrPortalController(CustomerPortal):
         lesbar. Gelesen werden ausschließlich Name, Telefon und E-Mail der
         eigenen Firma — die öffentlichen Kontaktdaten des Kreisjugendrings.
         Nicht gepflegte Angaben liefert die Methode als leeren Text; das
-        Template setzt dann sichtbar „wird vom KJR ergänzt" statt eine Nummer zu
-        erfinden.
+        Template setzt dann sichtbar „Kontaktdaten folgen" statt eine Nummer
+        zu erfinden.
         """
         company = request.env.company.sudo()
         return {
@@ -721,7 +721,7 @@ class KjrPortalController(CustomerPortal):
             return self._render_verband(
                 verband, self._verband_values(verband),
                 {'global': 'Das abgeschickte Formular konnte keiner Aktion zugeordnet '
-                           'werden — es wurde nichts gespeichert. Bitte laden Sie die '
+                           'werden, es wurde nichts gespeichert. Bitte laden Sie die '
                            'Seite neu und versuchen Sie es noch einmal. Bleibt es dabei, '
                            'melden Sie es bitte der KJR-Geschäftsstelle.'},
             )
@@ -1011,12 +1011,12 @@ class KjrPortalController(CustomerPortal):
         if juleica_count == 1:
             hints.append('Auf diese Person ist eine Juleica-Karte erfasst. Der Eintrag '
                          'bleibt bestehen, samt Ablaufdatum und Erinnerung der '
-                         'Geschäftsstelle — die Person selbst taucht dort aber in keiner '
+                         'Geschäftsstelle. Die Person selbst taucht dort aber in keiner '
                          'Auswahlliste mehr auf.')
         elif juleica_count > 1:
             hints.append('Auf diese Person sind %d Juleica-Karten erfasst. Die Einträge '
                          'bleiben bestehen, samt Ablaufdatum und Erinnerung der '
-                         'Geschäftsstelle — die Person selbst taucht dort aber in keiner '
+                         'Geschäftsstelle. Die Person selbst taucht dort aber in keiner '
                          'Auswahlliste mehr auf.' % juleica_count)
 
         volunteer_count = env['kjr.volunteer.log'].sudo().search_count([
@@ -1104,7 +1104,7 @@ class KjrPortalController(CustomerPortal):
         if contact.sudo().user_ids:
             return self._render_verband(verband, values, {'contact_id': (
                 'Für diese Person besteht ein Portalzugang. Sie kann hier nicht '
-                'entfernt werden — bitte wenden Sie sich an die KJR-Geschäftsstelle.'
+                'entfernt werden. Bitte wenden Sie sich an die Geschäftsstelle.'
             )})
 
         contact_name = contact.name or ''

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Konfigurierbare Förderarten. Alle Parameter im Backend änderbar ohne Code-Eingriff.
-Quelle: Zuschussrichtlinien KJR Oberallgäu, gültig ab 01.12.2022 (Fassung 2026).
+Quelle: Zuschussrichtlinien des Trägers, gültig ab 01.12.2022 (Fassung 2026).
 """
 from datetime import date
 
@@ -31,11 +31,11 @@ class KjrGrantType(models.Model):
         ('4_8b', '§ 4.8b Traditionelle Veranstaltung'),
         ('4_8c', '§ 4.8c Schwerpunktprojekt'),
         ('4_9',  '§ 4.9  Delegiertenförderung (Fahrtkosten)'),
-        ('invest', 'Investitionszuschuss (Landkreis-Programm, konfigurierbar)'),
+        ('invest', 'Investitionszuschuss (externes Programm, konfigurierbar)'),
     ], string='Code', required=True,
         help='Berechnungslogik je Förderart. „Investitionszuschuss" ist ein '
              'generischer, prozentbasierter Typ (Anteil der Investitionskosten, '
-             'gedeckelt) – die konkreten Sätze des jeweiligen Landkreis-Programms '
+             'gedeckelt). Die konkreten Sätze des jeweiligen Förderprogramms '
              'werden über Förderquote/Höchstbetrag gepflegt.')
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
@@ -97,7 +97,7 @@ class KjrGrantType(models.Model):
     juleica_bonus = fields.Boolean(
         string='Juleica-Bonus aktiv', default=False,
         help='Gruppenleitungen mit gültiger Juleica erhalten den Juleica-Zuschlag '
-             '(KJR-OA: +50 %) auf ihren Tagessatz. Greift bei allen tagessatz-'
+             '(Voreinstellung: +50 %) auf ihren Tagessatz. Greift bei allen tagessatz-'
              'basierten Förderarten (§ 4.1b, 4.2, 4.3, 4.5).',
     )
     max_amount = fields.Float(
@@ -110,7 +110,7 @@ class KjrGrantType(models.Model):
     year_limit_group = fields.Char(
         string='Jahreslimit-Gruppe',
         help='Förderarten mit derselben Gruppe teilen sich das Jahreslimit '
-             '(max. Anträge/Kalenderjahr). KJR-OA: § 4.1 eintägig und mehrtägig '
+             '(max. Anträge/Kalenderjahr). Beispiel: § 4.1 eintägig und mehrtägig '
              'zählen gemeinsam (max. 4 Freizeitmaßnahmen/Jahr). Leer = das Limit '
              'gilt nur für diese Förderart allein.',
     )
@@ -120,17 +120,17 @@ class KjrGrantType(models.Model):
     # ── Konfigurierbare Förderregeln (statt hartcodierter Werte) ─────────────
     juleica_uplift_pct = fields.Float(
         string='Juleica-Zuschlag auf Tagessatz (%)', digits=(5, 1), default=50.0,
-        help='Erhöhung des Tagessatzes je Gruppenleitung mit gültiger Juleica (KJR-OA: 50 %). '
+        help='Erhöhung des Tagessatzes je Gruppenleitung mit gültiger Juleica (Voreinstellung: 50 %). '
              'Greift nur wenn "Juleica-Bonus aktiv".',
     )
     leader_ratio = fields.Integer(
         string='Teilnehmer je anerkannter Gruppenleitung', default=5,
-        help='Es wird max. 1 geförderte Gruppenleitung je N Teilnehmer anerkannt (KJR-OA: 5).',
+        help='Es wird max. 1 geförderte Gruppenleitung je N Teilnehmer anerkannt (Voreinstellung: 5).',
     )
     max_external_pct = fields.Float(
         string='Max. Anteil auswärtiger TN (%)', digits=(5, 1), default=25.0,
-        help='Teilnehmer sollen überwiegend aus dem Landkreis stammen (KJR-OA: max. 25 % auswärts). '
-             '0 = keine Prüfung.',
+        help='Teilnehmer sollen überwiegend aus dem eigenen Einzugsgebiet stammen '
+             '(Voreinstellung: max. 25 % auswärts). 0 = keine Prüfung.',
     )
     min_age = fields.Integer(
         string='Mindestalter Teilnehmer', default=0, help='0 = keine Prüfung.',
@@ -294,7 +294,7 @@ class KjrGrantType(models.Model):
                     reason = _(
                         'Beide Fassungen tragen den Förderart-Code „%(code)s". '
                         'Auch bei unterschiedlicher Regelgruppe darf zu jedem '
-                        'Stichtag nur eine Fassung je Code gelten – sonst wählt '
+                        'Stichtag nur eine Fassung je Code gelten, sonst wählt '
                         'die Berechnung stillschweigend eine der beiden aus.',
                         code=code_label,
                     )
@@ -334,7 +334,7 @@ class KjrGrantType(models.Model):
         return _('unbefristet')
 
     # ── API für die Berechnung ───────────────────────────────────────────────
-    # TODO (Bora, Kassenleitung): Welcher Stichtag ist maßgeblich – Beginn der
+    # TODO (KJR, Kassenleitung): Welcher Stichtag ist maßgeblich - Beginn der
     # Maßnahme oder Eingang des Antrags? Die Methode nimmt den Stichtag bewusst
     # als Parameter entgegen, die Festlegung trifft der Aufrufer. Konservative
     # Erwartung bis zur Klärung: Maßnahmenbeginn (measure_start), weil die

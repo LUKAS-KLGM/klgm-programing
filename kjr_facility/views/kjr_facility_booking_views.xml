@@ -234,11 +234,11 @@
                                 Das Übergabeprotokoll dokumentiert den ZUSTAND von Haus bzw. Zeltplatz.
                                 Es ist keine Freigabebedingung: Ein festgestellter Mangel verhindert den
                                 Abschluss der Buchung nicht, er verlangt nur einen Vermerk. Bitte die
-                                Häkchen niemals wahrheitswidrig setzen — sobald „Schaden festgestellt"
+                                Häkchen niemals wahrheitswidrig setzen: sobald „Schaden festgestellt"
                                 angekreuzt ist, wird beim Erfassen eine Schadensbeschreibung verlangt.
                             </div>
                             <group>
-                                <group string="Anreise — Übergabe an die Gruppe">
+                                <group string="Anreise: Übergabe an die Gruppe">
                                     <field name="handover_in_date"/>
                                     <field name="handover_in_user_id"/>
                                     <field name="handover_in_received_by"/>
@@ -259,7 +259,7 @@
                                    placeholder="Vermerk zur Übergabe: Einweisung, Absprachen, Besonderheiten..."/>
                             <!-- Abreiseteil erst nach der Anreise, vorher gibt es nichts zurückzunehmen. -->
                             <group invisible="state not in ('checked_in','invoiced','done')">
-                                <group string="Abreise — Rücknahme von der Gruppe">
+                                <group string="Abreise: Rücknahme von der Gruppe">
                                     <field name="handover_out_date"/>
                                     <field name="handover_out_user_id"/>
                                     <field name="handover_out_handed_by"/>

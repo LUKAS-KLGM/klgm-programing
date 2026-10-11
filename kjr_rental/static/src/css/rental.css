@@ -1,4 +1,8 @@
-/* KJR Verleih – Website */
-.kjr-rental-card { transition: box-shadow .15s ease; border-left: 3px solid #1B3A6B; }
+/* KJR Verleih: Website */
+/* Akzentfarbe aus dem Theme statt einer festen Hausfarbe: ein anderer Betreiber
+   bekommt sonst die Kartenakzente des Erstkunden. Odoo 19 liefert Bootstrap 5.3
+   mit dem Praefix "bs-", --bs-primary ist also gesetzt; der Rueckfallwert haelt
+   die bisherige Optik, falls die Variable einmal fehlt. */
+.kjr-rental-card { transition: box-shadow .15s ease; border-left: 3px solid var(--bs-primary, #1B3A6B); }
 .kjr-rental-card:hover { box-shadow: 0 .4rem .9rem rgba(0,0,0,.1); }
-.kjr-rental-card .card-title { color: #1B3A6B; }
+.kjr-rental-card .card-title { color: var(--bs-primary, #1B3A6B); }

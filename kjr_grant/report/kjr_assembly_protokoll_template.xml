@@ -64,7 +64,7 @@
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Ort</td>
-                                    <td><t t-esc="o.location or '—'"/></td>
+                                    <td><t t-esc="o.location or '-'"/></td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Einladung versandt am</td>
@@ -76,17 +76,17 @@
                                             <span> an <t t-esc="o.invited_count"/> Mitgliedsverbände</span>
                                         </t>
                                         <t t-else="">
-                                            <span>— (nicht erfasst), <t t-esc="o.invited_count"/> Mitgliedsverbände eingeladen</span>
+                                            <span>(nicht erfasst), <t t-esc="o.invited_count"/> Mitgliedsverbände eingeladen</span>
                                         </t>
                                     </td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Versammlungsleitung</td>
-                                    <td><t t-esc="o.chair_id.name or '—'"/></td>
+                                    <td><t t-esc="o.chair_id.name or '-'"/></td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Protokollführung</td>
-                                    <td><t t-esc="o.secretary_id.name or '—'"/></td>
+                                    <td><t t-esc="o.secretary_id.name or '-'"/></td>
                                 </tr>
                                 <tr t-if="o.teller_ids">
                                     <td class="text-muted">Wahlausschuss / Stimmzähler</td>
@@ -119,8 +119,8 @@
                                         </t>
                                     </td>
                                     <td class="text-end">
-                                        <t t-if="o.quorum_reached">Ja — beschlussfähig</t>
-                                        <t t-else="">Nein — nicht beschlussfähig</t>
+                                        <t t-if="o.quorum_reached">Ja, beschlussfähig</t>
+                                        <t t-else="">Nein, nicht beschlussfähig</t>
                                     </td>
                                 </tr>
                             </tbody>
@@ -234,7 +234,7 @@
                                                 <td class="text-end"><t t-esc="'%.1f %%' % c.vote_share"/></td>
                                                 <td>
                                                     <t t-if="c.is_elected"><strong>gewählt</strong></t>
-                                                    <t t-elif="c.withdrawn">—</t>
+                                                    <t t-elif="c.withdrawn">-</t>
                                                     <t t-else="">nicht gewählt</t>
                                                 </td>
                                             </tr>
@@ -266,10 +266,10 @@
                                     </table>
                                     <p class="mb-0">
                                         <strong>Ergebnis:
-                                            <t t-esc="election_labels.get(d.election_state, '—')"/>
+                                            <t t-esc="election_labels.get(d.election_state, '-')"/>
                                         </strong>
                                         <t t-if="d.elected_names">
-                                            — <t t-esc="d.elected_names"/>
+                                            (<t t-esc="d.elected_names"/>)
                                         </t>
                                     </p>
                                     <p class="small text-muted mb-0">

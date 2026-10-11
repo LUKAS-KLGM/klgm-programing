@@ -26,13 +26,13 @@
                     </group>
                     <div class="alert alert-info" role="alert" invisible="not requires_parental_consent">
                         Für die Anmeldung Minderjähriger sollte die Einwilligung der Erziehungsberechtigten
-                        erfasst werden – auf der Website am einfachsten über Veranstaltungs-Fragen
+                        erfasst werden. Auf der Website am einfachsten über Veranstaltungs-Fragen
                         (Kommunikation → Fragen) oder über die Anmelde-Detailfelder.
                     </div>
                     <div class="alert alert-warning" role="alert"
                          invisible="not is_kjr or kjr_seats_min_reached">
                         Mindestanzahl Teilnehmer/innen noch nicht erreicht (siehe Anzahl
-                        angemeldeter Plätze oben) – Durchführung der Veranstaltung ggf. prüfen.
+                        angemeldeter Plätze oben). Durchführung der Veranstaltung ggf. prüfen.
                     </div>
                     <group string="Warteliste" invisible="not is_kjr">
                         <group>
@@ -46,7 +46,7 @@
                          invisible="not is_kjr or not kjr_waitlist_enabled">
                         Wartelistenplätze belegen keinen Sitzplatz (sie zählen nicht auf die
                         angemeldeten Plätze) und blockieren sich daher nicht gegenseitig.
-                        Nachgerückt wird bewusst manuell – so entscheidet die Geschäftsstelle
+                        Nachgerückt wird bewusst manuell, so entscheidet die Geschäftsstelle
                         selbst, wer den frei gewordenen Platz erhält.
                     </div>
                     <div class="alert alert-info" role="alert" invisible="not kjr_waitlist_ready">
@@ -60,6 +60,17 @@
                             <field name="payment_required"/>
                             <field name="training_product_id"
                                    invisible="not payment_required"/>
+                            <field name="kjr_auto_invoice"
+                                   invisible="not payment_required"/>
+                            <div class="text-muted" colspan="2"
+                                 invisible="not payment_required">
+                                Erzeugt wird die Rechnung automatisch als Entwurf, sobald
+                                eine Anmeldung bestätigt wird. Gebucht und versendet wird sie
+                                weiterhin bewusst von Hand („KJR: Schulungsrechnung
+                                versenden").
+                                Bei Veranstaltungen aus dem Bestand ist der Schalter aus und
+                                muss hier je Veranstaltung eingeschaltet werden.
+                            </div>
                         </group>
                         <group string="Altersgruppe" invisible="not is_kjr">
                             <field name="kjr_enforce_age_range"/>
@@ -70,7 +81,7 @@
                         <field name="cooperation_user_ids" widget="many2many_tags"/>
                     </group>
                 </page>
-                <!-- E12: Treffpunkt, Wichtig, Webseite (Nupian-Parität) -->
+                <!-- E12: Treffpunkt, Wichtig, Webseite (Parität zum Altsystem) -->
                 <page string="Treffpunkt &amp; Hinweise" name="kjr_meeting_info">
                     <div class="alert alert-info" role="alert">
                         „Wichtig" wird auf der Website immer oberhalb der Beschreibung angezeigt.
@@ -79,7 +90,7 @@
                     </div>
                     <group>
                         <field name="kjr_meeting_point"
-                               placeholder="z. B. Bahnhof Sonthofen, Zustieg auch in Immenstadt/Kempten möglich"/>
+                               placeholder="z. B. Bahnhof, Zustieg auch an weiteren Haltestellen möglich"/>
                         <field name="kjr_important_note"
                                placeholder="z. B. Bitte 100€ in bar mitgeben ..."/>
                         <field name="kjr_website_url" widget="url" placeholder="https://..."/>
@@ -92,7 +103,7 @@
                         Dateien (z. B. PDF-Merkblätter, Hinweise), die auf der Website als
                         optionaler Sidebar-Block angezeigt werden können. Der Block muss pro
                         Website-Theme einmalig im Website-Editor unter „Anpassen → Sidebar-Blöcke
-                        → Dokumente“ aktiviert werden – er erscheint dann automatisch nur, wenn
+                        → Dokumente“ aktiviert werden. Er erscheint dann automatisch nur, wenn
                         hier mindestens ein Dokument hinterlegt ist.
                     </div>
                     <field name="kjr_document_ids">
@@ -136,7 +147,7 @@
                     Diese Anmeldung steht auf der Warteliste und belegt noch keinen Platz.
                     Sie bleibt unbestätigt, bis die Geschäftsstelle sie nachrückt.
                 </div>
-                <group string="KJR – Warteliste"
+                <group string="KJR: Warteliste"
                        invisible="not event_waitlist_enabled and not kjr_is_waitlist">
                     <field name="event_waitlist_enabled" invisible="1"/>
                     <group>
@@ -146,11 +157,12 @@
                         <field name="kjr_waitlist_position" invisible="not kjr_is_waitlist"/>
                     </group>
                 </group>
-                <group string="KJR – Teilnehmer/in &amp; Einwilligung">
+                <group string="KJR: Teilnehmer/in &amp; Einwilligung">
                     <group>
                         <field name="birthdate"/>
                         <field name="kjr_age"/>
                         <field name="is_minor"/>
+                        <field name="kjr_gender"/>
                     </group>
                     <group>
                         <field name="parental_consent"/>
@@ -159,7 +171,7 @@
                         <field name="emergency_contact"/>
                     </group>
                 </group>
-                <group string="KJR – Ernährung &amp; Bemerkungen">
+                <group string="KJR: Ernährung &amp; Bemerkungen">
                     <group>
                         <field name="dietary_requirements"/>
                         <field name="dietary_note"
@@ -169,7 +181,7 @@
                         <field name="notes"/>
                     </group>
                 </group>
-                <group string="KJR – Zahlung" invisible="not event_payment_required">
+                <group string="KJR: Zahlung" invisible="not event_payment_required">
                     <field name="event_payment_required" invisible="1"/>
                     <field name="kjr_currency_id" invisible="1"/>
                     <group>
@@ -216,6 +228,7 @@
                 <field name="kjr_is_waitlist" string="Warteliste"/>
                 <field name="kjr_waitlist_position" string="Platz" optional="show"/>
                 <field name="kjr_age" string="Alter"/>
+                <field name="kjr_gender" optional="hide"/>
                 <field name="has_birthdate" column_invisible="1"/>
                 <field name="dietary_requirements"/>
                 <field name="dietary_note" optional="hide"/>
@@ -261,6 +274,8 @@
                         context="{'group_by': 'kjr_payment_state'}"/>
                 <filter string="Warteliste" name="group_waitlist"
                         context="{'group_by': 'kjr_is_waitlist'}"/>
+                <filter string="Geschlecht" name="group_gender"
+                        context="{'group_by': 'kjr_gender'}"/>
             </search>
         </field>
     </record>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR KommJA – Einrichtungsverzeichnis',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'category': 'Custom/KJR',
     'summary': 'Verzeichnis der offenen Jugendeinrichtungen im Landkreis '
                '(Kommunale Jugendarbeit): Jugendzentren, -treffs, mobile Angebote.',

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Eigener Einstellungsblock statt einer Erweiterung des Blocks von
+         base_setup: kjr_grant hängt nur von base, mail, portal, website und
+         account ab. Geerbt wird deshalb base.res_config_settings_view_form,
+         die das Modul base selbst ausliefert (base/views/res_config_settings_views.xml).
+         Der Aufbau form > app > block > setting ist der vom Web-Client erwartete
+         (base/tests/test_res_config.py::test_40_view_expected_architecture). -->
+    <record id="res_config_settings_view_form_kjr_privacy" model="ir.ui.view">
+        <field name="name">res.config.settings.form.inherit.kjr.grant</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="KJR Datenschutzangaben"
+                     string="KJR Datenschutzangaben"
+                     name="kjr_grant"
+                     groups="base.group_system">
+                    <block title="Angaben im Datenschutzblock der öffentlichen Formulare"
+                           help="Diese sechs Angaben erscheinen im Datenschutzhinweis nach Art. 13 DSGVO auf Zuschussantrag, Verbandsportal und allen weiteren öffentlichen Formularen dieser Modulfamilie. Solange ein Feld leer ist, steht an seiner Stelle sichtbar ein Warnhinweis. Bitte vor dem Produktivstart gemeinsam mit der/dem Datenschutzbeauftragten ausfüllen.">
+                        <setting string="Verantwortlicher"
+                                 help="Name, Anschrift und Kontakt der verantwortlichen Stelle.">
+                            <field name="kjr_privacy_controller"/>
+                        </setting>
+                        <setting string="Datenschutzbeauftragte/r"
+                                 help="Kontakt für Fragen zum Datenschutz.">
+                            <field name="kjr_privacy_dpo"/>
+                        </setting>
+                        <setting string="Rechtsgrundlage"
+                                 help="Rechtsgrundlage der Verarbeitung.">
+                            <field name="kjr_privacy_legal_basis"/>
+                        </setting>
+                        <setting string="Aufbewahrungs- und Löschfrist"
+                                 help="Wie lange die erhobenen Angaben aufbewahrt werden.">
+                            <field name="kjr_privacy_retention"/>
+                        </setting>
+                        <setting string="Technischer Betrieb"
+                                 help="Hosting bzw. Auftragsverarbeiter der Website.">
+                            <field name="kjr_privacy_operator"/>
+                        </setting>
+                        <setting string="Zuständige Aufsichtsbehörde"
+                                 help="Anlaufstelle für Beschwerden der Betroffenen.">
+                            <field name="kjr_privacy_authority"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

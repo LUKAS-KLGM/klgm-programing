@@ -44,10 +44,10 @@ SPIELMOBIL_XMLID = 'kjr_rental.item_spielmobil'
 
 # Text, wenn zu einer Abrechnungsart kein belastbarer Betrag ermittelbar ist.
 PRICE_ON_REQUEST = (
-    'Konditionen auf Anfrage – den Preis für diesen Artikel nennt Ihnen die '
+    'Konditionen auf Anfrage. Den Preis für diesen Artikel nennt Ihnen die '
     'Geschäftsstelle mit der Bestätigung.')
 PRICE_TIER_NOTICE = (
-    'Preis nach Mengenstaffel – der Betrag richtet sich nach der bestellten Menge '
+    'Preis nach Mengenstaffel. Der Betrag richtet sich nach der bestellten Menge '
     'und wird von der Geschäftsstelle bestätigt.')
 PRICE_KM_NOTICE = (
     'Die Endabrechnung erfolgt nach den tatsächlich gefahrenen Kilometern.')
@@ -155,7 +155,7 @@ class KjrRentalWebsite(http.Controller):
         Ein Betrag von 0,00 € ist KEINE Preisaussage, solange er auch schlicht der
         Startwert eines nie gepflegten Feldes sein kann. „Standard: 0,00 €" auf der
         öffentlichen Katalogseite liest sich als kostenlos und ist schlimmer als eine
-        erfundene Zahl, weil sie plausibel wirkt (Vault: „Bei rund 30 Artikeln steht
+        erfundene Zahl, weil sie plausibel wirkt (Projektunterlagen: „Bei rund 30 Artikeln steht
         Mitglied: 0,00 €"). Anker ist deshalb IMMER der Standardbetrag DERSELBEN
         Betragsart:
           * Standardbetrag 0,00 (oder nicht ermittelbar) -> die Betragsart ist
@@ -557,7 +557,7 @@ class KjrRentalWebsite(http.Controller):
         # Deshalb werden die Hinweise ALLER Artikel mit Nutzungsregeln angezeigt; die
         # Pflicht zur Bestätigung greift serverseitig nur für die tatsächlich
         # gewählten Artikel (kein hartes required im Formular).
-        # TODO: Wenn der KJR eine dynamische Einblendung wünscht, dafür ein eigenes
+        # TODO: Wenn der Betreiber eine dynamische Einblendung wünscht, dafür ein eigenes
         # Frontend-Asset vorsehen (bewusst kein Inline-Script in diesem Template).
         all_usage_items = self._usage_warning_items(items)
         price_info = self._price_info_map(items, is_member)
@@ -692,10 +692,10 @@ class KjrRentalWebsite(http.Controller):
 
     def _spielmobil_notify(self, order, contact_person, organisation, place,
                            participants, wish_date, email, phone):
-        """Anfrage per Mail an das KJR-Postfach schicken.
+        """Anfrage per Mail an das Postfach der Geschäftsstelle schicken.
 
         Ausdrückliche Anforderung aus dem Website-Termin am 23.07.2026: das
-        Spielmobil-Formular „geht per Mail ans KJR-Postfach". Der angelegte
+        Spielmobil-Formular „geht per Mail an die Geschäftsstelle". Der angelegte
         Vorgang allein genügt nicht — die Geschäftsstelle arbeitet nicht
         dauerhaft im Backend und würde die Anfrage sonst erst spät sehen.
 
@@ -830,7 +830,7 @@ class KjrRentalWebsite(http.Controller):
             # Verständliche Meldung statt Serverfehler, wenn der Seed-Artikel fehlt.
             errors['item'] = _(
                 'Das Spielmobil ist derzeit nicht für Online-Anfragen hinterlegt. '
-                'Bitte wenden Sie sich direkt an die Geschäftsstelle des Kreisjugendrings.')
+                'Bitte wenden Sie sich direkt an die Geschäftsstelle.')
 
         contact_person = (post.get('contact_person') or '').strip()
         organisation = (post.get('organisation') or '').strip()
@@ -840,10 +840,16 @@ class KjrRentalWebsite(http.Controller):
         if not contact_person:
             errors['contact_person'] = _('Bitte eine Ansprechpartnerin oder einen Ansprechpartner angeben.')
         if not organisation:
+            # Adressatenkreis bewusst eng: Entscheidung des Betreibers vom
+            # 23.07.2026 (Website-Termin). Welches Gebiet gemeint ist, steht im
+            # Systemparameter `kjr_rental.spielmobil_area` (Freitext, nicht
+            # geseedet, siehe views/website_templates.xml); ist er leer, nennt die
+            # Meldung nur "im Einzugsgebiet". Den Kreis NICHT eigenmaechtig weiten.
             errors['organisation'] = _(
                 'Bitte den Namen der anfragenden Gemeinde angeben. Das Spielmobil steht '
-                'ausschließlich Gemeinden im Landkreis Oberallgäu zur Verfügung '
-                '(Entscheidung KJR vom 23.07.2026).')
+                'ausschließlich Gemeinden %s zur Verfügung.'
+            ) % (request.env['ir.config_parameter'].sudo().get_param(
+                'kjr_rental.spielmobil_area') or _('im Einzugsgebiet'))
         if not email:
             errors['contact_email'] = _('Bitte eine gültige E-Mail-Adresse angeben.')
         if not phone:
@@ -885,7 +891,7 @@ class KjrRentalWebsite(http.Controller):
         ]
         if is_public:
             note_lines.append(_(
-                'ACHTUNG – Absender war NICHT angemeldet: Die Identität des Absenders '
+                'ACHTUNG, Absender war NICHT angemeldet: Die Identität des Absenders '
                 'ist nicht nachgewiesen. Der Kontakt wurde deshalb neu angelegt und '
                 'nicht einem bestehenden Verband zugeordnet; der Vorgang läuft zunächst '
                 'zum Standardtarif. Kontaktdaten, Zuordnung und Mitgliedsstatus bitte '

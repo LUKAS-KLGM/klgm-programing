@@ -14,7 +14,7 @@
     <p>Ihr Zuschussantrag <strong><t t-out="object.name"/></strong> wurde erfolgreich eingereicht.</p>
     <table style="border-collapse:collapse;margin:10px 0;">
         <tr><td style="padding:4px 12px 4px 0;"><strong>Maßnahme:</strong></td><td><t t-out="object.measure_name"/></td></tr>
-        <tr><td style="padding:4px 12px 4px 0;"><strong>Zeitraum:</strong></td><td><t t-out="object.measure_start"/> – <t t-out="object.measure_end"/></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;"><strong>Zeitraum:</strong></td><td><t t-out="object.measure_start"/> bis <t t-out="object.measure_end"/></td></tr>
         <tr><td style="padding:4px 12px 4px 0;"><strong>Förderart:</strong></td><td><t t-out="object.grant_type_id.name"/></td></tr>
         <tr><td style="padding:4px 12px 4px 0;"><strong>Berechneter Zuschuss:</strong></td><td><t t-out="'%.2f' % object.grant_calculated"/> €</td></tr>
     </table>

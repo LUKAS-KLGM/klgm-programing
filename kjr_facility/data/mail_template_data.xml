@@ -6,7 +6,7 @@
         <record id="mail_template_booking_reserved" model="mail.template">
             <field name="name">KJR Einrichtung: Reservierungsbestätigung</field>
             <field name="model_id" ref="model_kjr_facility_booking"/>
-            <field name="subject">Reservierungsbestätigung {{ object.name }} — {{ object.facility_id.name }}</field>
+            <field name="subject">Reservierungsbestätigung {{ object.name }}: {{ object.facility_id.name }}</field>
             <field name="email_from">{{ (object.company_id.email or '') }}</field>
             <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
             <field name="body_html" type="html">
@@ -32,7 +32,7 @@
         <record id="mail_template_booking_contract" model="mail.template">
             <field name="name">KJR Einrichtung: Buchungsvertrag</field>
             <field name="model_id" ref="model_kjr_facility_booking"/>
-            <field name="subject">Buchungsvertrag {{ object.name }} — {{ object.facility_id.name }}</field>
+            <field name="subject">Buchungsvertrag {{ object.name }}: {{ object.facility_id.name }}</field>
             <field name="email_from">{{ (object.company_id.email or '') }}</field>
             <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
             <field name="report_template_ids" eval="[(6, 0, [ref('kjr_facility.action_report_booking_contract')])]"/>
@@ -74,7 +74,7 @@
         <record id="mail_template_booking_confirmed" model="mail.template">
             <field name="name">KJR Einrichtung: Buchung bestätigt</field>
             <field name="model_id" ref="model_kjr_facility_booking"/>
-            <field name="subject">Buchungsbestätigung {{ object.name }} — {{ object.facility_id.name }}</field>
+            <field name="subject">Buchungsbestätigung {{ object.name }}: {{ object.facility_id.name }}</field>
             <field name="email_from">{{ (object.company_id.email or '') }}</field>
             <field name="email_to">{{ (object.contact_email or object.partner_id.email) }}</field>
             <field name="body_html" type="html">
@@ -119,7 +119,7 @@
 <div style="margin:0;padding:0;">
     <p>Hallo <t t-out="object.partner_id.name"/>,</p>
     <p>Ihre Buchung <strong><t t-out="object.name"/></strong> für <t t-out="object.facility_id.name"/> wurde storniert.</p>
-    <p>Bei Rückfragen wenden Sie sich an die KJR-Geschäftsstelle.</p>
+    <p>Bei Rückfragen wenden Sie sich an die Geschäftsstelle von <t t-out="object.company_id.name"/>.</p>
     <p>Mit freundlichen Grüßen,<br/><t t-out="object.company_id.name"/></p>
 </div>
             </field>

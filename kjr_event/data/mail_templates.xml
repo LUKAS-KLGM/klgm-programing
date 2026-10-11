@@ -1,115 +1,143 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- E7: Anmeldebestätigung -->
-    <record id="mail_template_registration_confirm" model="mail.template">
-        <field name="name">KJR: Anmeldebestätigung</field>
-        <field name="model_id" ref="event.model_event_registration"/>
-        <field name="subject">Anmeldebestätigung: {{ object.event_id.name }}</field>
-        <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
-        <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
-        <field name="body_html" type="html">
-            <div style="margin:0px;padding:0px;font-size:13px;">
-                <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
-                <p>vielen Dank für die Anmeldung zur Veranstaltung
-                    <strong><t t-out="object.event_id.name or ''"/></strong>.</p>
-                <p t-if="object.event_id.date_begin">Beginn:
-                    <t t-out="format_datetime(object.event_id.date_begin, dt_format='dd.MM.yyyy HH:mm')"/></p>
-                <p t-if="object.event_payment_required">Diese Veranstaltung ist zahlungspflichtig.
-                    Eine Rechnung bzw. Zahlungsinformation erhalten Sie separat.</p>
-                <p>Mit freundlichen Grüßen<br/><t t-out="object.event_id.company_id.name"/></p>
-            </div>
-        </field>
-        <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
-        <field name="auto_delete" eval="True"/>
-    </record>
+    <!-- MAILVORLAGEN STEHEN UNTER noupdate="1" (Projektstandard, gleiches Vorgehen
+         wie kjr_grant/data/mail_template_data.xml und
+         kjr_facility/data/mail_template_data.xml).
 
-    <!-- E7: Einwilligungs-Erinnerung -->
-    <record id="mail_template_consent_reminder" model="mail.template">
-        <field name="name">KJR: Einwilligungs-Erinnerung</field>
-        <field name="model_id" ref="event.model_event_registration"/>
-        <field name="subject">Erinnerung: Einwilligung erforderlich – {{ object.event_id.name }}</field>
-        <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
-        <field name="email_to">{{ (object.email or object.partner_id.email or '') }}</field>
-        <field name="body_html" type="html">
-            <div style="margin:0px;padding:0px;font-size:13px;">
-                <p>Hallo,</p>
-                <p>für die Teilnahme von
-                    <strong><t t-out="object.name or ''"/></strong>
-                    an der Veranstaltung <strong><t t-out="object.event_id.name or ''"/></strong>
-                    liegt uns die Einwilligung der Erziehungsberechtigten noch nicht vor.</p>
-                <p>Bitte reichen Sie diese rechtzeitig vor Beginn nach.</p>
-                <p>Mit freundlichen Grüßen<br/><t t-out="object.event_id.company_id.name"/></p>
-            </div>
-        </field>
-        <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
-        <field name="auto_delete" eval="True"/>
-    </record>
+         Grund: Betreff und Rumpf dieser Vorlagen sind kundensichtbare Texte, die die
+         Geschaeftsstelle im Backend an ihre Hausform anpasst (Einstellungen ->
+         Technisch -> E-Mail-Vorlagen). Ohne noupdate schreibt jedes Modul-Update
+         ALLE Datensaetze dieser Datei auf den Modulstand zurueck
+         (odoo/tools/convert.py) - die Pflege waere ohne jede Meldung weg und die
+         naechste Mail ginge mit dem Modultext hinaus.
 
-    <!-- E7: Packliste -->
-    <record id="mail_template_packing_list" model="mail.template">
-        <field name="name">KJR: Packliste</field>
-        <field name="model_id" ref="event.model_event_registration"/>
-        <field name="subject">Packliste: {{ object.event_id.name }}</field>
-        <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
-        <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
-        <field name="body_html" type="html">
-            <div style="margin:0px;padding:0px;font-size:13px;">
-                <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
-                <p>bald geht es los mit <strong><t t-out="object.event_id.name or ''"/></strong>.</p>
-                <p>Bitte denken Sie an: wetterfeste Kleidung, feste Schuhe, Verpflegung,
-                    persönliche Medikamente und die unterschriebene Einwilligung.</p>
-                <p>Mit freundlichen Grüßen<br/><t t-out="object.event_id.company_id.name"/></p>
-            </div>
-        </field>
-        <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
-        <field name="auto_delete" eval="True"/>
-    </record>
+         PREIS DIESES SCHUTZES: Textkorrekturen des Moduls erreichen bestehende
+         Instanzen nur noch ueber ein Migrationsskript, weil Odoo
+         noupdate-Datensaetze im Update-Modus vollstaendig ueberspringt. Die
+         Korrektur am Betreff der Einwilligungs-Erinnerung laeuft deshalb ueber
+         migrations/19.0.5.8.0/post-migration.py, und zwar nur dort, wo noch
+         woertlich der alte Auslieferungswert steht.
 
-    <!-- E7: Absage -->
-    <record id="mail_template_cancellation" model="mail.template">
-        <field name="name">KJR: Absage</field>
-        <field name="model_id" ref="event.model_event_registration"/>
-        <field name="subject">Absage: {{ object.event_id.name }}</field>
-        <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
-        <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
-        <field name="body_html" type="html">
-            <div style="margin:0px;padding:0px;font-size:13px;">
-                <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
-                <p>leider müssen wir die Veranstaltung
-                    <strong><t t-out="object.event_id.name or ''"/></strong> absagen
-                    bzw. Ihre Anmeldung kann nicht berücksichtigt werden.</p>
-                <p>Bei Rückfragen stehen wir gerne zur Verfügung.</p>
-                <p>Mit freundlichen Grüßen<br/><t t-out="object.event_id.company_id.name"/></p>
-            </div>
-        </field>
-        <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
-        <field name="auto_delete" eval="True"/>
-    </record>
+         DIE SERVER-AKTIONEN AM ENDE DER DATEI STEHEN BEWUSST NICHT UNTER noupdate:
+         sie rufen Modellmethoden dieses Moduls auf. Wird eine Methode umbenannt,
+         MUSS die Aktion beim Update mitwandern, sonst laeuft ein Knopf im
+         Kontextmenue ins Leere. Sie sind technische Verdrahtung und kein
+         gepflegter Text. -->
 
-    <!-- E10: Teilnahmebescheinigung / Schulungsnachweis mit PDF-Anhang -->
-    <record id="mail_template_certificate" model="mail.template">
-        <field name="name">KJR: Teilnahmebescheinigung / Nachweis</field>
-        <field name="model_id" ref="event.model_event_registration"/>
-        <field name="subject">Ihre Bescheinigung: {{ object.event_id.name }}</field>
-        <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
-        <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
-        <field name="report_template_ids" eval="[(6, 0, [ref('kjr_event.action_report_participation')])]"/>
-        <field name="body_html" type="html">
-            <div style="margin:0px;padding:0px;font-size:13px;">
-                <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
-                <p>im Anhang finden Sie Ihre Bescheinigung zur Veranstaltung
-                    <strong><t t-out="object.event_id.name or ''"/></strong>.</p>
-                <p t-if="object.event_is_juleica and object.juleica_issued">
-                    Die Juleica wurde ausgestellt<t t-if="object.juleica_valid_until">
-                    und ist gültig bis
-                    <t t-out="format_date(object.juleica_valid_until, date_format='dd.MM.yyyy')"/></t>.</p>
-                <p>Mit freundlichen Grüßen<br/><t t-out="object.event_id.company_id.name"/></p>
-            </div>
-        </field>
-        <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
-        <field name="auto_delete" eval="False"/>
-    </record>
+    <data noupdate="1">
+
+        <!-- E7: Anmeldebestätigung -->
+        <record id="mail_template_registration_confirm" model="mail.template">
+            <field name="name">KJR: Anmeldebestätigung</field>
+            <field name="model_id" ref="event.model_event_registration"/>
+            <field name="subject">Anmeldebestätigung: {{ object.event_id.name }}</field>
+            <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
+            <field name="body_html" type="html">
+                <div style="margin:0px;padding:0px;font-size:13px;">
+                    <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
+                    <p>vielen Dank für die Anmeldung zur Veranstaltung
+                        <strong><t t-out="object.event_id.name or ''"/></strong>.</p>
+                    <p t-if="object.event_id.date_begin">Beginn:
+                        <t t-out="format_datetime(object.event_id.date_begin, dt_format='dd.MM.yyyy HH:mm')"/></p>
+                    <p t-if="object.event_payment_required">Diese Veranstaltung ist zahlungspflichtig.
+                        Eine Rechnung bzw. Zahlungsinformation erhalten Sie separat.</p>
+                    <p>Mit freundlichen Grüßen<br/><t t-out="object.event_id.company_id.name"/></p>
+                </div>
+            </field>
+            <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- E7: Einwilligungs-Erinnerung -->
+        <record id="mail_template_consent_reminder" model="mail.template">
+            <field name="name">KJR: Einwilligungs-Erinnerung</field>
+            <field name="model_id" ref="event.model_event_registration"/>
+            <field name="subject">Erinnerung: Einwilligung erforderlich zu {{ object.event_id.name }}</field>
+            <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
+            <field name="email_to">{{ (object.email or object.partner_id.email or '') }}</field>
+            <field name="body_html" type="html">
+                <div style="margin:0px;padding:0px;font-size:13px;">
+                    <p>Hallo,</p>
+                    <p>für die Teilnahme von
+                        <strong><t t-out="object.name or ''"/></strong>
+                        an der Veranstaltung <strong><t t-out="object.event_id.name or ''"/></strong>
+                        liegt uns die Einwilligung der Erziehungsberechtigten noch nicht vor.</p>
+                    <p>Bitte reichen Sie diese rechtzeitig vor Beginn nach.</p>
+                    <p>Mit freundlichen Grüßen<br/><t t-out="object.event_id.company_id.name"/></p>
+                </div>
+            </field>
+            <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- E7: Packliste -->
+        <record id="mail_template_packing_list" model="mail.template">
+            <field name="name">KJR: Packliste</field>
+            <field name="model_id" ref="event.model_event_registration"/>
+            <field name="subject">Packliste: {{ object.event_id.name }}</field>
+            <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
+            <field name="body_html" type="html">
+                <div style="margin:0px;padding:0px;font-size:13px;">
+                    <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
+                    <p>bald geht es los mit <strong><t t-out="object.event_id.name or ''"/></strong>.</p>
+                    <p>Bitte denken Sie an: wetterfeste Kleidung, feste Schuhe, Verpflegung,
+                        persönliche Medikamente und die unterschriebene Einwilligung.</p>
+                    <p>Mit freundlichen Grüßen<br/><t t-out="object.event_id.company_id.name"/></p>
+                </div>
+            </field>
+            <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- E7: Absage -->
+        <record id="mail_template_cancellation" model="mail.template">
+            <field name="name">KJR: Absage</field>
+            <field name="model_id" ref="event.model_event_registration"/>
+            <field name="subject">Absage: {{ object.event_id.name }}</field>
+            <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
+            <field name="body_html" type="html">
+                <div style="margin:0px;padding:0px;font-size:13px;">
+                    <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
+                    <p>leider müssen wir die Veranstaltung
+                        <strong><t t-out="object.event_id.name or ''"/></strong> absagen
+                        bzw. Ihre Anmeldung kann nicht berücksichtigt werden.</p>
+                    <p>Bei Rückfragen stehen wir gerne zur Verfügung.</p>
+                    <p>Mit freundlichen Grüßen<br/><t t-out="object.event_id.company_id.name"/></p>
+                </div>
+            </field>
+            <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <!-- E10: Teilnahmebescheinigung / Schulungsnachweis mit PDF-Anhang -->
+        <record id="mail_template_certificate" model="mail.template">
+            <field name="name">KJR: Teilnahmebescheinigung / Nachweis</field>
+            <field name="model_id" ref="event.model_event_registration"/>
+            <field name="subject">Ihre Bescheinigung: {{ object.event_id.name }}</field>
+            <field name="email_from">{{ (object.event_id.organizer_id.email_formatted or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
+            <field name="report_template_ids" eval="[(6, 0, [ref('kjr_event.action_report_participation')])]"/>
+            <field name="body_html" type="html">
+                <div style="margin:0px;padding:0px;font-size:13px;">
+                    <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
+                    <p>im Anhang finden Sie Ihre Bescheinigung zur Veranstaltung
+                        <strong><t t-out="object.event_id.name or ''"/></strong>.</p>
+                    <p t-if="object.event_is_juleica and object.juleica_issued">
+                        Die Juleica wurde ausgestellt<t t-if="object.juleica_valid_until">
+                        und ist gültig bis
+                        <t t-out="format_date(object.juleica_valid_until, date_format='dd.MM.yyyy')"/></t>.</p>
+                    <p>Mit freundlichen Grüßen<br/><t t-out="object.event_id.company_id.name"/></p>
+                </div>
+            </field>
+            <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
+            <field name="auto_delete" eval="False"/>
+        </record>
+
+    </data>
 
     <!-- E7/E10: Serienmail-Server-Action (Bescheinigung) im Kontextmenü -->
     <record id="action_server_send_certificate" model="ir.actions.server">
@@ -121,35 +149,39 @@
         <field name="code">records.action_send_certificate()</field>
     </record>
 
-    <!-- E9: Schulungsrechnung (Versand über action_kjr_send_training_invoice).
-         Das Rechnungs-PDF wird beim Versand defensiv angehängt (siehe
-         account.move._kjr_invoice_pdf_attachment) und NICHT über
-         report_template_ids verdrahtet: fehlt der Standard-Report auf der
-         Instanz, geht die Mail trotzdem hinaus, statt den Modul-Import zu
-         zerlegen. -->
-    <record id="mail_template_training_invoice" model="mail.template">
-        <field name="name">KJR: Schulungsrechnung</field>
-        <field name="model_id" ref="account.model_account_move"/>
-        <field name="subject">Rechnung {{ object.name }}</field>
-        <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
-        <field name="email_to">{{ object.partner_id.email or '' }}</field>
-        <field name="body_html" type="html">
-            <div style="margin:0px;padding:0px;font-size:13px;">
-                <p>Hallo <t t-out="object.partner_id.name or ''"/>,</p>
-                <p>anbei erhalten Sie unsere Rechnung
-                    <strong><t t-out="object.name or ''"/></strong><t t-if="object.invoice_origin">
-                    zu <t t-out="object.invoice_origin"/></t>.</p>
-                <p>Rechnungsbetrag:
-                    <strong><t t-out="format_amount(object.amount_total, object.currency_id)"/></strong></p>
-                <p t-if="object.invoice_date_due">Zahlbar bis
-                    <t t-out="format_date(object.invoice_date_due, date_format='dd.MM.yyyy')"/>.</p>
-                <p>Bei Rückfragen zur Rechnung wenden Sie sich bitte an die Geschäftsstelle.</p>
-                <p>Mit freundlichen Grüßen<br/><t t-out="object.company_id.name"/></p>
-            </div>
-        </field>
-        <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
-        <field name="auto_delete" eval="False"/>
-    </record>
+    <data noupdate="1">
+
+        <!-- E9: Schulungsrechnung (Versand über action_kjr_send_training_invoice).
+             Das Rechnungs-PDF wird beim Versand defensiv angehängt (siehe
+             account.move._kjr_invoice_pdf_attachment) und NICHT über
+             report_template_ids verdrahtet: fehlt der Standard-Report auf der
+             Instanz, geht die Mail trotzdem hinaus, statt den Modul-Import zu
+             zerlegen. -->
+        <record id="mail_template_training_invoice" model="mail.template">
+            <field name="name">KJR: Schulungsrechnung</field>
+            <field name="model_id" ref="account.model_account_move"/>
+            <field name="subject">Rechnung {{ object.name }}</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="email_to">{{ object.partner_id.email or '' }}</field>
+            <field name="body_html" type="html">
+                <div style="margin:0px;padding:0px;font-size:13px;">
+                    <p>Hallo <t t-out="object.partner_id.name or ''"/>,</p>
+                    <p>anbei erhalten Sie unsere Rechnung
+                        <strong><t t-out="object.name or ''"/></strong><t t-if="object.invoice_origin">
+                        zu <t t-out="object.invoice_origin"/></t>.</p>
+                    <p>Rechnungsbetrag:
+                        <strong><t t-out="format_amount(object.amount_total, object.currency_id)"/></strong></p>
+                    <p t-if="object.invoice_date_due">Zahlbar bis
+                        <t t-out="format_date(object.invoice_date_due, date_format='dd.MM.yyyy')"/>.</p>
+                    <p>Bei Rückfragen zur Rechnung wenden Sie sich bitte an die Geschäftsstelle.</p>
+                    <p>Mit freundlichen Grüßen<br/><t t-out="object.company_id.name"/></p>
+                </div>
+            </field>
+            <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
+            <field name="auto_delete" eval="False"/>
+        </record>
+
+    </data>
 
     <!-- ==================================================================
          Auslöser: jede Vorlage oben hat entweder einen Cron

@@ -104,8 +104,8 @@ class KjrJuleica(models.Model):
         for rec in self:
             rec.issue_date = fields.Date.today()
             rec.message_post(
-                body=_('Juleica verlängert – neue Gültigkeit bis %s.') % (
-                    rec.expiry_date and rec.expiry_date.strftime('%d.%m.%Y') or '—'),
+                body=_('Juleica verlängert, neue Gültigkeit bis %s.') % (
+                    rec.expiry_date and rec.expiry_date.strftime('%d.%m.%Y') or '-'),
                 subtype_xmlid='mail.mt_note',
             )
 
@@ -128,7 +128,7 @@ class KjrJuleica(models.Model):
                 summary=_('Juleica läuft ab: %s') % card.partner_id.name,
                 note=_('Die Juleica-Karte von %s (Nr. %s) läuft am %s ab.') % (
                     card.partner_id.name,
-                    card.card_number or '—',
+                    card.card_number or '-',
                     card.expiry_date.strftime('%d.%m.%Y'),
                 ),
             )

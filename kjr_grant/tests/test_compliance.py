@@ -2,7 +2,7 @@
 """
 Richtlinien-Compliance-Tests für die KJR-Zuschussverwaltung.
 
-Jeder Test schreibt eine konkrete Regel der KJR-OA-Zuschussrichtlinie
+Jeder Test schreibt eine konkrete Regel der Zuschussrichtlinie des Trägers
 (Fassung ab 01.12.2022) bzw. der BJR-Standards als ausführbare Assertion fest –
 geprüft gegen die ausgelieferten Förderart-Stammdaten (data/kjr_grant_type_data.xml)
 und Systemparameter (data/ir_config_parameter_data.xml).
@@ -80,7 +80,7 @@ class TestKjrGrantCompliance(TransactionCase):
         self.assertEqual(app.grant_calculated, 208.0)
 
     def test_4_1b_leader_ratio_cap(self):
-        """Max. 1 anerkannter Jugendleiter je 5 TN (KJR-OA). Bei 10 TN und 5
+        """Max. 1 anerkannter Jugendleiter je 5 TN (Voreinstellung). Bei 10 TN und 5
         angegebenen Leitern werden nur 2 gefördert:
         10×1×8 = 80 + 2 Leiter × 1 × 8 = 16 → 96 € (statt 120 € bei 5 Leitern)."""
         app = self._app('kjr_grant.grant_type_4_1b',

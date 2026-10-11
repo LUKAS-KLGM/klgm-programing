@@ -39,7 +39,7 @@
                      öffentliche Freitextfeld – entscheiden Geschäftsstelle und
                      Datenschutzbeauftragte. Bis dahin gilt die engere Variante. -->
                 <div class="col-md-4">
-                    <label t-attf-for="#{counter}-dietary_note" class="form-label">Ernährung – Hinweis</label>
+                    <label t-attf-for="#{counter}-dietary_note" class="form-label">Ernährung: Hinweis</label>
                     <input type="text" class="form-control"
                            t-attf-name="#{counter}-dietary_note"
                            t-attf-id="#{counter}-dietary_note"
@@ -51,6 +51,44 @@
                         oder Ähnliches gehören <strong>nicht</strong> in dieses Feld. Wenn es
                         für die Freizeit gesundheitlich etwas zu beachten gibt, wenden Sie
                         sich bitte direkt an die Geschäftsstelle.
+                    </div>
+                </div>
+                <!-- E2c: freiwillige Angabe zum Geschlecht. Wird ausschliesslich
+                     aggregiert fuer die gesetzliche Meldung an das Landesamt
+                     gezaehlt (siehe wizard/kjr_event_statistics.py) und nie
+                     einzeln ausgewiesen. Bewusst OHNE required und mit einer
+                     eigenen Stufe "keine Angabe", damit die bewusste
+                     Nicht-Angabe von der gar nicht erfassten Angabe
+                     unterscheidbar bleibt. Die Stufen muessen zum Feld
+                     event.registration.kjr_gender passen; ein unbekannter Wert
+                     wird im Controller verworfen und bricht die Anmeldung
+                     nicht ab.
+                     STELLUNG IM FORMULAR: bewusst HINTER "Ernaehrung: Hinweis"
+                     und nicht zwischen den beiden Ernaehrungsfeldern. Die Zeile
+                     fuehrt drei Spalten (col-md-4); dazwischen eingefuegt waere
+                     das Hinweisfeld in die naechste Zeile gerutscht und stuende
+                     auf dem Desktop nicht mehr neben der Auswahl, auf die es
+                     sich bezieht.
+                     Die Leeroption heisst "bitte waehlen" und nicht "-": neben
+                     der Stufe "keine Angabe" muss erkennbar bleiben, was die
+                     bewusste Nicht-Angabe ist und was nur die noch nicht
+                     getroffene Auswahl. -->
+                <div class="col-md-4">
+                    <label t-attf-for="#{counter}-kjr_gender" class="form-label">Geschlecht (freiwillig)</label>
+                    <select class="form-select"
+                            t-attf-name="#{counter}-kjr_gender"
+                            t-attf-id="#{counter}-kjr_gender"
+                            t-attf-aria-describedby="#{counter}-kjr_gender_help">
+                        <option value="">bitte wählen</option>
+                        <option value="male">männlich</option>
+                        <option value="female">weiblich</option>
+                        <option value="diverse">divers</option>
+                        <option value="no_answer">keine Angabe</option>
+                    </select>
+                    <div class="form-text" t-attf-id="#{counter}-kjr_gender_help">
+                        Die Angabe ist freiwillig. Sie wird nur gezählt (als Zahl in einer
+                        Statistik) und für die gesetzlich vorgeschriebene Meldung gebraucht,
+                        nie einzeln weitergegeben.
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -109,7 +147,13 @@
          hier absichtlich nicht vorbelegt, weil sie noch nicht festgelegt sind:
            - Verantwortlicher (Name, Anschrift, Kontakt)
            - Kontakt der/des Datenschutzbeauftragten
-           - Rechtsgrundlage der Verarbeitung (Audit-Befund K1, offen)
+           - Rechtsgrundlage der Verarbeitung (Audit-Befund K1, offen). TODO(KJR)/
+             TODO(DSGVO): Dazu gehört seit 19.0.5.7.0 ausdrücklich die
+             Rechtsgrundlage für die freiwillige Angabe zum Geschlecht
+             (Feld event.registration.kjr_gender, erhoben für die gesetzliche
+             Statistikmeldung). Sie gehört in den Systemparameter
+             `kjr.privacy.legal_basis`; die Entscheidung liegt beim KJR bzw.
+             der Datenschutzbeauftragten und wird hier nicht vorweggenommen.
            - Aufbewahrungs-/Löschfrist (nicht entschieden; das System löscht diese
              Angaben derzeit nicht automatisch – bewusst nicht auf der Seite
              behauptet, sondern hier vermerkt)
@@ -124,7 +168,7 @@
             <section class="o_kjr_privacy_notice alert alert-light border mt-3"
                      role="region" aria-labelledby="kjr_privacy_event_heading">
                 <h5 class="alert-heading h6" id="kjr_privacy_event_heading">
-                    <i class="fa fa-lock me-2" aria-hidden="true"/>Datenschutz – was mit diesen Angaben passiert
+                    <i class="fa fa-lock me-2" aria-hidden="true"/>Datenschutz: was mit diesen Angaben passiert
                 </h5>
                 <p class="small mb-3">
                     Kurz und ohne Fachsprache: Hier steht, was wir speichern, wofür wir es
@@ -135,17 +179,21 @@
                     <dt class="col-sm-4">Was wir speichern</dt>
                     <dd class="col-sm-8">Name, Geburtsdatum, die Angaben zur Ernährung
                         (Auswahl und Hinweisfeld), Name und Telefonnummer der
-                        Erziehungsberechtigten, den Notfallkontakt und Ihre Bemerkungen.</dd>
+                        Erziehungsberechtigten, den Notfallkontakt, Ihre Bemerkungen
+                        und das Geschlecht (freiwillige Angabe).</dd>
 
                     <dt class="col-sm-4">Wofür wir sie nutzen</dt>
                     <dd class="col-sm-8">Um die Veranstaltung durchzuführen (Anmeldung,
                         Platzvergabe, Warteliste, passende Altersgruppe), um die Verpflegung
                         zu planen, um im Notfall jemanden erreichen zu können, für Rechnung
                         und Zahlung bei kostenpflichtigen Angeboten und, bei
-                        Juleica-Schulungen, für den Nachweis der Ausbildung.</dd>
+                        Juleica-Schulungen, für den Nachweis der Ausbildung. Die
+                        freiwillige Angabe zum Geschlecht wird ausschließlich für die
+                        gesetzlich vorgeschriebene, rein zahlenmäßige Meldung an die
+                        Statistikstelle gebraucht (ohne Namen).</dd>
 
                     <dt class="col-sm-4">Wer sie sehen kann</dt>
-                    <dd class="col-sm-8">Die Geschäftsstelle des Kreisjugendrings Oberallgäu
+                    <dd class="col-sm-8">Die Geschäftsstelle des Veranstalters
                         und das Betreuungsteam der Veranstaltung. Wird eine Veranstaltung
                         gemeinsam mit einem Kooperationspartner durchgeführt, kann dieser die
                         Anmeldeliste dieser Veranstaltung über seinen Portalzugang einsehen.
@@ -170,7 +218,7 @@
                     <dt class="col-sm-4">Rechtsgrundlage</dt>
                     <dd class="col-sm-8">
                         <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.legal_basis')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
-                        <span class="d-block text-muted">Legt der Kreisjugendring gemeinsam mit
+                        <span class="d-block text-muted">Legt der Veranstalter gemeinsam mit
                             der Datenschutzbeauftragten fest.</span>
                     </dd>
 
@@ -178,12 +226,12 @@
                     <dd class="col-sm-8">
                         <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.retention')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">wird vom KJR ergänzt</span>
                         <span class="d-block text-muted">Die Aufbewahrungsdauer legt der
-                            Kreisjugendring fest und trägt sie hier ein.</span>
+                            Veranstalter fest und trägt sie hier ein.</span>
                     </dd>
 
                     <dt class="col-sm-4">Ihre Rechte</dt>
-                    <dd class="col-sm-8">Welche Rechte Sie haben – zum Beispiel Auskunft,
-                        Berichtigung, Löschung oder Einschränkung – und wie Sie sie geltend
+                    <dd class="col-sm-8">Welche Rechte Sie haben, zum Beispiel Auskunft,
+                        Berichtigung, Löschung oder Einschränkung, und wie Sie sie geltend
                         machen, steht in der
                         <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.
                         <span class="d-block mt-1">Zuständige Aufsichtsbehörde:
@@ -195,7 +243,7 @@
         </xpath>
     </template>
 
-    <!-- E12: Treffpunkt, Wichtig, Webseite (Nupian-Parität) -->
+    <!-- E12: Treffpunkt, Wichtig, Webseite (Parität zum Altsystem) -->
     <template id="event_description_full_kjr_meeting_info"
               name="KJR: Treffpunkt, Wichtig, Webseite"
               inherit_id="website_event.event_description_full">
@@ -376,7 +424,10 @@
                position="replace" mode="inner">
             <t t-if="event.is_kjr">Zur Anmeldung</t>
             <t t-else="">Tickets erhalten</t>
-            <i class="fa fa-chevron-right"/>
+            <!-- title ist Pflicht: _validate_fa_class_accessibility (ir_ui_view.py)
+                 verlangt bei einem <i class="fa ..."> einen title oder gueltigen
+                 Nachbartext. Nach diesem Icon folgt nichts mehr. -->
+            <i class="fa fa-chevron-right" title="Weiter"/>
         </xpath>
         <!-- "Registriert" -> "Angemeldet".
              Anker: die eindeutige Kernklasse o_wevent_participating.
@@ -384,7 +435,9 @@
              des Kerns bleiben erhalten. -->
         <xpath expr="//small[hasclass('o_wevent_participating')]"
                position="replace" mode="inner">
-            <i class="fa fa-check me-2"/>
+            <!-- title ist Pflicht: vor dem Icon steht kein Text, danach nur ein
+                 <t t-if>, das der Validator nicht als Text zaehlt. -->
+            <i class="fa fa-check me-2" title="Angemeldet"/>
             <t t-if="event.is_kjr">Angemeldet</t>
             <t t-else="">Registriert</t>
         </xpath>

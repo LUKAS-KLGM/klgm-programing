@@ -14,14 +14,14 @@
              und ohne Schreibvorgang zurück. Erst wenn die Geschäftsstelle eine
              Frist einträgt, wird anonymisiert. Die Frist ist beim KJR nicht
              festgelegt und wird bewusst nicht vorbelegt
-             (TODO(KJR)/TODO(DSGVO) im Modell).
+             (TODO Betreiber/TODO(DSGVO) im Modell).
 
              ACHTUNG, zweiter Schalter: Chatter, Feldhistorie und Anhänge werden
              nur mitgezogen, wenn zusätzlich 'kjr_rental.order_anonymize_traces'
              auf 1 steht (ebenfalls nicht ausgeliefert). Wird nur die Frist
              gesetzt, leert der Lauf die Felder, während dieselben Angaben in
              Chatter und Feldhistorie stehen bleiben; der Lauf protokolliert das
-             als Warnung. TODO(KJR): beide Parameter gemeinsam entscheiden.
+             als Warnung. TODO Betreiber: beide Parameter gemeinsam entscheiden.
 
              noupdate="1" gilt für den ganzen Block: bestehende Datensätze bleiben
              so, wie die Geschäftsstelle sie eingestellt hat, neue werden bei einem

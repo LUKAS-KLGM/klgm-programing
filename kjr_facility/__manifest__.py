@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Einrichtungsbuchung',
-    'version': '19.0.7.2.1',
+    'version': '19.0.7.3.0',
     'category': 'Custom/KJR',
-    'summary': 'Belegungs- und Buchungsverwaltung für KJR-Einrichtungen (Jugendhaus Diepolz, '
-               'Zeltplatz NiSo): Tarife, Verpflegung, Doppelbelegungsprüfung, Rechnung, Website & Portal',
+    'summary': 'Belegungs- und Buchungsverwaltung für Jugendhäuser und Zeltplätze: '
+               'Tarife, Verpflegung, Doppelbelegungsprüfung, Rechnung, Website & Portal',
     'author': 'KLGM UG (haftungsbeschränkt)',
     'website': 'https://www.klgm-consulting.de',
     'license': 'OPL-1',

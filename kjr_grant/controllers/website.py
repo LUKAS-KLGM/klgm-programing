@@ -57,6 +57,55 @@ RECEIPT_CATEGORIES = RECEIPT_INCOME_CATEGORIES + RECEIPT_EXPENSE_CATEGORIES
 # fälschlich abzulehnen (auch Umlaut-Domains bleiben zulässig).
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s.]{2,}$')
 
+# ── Pflichtfelder des WEBSITE-Formulars (POST-Schlüssel) ─────────────────────
+# Diese Namen sind der Vertrag zwischen Controller und Vorlage: jeder Name hier
+# MUSS in views/portal_templates.xml (website_kjr_apply) ein required-Attribut
+# tragen, und die Vorlage darf darüber hinaus nichts als Pflicht ausweisen.
+# tests/test_form_fields.py prüft beide Richtungen; die wenigen bewussten
+# Ausnahmen stehen dort in TEMPLATE_ONLY_REQUIRED. Im Backend bleibt alles
+# optional, siehe _process_application.
+# Hintergrund: Am 10.09.2026 war der Antrag unabsendbar, weil der Controller ein
+# Feld verlangte, das im Formular nicht als Pflicht gekennzeichnet war.
+#
+# WICHTIG: Die drei Listen unten erfassen nur die IMMER geforderten Felder. Die
+# bedingt geforderten (Upload je Förderart bzw. je Schalterstellung) stehen in
+# CONDITIONAL_REQUIRED_FIELDS weiter unten; sie können hier nicht stehen, weil
+# sie nicht bei jedem Antrag Pflicht sind. Wer eine Pflichtprüfung ergänzt, muss
+# den Namen in GENAU EINE der vier Listen aufnehmen; tests/test_form_fields.py
+# prüft, dass kein Feldname einer Fehlermeldung unbemerkt dazukommt.
+REQUIRED_MEASURE_FIELDS = (
+    'partner_id', 'grant_type_id', 'measure_name',
+    'measure_start', 'measure_start_time', 'measure_end', 'measure_end_time',
+    'measure_zip', 'measure_location', 'tn_count', 'tn_leader_count',
+    'contact_person', 'contact_email', 'contact_phone',
+)
+# Bankverbindung: Pflicht im Website-Formular (Entscheidung 18.08.2026), geprüft
+# in _check_bank_details. payment_bic wird dort nur auf Format geprüft, nicht
+# auf Vorhandensein, und gehört deshalb NICHT in diese Liste.
+REQUIRED_BANK_FIELDS = ('payment_iban', 'payment_account_holder')
+REQUIRED_CONFIRMATIONS = ('confirm_privacy', 'confirm_guidelines', 'confirm_truthful')
+WEBSITE_REQUIRED_FIELDS = (
+    REQUIRED_MEASURE_FIELDS + REQUIRED_BANK_FIELDS + REQUIRED_CONFIRMATIONS
+)
+
+# ── Bedingt geforderte Felder (Uploads) ─────────────────────────────────────
+# Diese Felder prüft der Server nur unter einer Bedingung. Sie gehören deshalb
+# NICHT in WEBSITE_REQUIRED_FIELDS: ein Antrag ohne die Bedingung ist auch ohne
+# sie vollständig. Das Formular kann sie aus demselben Grund nicht statisch als
+# Pflicht kennzeichnen - 'foundation_file' liegt zudem in einem ausgeblendeten
+# Block (d-none), und ein ausgeblendetes required-Feld lässt der Browser
+# überhaupt nicht mehr absenden ("not focusable"). Beide Felder werden deshalb
+# vom Inline-JavaScript der Vorlage auf die Serverregel nachgezogen.
+# Der Wert ist die Bedingung in Worten; sie ist der Prüfauftrag für
+# tests/test_form_fields.py und die Erklärung für die nächste Änderung.
+CONDITIONAL_REQUIRED_FIELDS = {
+    'receipt_file': 'Pflicht, wenn die Förderart eine Belegliste verlangt '
+                    '(requires_receipt) UND die digitale Belegliste nicht '
+                    'benutzt wird. Ohne gewählte Förderart konservativ Pflicht.',
+    'foundation_file': 'Pflicht nur bei der Gruppenstarthilfe '
+                       '(Förderart-Code %s).' % FOUNDATION_GRANT_CODE,
+}
+
 # ── Fachliche Konstanten der Hilfeseite ──────────────────────────────────────
 # Einreichfrist: 3 Monate nach Maßnahmenende. Spiegel von
 # kjr.grant.application._compute_submission_deadline — dort bei Änderung mitziehen.
@@ -64,8 +113,8 @@ SUBMISSION_DEADLINE_MONTHS = 3
 # Vorlauf der automatischen Fristerinnerung (_cron_deadline_reminder).
 DEADLINE_REMINDER_DAYS = 14
 # Leerzeilen der ausdruckbaren Belegliste (passt auf eine A4-Seite quer).
-# TODO: Zeilenzahl und Papierformat mit Bora abstimmen — bis dahin bewusst
-# konservativ 20 Zeilen auf einer Seite (bisherige Papierliste des KJR).
+# TODO(KJR): Zeilenzahl und Papierformat mit der Kassenleitung abstimmen.
+# Bis dahin bewusst konservativ 20 Zeilen auf einer Seite (bisherige Papierliste).
 BLANK_RECEIPT_ROWS = 20
 
 
@@ -178,24 +227,27 @@ class KjrWebsiteController(http.Controller):
         def _filled(key):
             return bool((post.get(key) or '').strip())
 
-        for field, label in [
-            ('partner_id',         _('Antragsteller (Organisation)')),
-            ('grant_type_id',      _('Förderart')),
-            ('measure_name',       _('Maßnahmenbezeichnung')),
-            ('measure_start',      _('Beginn der Maßnahme')),
-            ('measure_start_time', _('Uhrzeit Beginn')),
-            ('measure_end',        _('Ende der Maßnahme')),
-            ('measure_end_time',   _('Uhrzeit Ende')),
-            ('measure_zip',        _('PLZ Maßnahmenort')),
-            ('measure_location',   _('Ort der Maßnahme')),
-            ('tn_count',           _('Anzahl der Teilnehmer')),
-            ('tn_leader_count',    _('Anzahl der Gruppenleitung')),
-            ('contact_person',     _('Ansprechpartner/in')),
-            ('contact_email',      _('E-Mail')),
-            ('contact_phone',      _('Telefon')),
-        ]:
+        # Jeder Name aus REQUIRED_MEASURE_FIELDS braucht hier eine Beschriftung.
+        # Fehlt eine, fällt das beim ersten unvollständigen Antrag als KeyError auf.
+        labels = {
+            'partner_id':         _('Antragsteller (Organisation)'),
+            'grant_type_id':      _('Förderart'),
+            'measure_name':       _('Maßnahmenbezeichnung'),
+            'measure_start':      _('Beginn der Maßnahme'),
+            'measure_start_time': _('Uhrzeit Beginn'),
+            'measure_end':        _('Ende der Maßnahme'),
+            'measure_end_time':   _('Uhrzeit Ende'),
+            'measure_zip':        _('PLZ Maßnahmenort'),
+            'measure_location':   _('Ort der Maßnahme'),
+            'tn_count':           _('Anzahl der Teilnehmer'),
+            'tn_leader_count':    _('Anzahl der Gruppenleitung'),
+            'contact_person':     _('Ansprechpartner/in'),
+            'contact_email':      _('E-Mail'),
+            'contact_phone':      _('Telefon'),
+        }
+        for field in REQUIRED_MEASURE_FIELDS:
             if not _filled(field):
-                errors[field] = _('%s ist ein Pflichtfeld.') % label
+                errors[field] = _('%s ist ein Pflichtfeld.') % labels[field]
 
         # Formatprüfung der E-Mail zusätzlich zur Pflichtprüfung: an diese Adresse
         # geht die Eingangsbestätigung — eine Adresse mit Tippfehler bleibt sonst
@@ -207,22 +259,29 @@ class KjrWebsiteController(http.Controller):
                 'An diese Adresse senden wir die Bestätigung zu Ihrem Antrag.'
             )
 
-        # Bestätigungen am Formularende — ohne diese kein Absenden.
-        for field, message in [
-            ('confirm_privacy', _(
+        # Bestätigungen am Formularende; ohne diese kein Absenden.
+        # Geprüft wird über REQUIRED_CONFIRMATIONS, damit die Konstante die
+        # einzige Quelle bleibt: eine vierte Bestätigung, die nur hier stünde,
+        # wäre vom Test nicht erfasst und der Antragsteller bekäme eine
+        # Fehlermeldung zu einem Haken, den der Browser nie als Pflicht gezeigt
+        # hat. Jeder Name aus der Konstante braucht hier eine Meldung; fehlt
+        # eine, fällt das beim ersten unvollständigen Antrag als KeyError auf.
+        confirmation_messages = {
+            'confirm_privacy': _(
                 'Bitte bestätigen Sie, dass Sie die Datenschutzhinweise gelesen haben '
                 'und damit einverstanden sind.'
-            )),
-            ('confirm_guidelines', _(
+            ),
+            'confirm_guidelines': _(
                 'Bitte bestätigen Sie, dass Sie die Zuschussrichtlinien gelesen haben.'
-            )),
-            ('confirm_truthful', _(
+            ),
+            'confirm_truthful': _(
                 'Bitte bestätigen Sie, dass alle Angaben vollständig sind und der '
                 'Wahrheit entsprechen.'
-            )),
-        ]:
+            ),
+        }
+        for field in REQUIRED_CONFIRMATIONS:
             if not post.get(field):
-                errors[field] = message
+                errors[field] = confirmation_messages[field]
 
         valid_member_ids = kjr_members.ids
         partner_id = _i('partner_id')
@@ -386,18 +445,27 @@ class KjrWebsiteController(http.Controller):
         Papieranträge müssen unvollständig erfassbar sein).
         """
         app_model = request.env['kjr.grant.application']
-        raw_iban = (post.get('payment_iban') or '').strip()
-        if not raw_iban:
-            errors['payment_iban'] = _(
+        # Vorhandensein über REQUIRED_BANK_FIELDS prüfen, damit die Konstante die
+        # einzige Quelle bleibt und der Test alle Pflichtfelder abdeckt. Jeder
+        # Name aus der Konstante braucht hier eine Meldung; fehlt eine, fällt das
+        # beim ersten unvollständigen Antrag als KeyError auf.
+        bank_messages = {
+            'payment_iban': _(
                 'Bitte geben Sie die IBAN des Kontos an, auf das der Zuschuss '
                 'überwiesen werden soll. Ohne Bankverbindung kann der Antrag nicht '
                 'ausgezahlt werden.'
-            )
-        if not (post.get('payment_account_holder') or '').strip():
-            errors['payment_account_holder'] = _(
+            ),
+            'payment_account_holder': _(
                 'Bitte geben Sie den Kontoinhaber genau so an, wie er bei der Bank '
                 'hinterlegt ist.'
-            )
+            ),
+        }
+        for field in REQUIRED_BANK_FIELDS:
+            if not (post.get(field) or '').strip():
+                errors[field] = bank_messages[field]
+        # Formatprüfungen danach: sie überschreiben die Pflichtmeldung nur, wenn
+        # überhaupt etwas eingegeben wurde.
+        raw_iban = (post.get('payment_iban') or '').strip()
         if raw_iban:
             iban = app_model._normalize_bank_code(raw_iban)
             expected_len = IBAN_LENGTHS.get(iban[:2])

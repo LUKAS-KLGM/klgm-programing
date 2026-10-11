@@ -2,16 +2,41 @@
 <odoo>
     <data noupdate="1">
         <!-- White-Label: frei pflegbare Stammdaten (Kategorien/Lager) -->
+        <!-- ICONS: Odoo 19 liefert FontAwesome 4.7.0 aus
+             (addons/web/static/src/libs/fontawesome/css/font-awesome.css, Kopfzeile
+             "Based on Font Awesome 4.7.0", Schriftdatei fontawesome-webfont.woff2?v=4.7.0).
+             Hier gehoeren deshalb AUSSCHLIESSLICH FA-4-Klassen hinein. Die FA-5/6-Namen
+             fa-futbol und fa-utensils existieren in 4.7.0 NICHT und rendern als leerer
+             Kasten; richtig sind die FA-4-Namen fa-futbol-o und fa-cutlery. Jede neue
+             Klasse vor dem Eintragen gegen die oben genannte CSS pruefen:
+             grep -q "^\.KLASSENNAME:before" font-awesome.css -->
         <record id="cat_vehicle" model="kjr.rental.category"><field name="name">Fahrzeuge / Bus</field><field name="sequence">10</field><field name="icon">fa-bus</field></record>
-        <record id="cat_tent" model="kjr.rental.category"><field name="name">Zelte</field><field name="sequence">20</field><field name="icon">fa-home</field></record>
-        <record id="cat_tech" model="kjr.rental.category"><field name="name">Technik</field><field name="sequence">30</field><field name="icon">fa-volume-up</field></record>
+        <!-- fa-bed statt fa-home: fa-home zeigt ein Haus und fuehrt bei Zelten in die
+             Irre. Ein Zelt-/Camping-Glyph gibt es in FA 4.7.0 nicht (fa-tent und
+             fa-campground: beide nicht vorhanden), fa-bed steht fuer Uebernachtungsmaterial. -->
+        <record id="cat_tent" model="kjr.rental.category"><field name="name">Zelte</field><field name="sequence">20</field><field name="icon">fa-bed</field></record>
+        <!-- fa-sliders statt fa-volume-up: der Lautstaerkeregler passt nur zur
+             Beschallung, die Kategorie umfasst aber Ton UND Licht. fa-sliders zeigt
+             Regler/Mischpult und deckt beides ab. -->
+        <record id="cat_tech" model="kjr.rental.category"><field name="name">Technik</field><field name="sequence">30</field><field name="icon">fa-sliders</field></record>
         <record id="cat_sport" model="kjr.rental.category"><field name="name">Sport</field><field name="sequence">40</field><field name="icon">fa-futbol-o</field></record>
         <record id="cat_kitchen" model="kjr.rental.category"><field name="name">Küche</field><field name="sequence">50</field><field name="icon">fa-cutlery</field></record>
         <record id="cat_games" model="kjr.rental.category"><field name="name">Spielgeräte</field><field name="sequence">60</field><field name="icon">fa-puzzle-piece</field></record>
-        <record id="cat_other" model="kjr.rental.category"><field name="name">Sonstiges</field><field name="sequence">99</field></record>
-        <record id="loc_sonthofen" model="kjr.rental.location"><field name="name">Lager Sonthofen</field><field name="sequence">10</field></record>
-        <record id="loc_immenstadt" model="kjr.rental.location"><field name="name">Lager Immenstadt</field><field name="sequence">20</field></record>
-        <record id="loc_oberstdorf" model="kjr.rental.location"><field name="name">Lager Oberstdorf</field><field name="sequence">30</field></record>
+        <!-- fa-cube ergaenzt: "Sonstiges" war die einzige Kategorie ohne Icon, und die
+             Katalogueberschrift zeichnet das Symbol nur bei gesetztem Icon
+             (views/website_templates.xml, t-if="cat.icon"). fa-cube ist dasselbe
+             Rueckfallsymbol, das die Artikelkachel ohnehin schon verwendet. -->
+        <record id="cat_other" model="kjr.rental.category"><field name="name">Sonstiges</field><field name="sequence">99</field><field name="icon">fa-cube</field></record>
+        <!-- Lagerorte: bewusst neutrale Platzhalter. Die echten Lagerorte sind
+             Instanzdaten und werden in der Instanz unter Verleih > Lager gepflegt
+             bzw. umbenannt; Ortsnamen eines einzelnen Betreibers gehoeren nicht in
+             ein Modul, das an weitere Jugendringe ausgeliefert wird.
+             Die XML-IDs tragen aus historischen Gruenden noch Ortsnamen und bleiben
+             bewusst stehen: ein Umbenennen wuerde auf Bestandsinstanzen Dubletten
+             erzeugen und die ref=-Verweise der Artikel unten brechen. -->
+        <record id="loc_sonthofen" model="kjr.rental.location"><field name="name">Hauptlager</field><field name="sequence">10</field></record>
+        <record id="loc_immenstadt" model="kjr.rental.location"><field name="name">Nebenlager</field><field name="sequence">20</field></record>
+        <record id="loc_oberstdorf" model="kjr.rental.location"><field name="name">Außenlager</field><field name="sequence">30</field></record>
 
         <!-- Service-Produkte für Rechnungszeilen (Steuer-/Kontenfindung) -->
         <record id="product_rental_fee" model="product.product">
@@ -40,11 +65,10 @@
         </record>
 
         <!-- ── Beispiel-Verleihartikel ────────────────────────────────────
-             ACHTUNG PREISE: Für die folgenden Artikel ist in den Unterlagen des KJR
-             KEIN Preis belegt. Geprüft am 18.08.2026 gegen den Vault:
-             "08 Kundenprojekte/01 KJR Oberallgäu/KJR-Website-Inhalte/04d_Verleih/
-             INHALT.md" (die vollständige Verleih-Preisliste der Live-Seite) und
-             "KJR Website - Ist-Zustand 2026-08-17.md", Abschnitt 5 ("Verleih") —
+             ACHTUNG PREISE: Für die folgenden Artikel ist in den Projektunterlagen
+             KEIN Preis belegt. Geprüft am 18.08.2026 gegen die Projektunterlagen zum
+             Verleih (vollständige Verleih-Preisliste der Live-Seite sowie die
+             Ist-Aufnahme der bestehenden Website vom 17.08.2026, Abschnitt "Verleih") —
              dort steht ausdrücklich, dass 9-Sitzer Bus, Gruppenzelt, Feldküche,
              Sportgeräte-Set und PA-Anlage gegenüber der Live-Seite ZUSÄTZLICH
              angelegt wurden. Auch Großspielgeräte (Kubb, Twister XXL) kommen in der
@@ -55,10 +79,10 @@
              Zusätzlich stehen die Artikel auf website_published=False (Feld-Default
              wäre True): es sind Beispieldaten, die ohne bestätigte Preise nicht im
              öffentlichen Katalog unter /service/verleih erscheinen dürfen.
-             TODO(KJR): echte Preise und Kautionen eintragen, danach "Auf Website"
+             TODO Betreiber: echte Preise und Kautionen eintragen, danach "Auf Website"
              aktivieren. -->
-        <!-- TODO(KJR): Die Preisliste (04d_Verleih/INHALT.md, Abschnitt "Fahrzeuge")
-             kennt einen "Kleinbus 9-Sitzer" zu "bis 100 km: 35 € · ab 100 km:
+        <!-- TODO Betreiber: Die Preisliste der Projektunterlagen (Abschnitt
+             "Fahrzeuge") kennt einen "Kleinbus 9-Sitzer" zu "bis 100 km: 35 € · ab 100 km:
              0,35 €/km". Dieser Staffeltarif lässt sich mit den vorhandenen Feldern
              NICHT korrekt abbilden: das Preismodell "Grundgebühr + Kilometerpreis"
              rechnet den Kilometersatz ab dem ersten Kilometer, ein Freikilometer-
@@ -76,7 +100,8 @@
             <field name="name">Gruppenzelt (10 Pers.)</field><field name="category_id" ref="cat_tent"/>
             <field name="location_id" ref="loc_sonthofen"/><field name="quantity_total">4</field>
             <field name="price_per_day">0.0</field><field name="price_member_per_day">0.0</field>
-            <field name="deposit">0.0</field><field name="icon">fa-home</field>
+            <!-- fa-bed im Gleichlauf mit cat_tent, siehe Begruendung oben. -->
+            <field name="deposit">0.0</field><field name="icon">fa-bed</field>
             <field name="website_published" eval="False"/>
         </record>
         <record id="item_pa" model="kjr.rental.item">
@@ -104,8 +129,8 @@
              Steht wie alle Seed-Daten unter noupdate="1" - der Datensatz wird beim
              Upgrade EINMAL angelegt und danach nie wieder überschrieben, die
              Geschäftsstelle kann ihn also gefahrlos anpassen.
-             TODO KJR: Tagespreis, Mitgliedspreis und Kaution sind Platzhalter (0,00 €)
-             und müssen vom Kreisjugendring bestätigt werden. Solange sie unbestätigt
+             TODO Betreiber: Tagespreis, Mitgliedspreis und Kaution sind Platzhalter
+             (0,00 €) und müssen vom Betreiber bestätigt werden. Solange sie unbestätigt
              sind, ist der Artikel bewusst NICHT auf der Website veröffentlicht
              (website_published = False), damit online keine falschen Preise stehen.
              Nach der Freigabe: Preise eintragen und "Auf Website" aktivieren. -->

@@ -166,8 +166,9 @@
                         <p class="mt-4">
                             <small class="text-muted">
                                 Diese Teilnahmeliste verbleibt beim Träger der Maßnahme und ist dort
-                                fünf Jahre aufzubewahren (ANBest-P). Sie ist dem Kreisjugendring
-                                Oberallgäu nur auf Anforderung im Rahmen einer Prüfung vorzulegen.
+                                fünf Jahre aufzubewahren (ANBest-P). Sie ist nur auf
+                                Anforderung im Rahmen einer Prüfung bei
+                                <span t-field="o.company_id.name"/> vorzulegen.
                             </small>
                         </p>
                     </div>

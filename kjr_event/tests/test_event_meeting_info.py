@@ -25,7 +25,7 @@ class TestKjrEventMeetingInfo(TransactionCase):
     def test_fields_storable_and_readable(self):
         """Alle drei Felder lassen sich setzen und wieder auslesen."""
         self.event.write({
-            'kjr_meeting_point': 'Vordereingang des Landratsamtes Oberallgäu.',
+            'kjr_meeting_point': 'Vordereingang des Verwaltungsgebäudes.',
             'kjr_important_note': '<p>Bitte Schüler*innen-Ausweis mitbringen.</p>',
             'kjr_website_url': 'https://www.europapark.de/de/park',
         })

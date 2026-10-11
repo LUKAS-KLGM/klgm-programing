@@ -46,6 +46,67 @@
             <field name="value">0</field>
         </record>
 
+        <!-- E1 (Arbeitsliste 2026-10-11): Auslieferungszustand des Schalters
+             "Rechnung automatisch erzeugen" (event.event.kjr_auto_invoice) fuer
+             NEUE Veranstaltungen. '0' = aus (Default), damit kein Bestandskunde
+             nach einem Update ungefragt Rechnungen erzeugt.
+
+             Abgrenzung zu den beiden bestehenden Rechnungsparametern oben:
+               * kjr_event.auto_invoice    - WANN wird eine Rechnung ERZEUGT
+                                             (Standard fuer neue Veranstaltungen).
+               * kjr_event.invoice_auto_post - werden erzeugte Rechnungen gebucht?
+               * kjr_event.invoice_auto_send - werden gebuchte Rechnungen gemailt?
+             Die beiden letzteren gelten nur fuer die von Hand ausgeloeste
+             Sammelaktion. Der Automatikpfad erzeugt ausschliesslich Entwuerfe: er
+             ruft den Rechnungskern mit allow_post=False und allow_send=False auf
+             und wertet BEIDE Parameter bewusst NICHT aus - Erzeugen, Buchen und
+             Versenden bleiben getrennte Entscheidungen. Eine gebuchte Rechnung
+             traegt eine Nummer der Rechnungssequenz und ist nur noch ueber eine
+             Gutschrift zurueckzudrehen.
+
+             Bestandsveranstaltungen bleiben auch nach dem Einschalten dieses
+             Parameters aus: er ist nur der Vorbelegungswert neuer Datensaetze.
+             Wer die Automatik fuer laufende Veranstaltungen will, schaltet sie je
+             Veranstaltung im Formular ein (Reiter KJR, Gruppe "Zahlung"). Eine
+             Spalte in der Veranstaltungsliste gibt es dafuer nicht; dieses Modul
+             erbt keine Listenansicht von event.event. -->
+        <record id="param_auto_invoice" model="ir.config_parameter">
+            <field name="key">kjr_event.auto_invoice</field>
+            <field name="value">0</field>
+        </record>
+
+        <!-- E2d (Arbeitsliste 2026-10-11): Altersklassen des Statistik-Exports.
+             Ausgeliefert werden die sechs bisher fest einprogrammierten Klassen,
+             damit die Geschaeftsstelle ein gueltiges Muster zum Abwandeln
+             vorfindet. Die Meldevorlage des Landesamts kennt fuenf Klassen; welche
+             Einteilung gilt, ist eine offene Kundenfrage - deshalb konfigurierbar
+             statt geraten.
+
+             Format: JSON-Liste von Objekten, aufsteigend sortiert.
+               "von"   Untergrenze einschliesslich; fehlt sie, ist die Klasse nach
+                       unten offen (nur beim ERSTEN Eintrag erlaubt).
+               "bis"   Obergrenze einschliesslich; fehlt sie, ist die Klasse nach
+                       oben offen (nur beim LETZTEN Eintrag erlaubt).
+               "label" Spaltenbeschriftung; optional, wird sonst abgeleitet.
+             Die Klassen muessen lueckenlos aneinander anschliessen und sich nicht
+             ueberschneiden (naechstes "von" = vorheriges "bis" + 1) und den
+             gesamten Wertebereich abdecken: die erste Klasse beginnt bei 0 oder
+             ist nach unten offen, die letzte ist nach oben offen. Sonst fiele
+             eine Anmeldung ausserhalb der Klassen in keine Spalte und fehlte in
+             der Meldung lautlos.
+             Ein unbrauchbarer Wert fuehrt NICHT zu einer Teilauswertung: der
+             Export faellt auf die sechs Standardklassen zurueck und schreibt
+             eine Warnung ins Protokoll.
+
+             Beispiel fuenf Klassen (Muster des Landesamts, bitte vorher
+             freigeben lassen):
+             [{"bis": 5}, {"von": 6, "bis": 11}, {"von": 12, "bis": 17},
+              {"von": 18, "bis": 26}, {"von": 27}] -->
+        <record id="param_statistics_age_buckets" model="ir.config_parameter">
+            <field name="key">kjr_event.statistics_age_buckets</field>
+            <field name="value">[{"label": "Alter unter 6", "bis": 5}, {"label": "Alter 6 bis 9", "von": 6, "bis": 9}, {"label": "Alter 10 bis 13", "von": 10, "bis": 13}, {"label": "Alter 14 bis 17", "von": 14, "bis": 17}, {"label": "Alter 18 bis 26", "von": 18, "bis": 26}, {"label": "Alter 27 und älter", "von": 27}]</field>
+        </record>
+
         <!-- DSGVO / Befund K5 des Datenschutz-Audits vom 21.08.2026:
              Aufbewahrungsfrist fuer Anmeldedaten in JAHREN, gerechnet ab dem ENDE
              der Veranstaltung (nicht ab dem Anmeldedatum). Gezaehlt werden volle

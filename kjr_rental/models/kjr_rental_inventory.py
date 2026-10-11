@@ -54,8 +54,8 @@ class KjrRentalInventory(models.Model):
     replacement_summary = fields.Text(
         string='Beschaffungsvorschlag', compute='_compute_replacement',
         help='Vorschlagsliste mit Begründung je Artikel (Zustand, Alter, Buchwert). '
-             'Reine Auswertung als Entscheidungsgrundlage für die Geschäftsstelle — '
-             'es wird nichts bestellt und nichts am Bestand verändert.',
+             'Reine Auswertung als Entscheidungsgrundlage für die Geschäftsstelle. '
+             'Es wird nichts bestellt und nichts am Bestand verändert.',
     )
 
     def action_open(self):
@@ -137,7 +137,7 @@ class KjrRentalInventory(models.Model):
         rows = [_(
             'Beschaffungsvorschlag aus der Inventur %(name)s (Stand: %(date)s)\n'
             'Grundlage: erfasster Zustand, Fehlbestand, Nutzungsdauer und Buchwert.\n'
-            'Die Liste ist ein Vorschlag — über Beschaffung, Menge und Zeitpunkt '
+            'Die Liste ist ein Vorschlag. Über Beschaffung, Menge und Zeitpunkt '
             'entscheidet die Geschäftsstelle.',
             name=self.display_name,
             date=format_date(self.env, fields.Date.context_today(self)),
@@ -184,7 +184,7 @@ class KjrRentalInventory(models.Model):
         lines = self._replacement_lines()
         action = {
             'type': 'ir.actions.act_window',
-            'name': _('Beschaffungsvorschlag – %s') % self.display_name,
+            'name': _('Beschaffungsvorschlag: %s') % self.display_name,
             'res_model': 'kjr.rental.inventory.line',
             'view_mode': 'list',
             'domain': [('id', 'in', lines.ids)],
@@ -247,7 +247,7 @@ class KjrRentalInventoryLine(models.Model):
     replace_suggested = fields.Boolean(
         string='Ersatz vorschlagen', compute='_compute_replacement',
         help='Aus Zustand, Fehlbestand, Nutzungsdauer oder Buchwert ergibt sich ein '
-             'Ersatzbedarf. Reiner Vorschlag — die Entscheidung trifft die '
+             'Ersatzbedarf. Reiner Vorschlag, die Entscheidung trifft die '
              'Geschäftsstelle.',
     )
     replace_qty = fields.Integer(
@@ -331,7 +331,7 @@ class KjrRentalInventoryLine(models.Model):
             elif aged:
                 # Nur Alter/Abschreibung: betroffen ist der gesamte gezählte Bestand
                 # dieses Artikels. Das ist die Obergrenze des Bedarfs —
-                # TODO(KJR): ob wirklich der komplette Bestand ersetzt wird oder nur
+                # TODO Betreiber: ob wirklich der komplette Bestand ersetzt wird oder nur
                 # ein Teil, entscheidet die Geschäftsstelle bei der Beschaffung.
                 rec.replace_qty = max(rec.qty_counted or 0, 0)
             else:

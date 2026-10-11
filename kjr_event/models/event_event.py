@@ -28,12 +28,13 @@ class EventEvent(models.Model):
     ], string='KJR-Art')
     kjr_min_age = fields.Integer(string='Mindestalter', help='0 = keine Prüfung.')
     kjr_max_age = fields.Integer(string='Höchstalter', help='0 = keine Obergrenze.')
-    # E13 – Mindestanzahl Teilnehmer (Nupian-Parität; Odoo kennt nativ nur ein Maximum)
+    # E13 – Mindestanzahl Teilnehmer (Parität zum Altsystem; Odoo kennt nativ nur ein Maximum)
     kjr_seats_min = fields.Integer(
         string='Mindestanzahl Teilnehmer',
         help='0 = keine Mindestanzahl. Odoo hat serienmäßig nur ein Sitzplatz-Maximum '
-             '(seats_max) – dieses Feld ergänzt die von Nupian gewohnte Mindestanzahl, '
-             'z. B. um zu entscheiden, ob eine Fahrt bei zu wenig Anmeldungen abgesagt wird.',
+             '(seats_max). Dieses Feld ergänzt eine Mindestanzahl, unterhalb derer die '
+             'Durchführung zu prüfen ist, z. B. um zu entscheiden, ob eine Fahrt bei zu '
+             'wenig Anmeldungen abgesagt wird.',
     )
     kjr_seats_min_reached = fields.Boolean(
         string='Mindestanzahl erreicht',
@@ -85,7 +86,34 @@ class EventEvent(models.Model):
         'product.product',
         string='Schulungsprodukt (Rechnung)',
         help='Produkt, das bei zahlungspflichtigen Schulungsanmeldungen zur Rechnungserzeugung '
-             'verwendet wird, wenn keine Ticket-/Verkaufslogik (event_sale) greift.',
+             'verwendet wird, wenn keine Verkaufslogik (event_sale) greift.',
+    )
+
+    # E1 (Arbeitsliste 2026-10-11) – Rechnung automatisch bei Bestätigung erzeugen.
+    #
+    # Bewusst ein Schalter JE VERANSTALTUNG und kein globaler Automatismus: ob für
+    # eine Maßnahme überhaupt fakturiert wird, hängt an der einzelnen Maßnahme
+    # (Ferienprogramm kostenfrei, Juleica-Schulung kostenpflichtig). Der
+    # Auslieferungszustand kommt aus einem Systemparameter und steht auf AUS, damit
+    # kein Bestandskunde nach einem Update ungefragt Rechnungen erzeugt.
+    #
+    # Bestandsveranstaltungen haben nach dem Update False (= aus); es gibt bewusst
+    # KEIN Migrationsskript, das sie massenhaft einschaltet. Wer die Automatik für
+    # laufende Veranstaltungen will, schaltet sie je Veranstaltung im Formular ein
+    # (Reiter KJR, Gruppe "Zahlung"). Eine Spalte in der Veranstaltungsliste gibt es
+    # dafür NICHT: dieses Modul erbt keine Listenansicht von event.event, eine
+    # Mehrfachbearbeitung ist auf diesem Weg also nicht möglich.
+    kjr_auto_invoice = fields.Boolean(
+        string='Rechnung automatisch erzeugen',
+        default=lambda self: self._kjr_default_auto_invoice(),
+        help='Wenn aktiv, wird die Schulungsrechnung als Entwurf erzeugt, sobald eine '
+             'Anmeldung zu dieser Veranstaltung bestätigt wird. Gebucht und versendet '
+             'wird sie weiterhin nur bewusst von Hand (Aktion "KJR: Schulungsrechnung '
+             'versenden"); die Systemparameter für Auto-Buchen und Auto-Versand gelten '
+             'nur für die Sammelaktion. Voraussetzung sind die Zahlungspflicht, ein hinterlegtes '
+             'Schulungsprodukt mit Preis über 0 und ein Kontakt an der Anmeldung. '
+             'Der Auslieferungszustand für NEUE Veranstaltungen steht im '
+             'Systemparameter kjr_event.auto_invoice (ausgeliefert: aus).',
     )
 
     # E4 – Kooperationspartner
@@ -113,24 +141,24 @@ class EventEvent(models.Model):
              'Anpassen → Sidebar-Blöcke → Dokumente).',
     )
 
-    # E12 – Treffpunkt, Wichtig, Webseite (Nupian-Parität)
+    # E12 – Treffpunkt, Wichtig, Webseite (Parität zum Altsystem)
     kjr_meeting_point = fields.Text(
         string='Treffpunkt',
         help='Abfahrts-/Treffpunkt, falls abweichend vom eigentlichen Veranstaltungsort '
-             '(z. B. "Bahnhof Sonthofen, Zustieg auch in Immenstadt/Kempten möglich"). '
+             '(z. B. "Bahnhof, Zustieg auch an weiteren Haltestellen möglich"). '
              'Wird auf der Website im Ort-Block der Seitenleiste angezeigt.',
     )
     kjr_important_note = fields.Html(
         string='Wichtig',
-        help='Auffällig hervorgehobener Hinweis (z. B. "Bitte 100€ in bar mitgeben") – wird '
-             'immer sichtbar oberhalb der Beschreibung auf der Website angezeigt, unabhängig '
-             'von den an-/abschaltbaren Seitenleisten-Blöcken.',
+        help='Auffällig hervorgehobener Hinweis (z. B. "Bitte 100€ in bar mitgeben"). '
+             'Wird immer sichtbar oberhalb der Beschreibung auf der Website angezeigt, '
+             'unabhängig von den an-/abschaltbaren Seitenleisten-Blöcken.',
     )
     kjr_website_url = fields.Char(
         string='Webseite',
         help='Weiterführender externer Link (z. B. zur Webseite des Ausflugsziels). '
              'Nicht zu verwechseln mit dem internen Odoo-Seiten-Link (website_url) oder der '
-             'Online-Event-URL (event_url) – dieser Link ist rein informativ.',
+             'Online-Event-URL (event_url): dieser Link ist rein informativ.',
     )
 
     @api.depends('kjr_event_type')
@@ -279,6 +307,18 @@ class EventEvent(models.Model):
         return max(limit, 1)
 
     @api.model
+    def _kjr_default_auto_invoice(self):
+        """Auslieferungszustand des Schalters ``kjr_auto_invoice`` fuer NEUE Veranstaltungen.
+
+        Gelesen wird der Systemparameter ``kjr_event.auto_invoice`` (ausgeliefert
+        '0' = aus). Die Auswertung laeuft ueber den bereits vorhandenen Helfer
+        ``event.registration._kjr_param_bool`` (models/kjr_event_document.py) -
+        damit gilt dieselbe Wahrheitsliste wie bei allen anderen
+        kjr_event-Schaltern und es entsteht keine zweite Auswertung.
+        """
+        return self.env['event.registration']._kjr_param_bool('kjr_event.auto_invoice', False)
+
+    @api.model
     def _kjr_anonymize_expired_registrations(self, registrations):
         """Leert die personenbezogenen Anteile der übergebenen Anmeldungen.
 
@@ -317,6 +357,20 @@ class EventEvent(models.Model):
         #                          läuft die ganze Anonymisierung ins Leere.
         #                          res.partner selbst wird NICHT angefasst (wird von
         #                          Buchungen/Rechnungen mitbenutzt, s. Docstring des Crons).
+        #
+        # BEWUSST NICHT GELEERT: kjr_gender (freiwillige Angabe zum Geschlecht,
+        # eingeführt 19.0.5.7.0). Gleiche Begründung wie bei
+        # kjr.grant.participant.gender (dort sind age, gender und role_code
+        # ausdrücklich von der Anonymisierung ausgenommen): es ist ein reines
+        # Aggregatmerkmal, das nur gezählt und nie einzeln ausgewiesen wird. Die
+        # Begründung trägt hier genauso, weil dieselbe Anonymisierung Name,
+        # Geburtsdatum, Kontaktdaten UND partner_id mit leert - danach lässt sich
+        # die Stufe keiner Person mehr zuordnen. Gebraucht wird sie weiter für die
+        # gesetzliche Statistikmeldung vergangener Jahre, die nach der
+        # Anonymisierung noch nachgefordert werden kann.
+        # Anders als kjr_age braucht kjr_gender dafür KEINEN Snapshot: es ist ein
+        # einfaches Selection-Feld und kein stored compute auf birthdate, wird von
+        # der Anonymisierung also gar nicht erst neu berechnet.
         blank_fields = (
             'birthdate', 'guardian_name', 'guardian_phone', 'emergency_contact',
             'dietary_requirements', 'dietary_note', 'notes',
