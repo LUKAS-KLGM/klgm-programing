@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- /payment/status: Bei Ueberweisung (payment_custom) ist die Zahlung sofort
+         "pending" und die Seite leitet nach dem ersten Poll auf die Bestell-
+         bestaetigung weiter. Bis dahin blitzte "Ihre Zahlung abschliessen" mit
+         Bankverbindung auf. Der Block bleibt im DOM (das Poll-Skript haengt an
+         div[name=o_payment_status]), wird aber ausgeblendet; stattdessen ein
+         Wartehinweis mit Link zur Bestaetigung, falls das Skript nicht laeuft. -->
+    <template id="payment_status_kjr_quiet"
+              inherit_id="payment.payment_status"
+              name="KJR: Zwischenseite Zahlungsstatus ausblenden">
+        <xpath expr="//div[@name='o_payment_status']" position="attributes">
+            <attribute name="t-attf-class">#{'d-none' if tx.provider_id.sudo().code == 'custom' else ''}</attribute>
+        </xpath>
+        <xpath expr="//div[@name='o_payment_status']" position="after">
+            <div t-if="tx.provider_id.sudo().code == 'custom'" class="text-center my-5"
+                 name="o_kjr_payment_wait">
+                <i class="fa fa-circle-o-notch fa-spin fa-2x text-muted" role="img" aria-label="Bitte warten"/>
+                <p class="mt-3 mb-1">Ihre Anmeldung wird abgeschlossen …</p>
+                <a t-att-href="tx.landing_route" class="small">Weiter zur Bestätigung</a>
+            </div>
+        </xpath>
+    </template>
+
+</odoo>

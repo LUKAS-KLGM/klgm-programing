@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Angebots-/Auftrags-PDF fuer Bestellungen mit Kursanmeldungen:
+         Reservierungsbestaetigung (unbezahlt, Status Angebot) bzw.
+         Anmeldebestaetigung (bestaetigt). Die Kopfzeilen (Titel, Nummer,
+         Datum) kommen aus dem DIN-5008-Layout, daher priority 20: die Vorlage
+         wird nach l10n_din5008_sale angewendet. -->
+    <template id="report_saleorder_document_kjr_event"
+              inherit_id="sale.report_saleorder_document"
+              priority="20"
+              name="KJR: Reservierungsbestaetigung fuer Kursanmeldungen">
+
+        <xpath expr="//t[@t-set='din5008_document_title']" position="after">
+            <t t-set="kjr_event_order"
+               t-value="doc._name == 'sale.order' and not doc.env.context.get('proforma') and doc._kjr_is_event_order()"/>
+            <!-- "reserviert", solange nicht bezahlt: Angebot oder offene Ueberweisung -->
+            <t t-set="kjr_reserved"
+               t-value="kjr_event_order and not doc._kjr_is_paid() and (doc.state in ('draft', 'sent') or bool(doc._kjr_pending_transfer_tx()))"/>
+            <t t-set="kjr_deadline" t-value="kjr_event_order and doc._kjr_payment_deadline()"/>
+
+            <t t-if="kjr_event_order" t-set="din5008_document_title">
+                <span>
+                    <t t-if="kjr_reserved">Reservierungsbestätigung</t>
+                    <t t-else="">Anmeldebestätigung</t>
+                </span>
+            </t>
+
+            <t t-if="kjr_event_order" t-set="din5008_document_information">
+                <div class="information_block">
+                    <table>
+                        <tr>
+                            <td><t t-if="kjr_reserved">Reservierungsnr.:</t><t t-else="">Anmeldenr.:</t></td>
+                            <td><div t-field="doc.name"/></td>
+                        </tr>
+                        <tr t-if="doc.date_order">
+                            <td>Datum:</td>
+                            <td><div t-field="doc.date_order" t-options="{'widget': 'date'}"/></td>
+                        </tr>
+                        <tr t-if="kjr_reserved and kjr_deadline">
+                            <td>Reserviert bis:</td>
+                            <td><div t-out="kjr_deadline" t-options="{'widget': 'date'}"/></td>
+                        </tr>
+                        <tr t-if="doc.client_order_ref">
+                            <td>Ihre Referenz:</td>
+                            <td><div t-field="doc.client_order_ref"/></td>
+                        </tr>
+                    </table>
+                </div>
+            </t>
+
+            <!-- Kursanmeldungen werden nicht geliefert: nur eine abweichende
+                 Rechnungsadresse zeigen, keine "Lieferadresse". -->
+            <t t-if="kjr_event_order" t-set="din5008_address_block">
+                <tr t-if="doc.partner_invoice_id != doc.partner_id.commercial_partner_id">
+                    <td class="shipping_address">
+                        <span class="fw-bold">Rechnungsadresse:</span>
+                        <address t-esc="doc.partner_invoice_id"
+                                 t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True}'/>
+                    </td>
+                </tr>
+            </t>
+        </xpath>
+
+        <!-- Titel im Standard-Layout (falls das DIN-Layout einmal abgeschaltet wird) -->
+        <xpath expr="//t[@t-set='layout_document_title']" position="after">
+            <t t-if="kjr_event_order" t-set="layout_document_title">
+                <span t-if="kjr_reserved">Reservierungsbestätigung </span>
+                <span t-else="">Anmeldebestätigung </span>
+                <span t-field="doc.name"/>
+            </t>
+        </xpath>
+
+        <xpath expr="//table[hasclass('o_main_table')]" position="before">
+            <div t-if="kjr_event_order" name="kjr_event_intro" class="mb-3">
+                <p t-if="kjr_reserved">
+                    Guten Tag, vielen Dank für Ihre Anmeldung. Wir haben die folgenden Plätze für Sie reserviert.
+                    Die Anmeldung wird verbindlich, sobald der Teilnahmebeitrag bei uns eingegangen ist.
+                </p>
+                <p t-else="">
+                    Guten Tag, vielen Dank für Ihre Anmeldung. Die folgenden Plätze sind verbindlich für Sie gebucht.
+                </p>
+            </div>
+        </xpath>
+
+        <!-- Zeile: Kursname statt "Standard", dazu Termin, Ort und Teilnehmende -->
+        <xpath expr="//td[@name='td_product_name']/span[@t-field='line.name']" position="replace">
+            <t t-if="line.event_id">
+                <div>
+                    <strong t-out="line.event_id.name"/>
+                    <t t-if="line._kjr_ticket_suffix()"> (<t t-out="line._kjr_ticket_suffix()"/>)</t>
+                </div>
+                <div t-if="line._kjr_event_when()" class="text-muted" t-out="line._kjr_event_when()"/>
+                <div t-if="line.event_id.address_inline" class="text-muted" t-out="line.event_id.address_inline"/>
+                <t t-set="kjr_attendees" t-value="line._kjr_attendee_names()"/>
+                <div t-if="kjr_attendees" class="mt-1">
+                    <t t-if="len(kjr_attendees) == 1">Teilnehmer/in: </t>
+                    <t t-else="">Teilnehmende: </t>
+                    <t t-out="', '.join(kjr_attendees)"/>
+                </div>
+            </t>
+            <span t-else="" t-field="line.name">Bacon Burger</span>
+        </xpath>
+
+        <!-- Zahlungshinweis unter den Summen -->
+        <xpath expr="//div[@name='so_total_summary']" position="after">
+            <t t-if="kjr_event_order">
+                <t t-set="kjr_tx" t-value="doc._kjr_pending_transfer_tx()"/>
+                <!-- kompakt (zwei Spalten), damit die Bestaetigung auf eine Seite passt -->
+                <div t-if="kjr_tx" name="kjr_transfer_notice" class="row mt-3">
+                    <div class="col-6">
+                        <p class="mb-0">
+                            <strong>Zahlung per Überweisung:</strong>&#160;
+                            Bitte überweisen Sie den Gesamtbetrag von <span t-field="doc.amount_total"/>
+                            <t t-if="kjr_deadline">bis zum <span t-out="kjr_deadline" t-options="{'widget': 'date'}"/> </t>
+                            auf das nebenstehende Konto. Erst mit Zahlungseingang ist der Platz verbindlich gebucht.
+                        </p>
+                    </div>
+                    <div class="col-6">
+                        <table class="table table-sm table-borderless w-auto mb-0">
+                            <t t-foreach="doc._kjr_transfer_accounts()[:1]" t-as="acc">
+                                <tr t-foreach="acc._kjr_transfer_rows()" t-as="row">
+                                    <td class="fw-bold py-0 pe-3" t-out="row[0]"/>
+                                    <td class="py-0" t-out="row[1]"/>
+                                </tr>
+                            </t>
+                            <tr>
+                                <td class="fw-bold py-0 pe-3">Verwendungszweck</td>
+                                <td class="py-0"><strong t-out="kjr_tx._get_communication() or doc.name"/> (bitte unbedingt angeben)</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                <p t-elif="doc._kjr_is_paid()" class="mt-3">
+                    Ihre Zahlung ist bei uns eingegangen, vielen Dank.
+                </p>
+            </t>
+        </xpath>
+
+    </template>
+
+    <!-- Dateiname des PDF ("Reservierungsbestätigung - S00005" statt "Angebot - S00005").
+         print_report_name ist uebersetzbar; ein XML-Record traefe nur en_US, deshalb
+         setzt die Funktion den Ausdruck in allen aktiven Sprachen (auch bei Updates). -->
+    <function model="ir.actions.report" name="_kjr_set_sale_print_report_name"/>
+
+</odoo>

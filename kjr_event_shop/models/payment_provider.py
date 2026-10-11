@@ -20,18 +20,12 @@ class PaymentProvider(models.Model):
             ]).bank_account_id
             if not accounts:
                 continue
-            blocks = []
-            for acc in accounts:
-                holder = acc.acc_holder_name or acc.partner_id.name or ''
-                rows = [
-                    ('Kontoinhaber', holder),
-                    ('IBAN', acc.acc_number),
-                    ('BIC', acc.bank_id.bic),
-                    ('Bank', acc.bank_id.name),
-                ]
-                blocks.append('<li><p>%s</p></li>' % '<br>'.join(
+            blocks = [
+                '<li><p>%s</p></li>' % '<br>'.join(
                     '<strong>%s:</strong> %s' % (label, escape(value))
-                    for label, value in rows if value))
+                    for label, value in acc._kjr_transfer_rows())
+                for acc in accounts
+            ]
             provider.pending_msg = (
                 '<div><h5>Bitte überweisen Sie den Betrag auf folgendes Konto</h5>'
                 '<h6>%s</h6><ul class="list-unstyled">%s</ul></div>'
