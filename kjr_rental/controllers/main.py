@@ -485,6 +485,18 @@ class KjrRentalWebsite(http.Controller):
                 methods=['POST'])
     def rental_checkout(self, **post):
         cart = self._get_cart()
+        # Warenkorb und Anfrage sind ein Formular: eine in der Tabelle geaenderte
+        # Menge kommt mit und gilt, auch ohne vorher "Aktualisieren" zu druecken.
+        if any(('qty_%d' % e['item_id']) in post for e in cart):
+            for entry in cart:
+                raw = post.get('qty_%d' % entry['item_id'])
+                if raw is not None:
+                    try:
+                        entry['qty'] = max(int(raw), 0)
+                    except (TypeError, ValueError):
+                        pass
+            cart = [e for e in cart if e['qty'] > 0]
+            self._save_cart(cart)
         errors = {}
         date_from = date_to = None
         try:
