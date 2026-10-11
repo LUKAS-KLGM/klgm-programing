@@ -66,6 +66,12 @@
                              t-attf-src="/web/image/kjr.facility/#{facility.id}/image_1920" alt="Bild"/>
                         <h1><t t-esc="facility.name"/></h1>
                         <p class="text-muted"><t t-esc="facility.description_short"/></p>
+                        <!-- Mobil steht die Eckdaten-Karte mit dem Anfrage-Knopf erst
+                             unter der langen Beschreibung. Deshalb dort zusaetzlich ein
+                             Knopf direkt unter der Ueberschrift; ab lg ausgeblendet,
+                             weil die Karte dann daneben steht. -->
+                        <a t-attf-href="/service/einrichtung/#{facility.id}/anfrage"
+                           class="btn btn-primary w-100 mb-4 d-lg-none">Buchung anfragen</a>
                         <div t-field="facility.description"/>
                     </div>
                     <div class="col-lg-5">
