@@ -16,6 +16,18 @@ Ablauf (Einzelheiten in der Spezifikation, Abschnitt 1 und 3):
 Datensparsamkeit: Referenz und Betreff der Anfrage tragen die Veranstaltung und
 die Anmeldenummer, NIE den Namen des Kindes (unterschriebene Anfragen und
 sign.log lassen sich nicht löschen). Ins Protokoll kommen nur IDs.
+
+Vorbefüllung (19.0.1.1.0, Vorlage v2): Name des Kindes, Veranstaltung mit
+Zeitraum und Name der/des Erziehungsberechtigten stehen schreibgeschützt im
+Dokument. Odoo Sign füllt sie beim Anlegen der Anfrage selbst
+(``sign.request._populate_constant_items``) über die Feldtypen aus
+``data/sign_item_type_data.xml``; Quelle ist ``reference_doc`` (diese
+Anmeldung). Diese Datei liefert dafür ``kjr_sign_event_label`` und prüft vor
+dem Anlegen, dass die Vorbefüllung vollständig wäre
+(``_kjr_sign_check_prefill``: Name der Eltern vorhanden und nicht der Name
+des Kindes). Werte bekommt nur die eigene Anfrage der Anmeldung
+(``models/sign_request_item.py``). Der Name des Kindes steht damit im Dokument,
+weiterhin aber NICHT in Referenz, Betreff oder Begleittext der Mail.
 """
 import logging
 from datetime import timedelta
@@ -47,6 +59,20 @@ SIGN_STATES_NEED_FORCE = ('refused', 'expired', 'canceled')
 # Felder, deren Änderung den Empfänger der Anfrage ändern kann
 # (_kjr_consent_recipient_email: guardian_email, email, partner_id.email).
 RECIPIENT_FIELDS = ('guardian_email', 'email', 'partner_id')
+# Felder der Anmeldung, die die Vorlage v2 schreibgeschützt in die Anfrage
+# übernimmt (Name des Kindes, Name der/des Erziehungsberechtigten). Ändern sie
+# sich bei offener Anfrage, stimmt das Dokument nicht mehr
+# (_kjr_sign_check_prefilled). Die Veranstaltung (Name, Termine) prüft
+# event.event.write.
+PREFILL_FIELDS = ('name', 'guardian_name')
+# auto_field des Feldtyps "Name der/des Erziehungsberechtigten"
+# (data/sign_item_type_data.xml). Enthält eine Vorlage ein schreibgeschütztes
+# Feld dieses Typs, ist guardian_name Pflicht für die Anfrage.
+GUARDIAN_AUTO_FIELD = 'guardian_name'
+# Schlüssel in cr.cache: IDs der Anmeldungen, deren Unterschriftsanfrage gerade
+# in _kjr_sign_create_request angelegt wird (Freigabe der Vorbefüllung, siehe
+# models/sign_request_item.py).
+PREFILL_CACHE_KEY = 'kjr_event_sign_prefill_registration_ids'
 
 SIGN_STATE_MAP = {
     'sent': 'sent',
@@ -55,6 +81,11 @@ SIGN_STATE_MAP = {
     'canceled': 'canceled',
     'expired': 'expired',
 }
+
+
+def _norm_name(value):
+    """Vergleichsform für Namen: Groß-/Kleinschreibung und Leerraum egal."""
+    return ' '.join(str(value or '').split()).casefold()
 
 
 class EventRegistration(models.Model):
@@ -89,6 +120,18 @@ class EventRegistration(models.Model):
         'Digitale Einwilligung aktiv', compute='_compute_kjr_sign_enabled',
         help='Technisch: Einwilligungsverfahren der Veranstaltung ist "Digitale '
              'Unterschrift". Steuert die Sichtbarkeit der Schaltflächen.')
+    # Quelle des schreibgeschützten Feldes "Veranstaltung" der Vorlage v2
+    # (sign.item.type kjr_event_sign.sign_item_type_kjr_event_label, auto_field).
+    # Nicht gespeichert; enthält nur Name und Zeitraum der Veranstaltung, keine
+    # Personendaten, deshalb ohne groups. compute_sudo, weil Odoo Sign den Wert
+    # mit sudo liest und die Anzeige nicht von den Rechten an der
+    # Veranstaltung abhängen soll.
+    kjr_sign_event_label = fields.Char(
+        'Veranstaltung (Einwilligungsformular)',
+        compute='_compute_kjr_sign_event_label', compute_sudo=True,
+        help='Technisch: Veranstaltung mit Zeitraum, wie sie im Einwilligungsformular '
+             '(Odoo Sign) vorbefüllt wird, z. B. "Sommerfreizeit, 01.08.2027 bis '
+             '07.08.2027".')
 
     # ------------------------------------------------------------------
     # Berechnungen
@@ -103,6 +146,22 @@ class EventRegistration(models.Model):
             if rec.kjr_sign_refused and state in ('none', 'canceled'):
                 state = 'refused'
             rec.kjr_sign_state = state
+
+    @api.depends('event_id.name', 'event_id.date_begin', 'event_id.date_end',
+                 'event_id.date_tz')
+    def _compute_kjr_sign_event_label(self):
+        """Format "<Veranstaltung>, <TT.MM.JJJJ> bis <TT.MM.JJJJ>" in der
+        Zeitzone der Veranstaltung; eintägig nur ein Datum, ohne Termin nur
+        der Name."""
+        for rec in self:
+            event = rec.event_id
+            if not event:
+                rec.kjr_sign_event_label = False
+                continue
+            period = rec._kjr_sign_event_period()
+            rec.kjr_sign_event_label = (
+                _('%(event)s, %(period)s', event=event.name, period=period)
+                if period else event.name)
 
     @api.depends('event_id')
     def _compute_kjr_sign_enabled(self):
@@ -195,7 +254,8 @@ class EventRegistration(models.Model):
                 })
                 rec._kjr_consent_activity(
                     _('Unterschriftsanfrage konnte nicht versendet werden'),
-                    _('Bitte Absender, Vorlage und E-Mail-Adresse prüfen und erneut senden.'))
+                    _('Bitte Absender, Vorlage, E-Mail-Adresse und Name der/des '
+                      'Erziehungsberechtigten prüfen und erneut senden.'))
 
     def _kjr_sign_mode_active(self):
         """Teilmenge, deren Veranstaltung jetzt im Modus 'sign' ist.
@@ -230,6 +290,7 @@ class EventRegistration(models.Model):
         role = template.sign_item_ids.responsible_id
         if len(role) != 1:
             raise UserError(_('Die Einwilligungsvorlage muss genau eine Rolle haben.'))
+        reg._kjr_sign_check_prefill(template)
         partner = reg._kjr_sign_guardian_partner()
         sender = reg._kjr_sign_sender_user()
         company = event.company_id or reg.company_id or self.env.company
@@ -242,7 +303,8 @@ class EventRegistration(models.Model):
             'reference': _('Einwilligung %(event)s, Anmeldung Nr. %(id)s',
                            event=event.name, id=reg.id),
             'subject': _('Bitte um Einwilligung: %s', event.name),
-            'message': reg._kjr_sign_message(company),
+            'message': reg._kjr_sign_message(
+                company, prefilled=any(template.sign_item_ids.mapped('constant'))),
             'reference_doc': 'event.registration,%d' % reg.id,
             'validity': reg._kjr_sign_validity(),
             'reminder_enabled': reminder_days > 0,
@@ -260,7 +322,18 @@ class EventRegistration(models.Model):
         # Odoo Sign ist gewollt (E6).
         SignRequest = self.env['sign.request'].with_user(sender).sudo().with_context(
             {k: v for k, v in self.env.context.items() if not k.startswith('default_')})
-        req = SignRequest.create(vals)
+        # Vorbefüllung freigeben (sign.request.item._get_auto_field_value in
+        # models/sign_request_item.py): nur für diese Anmeldung und nur während
+        # dieses create(). Bewusst über cr.cache und NICHT über den Kontext,
+        # den ein Aufruf per RPC frei setzen könnte.
+        prefill = self.env.cr.cache.setdefault(PREFILL_CACHE_KEY, set())
+        added = reg.id not in prefill
+        prefill.add(reg.id)
+        try:
+            req = SignRequest.create(vals)
+        finally:
+            if added:
+                prefill.discard(reg.id)
         # Erfolg: Fehlerzähler zurücksetzen. Sonst stünde er nach früheren
         # Fehlversuchen schon auf MAX_ATTEMPTS, und ein späterer Fehlschlag
         # (Neuversand nach Adresskorrektur, "Erneut senden") würde vom Cron nie
@@ -300,22 +373,53 @@ class EventRegistration(models.Model):
         tz = pytz.timezone(event.date_tz or 'UTC')
         return pytz.utc.localize(event.date_begin).astimezone(tz).date()
 
-    def _kjr_sign_message(self, company):
-        """Begleittext der Sign-Mail. Ohne Kindsnamen, Firmenname aus der Firma."""
+    def _kjr_sign_event_end_date(self):
+        """Ende der Veranstaltung als Datum in der Zeitzone der Veranstaltung."""
         self.ensure_one()
         event = self.sudo().event_id
+        if not event.date_end:
+            return False
+        tz = pytz.timezone(event.date_tz or 'UTC')
+        return pytz.utc.localize(event.date_end).astimezone(tz).date()
+
+    def _kjr_sign_event_period(self):
+        """Zeitraum als Text ("01.08.2027 bis 07.08.2027", eintägig nur ein
+        Datum) oder False ohne Beginn. Gemeinsame Quelle für den Begleittext
+        der Mail und das Feld "Veranstaltung" im Formular."""
+        self.ensure_one()
         begin = self._kjr_sign_event_begin_date()
-        end = False
-        if event.date_end:
-            tz = pytz.timezone(event.date_tz or 'UTC')
-            end = pytz.utc.localize(event.date_end).astimezone(tz).date()
+        end = self._kjr_sign_event_end_date()
         if begin and end and end != begin:
-            period = _('%(begin)s bis %(end)s',
-                       begin=begin.strftime('%d.%m.%Y'), end=end.strftime('%d.%m.%Y'))
-        elif begin:
-            period = begin.strftime('%d.%m.%Y')
+            return _('%(begin)s bis %(end)s',
+                     begin=begin.strftime('%d.%m.%Y'), end=end.strftime('%d.%m.%Y'))
+        if begin:
+            return begin.strftime('%d.%m.%Y')
+        return False
+
+    def _kjr_sign_message(self, company, prefilled=True):
+        """Begleittext der Sign-Mail. Ohne Kindsnamen, Firmenname aus der Firma.
+
+        :param prefilled: True, wenn die Vorlage Felder aus der Anmeldung
+                          vorbefüllt (schreibgeschützte Felder, Vorlage v2).
+                          Dann bitten wir um Prüfung der übernommenen
+                          Angaben; sonst (v1, eigene Vorlagen ohne
+                          Vorbefüllung) wie bisher um das Eintragen des
+                          Kindsnamens.
+        """
+        self.ensure_one()
+        event = self.sudo().event_id
+        period = self._kjr_sign_event_period() or _('Termin folgt')
+        if prefilled:
+            hint = _('Bitte prüfen Sie die aus der Anmeldung übernommenen Angaben (Name '
+                     'Ihres Kindes, Veranstaltung und Ihr Name), bestätigen Sie die '
+                     'Einwilligung und unterschreiben Sie. Stimmen die Angaben nicht, '
+                     'kennen Sie diese Anmeldung nicht oder sind Sie nicht '
+                     'erziehungsberechtigt, unterschreiben Sie bitte nicht und melden Sie '
+                     'sich bei uns.')
         else:
-            period = _('Termin folgt')
+            hint = _('Bitte tragen Sie im Formular den Namen Ihres Kindes ein. Kennen Sie '
+                     'diese Anmeldung nicht oder sind Sie nicht erziehungsberechtigt, '
+                     'unterschreiben Sie bitte nicht und melden Sie sich bei uns.')
         return Markup('<p>%s</p><p>%s</p><p>%s</p>') % (
             _('Guten Tag,'),
             _('für die Veranstaltung "%(event)s" (%(period)s) von %(company)s liegt '
@@ -323,22 +427,74 @@ class EventRegistration(models.Model):
               'Jahren benötigen wir die Einwilligung einer erziehungsberechtigten '
               'Person. Erst danach ist die Anmeldung verbindlich bestätigt.',
               event=event.name, period=period, company=company.name, id=self.id),
-            _('Bitte tragen Sie im Formular den Namen Ihres Kindes ein. Kennen Sie '
-              'diese Anmeldung nicht oder sind Sie nicht erziehungsberechtigt, '
-              'unterschreiben Sie bitte nicht und melden Sie sich bei uns.'),
+            hint,
         )
+
+    def _kjr_sign_check_prefill(self, template):
+        """Wirft UserError, wenn die Vorlage den Namen der/des
+        Erziehungsberechtigten schreibgeschützt aus der Anmeldung übernimmt und
+        er an der Anmeldung fehlt oder dem Namen des Kindes entspricht.
+
+        Ein schreibgeschütztes Feld können die Eltern nicht selbst füllen; das
+        unterschriebene Dokument trüge sonst keinen Namen der unterschreibenden
+        Person. Ebenso, wenn dort der Name des Kindes steht (Vergleich ohne
+        Groß-/Kleinschreibung und Mehrfach-Leerraum): sonst stünde der
+        Kindername schreibgeschützt als Name der/des Erziehungsberechtigten im
+        Dokument. Die Website-Vorprüfung (kjr_event) prüft beides im Verfahren
+        'sign'; hier geht es um Anmeldungen aus dem Backend, ältere
+        Anmeldungen und "Erneut senden". Der Fehler landet wie jeder andere in
+        ``kjr_sign_error`` und einer Aktivität (``_kjr_consent_request_start``).
+        """
+        self.ensure_one()
+        types = template.sudo().sign_item_ids.filtered('constant').type_id
+        needs_guardian = any(
+            t.model_name == self._name and t.auto_field == GUARDIAN_AUTO_FIELD
+            for t in types)
+        if not needs_guardian:
+            return
+        reg = self.sudo()
+        guardian = _norm_name(reg.guardian_name)
+        if not guardian:
+            raise UserError(_(
+                'Für die Unterschriftsanfrage fehlt der Name der/des '
+                'Erziehungsberechtigten an der Anmeldung. Bitte ergänzen und erneut '
+                'senden.'))
+        if guardian == _norm_name(reg.name):
+            # Gemeldeter Fall (19.0.1.1.0): Eltern trugen den Namen des Kindes
+            # in das Feld der Erziehungsberechtigten ein. Das Dokument trüge
+            # den Kindernamen schreibgeschützt als unterschreibende Person.
+            # Betrifft vor allem ältere Anmeldungen (vor der Website-Prüfung
+            # kjr_guardian_name_is_child) und das Backend.
+            raise UserError(_(
+                'An der Anmeldung steht als Name der/des Erziehungsberechtigten der '
+                'Name des Kindes. Bitte den Namen der erziehungsberechtigten Person '
+                'eintragen und erneut senden.'))
 
     def _kjr_sign_guardian_partner(self):
         """Kontakt der erziehungsberechtigten Person (Unterzeichner).
 
-        Wiederverwendung vor Neuanlage: zuerst der Kontakt der Anmeldung, wenn
-        dessen E-Mail passt, dann ein Kontakt mit derselben normalisierten
-        E-Mail. Bei mehreren Treffern haben Kontakte mit Benutzerkonto Vorrang
-        (nur dann erscheint die Anfrage im Portal unter "Signaturanfragen"),
-        danach Personen vor Firmen, jeweils der älteste. Erst wenn keiner
-        existiert, entsteht ein neuer
-        Kontakt mit der Kategorie "KJR Erziehungsberechtigte" (für das
-        Löschkonzept auffindbar). Bestehende Kontakte werden nie umbenannt.
+        Hintergrund (19.0.1.1.0): Die Website legt den Kontakt der Anmeldung
+        (``partner_id``) oft mit dem Namen der angemeldeten Person an, also
+        des KINDES. Wurde er wiederverwendet, stand im Sign-Feld "Name" der
+        Kindername und die Sign-Mail sprach das Kind an.
+
+        Mit Namen der/des Erziehungsberechtigten (``guardian_name``):
+        1. der Kontakt der Anmeldung, wenn E-Mail UND Name passen,
+        2. sonst ein Kontakt mit derselben normalisierten E-Mail UND demselben
+           Namen (Vergleich ohne Groß-/Kleinschreibung und Mehrfach-Leerraum),
+        3. sonst ein neuer Kontakt mit ``name = guardian_name``.
+        Ohne Namen (ältere Anmeldungen, Backend): wie bisher der Kontakt der
+        Anmeldung bzw. ein Kontakt mit derselben E-Mail; sonst ein neuer
+        Kontakt mit der E-Mail-Adresse als Name.
+        In beiden Fällen NIE ein Kontakt, dessen Name dem Namen des Kindes
+        (``name`` der Anmeldung) entspricht. Steht in ``guardian_name`` der
+        Name des Kindes, gilt der Name als fehlend.
+
+        Bei mehreren Treffern haben Kontakte mit Benutzerkonto Vorrang (nur
+        dann erscheint die Anfrage im Portal unter "Signaturanfragen"), danach
+        Personen vor Firmen, jeweils der älteste. Neue Kontakte bekommen die
+        Kategorie "KJR Erziehungsberechtigte" (für das Löschkonzept auffindbar)
+        und Deutsch als Sprache. Bestehende Kontakte werden nie umbenannt.
         """
         self.ensure_one()
         reg = self.sudo()
@@ -347,14 +503,34 @@ class EventRegistration(models.Model):
             raise UserError(_(
                 'Für die Unterschriftsanfrage fehlt eine gültige E-Mail-Adresse der '
                 'Erziehungsberechtigten.'))
-        if reg.partner_id and reg.partner_id.email_normalized == email:
+        guardian_name = ' '.join((reg.guardian_name or '').split())
+        guardian = _norm_name(guardian_name)
+        child = _norm_name(reg.name)
+        if guardian and guardian == child:
+            # Name des Kindes im Feld der Erziehungsberechtigten (gemeldeter
+            # Fall): wie ein fehlender Name behandeln. Sonst würde der
+            # Kind-Kontakt wiederverwendet oder ein neuer Kontakt mit dem
+            # Kindernamen angelegt. Vorlagen mit vorbefülltem Namen weist
+            # _kjr_sign_check_prefill vorher ab.
+            guardian_name = guardian = ''
+
+        def acceptable(partner):
+            name = _norm_name(partner.name)
+            # Nie der Kind-Kontakt, auch nicht mit Namen der Eltern.
+            if child and name == child:
+                return False
+            return name == guardian if guardian else True
+
+        if reg.partner_id and reg.partner_id.email_normalized == email \
+                and acceptable(reg.partner_id):
             return reg.partner_id
         Partner = self.env['res.partner'].sudo()
-        matches = Partner.search([('email_normalized', '=', email)], order='id', limit=50)
+        matches = Partner.search(
+            [('email_normalized', '=', email)], order='id', limit=50).filtered(acceptable)
         if matches:
             return min(matches, key=lambda p: (not p.user_ids, bool(p.is_company), p.id))
         vals = {
-            'name': reg.guardian_name or email,
+            'name': guardian_name or email,
             'email': email,
         }
         if self.env['res.lang']._get_code('de_DE'):
@@ -419,7 +595,7 @@ class EventRegistration(models.Model):
     def _kjr_sign_cancel_open_requests(self, reason=None):
         """Storniert offene Anfragen. Wirft nie; Notiz übernimmt der cancel-Hook.
 
-        :param reason: Storno-Grund ('paper', 'resend', 'email'). Der cancel-Hook
+        :param reason: Storno-Grund ('paper', 'resend', 'email', 'data'). Der cancel-Hook
                        bildet ihn auf einen festen Notiztext ab (so entsteht
                        genau EINE Notiz je Storno); ohne Grund gilt der
                        Standardtext "Unterschriftsanfrage storniert.".
@@ -440,7 +616,40 @@ class EventRegistration(models.Model):
             return requests.browse()
         return requests
 
+    # ------------------------------------------------------------------
+    # Verknüpfung zur Anfrage nur über die Brücke
+    # ------------------------------------------------------------------
+    @api.model
+    def _kjr_sign_check_request_link(self, vals_list):
+        """Wirft AccessError, wenn ``kjr_sign_request_id`` ohne Systemrechte
+        gesetzt werden soll.
+
+        ``readonly=True`` am Feld wirkt nur in der Oberfläche; per RPC (write,
+        create, Kontext ``default_kjr_sign_request_id``) wäre das Feld für
+        jede Person mit Sign-Rechten und Schreibrecht an der Anmeldung
+        (Registrierungstheke) setzbar. Am Feld hängen aber die Freigabe der
+        Vorbefüllung (models/sign_request_item.py: guardian_name und Name des
+        Kindes über die Signierseite) und die Wirkung der Unterschrift
+        (sign.request._kjr_registration: Einwilligung, Freigabe der Sperre).
+        Gesetzt wird es nur von der Brücke (sudo): ``_kjr_sign_create_request``
+        und die Anonymisierung (event.event._kjr_purge_registration_copies).
+        """
+        if self.env.su:
+            return
+        if self.env.context.get('default_kjr_sign_request_id') \
+                or any('kjr_sign_request_id' in vals for vals in vals_list):
+            raise AccessError(_(
+                'Die Unterschriftsanfrage einer Anmeldung kann nicht von Hand gesetzt '
+                'werden. Bitte die Schaltflächen "Unterschrift anfordern" bzw. '
+                '"Erneut senden" verwenden.'))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        self._kjr_sign_check_request_link(vals_list)
+        return super().create(vals_list)
+
     def write(self, vals):
+        self._kjr_sign_check_request_link([vals])
         res = super().write(vals)
         # Archivieren gilt wie eine Absage: sonst bliebe die Anfrage offen, Odoo
         # Sign erinnerte die Eltern weiter, und eine spätere Unterschrift gäbe
@@ -456,8 +665,13 @@ class EventRegistration(models.Model):
             # Papier, und die offene Anfrage muss ebenso storniert werden.
             if source != 'sign' or not self.env.su:
                 self._kjr_sign_cancel_open_requests(reason='paper')
-        elif any(field in vals for field in RECIPIENT_FIELDS):
-            self._kjr_sign_check_recipient()
+        else:
+            if any(field in vals for field in RECIPIENT_FIELDS):
+                self._kjr_sign_check_recipient()
+            # Nach dem Adresswechsel: eine dort neu versendete Anfrage trägt
+            # schon die neuen Angaben und gilt nicht als veraltet.
+            if any(field in vals for field in PREFILL_FIELDS):
+                self._kjr_sign_check_prefilled()
         return res
 
     def _kjr_sign_check_recipient(self):
@@ -486,28 +700,100 @@ class EventRegistration(models.Model):
                 changed |= rec
         if not changed:
             return
-        if not changed._kjr_sign_cancel_open_requests(reason='email'):
-            # Storno gescheitert (Fehler im Log): nicht neu senden, sonst gingen
-            # zwei Anfragen raus. Die Geschäftsstelle muss entscheiden.
-            changed._kjr_consent_activity(
-                _('Unterschriftsanfrage neu senden'),
-                _('Die E-Mail-Adresse der Erziehungsberechtigten wurde geändert, die '
-                  'offene Unterschriftsanfrage an die alte Adresse konnte aber nicht '
-                  'storniert werden. Bitte die Anfrage stornieren und erneut senden.'))
-            return
-        may_restart = self.env.su or self.env.user.has_group('event.group_event_user')
-        restart = changed.filtered(
-            lambda r: r.sudo().kjr_consent_hold and r.sudo().consent_missing
-            and r.sudo().state != 'cancel' and r.sudo().active
-            and r.sudo().kjr_sign_enabled
-            and r._kjr_consent_recipient_email()) if may_restart else changed.browse()
-        if restart:
-            restart.with_context(kjr_sign_force=True)._kjr_consent_request_start()
-        (changed - restart)._kjr_consent_activity(
-            _('Unterschriftsanfrage neu senden'),
+        changed._kjr_sign_cancel_and_restart(
+            'email',
+            _('Die E-Mail-Adresse der Erziehungsberechtigten wurde geändert, die '
+              'offene Unterschriftsanfrage an die alte Adresse konnte aber nicht '
+              'storniert werden. Bitte die Anfrage stornieren und erneut senden.'),
             _('Die E-Mail-Adresse der Erziehungsberechtigten wurde geändert, die offene '
               'Unterschriftsanfrage an die alte Adresse ist storniert. Bitte prüfen und '
               'die Anfrage erneut senden.'))
+
+    def _kjr_sign_check_prefilled(self):
+        """Angaben der Anmeldung geändert (Name des Kindes, Name der/des
+        Erziehungsberechtigten, über event.event.write auch Name oder Termine
+        der Veranstaltung): Weicht ein schreibgeschützt übernommener Wert der
+        offenen Anfrage (Vorlage v2) vom aktuellen Stand ab, wird die Anfrage
+        storniert und wie bei einem Adresswechsel neu versendet bzw. die
+        Aktivität "Unterschriftsanfrage neu senden" angelegt.
+
+        Die Eltern können schreibgeschützte Felder nicht korrigieren, und Odoo
+        Sign lehnt jede spätere Änderung des Werts ab
+        (sign.request.item.value.write). Ohne Neuversand unterschrieben sie
+        ein Dokument mit veralteten Angaben. Anfragen ohne vorbefüllte Felder
+        (v1, eigene Vorlagen) bleiben unberührt. Wirft nie.
+        """
+        changed = self.browse()
+        for rec in self:
+            try:
+                req = rec._kjr_sign_open_requests()
+                if req and rec._kjr_sign_prefill_outdated(req):
+                    changed |= rec
+            except Exception:  # noqa: BLE001 - die Änderung hat Vorrang
+                _logger.exception(
+                    'KJR Einwilligung: Vorbefüllte Angaben der Anfrage zu Anmeldung %s '
+                    'nicht prüfbar.', rec.id)
+        if not changed:
+            return
+        changed._kjr_sign_cancel_and_restart(
+            'data',
+            _('Angaben der Anmeldung (Name des Kindes, Name der/des '
+              'Erziehungsberechtigten oder Veranstaltung) wurden geändert, die offene '
+              'Unterschriftsanfrage mit den alten Angaben konnte aber nicht storniert '
+              'werden. Bitte die Anfrage stornieren und erneut senden.'),
+            _('Angaben der Anmeldung (Name des Kindes, Name der/des '
+              'Erziehungsberechtigten oder Veranstaltung) wurden geändert, die offene '
+              'Unterschriftsanfrage mit den alten Angaben ist storniert. Bitte prüfen '
+              'und die Anfrage erneut senden.'))
+
+    def _kjr_sign_prefill_outdated(self, request):
+        """True, wenn ein schreibgeschützter, aus der Anmeldung übernommener
+        Wert der Anfrage nicht mehr dem aktuellen Stand entspricht. Der
+        aktuelle Wert kommt aus derselben Methode, mit der Odoo Sign beim
+        Anlegen gefüllt hat (``_get_auto_field_value``); die Anfrage ist hier
+        die aktuelle der Anmeldung, die Sperre in models/sign_request_item.py
+        gibt sie frei."""
+        self.ensure_one()
+        item = request.sudo().request_item_ids.filtered(lambda i: i.state == 'sent')[:1]
+        if not item:
+            return False
+        for value in item.sign_item_value_ids:
+            sign_item = value.sign_item_id
+            item_type = sign_item.type_id
+            if not sign_item.constant or not item_type.auto_field \
+                    or item_type.model_id.model != self._name:
+                continue
+            current = item._get_auto_field_value(
+                {'id': item_type.id, 'auto_field': item_type.auto_field})
+            if (current or '') != (value.value or ''):
+                return True
+        return False
+
+    def _kjr_sign_cancel_and_restart(self, reason, note_failed, note_canceled):
+        """Storniert die offenen Anfragen mit ``reason`` und versendet neu.
+
+        Automatisch neu versendet wird nur mit sudo oder für
+        Veranstaltungs-Benutzer/innen (gleiche Grenze wie die Schaltflächen,
+        siehe ``_kjr_sign_check_recipient``) und nur, solange die Anmeldung
+        gesperrt ist und die Einwilligung fehlt. Sonst die Aktivität
+        "Unterschriftsanfrage neu senden" mit ``note_canceled``. Scheitert das
+        Storno, wird nicht neu gesendet (sonst gingen zwei Anfragen hinaus),
+        sondern die Aktivität mit ``note_failed`` angelegt.
+        """
+        if not self._kjr_sign_cancel_open_requests(reason=reason):
+            # Storno gescheitert (Fehler im Log): Die Geschäftsstelle entscheidet.
+            self._kjr_consent_activity(_('Unterschriftsanfrage neu senden'), note_failed)
+            return
+        may_restart = self.env.su or self.env.user.has_group('event.group_event_user')
+        restart = self.filtered(
+            lambda r: r.sudo().kjr_consent_hold and r.sudo().consent_missing
+            and r.sudo().state != 'cancel' and r.sudo().active
+            and r.sudo().kjr_sign_enabled
+            and r._kjr_consent_recipient_email()) if may_restart else self.browse()
+        if restart:
+            restart.with_context(kjr_sign_force=True)._kjr_consent_request_start()
+        (self - restart)._kjr_consent_activity(
+            _('Unterschriftsanfrage neu senden'), note_canceled)
 
     def unlink(self):
         # Vor dem Löschen: offene Anfragen stornieren. Die Anfrage selbst bleibt

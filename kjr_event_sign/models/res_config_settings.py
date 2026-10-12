@@ -2,7 +2,7 @@
 """Einstellungen der Brücke (Systemparameter kjr_event_sign.*)."""
 from odoo import _, api, fields, models
 
-XMLID_DEFAULT_TEMPLATE = 'kjr_event_sign.sign_template_consent'
+from .event_event import XMLID_DEFAULT_TEMPLATE
 
 
 class ResConfigSettings(models.TransientModel):
@@ -19,7 +19,10 @@ class ResConfigSettings(models.TransientModel):
         'sign.template', string='Standardvorlage Einwilligung',
         domain=[('active', '=', True)],
         config_parameter='kjr_event_sign.default_template_id',
-        help='Leer = mitgelieferte Vorlage "Einwilligung Erziehungsberechtigte (Standard)". '
+        help='Leer = mitgelieferte Vorlage "Einwilligung Erziehungsberechtigte '
+             '(vorausgefüllt)": Name des Kindes, Veranstaltung und Name der/des '
+             'Erziehungsberechtigten kommen schreibgeschützt aus der Anmeldung. '
+             'Die alte Vorlage "… (alt, ohne Vorbefüllung)" nicht mehr wählen. '
              'An der Veranstaltung kann eine eigene Vorlage gewählt werden.')
     kjr_event_sign_sender_id = fields.Many2one(
         'res.users', string='Absender der Unterschriftsanfragen',

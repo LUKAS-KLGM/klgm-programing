@@ -17,7 +17,20 @@ _logger = logging.getLogger(__name__)
 
 PARAM_ENABLED = 'kjr_event_sign.enabled'
 PARAM_DEFAULT_TEMPLATE = 'kjr_event_sign.default_template_id'
-XMLID_DEFAULT_TEMPLATE = 'kjr_event_sign.sign_template_consent'
+# Mitgelieferte Standardvorlage. Seit 19.0.1.1.0 die vorbefüllte Vorlage v2;
+# v1 bleibt installiert (bereits versendete Anfragen verweisen darauf) und ist
+# nur noch wählbar, nicht mehr Rückfall.
+XMLID_DEFAULT_TEMPLATE = 'kjr_event_sign.sign_template_consent_v2'
+XMLID_TEMPLATE_V1 = 'kjr_event_sign.sign_template_consent'
+# Name von v1, wie ihn sign_template_data.xml ausliefert (noupdate, auf der
+# Produktion so installiert), und der Name nach der Umstellung auf v2: v1 ist
+# nicht mehr Standard; in den Auswahllisten (Einstellungen, Veranstaltung)
+# soll sie nicht als aktuelle Standardvorlage erscheinen.
+TEMPLATE_V1_SHIPPED_NAME = 'Einwilligung Erziehungsberechtigte (Standard)'
+TEMPLATE_V1_LEGACY_NAME = 'Einwilligung Erziehungsberechtigte (alt, ohne Vorbefüllung)'
+# Felder der Veranstaltung, aus denen das vorbefüllte Feld "Veranstaltung"
+# der Vorlage v2 entsteht (event.registration.kjr_sign_event_label).
+EVENT_LABEL_FIELDS = ('name', 'date_begin', 'date_end', 'date_tz')
 
 
 class EventEvent(models.Model):
@@ -27,6 +40,20 @@ class EventEvent(models.Model):
         'sign.template', string='Einwilligungsvorlage (Sign)',
         domain=[('active', '=', True)],
         help='Leer = Standardvorlage aus den Einstellungen.')
+
+    def write(self, vals):
+        res = super().write(vals)
+        if any(field in vals for field in EVENT_LABEL_FIELDS):
+            # Name oder Termine geändert: offene Anfragen mit vorbefülltem Feld
+            # "Veranstaltung" zeigen sonst den alten Stand (siehe
+            # event.registration._kjr_sign_check_prefilled). Gesucht wird mit
+            # sudo, geprüft und neu versendet unter dem aufrufenden Benutzer
+            # (Grenze für den automatischen Neuversand).
+            regs = self.env['event.registration'].sudo().search([
+                ('event_id', 'in', self.ids), ('kjr_sign_state', '=', 'sent')])
+            if regs:
+                regs.with_env(self.env)._kjr_sign_check_prefilled()
+        return res
 
     # ------------------------------------------------------------------
     # Erweiterungspunkt aus kjr_event
@@ -52,7 +79,8 @@ class EventEvent(models.Model):
         """Gültige Sign-Vorlage dieser Veranstaltung oder ein leeres Recordset.
 
         Reihenfolge: Vorlage an der Veranstaltung, sonst die Standardvorlage
-        aus den Einstellungen, sonst die mitgelieferte Vorlage. Leer, solange
+        aus den Einstellungen, sonst die mitgelieferte Vorlage (seit
+        19.0.1.1.0 die vorbefüllte Vorlage v2). Leer, solange
         die Brücke in den Einstellungen ausgeschaltet ist oder die gefundene
         Vorlage die Prüfung in ``_kjr_consent_template_ok`` nicht besteht.
         """
@@ -108,28 +136,137 @@ class EventEvent(models.Model):
         return ok
 
     # ------------------------------------------------------------------
+    # Umstellung auf die vorbefüllte Vorlage v2 (19.0.1.1.0)
+    # ------------------------------------------------------------------
+    @api.model
+    def _kjr_sign_switch_default_template_v2(self):
+        """Stellt die Standardvorlage v1 auf v2 um (Migration 19.0.1.1.0).
+
+        * Systemparameter ``kjr_event_sign.default_template_id``: auf v2, wenn
+          er leer ist, auf v1 zeigt oder auf eine nicht mehr vorhandene
+          Vorlage. Eine andere, von der Geschäftsstelle gewählte Vorlage
+          bleibt unverändert.
+        * Veranstaltungen, deren ``kjr_consent_sign_template_id`` auf v1 zeigt
+          (auch archivierte Veranstaltungen): auf v2.
+        * Bereits versendete Unterschriftsanfragen bleiben unberührt: sie
+          verweisen über ``template_id`` weiter auf v1.
+        * v1 wird umbenannt (``_kjr_sign_rename_template_v1``), sofern sie noch
+          den ausgelieferten Namen trägt.
+
+        Idempotent. Ins Protokoll kommen nur IDs und Zähler.
+
+        :return: dict mit ``param`` ('set', 'kept' oder 'missing_v2'),
+                 ``events`` (Anzahl umgestellter Veranstaltungen) und
+                 ``v1_renamed`` (bool)
+        """
+        result = {'param': 'missing_v2', 'events': 0, 'v1_renamed': False}
+        v2 = self.env.ref(XMLID_DEFAULT_TEMPLATE, raise_if_not_found=False)
+        if not v2:
+            _logger.warning('KJR Einwilligung (Sign): Vorlage v2 fehlt, keine Umstellung.')
+            return result
+        v1 = self.env.ref(XMLID_TEMPLATE_V1, raise_if_not_found=False)
+        ICP = self.env['ir.config_parameter'].sudo()
+        raw = ICP.get_param(PARAM_DEFAULT_TEMPLATE)
+        current = self.env['sign.template'].sudo()
+        try:
+            current = current.browse(int(raw)).exists() if raw else current
+        except (TypeError, ValueError):
+            current = current.browse()
+        if not current or (v1 and current == v1):
+            ICP.set_param(PARAM_DEFAULT_TEMPLATE, str(v2.id))
+            result['param'] = 'set'
+        else:
+            result['param'] = 'kept'
+        if v1:
+            events = self.sudo().with_context(active_test=False).search(
+                [('kjr_consent_sign_template_id', '=', v1.id)])
+            if events:
+                events.write({'kjr_consent_sign_template_id': v2.id})
+            result['events'] = len(events)
+        result['v1_renamed'] = self._kjr_sign_rename_template_v1()
+        _logger.info(
+            'KJR Einwilligung (Sign): Standardvorlage %s (Parameter: %s), '
+            '%s Veranstaltung(en) von Vorlage %s auf %s umgestellt.',
+            v2.id, result['param'], result['events'], v1.id if v1 else '-', v2.id)
+        return result
+
+    @api.model
+    def _kjr_sign_rename_template_v1(self):
+        """Benennt die alte Vorlage v1 um, damit sie in den Auswahllisten
+        (Einstellungen > Standardvorlage, Veranstaltung > Einwilligungsvorlage)
+        nicht mehr als Standard erscheint.
+
+        Nur wenn v1 noch den ausgelieferten Namen trägt
+        (``TEMPLATE_V1_SHIPPED_NAME``): einen von der Geschäftsstelle
+        vergebenen Namen lässt die Methode stehen. Geändert wird nur der Name;
+        Dokument, Felder und versendete Anfragen bleiben unverändert.
+        Aufgerufen aus der Migration 19.0.1.1.0 (über
+        ``_kjr_sign_switch_default_template_v2``) und bei einer Neuinstallation
+        aus dem post_init_hook. Idempotent.
+
+        :return: True, wenn umbenannt wurde
+        """
+        v1 = self.env.ref(XMLID_TEMPLATE_V1, raise_if_not_found=False)
+        if not v1 or v1.sudo().name != TEMPLATE_V1_SHIPPED_NAME:
+            return False
+        v1.sudo().name = TEMPLATE_V1_LEGACY_NAME
+        _logger.info('KJR Einwilligung (Sign): Vorlage %s (v1) umbenannt.', v1.id)
+        return True
+
+    # ------------------------------------------------------------------
     # Datenschutz: Anonymisierung (kjr_event, Befund K6)
     # ------------------------------------------------------------------
     @api.model
     def _kjr_purge_registration_copies(self, registrations):
-        """Zusätzlich zu kjr_event: Unterschriftsanfragen der Anmeldungen lösen.
+        """Zusätzlich zu kjr_event: Unterschriftsanfragen der Anmeldungen räumen.
 
-        Offene Anfragen werden storniert, alle Anfragen archiviert und die
-        Verknüpfung an der Anmeldung geleert. Unterschriebene Anfragen samt
-        Dokument und sign.log bleiben archiviert als Nachweis der Einwilligung
-        erhalten; Odoo Sign lässt ihr Löschen ohnehin nicht zu.
+        Erfasst werden ALLE Anfragen der Anmeldungen, nicht nur die aktuelle
+        (``kjr_sign_request_id``): "Erneut senden" und ein Adresswechsel
+        hinterlassen frühere, stornierte Anfragen, die nur noch über
+        ``reference_doc`` auf die Anmeldung zeigen.
+
+        * Nie unterschriebene Anfragen (offen, storniert, abgelaufen,
+          abgelehnt) werden nach dem Storno GELÖSCHT. Seit der Vorlage v2
+          (19.0.1.1.0) trägt jede Anfrage schon beim Anlegen den Namen des
+          Kindes und den Namen der/des Erziehungsberechtigten
+          (sign.request.item.value der vorbefüllten Felder); als archivierter
+          Rest überdauerten sie die Anonymisierung. Odoo Sign verbietet nur
+          das Löschen unterschriebener Anfragen (``_unlink_if_not_signed``);
+          sign.log und Werte fallen per Datenbank-Kaskade mit.
+        * Unterschriebene Anfragen bleiben samt Dokument und sign.log
+          archiviert als Nachweis der Einwilligung erhalten (nicht löschbar).
+        * Die Verknüpfung an der Anmeldung wird geleert.
+        Schlägt das Löschen fehl (Fehler im Protokoll, nur IDs), werden die
+        Anfragen wie bisher archiviert; die Anonymisierung läuft weiter.
         TODO(KJR): Aufbewahrungsfrist der unterschriebenen Einwilligungen
         festlegen (Löschkonzept), ebenso den Umgang mit den Eltern-Kontakten
         (Kategorie "KJR Erziehungsberechtigte").
         """
         res = super()._kjr_purge_registration_copies(registrations)
         regs = registrations.sudo().exists()
+        if not regs:
+            return res
+        SignRequest = self.env['sign.request'].sudo().with_context(active_test=False)
         requests = regs.with_context(active_test=False).mapped('kjr_sign_request_id')
+        requests |= SignRequest.search([
+            ('reference_doc', 'in', ['event.registration,%d' % reg.id for reg in regs])])
         if requests:
             # Keine Storno-Notiz an der Anmeldung: kjr_event hat deren Chatter
             # gerade geleert, eine neue Nachricht wäre ein neuer Rest.
             requests = requests.with_context(kjr_sign_no_note=True)
             requests.filtered(lambda r: r.state == 'sent').cancel()
+            unsigned = requests.filtered(lambda r: r.state != 'signed')
+            if unsigned:
+                savepoint = self.env.cr.savepoint()
+                try:
+                    with savepoint:
+                        unsigned.unlink()
+                except Exception:  # noqa: BLE001 - die Anonymisierung hat Vorrang
+                    _logger.exception(
+                        'KJR Einwilligung (Sign): nicht unterschriebene Anfragen %s '
+                        'konnten bei der Anonymisierung nicht gelöscht werden; sie '
+                        'werden archiviert.', unsigned.ids)
+            requests = requests.exists()
             requests.filtered('active').action_archive()
             regs.with_context(tracking_disable=True).write({'kjr_sign_request_id': False})
         return res

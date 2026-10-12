@@ -226,6 +226,8 @@ class SignRequest(models.Model):
             return _('Unterschriftsanfrage storniert: wird neu versendet.')
         if reason == 'email':
             return _('Unterschriftsanfrage storniert: E-Mail-Adresse geändert.')
+        if reason == 'data':
+            return _('Unterschriftsanfrage storniert: Angaben der Anmeldung geändert.')
         return _('Unterschriftsanfrage storniert.')
 
     def cancel(self):

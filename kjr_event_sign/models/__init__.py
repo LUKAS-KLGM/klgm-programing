@@ -2,4 +2,5 @@
 from . import event_event
 from . import event_registration
 from . import sign_request
+from . import sign_request_item
 from . import res_config_settings

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Brücke: Veranstaltungen ↔ E-Signatur',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Custom/KJR',
     'summary': 'Einwilligung der Erziehungsberechtigten per Odoo Sign: '
                'Unterschriftsanfrage bei Online-Anmeldung Minderjähriger, '
@@ -23,6 +23,10 @@
         'data/res_partner_category_data.xml',
         'data/ir_config_parameter_data.xml',
         'data/sign_template_data.xml',
+        # 19.0.1.1.0: Feldtypen für die Vorbefüllung aus der Anmeldung und die
+        # vorbefüllte Vorlage v2 (nutzt die Rolle aus sign_template_data.xml).
+        'data/sign_item_type_data.xml',
+        'data/sign_template_consent_v2_data.xml',
         'data/ir_cron_data.xml',
         'views/event_registration_views.xml',
         'views/event_event_views.xml',

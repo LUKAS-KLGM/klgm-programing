@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Feldtypen für die Vorbefüllung der Einwilligung aus der Anmeldung
+         (Vorlage v2, data/sign_template_consent_v2_data.xml).
+
+         Mechanik (Odoo 19 Enterprise, sign):
+         * sign.request.create ruft _populate_constant_items auf. Für jedes
+           sign.item mit constant=True liest es den Wert über
+           sign.request.item._get_auto_field_value aus dem Feld auto_field.
+         * Ist model_id NICHT res.partner, kommt der Wert aus reference_doc der
+           Anfrage, sofern dessen Modell mail.thread ist und genau model_id
+           entspricht. Die Brücke setzt reference_doc = event.registration,<id>
+           (models/event_registration.py, _kjr_sign_create_request).
+         * Beide Lesewege (Anlage der Anfrage, Signierseite /sign/document/...)
+           laufen mit sudo und prüfen das Leserecht an reference_doc NICHT.
+           guardian_name ist feldgeschützt (KJR_SENSITIVE_DATA_GROUP) und hier
+           direkt verknüpft, NICHT über ein ungeschütztes Hilfsfeld, das jede
+           Person mit Leserecht an der Anmeldung (Registrierungstheke,
+           Portal-Kooperationspartner) per RPC lesen könnte.
+         * Der Feldschutz allein reicht dafür aber nicht: Sign-Benutzer/innen
+           dürfen Anfragen anlegen und könnten eine Anfrage mit
+           reference_doc = event.registration,<id> und sich selbst als
+           Unterzeichner/in anlegen; die Signierseite liefert auto_value für
+           JEDEN Feldtyp mit auto_field. Deshalb sperrt
+           models/sign_request_item.py (_get_auto_field_value) die Werte aller
+           Feldtypen auf event.registration für fremde Anfragen: nur die
+           aktuelle Anfrage der Anmeldung (kjr_sign_request_id, nur von der
+           Brücke mit sudo setzbar) bzw. die gerade
+           von der Brücke angelegte bekommt Werte.
+         * Restrisiko: Wer die Anfrage einer Anmeldung in Odoo Sign öffnen
+           darf (Sign-Benutzer/innen mit Zugriff auf die Anfrage), sieht die
+           dort gespeicherten Werte, also auch den Namen der/des
+           Erziehungsberechtigten. Sign-Rechte deshalb nur an Personen der
+           Betreuungsgruppe (kjr_event.group_kjr_event_care) vergeben.
+         * _check_auto_field_exists prüft beim Installieren auf einem LEEREN
+           Recordset (mapped liefert []), der Feldschutz greift dort nicht.
+
+         noupdate="0": technische Definition der Brücke. Ein Update stellt sie
+         wieder her, falls jemand den Typ verändert hat (falsches auto_field
+         würde die Einwilligung mit leeren Feldern verschicken). -->
+    <data noupdate="0">
+
+        <record id="sign_item_type_kjr_child_name" model="sign.item.type">
+            <field name="name">Name des Kindes (aus der Anmeldung)</field>
+            <field name="item_type">text</field>
+            <field name="field_size">long_text</field>
+            <field name="tip">Aus der Anmeldung übernommen</field>
+            <field name="placeholder">Name des Kindes / Teilnehmer/in</field>
+            <field name="model_id" ref="event.model_event_registration"/>
+            <field name="auto_field">name</field>
+            <field name="icon">fa-child</field>
+        </record>
+
+        <record id="sign_item_type_kjr_event_label" model="sign.item.type">
+            <field name="name">Veranstaltung mit Zeitraum (aus der Anmeldung)</field>
+            <field name="item_type">text</field>
+            <field name="field_size">long_text</field>
+            <field name="tip">Aus der Anmeldung übernommen</field>
+            <field name="placeholder">Veranstaltung</field>
+            <field name="model_id" ref="event.model_event_registration"/>
+            <field name="auto_field">kjr_sign_event_label</field>
+            <field name="icon">fa-calendar-o</field>
+        </record>
+
+        <record id="sign_item_type_kjr_guardian_name" model="sign.item.type">
+            <field name="name">Name der/des Erziehungsberechtigten (aus der Anmeldung)</field>
+            <field name="item_type">text</field>
+            <field name="field_size">long_text</field>
+            <field name="tip">Aus der Anmeldung übernommen</field>
+            <field name="placeholder">Name der/des Erziehungsberechtigten</field>
+            <field name="model_id" ref="event.model_event_registration"/>
+            <field name="auto_field">guardian_name</field>
+            <field name="icon">fa-user</field>
+        </record>
+
+    </data>
+</odoo>

@@ -10,17 +10,22 @@
          (bleibt bei der Anonymisierung archiviert erhalten). Für die Anfrage
          wird ein Kontakt der erziehungsberechtigten Person verwendet oder
          angelegt. Die Speicherdauer ist eine offene Kundenentscheidung
-         (TODO(KJR) Aufbewahrungsfrist) und steht deshalb noch nicht im Text. -->
+         (TODO(KJR) Aufbewahrungsfrist) und steht deshalb noch nicht im Text.
+         19.0.1.1.0: Satz zur Übernahme von Kind, Veranstaltung und Name der/des
+         Erziehungsberechtigten in das Formular (Vorlage v2). Bei einer eigenen
+         Vorlage ohne Vorbefüllung trägt der Satz nicht; dann hier anpassen. -->
     <template id="registration_attendee_details_kjr_sign_privacy"
               inherit_id="kjr_event.registration_attendee_details_kjr_privacy"
               name="KJR Anmeldung: Datenschutzhinweis digitale Einwilligung">
         <xpath expr="//t[@name='kjr_consent_privacy_extra']" position="inside">
             <t t-if="event.kjr_consent_mode == 'sign'">
                 <p class="small mb-0 mt-2">Bei Teilnehmenden unter 18 Jahren holen wir die
-                    Einwilligung über unser System zur digitalen Unterschrift ein. Das
-                    unterschriebene Dokument wird als Nachweis der Einwilligung in diesem
-                    System gespeichert. Für die erziehungsberechtigte Person speichern wir
-                    dazu einen Kontakt mit Name und E-Mail-Adresse.</p>
+                    Einwilligung über unser System zur digitalen Unterschrift ein. Name des
+                    Kindes / Teilnehmer/in, Veranstaltung und Name der/des
+                    Erziehungsberechtigten übernehmen wir dazu aus dieser Anmeldung in das
+                    Einwilligungsformular. Das unterschriebene Dokument wird als Nachweis der
+                    Einwilligung in diesem System gespeichert. Für die erziehungsberechtigte
+                    Person speichern wir dazu einen Kontakt mit Name und E-Mail-Adresse.</p>
             </t>
         </xpath>
     </template>
