@@ -9,13 +9,28 @@
             <!-- Eigener modal-body: Odoos Fragen stehen in einem modal-body mit
                  Innenabstand; ohne diese Huelle liefen die KJR-Felder bis an den
                  Dialogrand und standen links versetzt zu Name/E-Mail. -->
+            <!-- Einwilligung (19.0.5.9.0): Beginntag und Verfahren stehen als
+                 data-Attribute am Container. Das Formular-Skript
+                 (static/src/interactions/kjr_consent_fields.js) rechnet damit das
+                 Alter und markiert die Einwilligungsfelder; massgeblich bleibt die
+                 Vorpruefung im Controller. Beginntag als UTC-Datum, genau wie
+                 event.event._kjr_age_at_begin. -->
             <div class="modal-body pt-0">
-            <div class="row g-3 o_kjr_attendee_fields">
+            <div class="row g-3 o_kjr_attendee_fields"
+                 t-att-data-kjr-event-start="event.date_begin and event.date_begin.date().isoformat()"
+                 t-att-data-kjr-consent-mode="event.kjr_consent_mode"
+                 t-att-data-kjr-counter="counter">
                 <div class="col-md-4">
-                    <label t-attf-for="#{counter}-birthdate" class="form-label">Geburtsdatum</label>
+                    <label t-attf-for="#{counter}-birthdate" class="form-label">Geburtsdatum<span t-if="event.requires_parental_consent" class="ms-1" aria-hidden="true">*</span></label>
                     <input type="date" class="form-control"
                            t-attf-name="#{counter}-birthdate"
-                           t-attf-id="#{counter}-birthdate"/>
+                           t-attf-id="#{counter}-birthdate"
+                           t-att-required="event.requires_parental_consent and 'required' or None"
+                           t-att-aria-describedby="event.requires_parental_consent and '%s-birthdate_help' % counter or None"/>
+                    <div t-if="event.requires_parental_consent" class="form-text"
+                         t-attf-id="#{counter}-birthdate_help">
+                        Pflichtangabe: wird für die Einwilligung der Erziehungsberechtigten benötigt
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <label t-attf-for="#{counter}-dietary_requirements" class="form-label">Ernährung</label>
@@ -107,20 +122,50 @@
                            t-attf-name="#{counter}-guardian_phone"
                            t-attf-id="#{counter}-guardian_phone"/>
                 </div>
+                <!-- Nur im Verfahren "digitale Unterschrift": Empfaenger der
+                     Unterschriftsanfrage. Bewusst KEIN required: leer greift die
+                     E-Mail der Anmeldung (Vorpruefung im Controller). -->
+                <div t-if="event.kjr_consent_mode == 'sign'" class="col-md-6">
+                    <label t-attf-for="#{counter}-guardian_email" class="form-label">E-Mail Erziehungsberechtigte/r (für die digitale Einwilligung)</label>
+                    <input type="email" class="form-control"
+                           t-attf-name="#{counter}-guardian_email"
+                           t-attf-id="#{counter}-guardian_email"
+                           t-attf-aria-describedby="#{counter}-guardian_email_help"
+                           autocomplete="email"/>
+                    <div class="form-text" t-attf-id="#{counter}-guardian_email_help">
+                        Leer lassen, wenn die oben angegebene E-Mail-Adresse einer erziehungsberechtigten Person gehört.
+                    </div>
+                </div>
                 <div class="col-md-6">
                     <label t-attf-for="#{counter}-emergency_contact" class="form-label">Notfallkontakt</label>
                     <input type="text" class="form-control"
                            t-attf-name="#{counter}-emergency_contact"
                            t-attf-id="#{counter}-emergency_contact"/>
                 </div>
-                <div class="col-md-6 d-flex align-items-end">
+                <!-- Im Verfahren "digitale Unterschrift" entfaellt das Haekchen:
+                     die Einwilligung gibt dort die erziehungsberechtigte Person
+                     selbst per Unterschrift (ein gepostetes Haekchen verwirft der
+                     Controller). -->
+                <div t-if="event.kjr_consent_mode != 'sign'" class="col-md-6 d-flex align-items-end">
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" value="1"
                                t-attf-name="#{counter}-parental_consent"
-                               t-attf-id="#{counter}-parental_consent"/>
+                               t-attf-id="#{counter}-parental_consent"
+                               data-kjr-consent-checkbox="1"/>
                         <label class="form-check-label" t-attf-for="#{counter}-parental_consent">
                             Einwilligung der Erziehungsberechtigten liegt vor
                         </label>
+                        <div t-if="event.kjr_consent_mode == 'checkbox'" class="form-text">
+                            Pflicht für Teilnehmende unter 18 Jahren
+                        </div>
+                    </div>
+                </div>
+                <div t-else="" class="col-12">
+                    <div class="form-text o_kjr_consent_sign_hint" t-attf-id="#{counter}-consent_sign_hint">
+                        Für Teilnehmende unter 18 Jahren senden wir nach der Anmeldung eine
+                        E-Mail mit der Bitte um digitale Unterschrift an die
+                        erziehungsberechtigte Person. Erst danach ist die Anmeldung
+                        verbindlich bestätigt.
                     </div>
                 </div>
                 <div class="col-12">
@@ -206,8 +251,10 @@
                     <dt class="col-sm-4">Was wir speichern</dt>
                     <dd class="col-sm-8">Name, Geburtsdatum, die Angaben zur Ernährung
                         (Auswahl und Hinweisfeld), Name und Telefonnummer der
-                        Erziehungsberechtigten, den Notfallkontakt, Ihre Bemerkungen
-                        und das Geschlecht (freiwillige Angabe).</dd>
+                        Erziehungsberechtigten<t t-if="event.kjr_consent_mode == 'sign'">
+                        sowie deren E-Mail-Adresse für die Bitte um Einwilligung</t>,
+                        den Notfallkontakt, Ihre Bemerkungen und das Geschlecht
+                        (freiwillige Angabe).</dd>
 
                     <dt class="col-sm-4">Wofür wir sie nutzen</dt>
                     <dd class="col-sm-8">Um die Veranstaltung durchzuführen (Anmeldung,
@@ -266,6 +313,10 @@
                         </span>
                     </dd>
                 </dl>
+                <!-- SCHNITTSTELLE (19.0.5.9.0): leerer Anker fuer Ergaenzungen
+                     anderer Module, z. B. kjr_event_sign (Hinweis zur digitalen
+                     Unterschrift). Nicht entfernen oder umbenennen. -->
+                <t name="kjr_consent_privacy_extra"/>
             </section>
             </div>
         </xpath>
@@ -510,6 +561,30 @@
         </xpath>
     </template>
 
+    <!-- Einwilligung (19.0.5.9.0): Fehlermeldungen der Vorpruefung im Controller
+         (KjrWebsiteEventController._kjr_consent_precheck).
+
+         Anker bewusst am insufficient_seats-Div des Kerns (position="after") und
+         NICHT am recaptcha_failed-Div: den ersetzt das Modul kjr_website_antispam
+         vollstaendig. Die drei Codes kommen wie die Kerncodes ueber
+         ?registration_error_code=... auf die Anmeldeseite. -->
+    <template id="registration_template_kjr_consent_errors"
+              name="KJR: Fehlermeldungen Einwilligung"
+              inherit_id="website_event.registration_template">
+        <xpath expr="//div[@t-if=&quot;registration_error_code == 'insufficient_seats'&quot;]"
+               position="after">
+            <div t-if="registration_error_code == 'kjr_birthdate_missing'" class="alert alert-danger my-3" role="alert">
+                Anmeldung nicht möglich: Bitte geben Sie für alle Teilnehmenden das Geburtsdatum an.
+            </div>
+            <div t-if="registration_error_code == 'kjr_consent_missing'" class="alert alert-danger my-3" role="alert">
+                Anmeldung nicht möglich: Für Teilnehmende unter 18 Jahren muss die Einwilligung der Erziehungsberechtigten bestätigt werden.
+            </div>
+            <div t-if="registration_error_code == 'kjr_guardian_email_missing'" class="alert alert-danger my-3" role="alert">
+                Anmeldung nicht möglich: Bitte geben Sie für Teilnehmende unter 18 Jahren eine E-Mail-Adresse der Erziehungsberechtigten an.
+            </div>
+        </xpath>
+    </template>
+
     <!-- Auswahl-Dialog (im Standard "Tickets")
 
          Kerntemplate: website_event.modal_ticket_registration (event_templates_page_registration.xml).
@@ -667,8 +742,52 @@
              Bestätigungsseite) + die einzige h1 darin. -->
         <xpath expr="//div[hasclass('o_wereg_confirmed')]//h1[hasclass('h3-fs')]"
                position="replace" mode="inner">
-            <t t-if="event.is_kjr">Anmeldung bestätigt!</t>
+            <!-- Einwilligungs-Sperre (19.0.5.9.0): gesperrte Anmeldungen sind
+                 noch nicht bestaetigt. Alle gesperrt: "vorgemerkt", nur ein Teil:
+                 "eingegangen". -->
+            <t t-set="held" t-value="attendees.filtered('kjr_consent_hold')"/>
+            <t t-if="held and len(held) == len(attendees)">Anmeldung vorgemerkt</t>
+            <t t-elif="held">Anmeldung eingegangen</t>
+            <t t-elif="event.is_kjr">Anmeldung bestätigt!</t>
             <t t-else="">Registrierung bestätigt!</t>
+        </xpath>
+    </template>
+
+    <!-- Einwilligungs-Sperre (19.0.5.9.0): Hinweis auf der Bestaetigungsseite.
+
+         Erscheint nur, wenn mindestens eine Anmeldung auf die Einwilligung der
+         Erziehungsberechtigten wartet. Im Verfahren "digitale Unterschrift" nennt
+         er je gesperrter Anmeldung die MASKIERTE Empfaengeradresse, keine Namen und
+         keinen Link (die Seite ist ueber den Besucher erreichbar, nicht ueber eine
+         Anmeldung).
+
+         SCHNITTSTELLE: die XML-ID registration_complete_kjr_consent_hint und der
+         leere Anker kjr_consent_complete_extra werden von kjr_event_sign geerbt.
+         Nicht umbenennen.
+
+         Ausserdem entfaellt bei gesperrten Anmeldungen der Download der
+         Bestaetigung: ein Ticket fuer eine nicht bestaetigte Anmeldung waere eine
+         falsche Zusage. -->
+    <template id="registration_complete_kjr_consent_hint"
+              name="KJR: Hinweis Einwilligung auf der Anmeldebestätigung"
+              inherit_id="website_event.registration_complete">
+        <xpath expr="//div[hasclass('o_wereg_confirmed')]//h1[hasclass('h3-fs')]" position="after">
+            <t t-set="held" t-value="attendees.filtered('kjr_consent_hold')"/>
+            <div t-if="held" class="alert alert-info mt-3 o_kjr_consent_hint" role="status">
+                <p class="mb-2">Die Anmeldung wird erst verbindlich, wenn die Einwilligung
+                    der Erziehungsberechtigten vorliegt. Ein Platz ist erst mit der
+                    Bestätigung gesichert.</p>
+                <t t-if="event.kjr_consent_mode == 'sign'">
+                    <t t-foreach="held" t-as="a">
+                        <p t-if="a.kjr_consent_recipient_masked" class="mb-2">Wir senden die
+                            Bitte um digitale Unterschrift an <t t-out="a.kjr_consent_recipient_masked"/>.</p>
+                    </t>
+                </t>
+                <t name="kjr_consent_complete_extra"/>
+            </div>
+        </xpath>
+        <xpath expr="//t[@t-call='website_event.registration_ticket_access']" position="attributes">
+            <attribute name="t-if">attendees and not attendees.filtered('kjr_consent_hold')</attribute>
         </xpath>
     </template>
 

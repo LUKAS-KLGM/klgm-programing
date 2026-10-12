@@ -2,3 +2,4 @@
 from . import event_event
 from . import event_registration
 from . import kjr_event_document
+from . import mail_mail

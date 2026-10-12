@@ -3,9 +3,11 @@
 import logging
 from datetime import timedelta
 
-from odoo import http
+from odoo import fields, http
+from odoo.exceptions import UserError
 from odoo.fields import Domain
 from odoo.http import request
+from odoo.tools import email_normalize
 from odoo.addons.website_event.controllers.main import WebsiteEventController
 
 _logger = logging.getLogger(__name__)
@@ -13,10 +15,18 @@ _logger = logging.getLogger(__name__)
 
 # Felder, die im Anmeldeformular je Teilnehmer/in erfasst werden können.
 KJR_VALUE_FIELDS = (
-    'birthdate', 'guardian_name', 'guardian_phone',
+    'birthdate', 'guardian_name', 'guardian_phone', 'guardian_email',
     'emergency_contact', 'dietary_requirements', 'dietary_note', 'notes',
     'kjr_gender',
 )
+
+# Fehlercodes der Einwilligungs-Vorprüfung (19.0.5.9.0). Sie werden wie die
+# Kerncodes über ?registration_error_code=... an die Anmeldeseite gegeben und
+# dort in views/website_event_templates.xml (registration_template_kjr_consent_errors)
+# als Hinweis ausgegeben.
+KJR_ERROR_BIRTHDATE_MISSING = 'kjr_birthdate_missing'
+KJR_ERROR_CONSENT_MISSING = 'kjr_consent_missing'
+KJR_ERROR_GUARDIAN_EMAIL_MISSING = 'kjr_guardian_email_missing'
 
 # Auswahlfelder unter KJR_VALUE_FIELDS. Ihr Wert kommt aus einem <select> des
 # öffentlichen Formulars und wird deshalb VOR dem Schreiben gegen den
@@ -160,6 +170,16 @@ class KjrWebsiteEventController(WebsiteEventController):
                         'Unbekannter Auswahlwert im oeffentlichen Anmeldeformular '
                         'fuer Feld %s (Teilnehmer/in %d) verworfen.', field, counter)
                     continue
+                if field == 'guardian_email':
+                    # Adresse für die Unterschriftsanfrage: normalisiert
+                    # speichern, eine ungültige Angabe verwerfen (es greift dann
+                    # die E-Mail der Anmeldung). Der Wert kommt NICHT ins Log.
+                    value = email_normalize(value)
+                    if not value:
+                        _logger.info(
+                            'Ungueltige E-Mail der Erziehungsberechtigten im oeffentlichen '
+                            'Anmeldeformular verworfen (Teilnehmer/in %d).', counter)
+                        continue
                 values[field] = value
             consent_key = prefix + 'parental_consent'
             if consent_key in registrations:
@@ -170,23 +190,173 @@ class KjrWebsiteEventController(WebsiteEventController):
     def _kjr_extract_attendee_match_values(self, registrations):
         """Sammelt je Zähler die Kernfelder, an denen die Anmeldung wiedererkannt wird.
 
-        Gleiche Namenskonvention wie in :meth:`_kjr_extract_attendee_values`
-        (``<counter>-<feldname>``), aber ausschließlich Felder des Standardformulars
-        (siehe ``KJR_MATCH_FIELDS``). Diese Werte schreibt der Standard-Controller
-        unverändert auf die erzeugte Anmeldung; sie sind damit das fachliche Merkmal,
-        über das die KJR-Zusatzangaben ihrem eigenen Datensatz zugeordnet werden.
+        Ausschließlich Felder des Standardformulars (siehe ``KJR_MATCH_FIELDS``).
+        Diese Werte schreibt der Standard-Controller unverändert auf die erzeugte
+        Anmeldung; sie sind damit das fachliche Merkmal, über das die
+        KJR-Zusatzangaben ihrem eigenen Datensatz zugeordnet werden.
+
+        Zwei Schreibweisen werden verstanden, genau wie in
+        ``website_event.controllers.main._process_attendees_form``:
+
+        * ``<counter>-<feldname>`` (z. B. ``1-event_ticket_id``), und
+        * ``<counter>-<fragetyp>-<frage-id>`` (z. B. ``1-name-5``). So rendert
+          Odoo 19 Name, E-Mail und Telefon: sie sind Veranstaltungsfragen
+          (``website_event.registration_event_question``). Bis 19.0.5.8.x wurde
+          nur die erste Schreibweise gelesen; der Name kam dadurch nie an und die
+          Zusatzangaben ließen sich keiner Anmeldung zuordnen.
+
+        Wie im Kern gilt je Zähler die ERSTE Antwort eines Typs, und Antworten
+        mit Zähler 0 (einmal je Bestellung gefragt) gelten für alle
+        Teilnehmenden und haben Vorrang.
 
         Rückgabe: ``{counter: {feldname: wert}}``.
         """
         result = {}
+        general = {}
         for key, value in registrations.items():
             if '-' not in key or value in (None, ''):
                 continue
-            counter, field = key.split('-', 1)
-            if not counter.isdigit() or field not in KJR_MATCH_FIELDS:
+            parts = key.split('-')
+            if not parts[0].isdigit() or parts[1] not in KJR_MATCH_FIELDS:
                 continue
-            result.setdefault(int(counter), {})[field] = value
+            if len(parts) == 3 and not parts[2].isdigit():
+                continue
+            if len(parts) > 3:
+                continue
+            counter, field = int(parts[0]), parts[1]
+            target = general if counter == 0 else result.setdefault(counter, {})
+            target.setdefault(field, value)
+        if general:
+            for values in result.values():
+                values.update(general)
         return result
+
+    def _kjr_form_registration_indexes(self, post):
+        """Alle Anmelde-Indizes, zu denen der Kern eine Anmeldung anlegen würde.
+
+        Gleiche Logik wie ``website_event.controllers.main._process_attendees_form``
+        (Odoo 19), damit JEDE Anmeldung, die der Kern anlegt, auch vorgeprüft
+        wird und ein präparierter POST die Vorprüfung nicht umgehen kann:
+
+        * ``<index>-<feld>`` mit einem erlaubten Feld
+          (``_get_website_registration_allowed_fields``) und nicht leerem Wert
+          legt eine Anmeldung an, und zwar für JEDEN Index, auch '0' oder
+          nicht numerische;
+        * ``<index>-<fragetyp>-<frage-id>`` mit nicht leerem Wert legt für
+          jeden numerischen Index ungleich 0 eine Anmeldung an (Index 0 sind
+          Fragen, die einmal je Bestellung gestellt werden). Ein nicht
+          numerischer Index bricht im Kern die ganze Anfrage ab.
+
+        Rückgabe: Menge der Indizes als Zeichenketten, so wie der Kern sie als
+        Schlüssel verwendet ('1' und '01' sind dort zwei Anmeldungen).
+        """
+        Registration = request.env['event.registration']
+        allowed = set(Registration._get_website_registration_allowed_fields()) \
+            & set(Registration._fields)
+        indexes = set()
+        for key, value in post.items():
+            if not value or '-' not in key:
+                continue
+            parts = key.split('-')
+            if len(parts) == 2:
+                if parts[1] in allowed:
+                    indexes.add(parts[0])
+            elif len(parts) == 3:
+                try:
+                    number = int(parts[0])
+                except ValueError:
+                    continue
+                if number:
+                    indexes.add(parts[0])
+        return indexes
+
+    @staticmethod
+    def _kjr_is_form_counter(index):
+        """True für einen regulären Teilnehmer-Zähler ('1', '2', ...)."""
+        return index.isdigit() and str(int(index)) == index and int(index) >= 1
+
+    def _kjr_form_counters(self, post):
+        """Zähler der Teilnehmenden im geposteten Formular (aufsteigend, ab 1).
+
+        Abgeleitet aus :meth:`_kjr_form_registration_indexes`, also aus genau
+        den Schlüsseln, an denen auch der Kern eine Anmeldung festmacht (nicht
+        nur ``<n>-name``/``<n>-event_ticket_id``). Zähler 0 steht für Fragen,
+        die einmal je Bestellung gestellt werden, und ist keine Person.
+        Indizes, die kein regulärer Zähler sind ('0' aus einem zweiteiligen
+        Schlüssel, '01', 'x'), liefert diese Methode nicht; die Vorprüfung
+        weist sie gesondert ab.
+        """
+        return sorted(
+            int(index) for index in self._kjr_form_registration_indexes(post)
+            if self._kjr_is_form_counter(index))
+
+    def _kjr_consent_precheck(self, event, post):
+        """Prüft das Formular VOR dem Anlegen; Rückgabe: Fehlercode oder None.
+
+        Nur bei Veranstaltungen mit Einwilligungsverfahren ('checkbox' oder
+        'sign'). Je Teilnehmer/in:
+
+        * Geburtsdatum fehlt oder ist ungültig: ``kjr_birthdate_missing``
+          (ohne Geburtsdatum lässt sich nicht entscheiden, ob eine Einwilligung
+          nötig ist).
+        * minderjährig am Beginntag und Verfahren 'checkbox' ohne Häkchen:
+          ``kjr_consent_missing``.
+        * minderjährig und Verfahren 'sign' ohne gültige Adresse der
+          Erziehungsberechtigten UND ohne gültige Anmelde-E-Mail:
+          ``kjr_guardian_email_missing``.
+
+        Maßgeblich ist der Server; das Formular-Skript ist nur Komfort.
+        """
+        event_sudo = event.sudo()
+        mode = event_sudo.kjr_consent_mode
+        if mode not in ('checkbox', 'sign'):
+            return None
+        indexes = self._kjr_form_registration_indexes(post)
+        if any(not self._kjr_is_form_counter(index) for index in indexes):
+            # Ein Index, den das Formular nie erzeugt ('0-email', '01-name-5',
+            # 'x-name'): der Kern legte dafür eine Anmeldung an, die KJR-Angaben
+            # (Geburtsdatum, Häkchen) könnten ihr aber nicht zugeordnet werden.
+            # Fail-closed abweisen.
+            return KJR_ERROR_BIRTHDATE_MISSING
+        match_values = self._kjr_extract_attendee_match_values(post)
+        for counter in self._kjr_form_counters(post):
+            prefix = '%d-' % counter
+            raw = post.get(prefix + 'birthdate')
+            try:
+                birthdate = fields.Date.to_date(raw) if raw else None
+            except (TypeError, ValueError):
+                birthdate = None
+            if not birthdate:
+                return KJR_ERROR_BIRTHDATE_MISSING
+            age = event_sudo._kjr_age_at_begin(birthdate)
+            if age is None or age >= 18:
+                continue
+            if mode == 'checkbox':
+                if not _truthy(post.get(prefix + 'parental_consent')):
+                    return KJR_ERROR_CONSENT_MISSING
+            else:
+                guardian = email_normalize(post.get(prefix + 'guardian_email') or '')
+                own = email_normalize((match_values.get(counter) or {}).get('email') or '')
+                if not guardian and not own:
+                    return KJR_ERROR_GUARDIAN_EMAIL_MISSING
+        return None
+
+    def _kjr_apply_consent_mode(self, kjr_values, mode):
+        """Passt die Formularwerte an das Einwilligungsverfahren an (in place).
+
+        * 'sign': ein Häkchen "Einwilligung liegt vor" wird VERWORFEN. Im
+          digitalen Verfahren ersetzt nur die Unterschrift der
+          Erziehungsberechtigten die Einwilligung, nicht die Angabe der
+          anmeldenden Person (das Häkchen wird dort auch nicht angezeigt; ein
+          präparierter POST darf die Sperre nicht umgehen).
+        * sonst: ein gesetztes Häkchen bekommt die Herkunft 'website'.
+        """
+        for _counter, values in kjr_values:
+            if mode == 'sign':
+                values.pop('parental_consent', None)
+            elif values.get('parental_consent'):
+                values['kjr_consent_source'] = 'website'
+        return kjr_values
 
     def _kjr_find_registration(self, candidates, match):
         """Sucht in ``candidates`` die eine Anmeldung, die zu den Formularwerten passt.
@@ -237,6 +407,9 @@ class KjrWebsiteEventController(WebsiteEventController):
            eindeutig, wird für diese Zeile NICHTS geschrieben und ein Fehler
            protokolliert. Eine fehlende Allergieangabe fällt in der Geschäftsstelle auf,
            eine falsch zugeordnete nicht.
+
+        Rückgabe (seit 19.0.5.9.0): die Kandidatenmenge als Recordset (sudo),
+        leer statt ``None``, wenn nichts gefunden wurde.
         """
         # sudo(): öffentliche Besucher/innen dürfen Anmeldungen nicht lesen. Der Zugriff
         # ist bewusst auf die eigene Anfrage eingegrenzt und liest NICHT mehr alle
@@ -263,7 +436,7 @@ class KjrWebsiteEventController(WebsiteEventController):
             _logger.info(
                 "KJR-Anmeldung: keine neu erzeugte Anmeldung zur Veranstaltung %s "
                 "gefunden – es werden keine Zusatzangaben geschrieben.", event.id)
-            return
+            return candidates
 
         assigned = set()
         for counter, values in kjr_values:
@@ -284,12 +457,87 @@ class KjrWebsiteEventController(WebsiteEventController):
                 continue
             assigned.add(found.id)
             found.write(values)
+        return candidates
+
+    def _create_attendees_from_registration_post(self, event, registration_data):
+        """Merkt sich die in DIESER Anfrage angelegten Anmeldungen (Verfahren 'sign').
+
+        Die Kandidatensuche in :meth:`_kjr_write_attendee_values` ist bewusst nur
+        eine Vorauswahl (Zeitfenster, erzeugender Benutzer) und kann bei
+        gleichzeitigen anonymen Anmeldungen fremde Datensätze enthalten. Für die
+        Auflösung der Einwilligungs-Sperre werden deshalb genau die Anmeldungen
+        verwendet, die der Kern hier zurückgibt. Abgelegt wird nur die Liste der
+        IDs im Anfragekontext; personenbezogene Daten stehen dort nicht.
+        """
+        attendees_sudo = super()._create_attendees_from_registration_post(
+            event, registration_data)
+        if request.env.context.get('kjr_consent_hold_event_id'):
+            request.update_context(
+                kjr_consent_created_registration_ids=tuple(attendees_sudo.ids))
+        return attendees_sudo
+
+    def _kjr_antispam_rejects(self):
+        """Vorabprüfung des Spam-Schutzes (kjr_website_antispam), falls installiert.
+
+        Weist der Spam-Schutz eine Anmeldung erst im Kern ab, verwirft
+        website_event_sale die Fehler-Weiterleitung, sobald im Warenkorb schon
+        Ticketzeilen liegen, und leitet in den Checkout bzw. bestätigt einen
+        kostenlosen Warenkorb (website_event_sale/controllers/main.py,
+        registration_confirm). Deshalb prüft der äußere Controller VOR super().
+
+        kjr_event hängt nicht von kjr_website_antispam ab: ohne das Modul gibt es
+        die Methode nicht und es wird nichts geprüft. Liefert die Vorabprüfung
+        einen Grund (nur im Modus 'enforce'), läuft die reguläre Prüfung des
+        Moduls einmal, damit Protokoll und Entfernen der Parameter wie gewohnt
+        erfolgen. reCAPTCHA/Turnstile prüft weiterhin der Kern.
+        """
+        ir_http = request.env['ir.http']
+        if not hasattr(ir_http, '_kjr_antispam_precheck'):
+            return False
+        action = 'website_event_registration'
+        if not ir_http._kjr_antispam_precheck(action):
+            return False
+        try:
+            ir_http._kjr_antispam_check(action)
+        except UserError:
+            pass
+        return True
 
     @http.route()
     def registration_confirm(self, event, **post):
+        """Online-Anmeldung mit KJR-Angaben und Einwilligungs-Sperre.
+
+        Reihenfolge (Spezifikation Abschnitt 1):
+        0. Spam-Schutz vorab (nur mit kjr_website_antispam, Modus 'enforce'),
+           siehe _kjr_antispam_rejects.
+        1. Vorprüfung; bei Fehler zurück auf die Anmeldeseite, es wird nichts
+           angelegt (auch kein Warenkorb, die Verkaufslogik liegt innen).
+        2. KJR-Werte aus dem Roh-Post, angepasst an das Einwilligungsverfahren.
+        3. Verfahren 'sign': Kontext kjr_consent_hold_event_id setzen, damit
+           create() die Anmeldungen gesperrt anlegt.
+        4. Standardverarbeitung (super()).
+        5. KJR-Werte schreiben (immer, liefert die Kandidaten).
+        6. Verfahren 'sign': Sperren auflösen (volljährig freigeben,
+           Unterschriftsanfrage starten oder zurückstellen). Ein Fehler hier
+           ändert nichts an der Antwort.
+        """
+        if self._kjr_antispam_rejects():
+            return request.redirect(
+                '/event/%s/register?registration_error_code=recaptcha_failed' % event.id)
+
+        code = self._kjr_consent_precheck(event, post)
+        if code:
+            return request.redirect(
+                '/event/%s/register?registration_error_code=%s' % (event.id, code))
+
+        mode = event.sudo().kjr_consent_mode
         # Roh-Post sichern, bevor die Standardverarbeitung läuft.
-        kjr_values = self._kjr_extract_attendee_values(post)
+        kjr_values = self._kjr_apply_consent_mode(
+            self._kjr_extract_attendee_values(post), mode)
         match_values = self._kjr_extract_attendee_match_values(post)
+
+        if mode == 'sign':
+            request.update_context(kjr_consent_hold_event_id=event.id)
 
         # Zeitstempel DIESER Transaktion. ``cr.now()`` liefert den Transaktionsbeginn –
         # genau den Wert, den der ORM neu erzeugten Datensätzen als create_date mitgibt
@@ -300,9 +548,48 @@ class KjrWebsiteEventController(WebsiteEventController):
 
         response = super().registration_confirm(event, **post)
 
-        if any(values for _counter, values in kjr_values):
-            self._kjr_write_attendee_values(event, kjr_values, match_values, tx_start)
+        # Rückgabe (Kandidaten) wird für die Sperr-Auflösung bewusst NICHT
+        # verwendet: sie kann fremde Anmeldungen enthalten (siehe unten).
+        self._kjr_write_attendee_values(event, kjr_values, match_values, tx_start)
+
+        if mode == 'sign':
+            self._kjr_consent_resolve_request_holds(event)
         return response
+
+    def _kjr_consent_resolve_request_holds(self, event):
+        """Löst die Sperren der in dieser Anfrage angelegten Anmeldungen auf.
+
+        Maßgeblich sind AUSSCHLIESSLICH die IDs, die
+        :meth:`_create_attendees_from_registration_post` in DIESER Anfrage
+        abgelegt hat. Fehlt der Kontextschlüssel, hat der Kern nichts angelegt
+        (z. B. Umleitung wegen fehlender Plätze oder fehlgeschlagener
+        Sicherheitsprüfung, website_event/controllers/main.py). Dann gibt es
+        nichts aufzulösen. Ein Rückfall auf die Kandidaten aus
+        :meth:`_kjr_write_attendee_values` ist ausgeschlossen: sie enthielten
+        in diesem Fall nur fremde Anmeldungen (gleiche Veranstaltung, gleiches
+        Zeitfenster), deren Sperren sonst erneut aufgelöst würden.
+
+        Wirft nie: ein Fehler wird mit IDs protokolliert, die Sperre bleibt
+        bestehen (fail-closed) und die Antwort an die anmeldende Person ändert
+        sich nicht. Der Savepoint wird VOR dem try geöffnet (Begründung in
+        event.registration._kjr_auto_invoice).
+        """
+        own_ids = request.env.context.get('kjr_consent_created_registration_ids')
+        if not own_ids:
+            return
+        registrations = request.env['event.registration'].sudo().browse(
+            own_ids).exists().filtered(lambda r: r.event_id == event)
+        held = registrations.filtered('kjr_consent_hold')
+        if not held:
+            return
+        savepoint = request.env.cr.savepoint()
+        try:
+            with savepoint:
+                held._kjr_consent_resolve_holds()
+        except Exception:  # noqa: BLE001 - die Anmeldung selbst ist angelegt
+            _logger.exception(
+                'KJR Einwilligung: Auflösung der Sperre fehlgeschlagen '
+                '(Veranstaltung %s, Anmeldungen %s).', event.id, held.ids)
 
     # ------------------------------------------------------------------
     # E14 – Altersfilter auf der öffentlichen Veranstaltungsübersicht

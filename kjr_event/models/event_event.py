@@ -74,6 +74,24 @@ class EventEvent(models.Model):
     )
     is_juleica_course = fields.Boolean(string='Juleica-Ausbildung', compute='_compute_is_juleica', store=True)
 
+    # Einwilligung per digitaler Unterschrift (19.0.5.9.0): Verfahren, mit dem die
+    # Einwilligung der Erziehungsberechtigten bei der Online-Anmeldung eingeholt
+    # wird. Bewusst NICHT gespeichert und ohne @api.depends: das Ergebnis hängt
+    # auch an Systemparametern und an installierten Brückenmodulen
+    # (kjr_event_sign), die keine Feldabhängigkeit auslösen können. QWeb und
+    # Controller lesen ausschließlich dieses Feld; die Logik liegt in
+    # _kjr_consent_mode() (Erweiterungspunkt, siehe dort).
+    kjr_consent_mode = fields.Selection([
+        ('none', 'Keine Einwilligung nötig'),
+        ('checkbox', 'Bestätigung im Formular'),
+        ('sign', 'Digitale Unterschrift'),
+    ], string='Einwilligungsverfahren',
+        compute='_compute_kjr_consent_mode', compute_sudo=True,
+        help='Wie die Einwilligung der Erziehungsberechtigten bei der Online-Anmeldung '
+             'Minderjähriger eingeholt wird. Ergibt sich aus "Einwilligung '
+             'Erziehungsberechtigter erforderlich" und, falls installiert und '
+             'eingeschaltet, aus der digitalen Unterschrift.')
+
     # E5/E6 – Zahlung
     payment_required = fields.Boolean(
         string='Zahlungspflichtig',
@@ -160,6 +178,36 @@ class EventEvent(models.Model):
              'Nicht zu verwechseln mit dem internen Odoo-Seiten-Link (website_url) oder der '
              'Online-Event-URL (event_url): dieser Link ist rein informativ.',
     )
+
+    def _compute_kjr_consent_mode(self):
+        for ev in self:
+            ev.kjr_consent_mode = ev._kjr_consent_mode()
+
+    def _kjr_consent_mode(self):
+        """Einwilligungsverfahren dieser Veranstaltung: 'none', 'checkbox' oder 'sign'.
+
+        ERWEITERUNGSPUNKT: kjr_event selbst kennt nur 'none' und 'checkbox'.
+        Die Brücke kjr_event_sign überschreibt diese Methode, ruft super() auf
+        und liefert 'sign', wenn super() 'checkbox' ergibt UND die digitale
+        Unterschrift eingeschaltet ist UND eine gültige Vorlage existiert.
+        """
+        self.ensure_one()
+        return 'checkbox' if self.requires_parental_consent else 'none'
+
+    def _kjr_age_at_begin(self, birthdate):
+        """Alter in vollen Jahren am Beginntag der Veranstaltung, sonst ``None``.
+
+        Einzige Stelle der Altersrechnung: ``event.registration._compute_kjr_age``
+        und die Vorprüfung im Website-Controller nutzen dieselbe Formel, damit
+        Formular und gespeicherter Wert nie auseinanderlaufen (Stichtag ist der
+        Beginntag, der 18. Geburtstag am Beginntag zählt als volljährig).
+        """
+        self.ensure_one()
+        if not birthdate or not self.date_begin:
+            return None
+        bd = fields.Date.to_date(birthdate)
+        start = self.date_begin.date()
+        return start.year - bd.year - ((start.month, start.day) < (bd.month, bd.day))
 
     @api.depends('kjr_event_type')
     def _compute_is_juleica(self):
@@ -343,7 +391,9 @@ class EventEvent(models.Model):
         # Geleert wird alles, was eine konkrete Person bezeichnet oder erreichbar
         # macht, sowie die Gesundheitsangaben (potenziell Art. 9 DSGVO):
         #   birthdate            – Geburtsdatum (Alter bleibt als Aggregat, s. u.)
-        #   guardian_*           – Erziehungsberechtigte: Name und Telefon
+        #   guardian_*           – Erziehungsberechtigte: Name, Telefon und (seit
+        #                          19.0.5.9.0) E-Mail-Adresse für die
+        #                          Unterschriftsanfrage zur Einwilligung
         #   emergency_contact    – Notfallkontakt (dritte Person)
         #   dietary_requirements – Ernährungs-/Allergiekategorie: bewusst MIT geleert.
         #                          Es ist zwar ein Aggregatmerkmal, aber eine
@@ -372,7 +422,8 @@ class EventEvent(models.Model):
         # einfaches Selection-Feld und kein stored compute auf birthdate, wird von
         # der Anonymisierung also gar nicht erst neu berechnet.
         blank_fields = (
-            'birthdate', 'guardian_name', 'guardian_phone', 'emergency_contact',
+            'birthdate', 'guardian_name', 'guardian_phone', 'guardian_email',
+            'emergency_contact',
             'dietary_requirements', 'dietary_note', 'notes',
             'email', 'phone', 'mobile', 'partner_id',
         )
@@ -440,6 +491,11 @@ class EventEvent(models.Model):
           Erinnerungen und interne Notizen enthalten Name und Mailadresse im Klartext.
           Beim Löschen einer Nachricht räumt Odoo die unmittelbar an ihr hängenden
           Anhänge und die ``mail.notification``-Zeilen mit ab.
+        * ``mail.mail`` mit ``kjr_detached_registration_id`` – ohne Datensatzbezug
+          abgelegte Einwilligungs-Erinnerungen (Signierlink, siehe
+          ``models/mail_mail.py``). Nach erfolgreichem Versand löscht Odoo sie über
+          ``auto_delete`` selbst; übrig bleiben nicht versendete oder
+          fehlgeschlagene. Mit der mail.mail fällt auch ihre mail.message.
         * ``ir.attachment`` mit ``res_model='event.registration'`` – hochgeladene
           Einwilligungen, Atteste, Merkblätter. Diese Dateien werden GELÖSCHT und
           nicht anonymisiert: ein Scan lässt sich nicht teilweise schwärzen. Das
@@ -486,6 +542,16 @@ class EventEvent(models.Model):
             _logger.info(
                 'DSGVO-Anonymisierung: %d Chatter-Nachrichten und %d Feldhistorien-Einträge '
                 'zu Anmeldungen entfernt', message_count, tracking_count)
+
+        # Abgekoppelte Mails (model/res_id leer) über die technische Kennung.
+        # unlink() der mail.mail entfernt auch die zugehörige mail.message
+        # (mail/models/mail_mail.py, keine Benachrichtigungs-Mail).
+        detached_mails = self.env['mail.mail'].sudo().search([
+            ('kjr_detached_registration_id', 'in', reg_ids)])
+        if detached_mails:
+            _logger.info('DSGVO-Anonymisierung: %d abgekoppelte Mails zu Anmeldungen '
+                         'gelöscht', len(detached_mails))
+            detached_mails.unlink()
 
         attachments = self.env['ir.attachment'].sudo().search([
             ('res_model', '=', 'event.registration'), ('res_id', 'in', reg_ids)])

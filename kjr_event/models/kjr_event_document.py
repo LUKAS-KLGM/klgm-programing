@@ -19,7 +19,7 @@ from urllib.parse import quote
 
 from markupsafe import Markup
 
-from odoo import api, fields, models, _
+from odoo import Command, api, fields, models, _
 
 _logger = logging.getLogger(__name__)
 
@@ -42,23 +42,82 @@ DEFAULT_BATCH_LIMIT = 50
 TRUE_VALUES = ('1', 'true', 'yes', 'ja', 'on', 'wahr')
 
 
-def _kjr_send_template(record, xmlid, email_values=None):
+def _kjr_send_template(record, xmlid, email_values=None, sudo=False, detach=False):
     """Versendet eine Mail-Vorlage für genau EINEN Datensatz.
 
     Bewusst defensiv: ein fehlgeschlagener Mailversand darf weder den Cron noch
     eine Sachbearbeiter-Aktion abbrechen (gleiches Muster wie
     ``kjr_facility.kjr.facility.booking._send_template``).
+
+    :param sudo: Vorlage als Superuser rendern. Nötig für Vorlagen, die
+        feldgeschützte Felder ausgeben (Einwilligungs-Erinnerung:
+        ``kjr_consent_action_url`` mit ``groups=KJR_SENSITIVE_DATA_GROUP``).
+        Ohne sudo liefe das Rendern für Cron, Administration und Benutzer ohne
+        diese Gruppe in einen AccessError. Die Erhöhung betrifft nur das
+        Rendern, das Feld bleibt per RPC geschützt.
+    :param detach: die erzeugte Mail OHNE Bezug zum Datensatz ablegen
+        (``model``/``res_id`` leer). Nötig, wenn der gerenderte Text einen
+        Bearer-Link enthält (Signierlink der Einwilligung): send_mail legt ein
+        mail.mail samt mail.message mit dem vollständigen Text an. Mit Bezug
+        zur Anmeldung wäre diese Nachricht bis zum Versand (bei Fehlversand
+        dauerhaft, auto_delete greift nur nach Erfolg) für jede Person per RPC
+        lesbar, die die Anmeldung lesen darf, auch ohne die Gruppe, die das
+        Feld selbst schützt. Ohne Bezug lesen sie nur Verfasser/in,
+        erzeugende/r Benutzer/in und Administration
+        (mail.message._get_forbidden_access). Es gibt dann bewusst keinen
+        Rückfallversuch ohne email_values, der den Bezug wiederherstellen würde.
+        Bei Anmeldungen bekommt die mail.mail stattdessen die technische
+        Kennung ``kjr_detached_registration_id`` (nur Administration lesbar),
+        damit die DSGVO-Anonymisierung nicht versendete oder fehlgeschlagene
+        Mails wiederfindet und löscht.
+
+        Außerdem geht eine abgekoppelte Mail AUSSCHLIESSLICH an das
+        ``email_to`` aus ``email_values``; ohne diesen Empfänger wird nicht
+        versendet. Grund: ``mail.template.use_default_to`` ist in Odoo 19
+        standardmäßig True. Dann ermittelt send_mail die Standard-Empfänger
+        des Datensatzes (``_message_get_default_recipients``), bei Anmeldungen
+        mit passender Partner-Adresse also ``partner_ids=[partner_id]``, und
+        legt daraus ``recipient_ids`` an (mail/models/mail_template.py,
+        send_mail). ``email_values`` wird erst danach eingemischt und ersetzt
+        nur die übergebenen Schlüssel. Ohne das Leeren von ``recipient_ids``,
+        ``partner_ids`` und ``email_cc`` ginge der Bearer-Link zusätzlich an
+        den Kontakt der Anmeldung (etwa die oder den Jugendlichen selbst), der
+        die Einwilligung dann für sich unterschreiben könnte; ``partner_ids``
+        gäbe dem Kontakt zudem Lesezugriff auf die gespeicherte Nachricht.
+
+    Protokolliert werden nur Vorlage und Datensatz-ID, keine Namen oder
+    Adressen (das Protokoll ist selbst ein Speicherort).
     """
     record.ensure_one()
     template = record.env.ref(xmlid, raise_if_not_found=False)
     if not template:
-        _logger.warning('Mail-Vorlage %s nicht gefunden – kein Versand für %s.',
-                        xmlid, record.display_name)
+        _logger.warning('Mail-Vorlage %s nicht gefunden, kein Versand für %s %s.',
+                        xmlid, record._name, record.id)
         return False
+    if sudo:
+        template = template.sudo()
     attempts = []
-    if email_values:
-        attempts.append({'force_send': False, 'email_values': email_values})
-    attempts.append({'force_send': False})
+    if detach:
+        if not (email_values or {}).get('email_to'):
+            # Ohne ausdrücklichen Empfänger kein Versand: der Rückfall auf die
+            # Standard-Empfänger des Datensatzes ist hier gerade unerwünscht.
+            _logger.warning('Mail-Vorlage %s: kein ausdrücklicher Empfänger, kein '
+                            'Versand für %s %s.', xmlid, record._name, record.id)
+            return False
+        detached_values = dict(
+            email_values, model=False, res_id=False,
+            # Standard-Empfänger der Vorlage verwerfen (Begründung im Docstring).
+            recipient_ids=[Command.clear()], partner_ids=[Command.clear()],
+            email_cc=False)
+        if record._name == 'event.registration':
+            # Auffindbare Kennung ohne Personendaten für die Anonymisierung
+            # (models/mail_mail.py, event.event._kjr_purge_registration_copies).
+            detached_values['kjr_detached_registration_id'] = record.id
+        attempts.append({'force_send': False, 'email_values': detached_values})
+    else:
+        if email_values:
+            attempts.append({'force_send': False, 'email_values': email_values})
+        attempts.append({'force_send': False})
     last_error = None
     for kwargs in attempts:
         try:
@@ -72,8 +131,8 @@ def _kjr_send_template(record, xmlid, email_values=None):
         except Exception as e:  # noqa: BLE001 - Mailversand darf den Workflow nicht blockieren
             last_error = e
             break
-    _logger.warning('Mailversand %s für %s fehlgeschlagen: %s',
-                    xmlid, record.display_name, last_error)
+    _logger.warning('Mailversand %s für %s %s fehlgeschlagen (%s).',
+                    xmlid, record._name, record.id, type(last_error).__name__)
     return False
 
 
@@ -259,10 +318,21 @@ class EventRegistrationAutomation(models.Model):
             return 0
         regs = self._kjr_due_registrations(
             lead, 'kjr_consent_reminder_sent',
-            extra_domain=[('consent_missing', '=', True)])
+            extra_domain=self._kjr_consent_reminder_domain())
         sent = 0
         for reg in regs:
-            if _kjr_send_template(reg, 'kjr_event.mail_template_consent_reminder'):
+            if not reg._kjr_consent_reminder_allowed():
+                # Sicherheitsnetz zur Domain: zurückgestellte Anfrage
+                # (abgebrochener Warenkorb), kein Kontakt zu den Eltern.
+                continue
+            # Empfänger: E-Mail der Erziehungsberechtigten, sonst die der
+            # Anmeldung (siehe _kjr_consent_recipient_email). Gerendert wird mit
+            # sudo, weil die Vorlage den feldgeschützten Signierlink ausgibt.
+            # detach: die Mail enthält den Signierlink (Bearer-Link) und wird
+            # deshalb ohne Bezug zur Anmeldung abgelegt (_kjr_send_template).
+            if _kjr_send_template(reg, 'kjr_event.mail_template_consent_reminder',
+                                  reg._kjr_consent_email_values(), sudo=True,
+                                  detach=True):
                 reg._kjr_mark_sent('kjr_consent_reminder_sent', 'kjr_consent_reminder_date')
                 sent += 1
         _logger.info('KJR Einwilligungs-Erinnerung: %d von %d fälligen Anmeldungen angeschrieben.',
@@ -284,7 +354,11 @@ class EventRegistrationAutomation(models.Model):
             _logger.info('KJR Packlisten-Versand deaktiviert (%s = %s).',
                          PARAM_PACKING_LEAD, lead)
             return 0
-        regs = self._kjr_due_registrations(lead, 'kjr_packing_list_sent')
+        # Gesperrte Anmeldungen (Einwilligung ausstehend) sind nicht bestätigt
+        # und bekommen keine Packliste.
+        regs = self._kjr_due_registrations(
+            lead, 'kjr_packing_list_sent',
+            extra_domain=[('kjr_consent_hold', '=', False)])
         sent = 0
         for reg in regs:
             if _kjr_send_template(reg, 'kjr_event.mail_template_packing_list'):
@@ -294,25 +368,69 @@ class EventRegistrationAutomation(models.Model):
                      sent, len(regs))
         return sent
 
+    @api.model
+    def _kjr_consent_reminder_domain(self):
+        """Zusatzdomain für die fällige Einwilligungs-Erinnerung.
+
+        kjr_event_shop ergänzt den Ausschluss gesperrter Anmeldungen, deren
+        Auftrag noch ein Warenkorb ist (siehe _kjr_consent_reminder_allowed).
+        Als Domain, damit solche Anmeldungen nicht bei jedem Lauf das
+        Kontingent (``kjr_event.automation_batch_limit``) belegen.
+        """
+        return [('consent_missing', '=', True)]
+
+    def _kjr_consent_reminder_allowed(self):
+        """True, wenn die Einwilligungs-Erinnerung an diese Anmeldung gehen darf.
+
+        Nicht bei gesperrten Anmeldungen mit zurückgestellter Anfrage
+        (``_kjr_consent_defer_request``, in kjr_event_shop: Auftrag ist noch ein
+        Warenkorb). Abgebrochene Warenkörbe sollen keinen Kontakt zu den
+        Erziehungsberechtigten auslösen (Spezifikation E11); die Anfrage folgt
+        erst mit dem Abschluss der Bestellung.
+        """
+        self.ensure_one()
+        return not (self.kjr_consent_hold and self._kjr_consent_defer_request())
+
     # ------------------------------------------------------------------
     # E7 – Manuelle Auslöser (Server-Actions, Listen-/Formularauswahl)
     # ------------------------------------------------------------------
-    def _kjr_send_to_selection(self, xmlid, flag_field=None, date_field=None):
+    def _kjr_consent_email_values(self):
+        """``email_values`` für die Einwilligungs-Erinnerung (Empfänger) oder None."""
+        self.ensure_one()
+        recipient = self._kjr_consent_recipient_email()
+        return {'email_to': recipient} if recipient else None
+
+    def _kjr_send_to_selection(self, xmlid, flag_field=None, date_field=None,
+                               recipient_getter=None, sudo=False, detach=False):
         """Versendet eine Vorlage an die ausgewählten Anmeldungen.
 
         Manuelle Aktionen werden bewusst NICHT über den Merker blockiert – ein
         erneuter Versand ist eine bewusste Entscheidung der Geschäftsstelle.
         Ohne Empfängeradresse wird übersprungen und gezählt.
 
+        :param recipient_getter: optionale Funktion ``reg -> Adresse oder False``.
+            Ist sie gesetzt, bestimmt sie den Empfänger (``email_to``) statt der
+            Adresse aus der Vorlage; ohne Adresse wird übersprungen.
+        :param sudo: Vorlage als Superuser rendern (siehe _kjr_send_template).
+        :param detach: Mail ohne Bezug zum Datensatz ablegen (siehe
+            _kjr_send_template).
+
         Rückgabe: (tatsächlich versendete Anmeldungen, Anzahl ohne Adresse).
         """
         sent = self.browse()
         no_mail = 0
         for reg in self:
-            if not (reg.email or reg.partner_id.email):
+            email_values = None
+            if recipient_getter:
+                recipient = recipient_getter(reg)
+                if not recipient:
+                    no_mail += 1
+                    continue
+                email_values = {'email_to': recipient}
+            elif not (reg.email or reg.partner_id.email):
                 no_mail += 1
                 continue
-            if _kjr_send_template(reg, xmlid):
+            if _kjr_send_template(reg, xmlid, email_values, sudo=sudo, detach=detach):
                 sent |= reg
                 if flag_field and date_field:
                     reg._kjr_mark_sent(flag_field, date_field)
@@ -327,17 +445,47 @@ class EventRegistrationAutomation(models.Model):
             title, message, notif_type='warning' if no_mail else 'success')
 
     def action_kjr_send_registration_confirm(self):
-        """E7: Anmeldebestätigung an die Auswahl senden."""
-        sent, no_mail = self._kjr_send_to_selection(
+        """E7: Anmeldebestätigung an die Auswahl senden.
+
+        Gesperrte Anmeldungen (Einwilligung ausstehend) sind nicht bestätigt und
+        werden übersprungen; die Meldung nennt ihre Anzahl.
+        """
+        held = self.filtered('kjr_consent_hold')
+        sent, no_mail = (self - held)._kjr_send_to_selection(
             'kjr_event.mail_template_registration_confirm')
-        return self._kjr_send_result_notification(_('Anmeldebestätigung'), sent, no_mail)
+        result = self._kjr_send_result_notification(_('Anmeldebestätigung'), sent, no_mail)
+        if held:
+            result['params']['message'] += '\n' + _(
+                '%s Anmeldung(en) wartet/warten auf die Einwilligung und wurden '
+                'übersprungen.', len(held))
+            result['params']['type'] = 'warning'
+        return result
 
     def action_kjr_send_consent_reminder(self):
-        """E7: Einwilligungs-Erinnerung manuell senden (ergänzt den Cron)."""
-        sent, no_mail = self._kjr_send_to_selection(
+        """E7: Einwilligungs-Erinnerung manuell senden (ergänzt den Cron).
+
+        Empfänger und Rendern wie im Cron: Adresse der Erziehungsberechtigten,
+        Vorlage mit sudo (Signierlink ist feldgeschützt), Mail ohne Bezug zur
+        Anmeldung abgelegt (Signierlink im gespeicherten Text).
+
+        Gesperrte Anmeldungen mit zurückgestellter Anfrage (Auftrag noch
+        Warenkorb, siehe _kjr_consent_reminder_allowed) werden wie im Cron
+        übersprungen; die Meldung nennt ihre Anzahl.
+        """
+        deferred = self.filtered(lambda reg: not reg._kjr_consent_reminder_allowed())
+        sent, no_mail = (self - deferred)._kjr_send_to_selection(
             'kjr_event.mail_template_consent_reminder',
-            'kjr_consent_reminder_sent', 'kjr_consent_reminder_date')
-        return self._kjr_send_result_notification(_('Einwilligungs-Erinnerung'), sent, no_mail)
+            'kjr_consent_reminder_sent', 'kjr_consent_reminder_date',
+            recipient_getter=lambda reg: reg._kjr_consent_recipient_email(),
+            sudo=True, detach=True)
+        result = self._kjr_send_result_notification(
+            _('Einwilligungs-Erinnerung'), sent, no_mail)
+        if deferred:
+            result['params']['message'] += '\n' + _(
+                '%(count)s Anmeldung(en) mit noch nicht abgeschlossener Bestellung '
+                '(Warenkorb) übersprungen.', count=len(deferred))
+            result['params']['type'] = 'warning'
+        return result
 
     def action_kjr_send_packing_list(self):
         """E7: Packliste manuell senden (ergänzt den Cron)."""
@@ -402,15 +550,25 @@ class EventRegistrationAutomation(models.Model):
         erhalten einen Hinweis im Chatter (Projektstandard: im Backend nur
         Hinweise, harte Pflichten nur im Website-Formular).
 
+        Gesperrte Anmeldungen (``kjr_consent_hold``, Einwilligung ausstehend)
+        werden übersprungen und gezählt (``skipped_hold``): sie sind nicht
+        bestätigt, also keine Rechnung und keine Anmeldebestätigung, die
+        action_create_training_invoice sonst mitverschickt. Die Rechnung folgt
+        mit der Freigabe (_kjr_auto_invoice bzw. erneuter Handaktion).
+
         :return: Tupel ``(neu verknüpfte Rechnungen, Kennzahlen-dict)``.
         """
         candidates = self.browse()
+        skipped_hold = 0
         skipped_not_required = 0
         skipped_already = 0
         skipped_sale = 0
         skipped_product = self.browse()
         skipped_partner = self.browse()
         for reg in self:
+            if reg.kjr_consent_hold:
+                skipped_hold += 1
+                continue
             if not reg.event_id.payment_required:
                 skipped_not_required += 1
                 continue
@@ -463,14 +621,16 @@ class EventRegistrationAutomation(models.Model):
             candidates.action_kjr_send_training_invoice()
 
         _logger.info(
-            'KJR Sammelrechnung: %d erzeugt, %d gebucht, übersprungen: %d ohne Zahlungspflicht, '
-            '%d bereits fakturiert, %d über Verkaufsauftrag, %d ohne Produkt, %d ohne Kontakt.',
-            len(new_moves), posted, skipped_not_required, skipped_already, skipped_sale,
-            len(skipped_product), len(skipped_partner))
+            'KJR Sammelrechnung: %d erzeugt, %d gebucht, übersprungen: %d Einwilligung '
+            'ausstehend, %d ohne Zahlungspflicht, %d bereits fakturiert, %d über '
+            'Verkaufsauftrag, %d ohne Produkt, %d ohne Kontakt.',
+            len(new_moves), posted, skipped_hold, skipped_not_required, skipped_already,
+            skipped_sale, len(skipped_product), len(skipped_partner))
 
         return new_moves, {
             'created': len(new_moves),
             'posted': posted,
+            'skipped_hold': skipped_hold,
             'skipped_not_required': skipped_not_required,
             'skipped_already': skipped_already,
             'skipped_sale': skipped_sale,
@@ -484,23 +644,37 @@ class EventRegistrationAutomation(models.Model):
         Reine Oberflächenaktion: die Arbeit macht
         :meth:`_kjr_create_training_invoices`. Verhalten unverändert gegenüber
         19.0.5.6.1 (einschließlich Auto-Buchen und Auto-Versand nach
-        Systemparameter).
+        Systemparameter). Neu (19.0.5.9.0): gesperrte Anmeldungen (Einwilligung
+        ausstehend) bleiben ohne Rechnung; die Meldung nennt ihre Anzahl.
         """
-        self._kjr_create_training_invoices(allow_send=True, allow_post=True)
+        _moves, stats = self._kjr_create_training_invoices(allow_send=True, allow_post=True)
         invoices = self.mapped('kjr_training_invoice_id')
+        hold_message = _(
+            '%(count)s Anmeldung(en) wartet/warten auf die Einwilligung der '
+            'Erziehungsberechtigten und wurden übersprungen.',
+            count=stats.get('skipped_hold', 0))
         if not invoices:
+            message = _('Für die Auswahl konnte keine Rechnung erzeugt werden. '
+                        'Hinweise stehen im Chatter der betroffenen Anmeldungen.')
+            if stats.get('skipped_hold'):
+                message += '\n' + hold_message
             return self._kjr_notification(
-                _('Schulungsrechnung'),
-                _('Für die Auswahl konnte keine Rechnung erzeugt werden. '
-                  'Hinweise stehen im Chatter der betroffenen Anmeldungen.'),
-                notif_type='warning')
-        return {
+                _('Schulungsrechnung'), message, notif_type='warning')
+        window = {
             'type': 'ir.actions.act_window',
             'name': _('Rechnungen'),
             'res_model': 'account.move',
             'view_mode': 'list,form',
             'domain': [('id', 'in', invoices.ids)],
         }
+        if stats.get('skipped_hold'):
+            # Hinweis zeigen und danach die Rechnungen öffnen ('next', wie in
+            # mail/wizard/mail_template_reset.py).
+            result = self._kjr_notification(
+                _('Schulungsrechnung'), hold_message, notif_type='warning')
+            result['params']['next'] = window
+            return result
+        return window
 
     # ------------------------------------------------------------------
     # E9 – Rechnungsversand per Mail-Vorlage

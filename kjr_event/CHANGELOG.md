@@ -1,5 +1,207 @@
 # Changelog — KJR Ferienprogramm & Schulungen (`kjr_event`)
 
+## 19.0.5.9.0 (2026-10-12)
+
+Einwilligung der Erziehungsberechtigten als echte Sperre: eine Online-Anmeldung
+Minderjähriger wird erst bestätigt, wenn die Einwilligung vorliegt. Grundlage für
+die digitale Unterschrift über Odoo Sign (Brückenmodul `kjr_event_sign`); ohne
+die Brücke bleibt das bisherige Verfahren mit Häkchen im Formular.
+
+### Neu
+
+- **Einwilligungs-Sperre (`event.registration.kjr_consent_hold`).** Im Verfahren
+  „digitale Unterschrift" legt die Online-Anmeldung die Anmeldungen zuerst
+  gesperrt an: Status „unbestätigt", keine Kern-Mail, keine Rechnung, kein
+  belegter Platz. Nach dem Schreiben der KJR-Angaben wird aufgelöst:
+  Volljährige werden sofort freigegeben, für Minderjährige startet die
+  Einwilligungsanfrage (ohne Brücke: Aktivität „Einwilligung einholen"), fehlt
+  das Geburtsdatum, bleibt die Sperre mit einer Aktivität bestehen
+  (fail-closed).
+- **Freigabe nur über `_kjr_consent_release()`.** Wirft nie (Savepoint je
+  Anmeldung) und prüft vorher die freien Plätze. Ohne Verkaufsauftrag wird die
+  Anmeldung registriert (Rechnung und Kern-Mails genau einmal über den normalen
+  Schreibweg), mit Auftrag entscheidet der Status-Compute von event_sale
+  (siehe `kjr_event_shop` 19.0.2.1.0). Ist die Veranstaltung voll, kommt die
+  Anmeldung auf die Warteliste (falls aktiv) oder bleibt mit der Aktivität
+  „Einwilligung liegt vor, aber kein Platz frei" gesperrt. Es wird nie überbucht.
+- **Schutz in `write()`.** Ein Wechsel nach „registriert" oder „teilgenommen"
+  ist für gesperrte Anmeldungen ein hörbarer Fehler (Knopf „Registriert",
+  Statusleiste, RPC). Wird `parental_consent` gesetzt, gibt `write()` die
+  Anmeldung danach frei; die Einwilligung bleibt auch dann gespeichert, wenn die
+  Freigabe scheitert.
+- **Papierweg:** Knopf „Einwilligung liegt vor (Papier)" und für die
+  Veranstaltungs-Administration „Sperre aufheben" (auch serverseitig geprüft).
+  Liegt die Einwilligung schon vor (z. B. digitale Unterschrift bei voller
+  Veranstaltung), gibt es stattdessen „Freigabe erneut prüfen (Platz frei?)":
+  Freigabe mit der vorhandenen Herkunft, ohne sie mit „Papier" zu
+  überschreiben. Auch der Papier-Knopf überschreibt eine schon eingetragene
+  Herkunft nicht mehr. Band „Einwilligung ausstehend" im Formular, Spalte und
+  Filter in der Liste der KJR-Teilnehmer/innen.
+- **Abgesagte Anmeldungen werden nie freigegeben.** Weder die Einwilligung
+  (Papier, Unterschrift) noch „Sperre aufheben" registrieren eine abgesagte
+  Anmeldung wieder (kein Platz, keine Bestätigungsmail, keine Rechnung). Die
+  Sperre bleibt an der abgesagten Anmeldung stehen, damit sie auch nach
+  „Zurück auf unbestätigt" gesperrt ist; die Knöpfe sind bei Absage
+  ausgeblendet.
+- **Serverseitiger Schutz der Einwilligungsfelder.** `kjr_consent_hold` lässt
+  sich per RPC nicht mehr direkt ändern, die Herkunft „digitale Unterschrift"
+  setzt nur die Brücke (mit sudo), Herkunft und Einwilligung bei gesperrten
+  Anmeldungen nur Veranstaltungs-Benutzer/innen (vorher reichte die Rolle
+  „Registration Desk"). Der Kontext `kjr_consent_release` umgeht den Schutz in
+  `write()` nur noch zusammen mit sudo; ein mitgeschickter RPC-Kontext genügt
+  nicht mehr, ebenso wenig ein Kontext `kjr_consent_source='sign'`.
+- **Neue Felder:** `guardian_email` (E-Mail der Erziehungsberechtigten,
+  feldgeschützt), `kjr_consent_source` (Website, Papier, digitale Unterschrift),
+  `kjr_consent_action_url` (Signierlink, nie gespeichert, feldgeschützt; in
+  diesem Modul immer leer) und `kjr_consent_recipient_masked`.
+- **Verfahren je Veranstaltung (`event.event.kjr_consent_mode`):** „keine",
+  „Bestätigung im Formular" oder „digitale Unterschrift". Erweiterungspunkt
+  `_kjr_consent_mode()` für die Brücke; `_kjr_age_at_begin()` ist die einzige
+  Altersformel (Formular und gespeichertes Alter rechnen identisch).
+- **Vorprüfung im Website-Formular** vor dem Anlegen: fehlendes Geburtsdatum,
+  fehlendes Häkchen bei Minderjährigen (Verfahren Häkchen) bzw. fehlende
+  E-Mail-Adresse (Verfahren Unterschrift) führen zurück auf die Anmeldeseite mit
+  eigener Fehlermeldung. Es entsteht dann weder Anmeldung noch Warenkorb.
+- **Anmeldeformular:** Geburtsdatum ist bei Veranstaltungen mit
+  Einwilligungspflicht Pflichtfeld; im Verfahren Unterschrift neues Feld
+  „E-Mail Erziehungsberechtigte/r" und ein Hinweis statt des Häkchens. Ein
+  kleines Formular-Skript (`static/src/interactions/kjr_consent_fields.js`)
+  rechnet das Alter und markiert die Einwilligungsfelder; maßgeblich bleibt der
+  Server.
+- **Bestätigungsseite:** Überschrift „Anmeldung vorgemerkt" bzw. „Anmeldung
+  eingegangen", Hinweis mit maskierter Empfängeradresse, kein Download der
+  Bestätigung für gesperrte Anmeldungen.
+- **Einwilligungs-Erinnerung mit Signierlink.** Die Vorlage enthält einen
+  Link-Block (Knopf „Einwilligung jetzt unterschreiben", ohne Link der
+  bisherige Satz). Gerendert wird mit `sudo()`, Empfänger ist die Adresse der
+  Erziehungsberechtigten (sonst die der Anmeldung). Die Mail wird OHNE Bezug zur
+  Anmeldung abgelegt (`model`/`res_id` leer): der gespeicherte Text enthält den
+  Signierlink (Bearer-Link) und wäre sonst bis zum Versand bzw. nach einem
+  Fehlversand dauerhaft für alle lesbar, die die Anmeldung lesen dürfen.
+  Restrisiko: Verfasser/in, auslösende Person und Administration können die
+  Nachricht weiterhin lesen; nach einem Fehlversand bleibt sie bis zur
+  Bereinigung bestehen. Damit die DSGVO-Anonymisierung solche nicht versendeten
+  oder fehlgeschlagenen Mails trotzdem findet, trägt die mail.mail die
+  technische Kennung `kjr_detached_registration_id` (nur ID, nur für die
+  Administration lesbar, wird nicht als Header versendet);
+  `_kjr_purge_registration_copies()` löscht sie samt Nachricht. Der Link wird
+  nur gelesen, wenn die Vorlage unter sudo gerendert wird (Bedingung
+  `object.env.su`); im Mail-Composer, in der Vorschau oder in Automatisierungen
+  erscheint der Text ohne Link statt eines Zugriffsfehlers.
+- **Schnittstellen für `kjr_event_sign`:** leere QWeb-Anker
+  `kjr_consent_privacy_extra` (Datenschutzblock) und
+  `kjr_consent_complete_extra` (neue Vorlage
+  `registration_complete_kjr_consent_hint`).
+
+### Geändert
+
+- **Zuordnung der Zusatzangaben repariert.** Odoo 19 sendet Name, E-Mail und
+  Telefon als Veranstaltungsfragen (`<n>-name-<frage-id>`). Gelesen wurde nur
+  `<n>-name`; dadurch kam der Name nie an und Geburtsdatum, Ernährung und
+  Erziehungsberechtigte ließen sich keiner Anmeldung zuordnen. Beide
+  Schreibweisen werden jetzt verstanden, Antworten je Bestellung (Zähler 0)
+  gelten wie im Kern für alle Teilnehmenden.
+- `_kjr_write_attendee_values()` wird immer aufgerufen und gibt die Kandidaten
+  als Recordset zurück (vorher `None`). Für die Auflösung der Einwilligungs-Sperre
+  zählen trotzdem nur die in derselben Anfrage angelegten Anmeldungen; leitet der
+  Kern vorher um (keine Plätze, Sicherheitsprüfung), wird nichts aufgelöst.
+  Fremde Anmeldungen aus demselben Zeitfenster bleiben unberührt.
+- Notiz nach „Sperre aufheben" ohne Geburtsdatum: „Anmeldung ohne
+  Einwilligungsnachweis freigegeben." statt fälschlich „volljährig".
+- Die Vorprüfung erfasst jede Anmeldung, die der Kern aus dem Formular anlegt
+  (gleiche Schlüssellogik wie `_process_attendees_form`), nicht nur Zähler mit
+  Name oder Ticket. Ein präparierter POST mit zusätzlichem Index (z. B. nur
+  `2-email-5`) oder einem Index, den das Formular nie erzeugt (`0-email`,
+  `01-name-1`), wird abgewiesen.
+- Nachrücken von der Warteliste bei gesperrter Anmeldung: nur Warteliste
+  verlassen, Status bleibt unbestätigt, Notiz „Die Bestätigung wartet auf die
+  Einwilligung", KEINE Nachrück-Mail.
+- Packliste (Cron) und Sammelaktion Anmeldebestätigung überspringen gesperrte
+  Anmeldungen; die Meldung nennt deren Anzahl.
+- **Schulungsrechnung nicht für gesperrte Anmeldungen.** Die Sammelaktion
+  „Schulungsrechnung(en) erzeugen" überspringt gesperrte Anmeldungen und zählt
+  sie (`skipped_hold`, Hinweis in der Meldung, danach öffnet sich die
+  Rechnungsliste). Der Knopf „Rechnung erstellen" ist für sie ausgeblendet und
+  meldet serverseitig einen Fehler. Vorher entstanden dort Rechnung und
+  Anmeldebestätigung (Vorlage `mail_template_registration_confirm`) für eine
+  noch nicht bestätigte Anmeldung.
+- **Einwilligungs-Erinnerung nur an die Erziehungsberechtigten.** Die
+  abgekoppelte Mail mit Signierlink verwirft die Standard-Empfänger der
+  Vorlage (`recipient_ids`, `partner_ids`, `email_cc`) und geht ausschließlich
+  an die ermittelte Adresse; ohne Adresse wird nicht versendet. Vorher setzte
+  Odoo 19 (`use_default_to`, Standard True) zusätzlich den Kontakt der
+  Anmeldung als Empfänger, etwa die oder den Jugendlichen selbst. Die Vorlage
+  trägt jetzt `use_default_to=False` (Bestand: Migration).
+- **Keine Erinnerung bei zurückgestellter Anfrage.** Cron und Handaktion der
+  Einwilligungs-Erinnerung überspringen gesperrte Anmeldungen, deren
+  Einwilligungsanfrage noch zurückgestellt ist (`_kjr_consent_defer_request`,
+  mit `kjr_event_shop`: Auftrag noch Warenkorb). Erweiterungspunkt
+  `_kjr_consent_reminder_domain()` für die Auswahl des Crons.
+- `_kjr_send_template()` kann mit `sudo` rendern und protokolliert nur noch
+  Vorlage und Datensatz-ID statt des Anzeigenamens (keine personenbezogenen
+  Daten im Protokoll).
+- Die Anonymisierung leert zusätzlich `guardian_email`.
+- **Spam-Schutz vor dem Warenkorb.** Ist `kjr_website_antispam` installiert,
+  prüft die Online-Anmeldung Honeypot und Zeittoken VOR der Verkaufslogik
+  (`_kjr_antispam_rejects`, nur Modus `enforce`) und leitet bei einer Abweisung
+  auf `registration_error_code=recaptcha_failed`. Vorher verwarf
+  `website_event_sale` die Fehler-Weiterleitung des Kerns, sobald im
+  Warenkorb schon Tickets lagen, und schickte in den Checkout bzw. bestätigte
+  einen kostenlosen Warenkorb. Ohne das Modul ändert sich nichts (keine neue
+  Abhängigkeit).
+- Datenschutzblock: E-Mail der Erziehungsberechtigten in der Liste der
+  gespeicherten Angaben (nur im Verfahren Unterschrift).
+
+### Hinweise zur Installation
+
+- **Migrationsskript `migrations/19.0.5.9.0/post-migration.py`.** Ergänzt den
+  Link-Block in der Einwilligungs-Erinnerung je installierter Sprache, aber nur,
+  wenn dort noch wörtlich der Auslieferungsabsatz steht. Selbst gepflegte
+  Vorlagen bleiben unangetastet (Warnung im Protokoll: „Link-Block manuell
+  ergänzen"). Idempotent. Außerdem schaltet es an derselben Vorlage die
+  Standard-Empfänger ab (`use_default_to=False`), nur wenn sie noch aktiv sind.
+- Neue Felder ohne Nachzug; der Bestand bleibt ungesperrt.
+- Für Veranstaltungen mit „Einwilligung Erziehungsberechtigter erforderlich" ist
+  das Geburtsdatum im Online-Formular ab jetzt Pflicht.
+- Ohne `kjr_event_sign` ändert sich am Verfahren nichts außer der Vorprüfung.
+  Mit Shop (`website_event_sale`) gehört `kjr_event_shop` 19.0.2.1.0 dazu.
+- Auf der Server-Kopie prüfen: Rendern der Erinnerung unter sudo für Benutzer
+  ohne Betreuungsgruppe, Start des Formular-Skripts im Anmeldedialog.
+- **Einwilligungs-Erinnerung nur über die Aktion „Einwilligungs-Erinnerung
+  senden" oder den Cron versenden.** Nur diese Wege rendern mit sudo, legen die
+  Mail ohne Bezug zur Anmeldung ab und setzen den Empfänger auf die
+  Erziehungsberechtigten. Im Chatter-Composer („Nachricht senden", Vorlage
+  auswählen) oder in Automatisierungen erscheint die Vorlage ohne Signierlink.
+- Neue Spalte `mail_mail.kjr_detached_registration_id` (wird beim Update
+  angelegt, kein Nachzug nötig).
+
+### Offen (Kundenentscheidung nötig)
+
+- TODO(KJR): Gültigkeit der Unterschriftsanfrage und Erinnerungsintervall.
+- TODO(KJR): Automatische Absage bei Ablauf oder Ablehnung (heute nur Aktivität).
+- TODO(KJR): Aufbewahrungsfrist signierter Einwilligungen; Umgang mit den
+  Kontakten der Erziehungsberechtigten im Löschkonzept.
+- TODO(KJR): Erstattung, wenn bezahlt, aber nie unterschrieben.
+- TODO(KJR): Sperre auch für bezahlte Tickets (umgesetzt: ja).
+
+## 19.0.5.8.1 (2026-10-11)
+
+Nachtrag; die Version war ohne CHANGELOG-Eintrag ausgeliefert worden
+(Commit 45fdb72).
+
+### Geändert
+
+- **Anmeldedialog:** KJR-Felder und Datenschutzblock stehen jeweils in einem
+  eigenen `modal-body`. Vorher lagen sie ohne Innenabstand direkt im Dialog,
+  liefen bis an den Rand, standen links versetzt zu Name und E-Mail, und der
+  Datenschutzblock wurde links abgeschnitten.
+- Dialog `modal-xl` statt `modal-lg`: drei Spalten plus Hilfetexte waren in
+  800 px zu eng.
+- „Abbrechen" und „Anmeldung abschicken" haben dieselbe Form (Pille, fett);
+  „Abbrechen" bleibt als Outline-Knopf nachrangig.
+- Ausfüllhinweise im Datenschutzblock („legt der Veranstalter fest und trägt sie
+  hier ein") sehen nur noch interne Benutzer und nur, solange der Wert fehlt.
+
 ## 19.0.5.8.0 (2026-10-11)
 
 Korrekturen an der Auslieferung 19.0.5.7.0. Die Prüfung dieser Auslieferung hat
