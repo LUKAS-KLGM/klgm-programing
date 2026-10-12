@@ -208,6 +208,7 @@ class TestKjrWebsiteConsentPrecheck(TransactionCase):
             self.event.invalidate_recordset(['kjr_consent_mode'])
             self.assertIsNone(self._precheck(self.event, {
                 '1-name-1': 'Kind', '1-birthdate': '2015-01-01',
+                '1-guardian_name': 'Erika Muster',
                 '1-guardian_email': 'mutter@beispiel.de'}))
         self.event.invalidate_recordset(['kjr_consent_mode'])
 
@@ -217,8 +218,150 @@ class TestKjrWebsiteConsentPrecheck(TransactionCase):
             self.event.invalidate_recordset(['kjr_consent_mode'])
             self.assertIsNone(self._precheck(self.event, {
                 '1-name-1': 'Kind', '1-birthdate': '2015-01-01',
+                '1-guardian_name': 'Erika Muster',
                 '1-email-2': 'eltern@example.com'}))
         self.event.invalidate_recordset(['kjr_consent_mode'])
+
+    def test_sign_minor_without_guardian_name(self):
+        """19.0.5.10.0: Verfahren 'sign', minderjährig, Name der/des
+        Erziehungsberechtigten fehlt (oder nur Leerraum): eigener Fehlercode.
+        Er wird in das Einwilligungsformular übernommen und ist dort
+        schreibgeschützt."""
+        with self._sign_mode():
+            self.event.invalidate_recordset(['kjr_consent_mode'])
+            for guardian_name in (None, '', '   '):
+                post = {'1-name-1': 'Kind', '1-birthdate': '2015-01-01',
+                        '1-guardian_email': 'mutter@beispiel.de'}
+                if guardian_name is not None:
+                    post['1-guardian_name'] = guardian_name
+                self.assertEqual(self._precheck(self.event, post),
+                                 'kjr_guardian_name_missing', repr(guardian_name))
+            # Die fehlende E-Mail bleibt der vorrangige Fehler.
+            self.assertEqual(self._precheck(self.event, {
+                '1-name-1': 'Kind', '1-birthdate': '2015-01-01'}),
+                'kjr_guardian_email_missing')
+            # Zweite Teilnehmerin ohne Namen der Eltern: auch dann Fehler.
+            self.assertEqual(self._precheck(self.event, {
+                '1-name-1': 'Kind A', '1-birthdate': '2015-01-01',
+                '1-guardian_name': 'Erika Muster',
+                '1-guardian_email': 'mutter@beispiel.de',
+                '2-name-1': 'Kind B', '2-birthdate': '2016-01-01',
+                '2-guardian_email': 'mutter@beispiel.de'}),
+                'kjr_guardian_name_missing')
+            # Volljährig: kein Name der Eltern nötig.
+            self.assertIsNone(self._precheck(self.event, {
+                '1-name-1': 'Erwachsen', '1-birthdate': '1990-01-01',
+                '1-email-2': 'selbst@example.com'}))
+        self.event.invalidate_recordset(['kjr_consent_mode'])
+
+    def test_sign_minor_guardian_name_is_child_name(self):
+        """19.0.5.10.0 (gemeldeter Fall): Im Feld der Erziehungsberechtigten
+        steht der Name des Kindes (auch in anderer Schreibweise oder mit
+        Mehrfach-Leerraum). Die Einwilligung trüge sonst den Kindernamen als
+        unterschreibende Person: eigener Fehlercode."""
+        with self._sign_mode():
+            self.event.invalidate_recordset(['kjr_consent_mode'])
+            for guardian_name in ('Lina Muster', '  lina   MUSTER '):
+                self.assertEqual(self._precheck(self.event, {
+                    '1-name-1': 'Lina Muster', '1-birthdate': '2015-01-01',
+                    '1-guardian_name': guardian_name,
+                    '1-guardian_email': 'mutter@beispiel.de'}),
+                    'kjr_guardian_name_is_child', repr(guardian_name))
+            # Zweite Teilnehmerin: Vergleich je Person (Name aus "2-name-<id>").
+            self.assertEqual(self._precheck(self.event, {
+                '1-name-1': 'Lina Muster', '1-birthdate': '2015-01-01',
+                '1-guardian_name': 'Erika Muster',
+                '1-guardian_email': 'mutter@beispiel.de',
+                '2-name-1': 'Paul Muster', '2-birthdate': '2016-01-01',
+                '2-guardian_name': 'Paul Muster',
+                '2-guardian_email': 'mutter@beispiel.de'}),
+                'kjr_guardian_name_is_child')
+            # Name eines Geschwisterkindes ist kein Fehler dieser Prüfung.
+            self.assertIsNone(self._precheck(self.event, {
+                '1-name-1': 'Lina Muster', '1-birthdate': '2015-01-01',
+                '1-guardian_name': 'Erika Muster',
+                '1-guardian_email': 'mutter@beispiel.de',
+                '2-name-1': 'Paul Muster', '2-birthdate': '2016-01-01',
+                '2-guardian_name': 'Erika Muster',
+                '2-guardian_email': 'mutter@beispiel.de'}))
+            # Volljährig: keine Prüfung.
+            self.assertIsNone(self._precheck(self.event, {
+                '1-name-1': 'Erwachsen', '1-birthdate': '1990-01-01',
+                '1-guardian_name': 'Erwachsen',
+                '1-email-2': 'selbst@example.com'}))
+        self.event.invalidate_recordset(['kjr_consent_mode'])
+        # Verfahren 'checkbox': unverändert (Name der Eltern freiwillig).
+        self.assertIsNone(self._precheck(self.event, {
+            '1-name-1': 'Kind', '1-birthdate': '2015-01-01',
+            '1-guardian_name': 'Kind', '1-parental_consent': '1'}))
+
+    def test_error_message_guardian_name_is_child(self):
+        """Der Fehlercode erzeugt auf der Anmeldeseite einen Hinweis."""
+        arch = self.env.ref('kjr_event.registration_template_kjr_consent_errors').arch
+        self.assertIn("registration_error_code == 'kjr_guardian_name_is_child'", arch)
+        # Die Meldung nennt beide Felder (nicht feststellbar, welches falsch ist).
+        self.assertIn('Bitte prüfen Sie beide Angaben', arch)
+        self.assertIn('Name des Kindes / Teilnehmer/in', arch)
+        self.assertNotIn('nicht den Namen des Kindes', arch)
+
+    def test_name_question_label_names_the_child(self):
+        """19.0.5.10.0: Das Kernfeld "Name" heißt je Teilnehmer/in "Name des
+        Kindes / Teilnehmer/in"; der Fragetitel in der Datenbank bleibt, und
+        Fragen je Bestellung (Index 0) sowie andere Fragetypen behalten ihn."""
+        name_question = self.env['event.question'].create({
+            'title': 'Name', 'question_type': 'name'})
+        email_question = self.env['event.question'].create({
+            'title': 'E-Mail', 'question_type': 'email'})
+        base = {
+            'event': self.event, 'counter': 1, 'default_first_attendee': {},
+            'input_type_by_question_type': {
+                'name': 'text', 'email': 'email', 'phone': 'tel', 'company_name': 'text'},
+        }
+
+        def render(question, index):
+            return str(self.env['ir.qweb']._render(
+                'website_event.registration_event_question',
+                dict(base, question=question, registration_index=index)))
+
+        self.assertIn('Name des Kindes / Teilnehmer/in', render(name_question, 1))
+        self.assertNotIn('Name des Kindes', render(name_question, 0))
+        self.assertNotIn('Name des Kindes', render(email_question, 1))
+        self.assertIn('E-Mail', render(email_question, 1))
+        self.assertEqual(name_question.title, 'Name')
+
+    def test_name_question_not_prefilled_with_account_name(self):
+        """19.0.5.10.0: Der Kern befuellt das erste Ticket mit
+        default_first_attendee (Name des Benutzerkontos bzw. Website-Besuchers,
+        meist ein Elternteil). Das Namensfeld des Kindes bleibt leer, E-Mail
+        und Fragen je Bestellung behalten die Kern-Vorbefuellung."""
+        name_question = self.env['event.question'].create({
+            'title': 'Name', 'question_type': 'name'})
+        email_question = self.env['event.question'].create({
+            'title': 'E-Mail', 'question_type': 'email'})
+        base = {
+            'event': self.event, 'counter': 1,
+            'default_first_attendee': {
+                'name': 'Elternteil Konto', 'email': 'eltern@example.com'},
+            'input_type_by_question_type': {
+                'name': 'text', 'email': 'email', 'phone': 'tel', 'company_name': 'text'},
+        }
+
+        def render(question, index):
+            return str(self.env['ir.qweb']._render(
+                'website_event.registration_event_question',
+                dict(base, question=question, registration_index=index)))
+
+        child = render(name_question, 1)
+        self.assertNotIn('Elternteil Konto', child)
+        self.assertIn('name="1-name-%s"' % name_question.id, child)
+        self.assertIn('eltern@example.com', render(email_question, 1))
+        # Frage je Bestellung (Index 0): Kernverhalten unveraendert.
+        self.assertIn('Elternteil Konto', render(name_question, 0))
+
+    def test_checkbox_minor_needs_no_guardian_name(self):
+        """Im Verfahren 'checkbox' bleibt der Name der Eltern freiwillig."""
+        self.assertIsNone(self._precheck(self.event, {
+            '1-name-1': 'Kind', '1-birthdate': '2015-01-01', '1-parental_consent': '1'}))
 
     def test_sign_drops_parental_consent(self):
         """Im Verfahren 'sign' ersetzt kein Häkchen die Unterschrift."""

@@ -8,14 +8,21 @@
  *
  * - Verfahren 'checkbox': das Haekchen "Einwilligung liegt vor" wird fuer
  *   Minderjaehrige zum Pflichtfeld (required) und sonst wieder freigegeben.
- * - Verfahren 'sign': das Feld "E-Mail Erziehungsberechtigte/r" wird
+ * - Verfahren 'sign': das Feld "E-Mail der/des Erziehungsberechtigten" wird
  *   hervorgehoben, aber NICHT Pflicht (leer greift die Anmelde-E-Mail).
+ *   Das Feld "Name der/des Erziehungsberechtigten" wird fuer Minderjaehrige
+ *   Pflichtfeld (required, Stern sichtbar; 19.0.5.10.0): der Name wird in das
+ *   Einwilligungsformular uebernommen. Steht dort derselbe Name wie im
+ *   Kernfeld "Name des Kindes / Teilnehmer/in" (gemeldeter Fall), melden
+ *   BEIDE Felder einen Eingabefehler (setCustomValidity), weil nicht
+ *   feststeht, welches falsch ist; serverseitig kjr_guardian_name_is_child.
  *
  * Nur Komfort: massgeblich ist die Vorpruefung im Controller
  * (KjrWebsiteEventController._kjr_consent_precheck).
  */
 import { Interaction } from "@web/public/interaction";
 import { registry } from "@web/core/registry";
+import { _t } from "@web/core/l10n/translation";
 
 /**
  * Alter in vollen Jahren am Stichtag; null bei fehlenden oder ungueltigen Daten.
@@ -37,12 +44,28 @@ function ageAt(birthdate, start) {
     return stYear - bdYear - (beforeBirthday ? 1 : 0);
 }
 
+/**
+ * Vergleichsform fuer Namen wie im Controller (_kjr_norm_text): Gross-/
+ * Kleinschreibung und Mehrfach-Leerraum egal.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+function normName(value) {
+    return (value || "").trim().split(/\s+/).join(" ").toLocaleLowerCase();
+}
+
 export class KjrConsentFields extends Interaction {
     static selector = "#modal_attendees_registration";
     dynamicContent = {
         "input[name$='-birthdate']": {
             "t-on-change": this.onBirthdateChange,
             "t-on-input": this.onBirthdateChange,
+        },
+        // Name der/des Erziehungsberechtigten und Kernfeld "Name"
+        // ("<zaehler>-name-<frage-id>", website_event.registration_event_question)
+        "input[name$='-guardian_name'], input[name*='-name-']": {
+            "t-on-input": this.onNameInput,
         },
     };
 
@@ -57,6 +80,43 @@ export class KjrConsentFields extends Interaction {
      */
     onBirthdateChange(ev) {
         this.updateConsentFields(ev.currentTarget);
+    }
+
+    /**
+     * @param {Event} ev
+     */
+    onNameInput(ev) {
+        this.checkGuardianName(ev.currentTarget.name.split("-")[0]);
+    }
+
+    /**
+     * Markiert die Felder "Name des Kindes / Teilnehmer/in" und "Name der/des
+     * Erziehungsberechtigten" derselben Person als fehlerhaft, wenn der Name
+     * der Erziehungsberechtigten Pflicht ist (Verfahren 'sign', minderjaehrig)
+     * und beide denselben Namen enthalten. Beide Felder, weil nicht
+     * feststeht, welches falsch ist (gleicher Wortlaut wie die Meldung zu
+     * kjr_guardian_name_is_child auf der Anmeldeseite).
+     *
+     * @param {string} counter Zaehler der Teilnehmerin / des Teilnehmers
+     */
+    checkGuardianName(counter) {
+        const guardianName = this.el.querySelector(`input[name='${counter}-guardian_name']`);
+        if (!guardianName) {
+            return;
+        }
+        const childName = this.el.querySelector(`input[name^='${counter}-name-']`);
+        const guardian = normName(guardianName.value);
+        const isChild =
+            guardianName.required && !!guardian && !!childName && guardian === normName(childName.value);
+        const message = isChild
+            ? _t(
+                  "Die Namen bei „Name des Kindes / Teilnehmer/in“ und „Name der/des Erziehungsberechtigten“ sind gleich. Bitte prüfen Sie beide Angaben."
+              )
+            : "";
+        guardianName.setCustomValidity(message);
+        if (childName) {
+            childName.setCustomValidity(message);
+        }
     }
 
     /**
@@ -80,6 +140,17 @@ export class KjrConsentFields extends Interaction {
                 checkbox.required = isMinor;
             }
         } else if (mode === "sign") {
+            const guardianName = container.querySelector(
+                `input[name='${counter}-guardian_name']`
+            );
+            if (guardianName) {
+                guardianName.required = isMinor;
+                this.checkGuardianName(counter);
+            }
+            const guardianNameStar = container.querySelector(".o_kjr_guardian_name_required");
+            if (guardianNameStar) {
+                guardianNameStar.classList.toggle("d-none", !isMinor);
+            }
             const guardianEmail = container.querySelector(
                 `input[name='${counter}-guardian_email']`
             );

@@ -1,5 +1,86 @@
 # Changelog — KJR Ferienprogramm & Schulungen (`kjr_event`)
 
+## 19.0.5.10.0 (2026-10-12)
+
+Eindeutige Beschriftungen im Anmeldedialog: Eltern hatten im Feld
+„Erziehungsberechtigte/r" den Namen des Kindes bzw. im Feld „Name" ihren
+eigenen Namen eingetragen. Die Felder bleiben inhaltlich gleich; „Name" ist und
+bleibt der Name der angemeldeten Person (Teilnehmerlisten, Alter, Rechnungen
+unverändert).
+
+### Geändert
+
+- **Kernfeld „Name" heißt im Anmeldedialog „Name des Kindes / Teilnehmer/in".**
+  Das Feld ist in Odoo 19 eine Veranstaltungsfrage (`event.question`,
+  Typ `name`, Titel als Daten je Frage) und wird in
+  `website_event.registration_event_question` ausgegeben. Neuer
+  Template-Override `registration_event_question_kjr_label` ersetzt nur das
+  `t-out` des Labels, und zwar für Fragen vom Typ `name` je Teilnehmer/in
+  (`registration_index` ≥ 1), also genau dort, wo auch die KJR-Zusatzfelder
+  erscheinen (die hängen an keiner weiteren Bedingung, auch nicht an
+  `is_kjr`). Fragen je Bestellung und alle anderen Fragetypen behalten den
+  Originaltitel. Die Fragetitel in der Datenbank bleiben unverändert (sie
+  gelten auch im Backend und in Berichten).
+- **Weitere Beschriftungen:** „Geburtsdatum (Kind)", „Name der/des
+  Erziehungsberechtigten" (vorher „Erziehungsberechtigte/r"), „E-Mail der/des
+  Erziehungsberechtigten (für die digitale Einwilligung)". „Telefon
+  Erziehungsberechtigte/r" bleibt. Die Feldbezeichnungen im Backend
+  (`string` der Felder) bleiben unverändert.
+- **Datenschutzhinweis und Fehlermeldungen** im Anmeldedialog verwenden
+  denselben Wortlaut.
+- **Verfahren „digitale Unterschrift": Name der/des Erziehungsberechtigten ist
+  für Minderjährige Pflicht.** Die Einwilligung (Vorlage v2 von
+  `kjr_event_sign` 19.0.1.1.0) übernimmt den Namen schreibgeschützt aus der
+  Anmeldung. Neuer Fehlercode der Vorprüfung `kjr_guardian_name_missing`
+  („Anmeldung nicht möglich: Bitte geben Sie den Namen der/des
+  Erziehungsberechtigten an."), geprüft NACH der fehlenden E-Mail-Adresse und
+  nur bei Minderjährigen im Verfahren `sign`; nur Leerraum zählt als leer.
+  Das Formular-Skript `kjr_consent_fields.js` setzt das Feld für Minderjährige
+  auf `required` und blendet den Stern ein (Hinweistext darunter); maßgeblich
+  bleibt die Vorprüfung im Controller. Im Verfahren „Bestätigung im Formular"
+  bleibt der Name freiwillig.
+- **Name des Kindes im Feld der Eltern wird abgewiesen** (gemeldeter Fall
+  „erziehungsberechtigter ist name des kindes"). Neuer Fehlercode
+  `kjr_guardian_name_is_child` („Anmeldung nicht möglich: Die Namen bei
+  „Name des Kindes / Teilnehmer/in“ und „Name der/des Erziehungsberechtigten“
+  sind gleich. Bitte prüfen Sie beide Angaben."; die Meldung nennt beide
+  Felder, weil nicht feststeht, welches falsch ist), wenn der Name
+  der/des Erziehungsberechtigten dem Kernfeld „Name des Kindes /
+  Teilnehmer/in" derselben Person entspricht (ohne Groß-/Kleinschreibung,
+  Leerraum egal); nur bei Minderjährigen im Verfahren `sign`, geprüft nach
+  `kjr_guardian_name_missing`. Das Formular-Skript meldet denselben Fall
+  schon beim Tippen (`setCustomValidity` an beiden Feldern, gleicher
+  Wortlaut), der Hinweistext unter dem Feld
+  sagt „Ihr eigener Name (nicht der des Kindes)". Ältere Anmeldungen fängt
+  `kjr_event_sign` 19.0.1.1.0 vor dem Versand ab.
+- **Namensfeld des Kindes wird nicht mehr mit dem Kontonamen vorbefüllt.**
+  Der Kern setzt beim ersten Ticket `default_first_attendee['name']` ein
+  (`website_event/controllers/main.py`): bei angemeldeten Nutzerinnen und
+  Nutzern den Namen des Benutzerkontos, bei bekannten Website-Besuchern
+  `visitor.display_name`, also meist den Namen eines Elternteils. Übernahmen
+  angemeldete Eltern ihn und trugen sich korrekt als Erziehungsberechtigte
+  ein, griff `kjr_guardian_name_is_child`. Der Override
+  `registration_event_question_kjr_label` setzt unter derselben Bedingung
+  wie die Beschriftung (Typ `name`, je Teilnehmer/in) den Wert leer;
+  E-Mail und Telefon sowie Fragen je Bestellung behalten die
+  Kern-Vorbefüllung.
+- Tests in `tests/test_event_website_registration.py`: Vorprüfung ohne Namen
+  (leer, nur Leerraum, zweite Teilnehmerin, volljährig, Verfahren
+  Häkchen), Name des Kindes als Name der Eltern (Schreibweise, zweite
+  Teilnehmerin, Geschwistername, volljährig, Verfahren Häkchen, Hinweis auf
+  der Anmeldeseite), Beschriftung des Namensfeldes (je Teilnehmer/in, je Bestellung,
+  anderer Fragetyp, Fragetitel unverändert), keine Vorbefüllung des
+  Namensfeldes mit `default_first_attendee['name']` (E-Mail bleibt
+  vorbefüllt). Bestehende Tests im Verfahren
+  `sign` senden jetzt einen Namen der Eltern mit.
+
+### Hinweise zur Installation
+
+- Update `-u kjr_event`, keine Migration nötig (nur Ansichten, Controller,
+  Skript). Danach Odoo-Dienst neu starten (geändertes Asset
+  `kjr_consent_fields.js`), Browser-Cache leeren.
+- Zusammen mit `kjr_event_sign` 19.0.1.1.0 einspielen.
+
 ## 19.0.5.9.0 (2026-10-12)
 
 Einwilligung der Erziehungsberechtigten als echte Sperre: eine Online-Anmeldung

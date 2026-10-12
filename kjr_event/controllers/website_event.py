@@ -27,6 +27,15 @@ KJR_VALUE_FIELDS = (
 KJR_ERROR_BIRTHDATE_MISSING = 'kjr_birthdate_missing'
 KJR_ERROR_CONSENT_MISSING = 'kjr_consent_missing'
 KJR_ERROR_GUARDIAN_EMAIL_MISSING = 'kjr_guardian_email_missing'
+# 19.0.5.10.0: im Verfahren 'sign' übernimmt die Einwilligung (Odoo Sign,
+# Vorlage v2 von kjr_event_sign) den Namen der/des Erziehungsberechtigten
+# schreibgeschützt aus der Anmeldung. Fehlt er, könnten die Eltern ihn im
+# Formular nicht nachtragen.
+KJR_ERROR_GUARDIAN_NAME_MISSING = 'kjr_guardian_name_missing'
+# 19.0.5.10.0: im Feld der Erziehungsberechtigten steht der Name des Kindes
+# (gemeldeter Fall). Die Einwilligung trüge sonst den Kindernamen als
+# unterschreibende Person.
+KJR_ERROR_GUARDIAN_NAME_IS_CHILD = 'kjr_guardian_name_is_child'
 
 # Auswahlfelder unter KJR_VALUE_FIELDS. Ihr Wert kommt aus einem <select> des
 # öffentlichen Formulars und wird deshalb VOR dem Schreiben gegen den
@@ -304,6 +313,13 @@ class KjrWebsiteEventController(WebsiteEventController):
         * minderjährig und Verfahren 'sign' ohne gültige Adresse der
           Erziehungsberechtigten UND ohne gültige Anmelde-E-Mail:
           ``kjr_guardian_email_missing``.
+        * minderjährig und Verfahren 'sign' ohne Namen der/des
+          Erziehungsberechtigten (nur Leerraum zählt als leer):
+          ``kjr_guardian_name_missing`` (19.0.5.10.0).
+        * minderjährig und Verfahren 'sign', Name der/des
+          Erziehungsberechtigten gleich dem Namen der Teilnehmerin bzw. des
+          Teilnehmers (Kernfeld "Name", ohne Groß-/Kleinschreibung,
+          Leerraum egal): ``kjr_guardian_name_is_child`` (19.0.5.10.0).
 
         Maßgeblich ist der Server; das Formular-Skript ist nur Komfort.
         """
@@ -339,6 +355,12 @@ class KjrWebsiteEventController(WebsiteEventController):
                 own = email_normalize((match_values.get(counter) or {}).get('email') or '')
                 if not guardian and not own:
                     return KJR_ERROR_GUARDIAN_EMAIL_MISSING
+                guardian_name = _kjr_norm_text(post.get(prefix + 'guardian_name'))
+                if not guardian_name:
+                    return KJR_ERROR_GUARDIAN_NAME_MISSING
+                child_name = _kjr_norm_text((match_values.get(counter) or {}).get('name'))
+                if child_name and guardian_name == child_name:
+                    return KJR_ERROR_GUARDIAN_NAME_IS_CHILD
         return None
 
     def _kjr_apply_consent_mode(self, kjr_values, mode):

@@ -21,7 +21,7 @@
                  t-att-data-kjr-consent-mode="event.kjr_consent_mode"
                  t-att-data-kjr-counter="counter">
                 <div class="col-md-4">
-                    <label t-attf-for="#{counter}-birthdate" class="form-label">Geburtsdatum<span t-if="event.requires_parental_consent" class="ms-1" aria-hidden="true">*</span></label>
+                    <label t-attf-for="#{counter}-birthdate" class="form-label">Geburtsdatum (Kind)<span t-if="event.requires_parental_consent" class="ms-1" aria-hidden="true">*</span></label>
                     <input type="date" class="form-control"
                            t-attf-name="#{counter}-birthdate"
                            t-attf-id="#{counter}-birthdate"
@@ -110,11 +110,25 @@
                         nie einzeln weitergegeben.
                     </div>
                 </div>
+                <!-- 19.0.5.10.0: Beschriftung eindeutig (vorher nur
+                     "Erziehungsberechtigte/r"; Eltern trugen dort den Namen des
+                     Kindes ein). Im Verfahren "digitale Unterschrift" wird der
+                     Name schreibgeschuetzt in das Einwilligungsformular
+                     uebernommen und ist fuer Minderjaehrige Pflicht: Stern und
+                     required setzt das Formular-Skript je nach Alter,
+                     massgeblich ist die Vorpruefung im Controller
+                     (kjr_guardian_name_missing). -->
                 <div class="col-md-6">
-                    <label t-attf-for="#{counter}-guardian_name" class="form-label">Erziehungsberechtigte/r</label>
+                    <label t-attf-for="#{counter}-guardian_name" class="form-label">Name der/des Erziehungsberechtigten<span t-if="event.kjr_consent_mode == 'sign'" class="ms-1 d-none o_kjr_guardian_name_required" aria-hidden="true">*</span></label>
                     <input type="text" class="form-control"
                            t-attf-name="#{counter}-guardian_name"
-                           t-attf-id="#{counter}-guardian_name"/>
+                           t-attf-id="#{counter}-guardian_name"
+                           autocomplete="name"
+                           t-att-aria-describedby="event.kjr_consent_mode == 'sign' and '%s-guardian_name_help' % counter or None"/>
+                    <div t-if="event.kjr_consent_mode == 'sign'" class="form-text"
+                         t-attf-id="#{counter}-guardian_name_help">
+                        Pflicht für Teilnehmende unter 18 Jahren: Ihr eigener Name (nicht der des Kindes); er wird in das Einwilligungsformular übernommen.
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <label t-attf-for="#{counter}-guardian_phone" class="form-label">Telefon Erziehungsberechtigte/r</label>
@@ -126,7 +140,7 @@
                      Unterschriftsanfrage. Bewusst KEIN required: leer greift die
                      E-Mail der Anmeldung (Vorpruefung im Controller). -->
                 <div t-if="event.kjr_consent_mode == 'sign'" class="col-md-6">
-                    <label t-attf-for="#{counter}-guardian_email" class="form-label">E-Mail Erziehungsberechtigte/r (für die digitale Einwilligung)</label>
+                    <label t-attf-for="#{counter}-guardian_email" class="form-label">E-Mail der/des Erziehungsberechtigten (für die digitale Einwilligung)</label>
                     <input type="email" class="form-control"
                            t-attf-name="#{counter}-guardian_email"
                            t-attf-id="#{counter}-guardian_email"
@@ -176,6 +190,53 @@
                 </div>
             </div>
             </div>
+        </xpath>
+    </template>
+
+    <!-- 19.0.5.10.0: Beschriftung des Kernfeldes "Name" im Anmeldedialog.
+
+         Das Feld "Name" ist in Odoo 19 eine Veranstaltungsfrage
+         (event.question, question_type 'name'; Titel als DB-Daten je Frage,
+         Standard "Name" aus event/data/event_question_data.xml) und wird in
+         website_event.registration_event_question mit
+         <label t-out="question.title"/> ausgegeben. Es ist und bleibt der Name
+         der angemeldeten Person (des Kindes): Teilnehmerlisten, Alter und
+         Rechnungen bleiben unveraendert. Eltern lasen "Name" aber als ihren
+         eigenen Namen.
+
+         Bewusst ein Template-Override und KEINE Aenderung der Fragetitel: die
+         gelten auch im Backend und in Berichten.
+
+         Bedingung: genau dort, wo kjr_event seine Zusatzfelder (Geburtsdatum,
+         Erziehungsberechtigte) rendert, also je Teilnehmer/in im
+         attendee_loop (der Kern ruft website_event.registration_event_question
+         dort mit registration_index = Zaehler >= 1 auf). Die Zusatzfelder haengen
+         an keiner weiteren Bedingung (auch nicht an event.is_kjr), deshalb
+         auch diese Beschriftung nicht. Fragen, die einmal je Bestellung
+         gestellt werden (registration_index 0), behalten den Originaltitel,
+         ebenso alle anderen Fragetypen.
+         Anker: das einzige label des Kerntemplates; nur das Attribut t-out
+         wird ersetzt. NACH EINEM ODOO-UPDATE PRUEFEN.
+
+         Unter derselben Bedingung wird das Feld NICHT mehr vorbefuellt: der
+         Kern setzt fuer Zaehler 0/1 default_first_attendee['name'] ein
+         (website_event/controllers/main.py, _prepare_registration_new_values): bei
+         angemeldeten Nutzerinnen und Nutzern request.env.user.name, bei
+         bekannten Website-Besuchern visitor.display_name - also den Namen
+         des Elternteils im Feld fuer das Kind. Uebernahmen Eltern ihn und
+         trugen sich korrekt als Erziehungsberechtigte ein, griff
+         kjr_guardian_name_is_child. E-Mail/Telefon und alle anderen Faelle
+         behalten die Kern-Vorbefuellung. Anker: das einzige input des
+         Kerntemplates mit t-att-value; der Ausdruck im else-Zweig ist der
+         unveraenderte Kernausdruck. -->
+    <template id="registration_event_question_kjr_label"
+              inherit_id="website_event.registration_event_question"
+              name="KJR Anmeldung: Beschriftung Name des Kindes">
+        <xpath expr="//label[@t-out='question.title']" position="attributes">
+            <attribute name="t-out">'Name des Kindes / Teilnehmer/in' if question.question_type == 'name' and registration_index else question.title</attribute>
+        </xpath>
+        <xpath expr="//input[@t-att-value]" position="attributes">
+            <attribute name="t-att-value">'' if question.question_type == 'name' and registration_index else (default_first_attendee.get(question.question_type, '') if counter in (0,1) else '')</attribute>
         </xpath>
     </template>
 
@@ -249,12 +310,12 @@
                 </p>
                 <dl class="row small mb-0">
                     <dt class="col-sm-4">Was wir speichern</dt>
-                    <dd class="col-sm-8">Name, Geburtsdatum, die Angaben zur Ernährung
-                        (Auswahl und Hinweisfeld), Name und Telefonnummer der
-                        Erziehungsberechtigten<t t-if="event.kjr_consent_mode == 'sign'">
-                        sowie deren E-Mail-Adresse für die Bitte um Einwilligung</t>,
-                        den Notfallkontakt, Ihre Bemerkungen und das Geschlecht
-                        (freiwillige Angabe).</dd>
+                    <dd class="col-sm-8">Name des Kindes / Teilnehmer/in, Geburtsdatum
+                        (Kind), die Angaben zur Ernährung (Auswahl und Hinweisfeld), Name
+                        und Telefonnummer der/des Erziehungsberechtigten<t t-if="event.kjr_consent_mode == 'sign'">
+                        sowie die E-Mail der/des Erziehungsberechtigten für die Bitte um
+                        Einwilligung</t>, den Notfallkontakt, Ihre Bemerkungen und das
+                        Geschlecht (freiwillige Angabe).</dd>
 
                     <dt class="col-sm-4">Wofür wir sie nutzen</dt>
                     <dd class="col-sm-8">Um die Veranstaltung durchzuführen (Anmeldung,
@@ -566,21 +627,33 @@
 
          Anker bewusst am insufficient_seats-Div des Kerns (position="after") und
          NICHT am recaptcha_failed-Div: den ersetzt das Modul kjr_website_antispam
-         vollstaendig. Die drei Codes kommen wie die Kerncodes ueber
-         ?registration_error_code=... auf die Anmeldeseite. -->
+         vollstaendig. Die Codes kommen wie die Kerncodes ueber
+         ?registration_error_code=... auf die Anmeldeseite.
+         19.0.5.10.0: kjr_guardian_name_missing (Verfahren "digitale
+         Unterschrift", minderjaehrig, Name der/des Erziehungsberechtigten
+         fehlt) und kjr_guardian_name_is_child (Name des Kindes und Name
+         der/des Erziehungsberechtigten gleich; die Meldung nennt beide
+         Felder, weil nicht feststeht, welches falsch ist); Wortlaut der
+         Feldbeschriftungen uebernommen. -->
     <template id="registration_template_kjr_consent_errors"
               name="KJR: Fehlermeldungen Einwilligung"
               inherit_id="website_event.registration_template">
         <xpath expr="//div[@t-if=&quot;registration_error_code == 'insufficient_seats'&quot;]"
                position="after">
             <div t-if="registration_error_code == 'kjr_birthdate_missing'" class="alert alert-danger my-3" role="alert">
-                Anmeldung nicht möglich: Bitte geben Sie für alle Teilnehmenden das Geburtsdatum an.
+                Anmeldung nicht möglich: Bitte geben Sie für alle Teilnehmenden das Geburtsdatum (Kind) an.
             </div>
             <div t-if="registration_error_code == 'kjr_consent_missing'" class="alert alert-danger my-3" role="alert">
                 Anmeldung nicht möglich: Für Teilnehmende unter 18 Jahren muss die Einwilligung der Erziehungsberechtigten bestätigt werden.
             </div>
             <div t-if="registration_error_code == 'kjr_guardian_email_missing'" class="alert alert-danger my-3" role="alert">
-                Anmeldung nicht möglich: Bitte geben Sie für Teilnehmende unter 18 Jahren eine E-Mail-Adresse der Erziehungsberechtigten an.
+                Anmeldung nicht möglich: Bitte geben Sie für Teilnehmende unter 18 Jahren die E-Mail der/des Erziehungsberechtigten an.
+            </div>
+            <div t-if="registration_error_code == 'kjr_guardian_name_missing'" class="alert alert-danger my-3" role="alert">
+                Anmeldung nicht möglich: Bitte geben Sie den Namen der/des Erziehungsberechtigten an.
+            </div>
+            <div t-if="registration_error_code == 'kjr_guardian_name_is_child'" class="alert alert-danger my-3" role="alert">
+                Anmeldung nicht möglich: Die Namen bei „Name des Kindes / Teilnehmer/in“ und „Name der/des Erziehungsberechtigten“ sind gleich. Bitte prüfen Sie beide Angaben.
             </div>
         </xpath>
     </template>
