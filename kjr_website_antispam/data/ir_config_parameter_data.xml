@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate="1": Startwerte des Spam-Schutzes. Vom Administrator unter
+         Einstellungen > Technisch > Systemparameter pflegbar; ein Modulupdate
+         überschreibt gepflegte Werte nicht.
+
+         WICHTIG: Die Schlüssel NICHT vor der Installation von Hand anlegen.
+         ir.config_parameter.key ist eindeutig, die Installation bräche sonst
+         mit einem Duplikatfehler ab. Erst installieren, dann umstellen. -->
+    <data noupdate="1">
+
+        <!-- Betriebsmodus:
+             enforce = auffällige Anfragen werden mit einer neutralen Meldung abgewiesen
+             log     = nur protokollieren (Aktion, Grund, Modus), nichts abweisen
+             off     = keine Prüfung (Notbremse)
+             Unbekannte Werte gelten als enforce.
+             EMPFEHLUNG für den Rollout: direkt nach der Installation auf "log"
+             stellen, die Protokolle einige Tage beobachten und erst dann wieder
+             auf "enforce" gehen (siehe README.md). -->
+        <record id="param_mode" model="ir.config_parameter">
+            <field name="key">kjr_website_antispam.mode</field>
+            <field name="value">enforce</field>
+        </record>
+
+        <!-- Mindestzeit in Sekunden zwischen dem Ausstellen des Zeittokens
+             (Laden des Formulars) und dem Absenden. Bots senden meist sofort ab.
+             0 = keine Mindestzeit. Bewusst knapp (2): Wer ein vorausgefülltes
+             Formular oder ein nach einem Fehler neu angezeigtes Formular schnell
+             absendet, soll nicht abgewiesen werden. Im Modus "log" auf
+             "too_fast" achten (README.md). -->
+        <record id="param_min_seconds" model="ir.config_parameter">
+            <field name="key">kjr_website_antispam.min_seconds</field>
+            <field name="value">2</field>
+        </record>
+
+        <!-- Aktionen OHNE Mindestzeit, kommagetrennt (fnmatch). Honeypot,
+             Signatur und Höchstalter werden für sie weiter geprüft.
+             website_event_registration = Teilnehmerdialog der Veranstaltung:
+             wird erst nach Ticketauswahl und Klick gerendert und für angemeldete
+             Benutzer bzw. wiedererkannte Besucher vom Kern vorausgefüllt; ein
+             einziger Klick auf "Registrierung bestätigen" genügt dort.
+             Keine Ausnahme: "-" eintragen (ein leerer Wert gilt wie ein
+             fehlender Parameter, also wieder als Standard). -->
+        <record id="param_min_seconds_exempt" model="ir.config_parameter">
+            <field name="key">kjr_website_antispam.min_seconds_exempt</field>
+            <field name="value">website_event_registration</field>
+        </record>
+
+        <!-- Höchstalter des Zeittokens in Stunden. Danach muss die Seite neu
+             geladen werden (offene Seiten holen das Token nach 20 Stunden beim
+             nächsten Klick ins Formular selbst neu). 0, leer oder ungültig
+             ergibt wieder 24: ein Token ohne Ablauf wäre unbegrenzt
+             wiederverwendbar. -->
+        <record id="param_max_age_hours" model="ir.config_parameter">
+            <field name="key">kjr_website_antispam.max_age_hours</field>
+            <field name="value">24</field>
+        </record>
+
+        <!-- Geprüfte Aktionen, kommagetrennt, Platzhalter wie in Dateinamen
+             (fnmatch, z. B. "kjr_*"). Die Aktion ist der Name, mit dem ein
+             Formular den Odoo-Hook _verify_request_recaptcha_token aufruft:
+             website_form                = Formulare aus dem Website-Builder
+             website_event_registration  = Online-Anmeldung zu Veranstaltungen
+             kjr_*                       = eigene KJR-Formulare (z. B. kjr_spielmobil)
+             Login, Registrierung und Passwort-Zurücksetzen hier NICHT eintragen. -->
+        <record id="param_actions" model="ir.config_parameter">
+            <field name="key">kjr_website_antispam.actions</field>
+            <field name="value">website_form,website_event_registration,kjr_*</field>
+        </record>
+
+    </data>
+</odoo>

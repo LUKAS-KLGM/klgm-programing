@@ -1,0 +1,11 @@
+// Honeypot des KJR-Spam-Schutzes: für Menschen unsichtbar, aber NICHT per
+// display:none versteckt (manche Bots überspringen solche Felder gezielt).
+// Screenreader überspringen den Block über aria-hidden, die Tastatur über
+// tabindex="-1" am Feld.
+.o_kjr_hp {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}

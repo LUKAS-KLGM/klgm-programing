@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Felder des Spam-Schutzes für serverseitig gerenderte Formulare.
+
+         kjr_hp: Honeypot. Menschen sehen das Feld nicht (.o_kjr_hp schiebt es aus
+         dem sichtbaren Bereich, aria-hidden blendet es für Screenreader aus,
+         tabindex="-1" nimmt es aus der Tastaturreihenfolge). Ist es gefüllt,
+         war es fast sicher ein Bot.
+         kjr_ts: signiertes Zeittoken '<Sekunden>.<HMAC>', beim Rendern ausgestellt.
+         Die Mindestzeit läuft ab dem Rendern, nicht ab der ersten Eingabe. Für
+         vorausgefüllte Dialoge gilt sie deshalb nicht (Systemparameter
+         kjr_website_antispam.min_seconds_exempt, siehe models/ir_http.py).
+
+         Beide Namen ohne '-': website_event wertet nur '<index>-<feld>' aus. -->
+    <template id="fields" name="KJR Spam-Schutz: Formularfelder">
+        <div class="o_kjr_hp" aria-hidden="true">
+            <label>Bitte leer lassen
+                <input type="text" name="kjr_hp" value="" tabindex="-1" autocomplete="off"/>
+            </label>
+        </div>
+        <input type="hidden" name="kjr_ts" t-att-value="request.env['ir.http']._kjr_antispam_token()"/>
+    </template>
+
+    <!-- Teilnehmerformular der Veranstaltungsanmeldung.
+
+         Kerntemplate: website_event.registration_attendee_details
+         (event_templates_page_registration.xml). Das Formular hat genau EIN
+         div.modal-footer (Stand Odoo 19). website_event_sale ersetzt nur einen
+         Knopf INNERHALB des Footers, der Footer selbst bleibt; kjr_event setzt
+         seinen Datenschutzblock ebenfalls davor und ergänzt Felder innerhalb von
+         //t[@name='attendee_loop'] - die Anker überschneiden sich nicht.
+         Das Token wird beim Rendern des Dialogs ausgestellt (jsonrpc
+         /event/<id>/registration/new), die Interaction kjr_antispam.js erkennt
+         das vorhandene kjr_ts und fügt nichts hinzu.
+         Mindestzeit: Der Kern füllt den ersten Teilnehmer für angemeldete
+         Benutzer und wiedererkannte Besucher vor; ohne Einwilligungsverfahren
+         gibt es kein KJR-Pflichtfeld, ein Klick auf "Registrierung bestätigen"
+         kurz nach dem Öffnen ist also normal. Die Aktion
+         website_event_registration steht deshalb standardmäßig in
+         kjr_website_antispam.min_seconds_exempt: geprüft werden nur Honeypot,
+         Signatur und Höchstalter.
+         NACH EINEM ODOO-UPDATE PRÜFEN: genau ein div.modal-footer im Formular. -->
+    <template id="registration_attendee_details_antispam"
+              inherit_id="website_event.registration_attendee_details"
+              name="KJR Spam-Schutz: Teilnehmerformular">
+        <xpath expr="//div[hasclass('modal-footer')]" position="before">
+            <t t-call="kjr_website_antispam.fields"/>
+        </xpath>
+    </template>
+
+    <!-- Fehlermeldung nach abgewiesener Anmeldung.
+
+         Kerntemplate: website_event.registration_template. Der Kern zeigt bei
+         registration_error_code == 'recaptcha_failed' den Text "Suspicious
+         activity detected by Google reCaptcha" - auch dann, wenn gar nicht
+         reCAPTCHA, sondern Turnstile oder dieser Spam-Schutz abgewiesen hat.
+         Ersetzt wird das Div durch ein gleiches Div (gleiche Bedingung, Klassen,
+         role) mit neutralem deutschem Text.
+         Der Text verlangt bewusst KEIN Neuladen: Die URL behält
+         ?registration_error_code=recaptcha_failed, beim Neuladen erschiene
+         dieselbe Meldung wieder. Ein frisches Token entsteht stattdessen beim
+         erneuten Öffnen des Teilnehmerdialogs (/event/<id>/registration/new
+         rendert ihn serverseitig neu).
+         Paket kjr_event ankert seine eigenen Hinweise bewusst am
+         insufficient_seats-Div (position="after"), nicht an diesem. -->
+    <template id="registration_template_antispam"
+              inherit_id="website_event.registration_template"
+              name="KJR Spam-Schutz: Fehlermeldung Anmeldung">
+        <xpath expr="//div[@t-if=&quot;registration_error_code == 'recaptcha_failed'&quot;]" position="replace">
+            <div t-if="registration_error_code == 'recaptcha_failed'" class="alert alert-danger my-3" role="alert">
+                Die Anmeldung konnte nicht verarbeitet werden. Bitte wählen Sie Ihre Tickets erneut aus und bestätigen Sie die Anmeldung noch einmal.
+            </div>
+        </xpath>
+    </template>
+
+</odoo>
