@@ -7,9 +7,77 @@ und Kandidaturen bilden EIN Nachweisdokument. Die Rechte der Gruppe
 einheitlich auf Lesen gesetzt — sonst könnten ausgezählte Stimmen nachträglich
 verändert werden, ohne dass die Versammlung selbst bearbeitet werden darf.
 Gepflegt wird das Protokoll von der Gruppe "Administrator".
+
+EINLADUNG UND ANMELDUNG (seit 19.0.17.0.0)
+──────────────────────────────────────────
+* Eingeladene Verbände: ``invited_member_ids`` (von Hand gepflegt oder per
+  „Alle stimmberechtigten übernehmen“ vorbelegt). Gehört zur einzelnen
+  Versammlung (copy=False): Eine duplizierte Versammlung startet ohne Liste,
+  „Einladen“ übernimmt dann den aktuellen Stand der Stimmberechtigten.
+* Versand: ``action_send_invitations`` legt je eingeladenem Verband einen
+  Versandnachweis ``kjr.assembly.invitation`` an und schickt die Mailvorlage
+  ``mail_template_assembly_invitation`` an die Delegierten des Verbands
+  (``kjr_vr_delegate_ids`` mit E-Mail), sonst an die E-Mail des Verbands. Haben
+  nicht alle Delegierten eine E-Mail-Adresse, geht die Einladung zusätzlich an
+  die E-Mail des Verbands; die Versandnotiz und der Hinweis im Formular nennen
+  die Delegierten ohne E-Mail. Versandt wird nur für eine geplante oder
+  eingeladene Versammlung mit Termin in der Zukunft und nur an Verbände, die
+  noch in der Liste stehen; das gilt auch für „Erneut senden“. Ein
+  schon versandter Nachweis wird nie ein zweites Mal verschickt, außer über
+  „Erneut senden“ an genau diesem Nachweis. Die versandte Mail bleibt im
+  Verlauf des Nachweises stehen (Vorlage ohne auto_delete; mail.mail und
+  mail.message werden nicht gelöscht), dazu Zeitpunkt, Absender, Empfänger und
+  Anzahl in Feldern und eine Notiz an der Vollversammlung.
+* Zustellung: Status „Versandt“ heißt „an den Mailversand übergeben“ (Mail-
+  Warteschlange, force_send=False). Ob die Mail den Mailserver erreicht hat,
+  zeigt ``delivery_state`` aus der zugehörigen mail.mail (In Warteschlange /
+  An Mailserver übergeben / Fehlgeschlagen). Fehlgeschlagene Einladungen
+  verschickt „Einladungen versenden“ erneut.
+* Delegiertenverzeichnis: ``delegate_ids`` zeigt die Delegierten der
+  eingeladenen Verbände mit Telefon und E-Mail.
+* Anmeldung: Der Link in der Einladung führt auf
+  /vollversammlung/anmeldung/<id>/<token> (controllers/assembly.py). Dort ist
+  die Telefonnummer Pflicht; jede Anmeldung wird ``kjr.assembly.registration``.
+  Auch die Geschäftsstelle kann Anmeldungen erfassen, ebenfalls nur mit
+  Telefonnummer. Eine Online-Anmeldung wird nur innerhalb DERSELBEN Einladung
+  über die E-Mail-Adresse wiedergefunden und aktualisiert; Anmeldungen anderer
+  Verbände und von der Geschäftsstelle erfasste werden über den Link nie
+  verändert. Den Kontakt (``partner_id``) ordnet die Online-Anmeldung nur zu,
+  wenn die Person angemeldet ist und ihre eigene E-Mail-Adresse angibt; sonst
+  ordnet die Geschäftsstelle von Hand zu (Vorschlag ``suggested_partner_id``).
+* Löschung (DSGVO): Anmeldungen samt Verlauf werden nach
+  ``kjr_grant.assembly_registration_retention_days`` Tagen nach dem
+  Versammlungstermin gelöscht (Cron, 0 = aus), sobald die Versammlung
+  durchgeführt oder abgesagt ist.
 """
-from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+import logging
+import re
+import uuid
+
+from markupsafe import Markup
+
+from datetime import timedelta
+
+from odoo import SUPERUSER_ID, api, fields, models, _
+from odoo.exceptions import UserError, ValidationError
+from odoo.tools import escape_psql
+
+_logger = logging.getLogger(__name__)
+
+INVITATION_TEMPLATE = 'kjr_grant.mail_template_assembly_invitation'
+# DSGVO: Löschfrist der Anmeldungen in Tagen nach dem Versammlungstermin (0 = aus).
+PARAM_REGISTRATION_RETENTION = 'kjr_grant.assembly_registration_retention_days'
+DEFAULT_REGISTRATION_RETENTION_DAYS = 365
+# Zustellstatus der Einladung aus mail.mail.state (addons/mail/models/mail_mail.py).
+MAIL_DELIVERY_STATE = {
+    'outgoing': 'queued',
+    'sent': 'sent',
+    'received': 'sent',
+    'exception': 'failed',
+    'cancel': 'failed',
+}
+# Wie PHONE_RE im Portal (controllers/portal.py): Ziffern, Leerzeichen, + ( ) / - .
+ASSEMBLY_PHONE_RE = re.compile(r'^[0-9 +()/.\-]{5,32}$')
 
 
 class KjrAssembly(models.Model):
@@ -45,9 +113,13 @@ class KjrAssembly(models.Model):
     decision_ids = fields.One2many('kjr.assembly.decision', 'assembly_id', string='Beschlüsse')
     decision_count = fields.Integer(string='Anzahl Beschlüsse', compute='_compute_decision_count')
     election_count = fields.Integer(string='Anzahl Wahlgänge', compute='_compute_decision_count')
+    # copy=False: Die Liste gehört zur einzelnen Versammlung. Eine duplizierte
+    # Vorjahresversammlung bekäme sonst die alte Liste (ausgetretene Verbände
+    # ja, neue Mitglieder nein); „Einladen“ füllt eine leere Liste mit dem
+    # aktuellen Stand der Stimmberechtigten.
     invited_member_ids = fields.Many2many(
         'res.partner', 'kjr_assembly_invited_rel',
-        string='Eingeladene Verbände',
+        string='Eingeladene Verbände', copy=False,
         domain="[('is_kjr_member', '=', True), ('is_company', '=', True)]",
     )
     note = fields.Text(string='Anmerkungen')
@@ -57,6 +129,49 @@ class KjrAssembly(models.Model):
         help='Datum des Einladungsversands. Wird beim Einladen vorbelegt und kann '
              'für nachträglich erfasste Sitzungen von Hand gesetzt werden. '
              'Erscheint im Protokoll als Nachweis der ordnungsgemäßen Ladung.',
+    )
+    # Absender und Firmenname der Einladung (White-Label, wie überall im Modul).
+    company_id = fields.Many2one(
+        'res.company', string='Firma', required=True,
+        default=lambda self: self.env.company,
+    )
+    invitation_ids = fields.One2many(
+        'kjr.assembly.invitation', 'assembly_id', string='Einladungsversand',
+    )
+    invitation_sent_count = fields.Integer(
+        string='Einladungen versandt', compute='_compute_invitation_stats',
+    )
+    invitation_open_count = fields.Integer(
+        string='Einladungen offen', compute='_compute_invitation_stats',
+        help='Eingeladene Verbände, an die noch keine Einladung per E-Mail '
+             'gegangen ist (neu hinzugekommen oder ohne E-Mail-Adresse).',
+    )
+    delegate_ids = fields.Many2many(
+        'res.partner', 'kjr_assembly_delegate_rel', 'assembly_id', 'partner_id',
+        string='Delegierte der eingeladenen Verbände',
+        compute='_compute_delegate_ids',
+        help='Delegiertenverzeichnis: die Vertreter/innen (Feld "Vertreter/innen" '
+             'am Verband) aller eingeladenen Verbände.',
+    )
+    delegate_missing_phone_count = fields.Integer(
+        string='Delegierte ohne Telefon', compute='_compute_delegate_ids',
+    )
+    delegate_missing_email_count = fields.Integer(
+        string='Delegierte ohne E-Mail', compute='_compute_delegate_ids',
+        help='Delegierte der eingeladenen Verbände ohne E-Mail-Adresse. Sie erhalten '
+             'keine eigene Einladung; die Einladung geht zusätzlich an die E-Mail des '
+             'Verbands (falls vorhanden). Bitte auf anderem Weg einladen.',
+    )
+    date_in_past = fields.Boolean(
+        string='Termin vorbei', compute='_compute_date_in_past',
+        help='Der Termin liegt in der Vergangenheit: Es werden keine Einladungen '
+             'mehr versandt.',
+    )
+    registration_ids = fields.One2many(
+        'kjr.assembly.registration', 'assembly_id', string='Anmeldungen',
+    )
+    registration_count = fields.Integer(
+        string='Anmeldungen', compute='_compute_registration_count',
     )
     # ── Protokoll: verantwortliche Personen ──────────────────────────────────
     chair_id = fields.Many2one(
@@ -131,6 +246,43 @@ class KjrAssembly(models.Model):
         for rec in self:
             rec.invited_count = len(rec.invited_member_ids)
 
+    @api.depends('invitation_ids.state', 'invitation_ids.member_id',
+                 'invitation_ids.delivery_state', 'invited_member_ids')
+    def _compute_invitation_stats(self):
+        for rec in self:
+            sent = rec.invitation_ids.filtered(lambda i: i.state == 'sent')
+            rec.invitation_sent_count = len(sent)
+            # Fehlgeschlagene Zustellung zählt als offen: „Einladungen versenden“
+            # verschickt sie erneut.
+            delivered = sent.filtered(lambda i: i.delivery_state != 'failed')
+            rec.invitation_open_count = len(rec.invited_member_ids - delivered.member_id)
+
+    @api.depends('invited_member_ids', 'invited_member_ids.kjr_vr_delegate_ids',
+                 'invited_member_ids.kjr_vr_delegate_ids.phone',
+                 'invited_member_ids.kjr_vr_delegate_ids.email',
+                 'invited_member_ids.kjr_vr_delegate_ids.active')
+    def _compute_delegate_ids(self):
+        for rec in self:
+            delegates = rec.invited_member_ids.kjr_vr_delegate_ids.filtered('active')
+            rec.delegate_ids = delegates
+            rec.delegate_missing_phone_count = len(
+                delegates.filtered(lambda p: not (p.phone or '').strip()))
+            rec.delegate_missing_email_count = len(
+                delegates.filtered(lambda p: not (p.email or '').strip()))
+
+    @api.depends('date')
+    def _compute_date_in_past(self):
+        # Nicht gespeichert: hängt von der aktuellen Uhrzeit ab.
+        now = fields.Datetime.now()
+        for rec in self:
+            rec.date_in_past = bool(rec.date) and rec.date <= now
+
+    @api.depends('registration_ids.state')
+    def _compute_registration_count(self):
+        for rec in self:
+            rec.registration_count = len(
+                rec.registration_ids.filtered(lambda r: r.state == 'registered'))
+
     @api.model
     def _eligible_member_domain(self):
         """Stimmberechtigte Mitgliedsverbände (§ 33 Abs. 1 BJR-Satzung).
@@ -193,22 +345,134 @@ class KjrAssembly(models.Model):
                 invited = len(rec.invited_member_ids)
                 rec.quorum_reached = bool(invited) and (attending * 2 > invited)
 
-    def action_invite(self):
-        """Alle KJR-Mitglieder mit VR einladen."""
+    def action_fill_invited_members(self):
+        """Alle stimmberechtigten Mitgliedsverbände als eingeladen übernehmen.
+
+        Ergänzt die Liste, ersetzt sie nicht: von Hand eingetragene Verbände
+        (z. B. Gäste ohne Stimmrecht) bleiben stehen.
+        """
         members = self.env['res.partner'].search(self._eligible_member_domain())
-        vals = {
-            'invited_member_ids': [(6, 0, members.ids)],
-            'state': 'invited',
+        for rec in self:
+            rec.invited_member_ids = [(4, member.id) for member in members]
+        return True
+
+    def action_invite(self):
+        """Einladen: eingeladene Verbände festhalten und Einladung per E-Mail senden.
+
+        Ist noch kein Verband eingetragen, werden alle stimmberechtigten
+        Mitgliedsverbände übernommen (bisheriges Verhalten). Eine von Hand
+        gepflegte Liste bleibt unverändert; eine duplizierte Versammlung
+        startet ohne Liste (copy=False an invited_member_ids).
+
+        Liegt der Termin in der Vergangenheit (nachträglich erfasste Sitzung),
+        wird die Versammlung nur als eingeladen erfasst, ohne E-Mail-Versand
+        und ohne Ladungsdatum (das trägt die Geschäftsstelle von Hand ein).
+        """
+        self.check_access('write')
+        now = fields.Datetime.now()
+        for rec in self:
+            if not rec.invited_member_ids:
+                rec.action_fill_invited_members()
+        past = self.filtered(lambda r: r.date and r.date <= now)
+        for rec in past:
+            if rec.state not in ('draft', 'invited'):
+                raise UserError(_(
+                    'Einladungen lassen sich nur für eine geplante oder bereits eingeladene '
+                    'Vollversammlung versenden.'))
+            if rec.state == 'draft':
+                rec.write({'state': 'invited'})
+                rec.message_post(
+                    body=Markup('<p>%s</p>') % _(
+                        'Der Termin liegt in der Vergangenheit: als eingeladen erfasst, ohne '
+                        'E-Mail-Versand (nachträglich erfasste Sitzung); %(total)d Verband/'
+                        'Verbände eingeladen. Das Ladungsdatum bitte von Hand eintragen.',
+                        total=len(rec.invited_member_ids)),
+                    subtype_xmlid='mail.mt_note',
+                )
+        upcoming = self - past
+        if upcoming:
+            return upcoming.action_send_invitations()
+        return True
+
+    def action_send_invitations(self):
+        """Einladungen an alle eingeladenen Verbände versenden, die noch keine haben.
+
+        Kein Doppelversand: Verbände mit einem versandten Nachweis werden
+        übersprungen, außer die Zustellung ist fehlgeschlagen
+        (``delivery_state`` 'failed'); diese Einladungen gehen erneut raus.
+        Wer nachträglich in die Liste kommt, erhält beim nächsten Aufruf seine
+        Einladung. Nachweise noch nicht versandter Verbände, die aus der Liste
+        genommen wurden, entfallen; versandte bleiben als Nachweis stehen,
+        werden aber nie erneut verschickt (auch nicht bei fehlgeschlagener
+        Zustellung). Für einen Termin in der Vergangenheit wird nichts mehr
+        versandt (z. B. Bestandsversammlungen, die noch auf „Eingeladen“ stehen).
+        """
+        self.check_access('write')
+        Invitation = self.env['kjr.assembly.invitation']
+        now = fields.Datetime.now()
+        for rec in self:
+            if rec.state not in ('draft', 'invited'):
+                raise UserError(_(
+                    'Einladungen lassen sich nur für eine geplante oder bereits eingeladene '
+                    'Vollversammlung versenden.'))
+            if rec.date and rec.date <= now:
+                raise UserError(_(
+                    'Der Termin der Vollversammlung liegt in der Vergangenheit; Einladungen '
+                    'werden nicht mehr versandt.'))
+            if not rec.invited_member_ids:
+                raise UserError(_('Bitte zuerst die eingeladenen Verbände erfassen.'))
+            rec.invitation_ids.filtered(
+                lambda i: i.state != 'sent' and i.member_id not in rec.invited_member_ids
+            ).unlink()
+            missing = rec.invited_member_ids - rec.invitation_ids.member_id
+            if missing:
+                Invitation.with_context(
+                    mail_create_nolog=True, mail_create_nosubscribe=True,
+                ).create([
+                    {'assembly_id': rec.id, 'member_id': member.id} for member in missing])
+            # Nur Verbände, die noch eingeladen sind: Ein versandter Nachweis
+            # eines entfernten Verbands bleibt stehen (Nachweis), darf aber auch
+            # bei fehlgeschlagener Zustellung nicht erneut verschickt werden.
+            to_send = rec.invitation_ids.filtered(
+                lambda i: i.member_id in rec.invited_member_ids
+                and (i.state != 'sent' or i.delivery_state == 'failed'))
+            # force: die Auswahl oben ist bereits die Liste der zu sendenden
+            # Nachweise (offen oder Zustellung fehlgeschlagen).
+            sent = to_send._kjr_send(force=True)
+            no_address = to_send.filtered(lambda i: i.state == 'no_address')
+            vals = {'state': 'invited'}
+            # Ladungsdatum nur vorbelegen, nie überschreiben — ein von Hand
+            # gepflegtes Datum (nacherfasste Sitzung) bleibt erhalten.
+            if not rec.invitation_date and (sent or rec.invitation_sent_count):
+                vals['invitation_date'] = fields.Date.context_today(rec)
+            rec.write(vals)
+            body = Markup('<p>%s</p>') % _(
+                'Einladung per E-Mail an %(sent)d Verband/Verbände versandt; '
+                'insgesamt %(total)d eingeladen.',
+                sent=len(sent), total=len(rec.invited_member_ids))
+            if no_address:
+                body += Markup('<p>%s</p>') % _(
+                    'Ohne E-Mail-Adresse (bitte auf anderem Weg einladen): %s',
+                    ', '.join(no_address.member_id.mapped('name')))
+            body += sent._kjr_missing_email_note()
+            former = rec.invited_member_ids.filtered(lambda p: not p.is_kjr_member)
+            if former:
+                body += Markup('<p>%s</p>') % _(
+                    'Eingeladen, aber (nicht mehr) KJR-Mitglied, bitte prüfen: %s',
+                    ', '.join(former.mapped('name')))
+            rec.message_post(body=body, subtype_xmlid='mail.mt_note')
+        return True
+
+    def action_view_registrations(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Anmeldungen'),
+            'res_model': 'kjr.assembly.registration',
+            'view_mode': 'list,form',
+            'domain': [('assembly_id', '=', self.id)],
+            'context': {'default_assembly_id': self.id},
         }
-        # Ladungsdatum nur vorbelegen, nie überschreiben — ein von Hand
-        # gepflegtes Datum (nacherfasste Sitzung) bleibt erhalten.
-        if not self.invitation_date:
-            vals['invitation_date'] = fields.Date.context_today(self)
-        self.write(vals)
-        self.message_post(
-            body=_('%d Mitgliedsverbände eingeladen.') % len(members),
-            subtype_xmlid='mail.mt_note',
-        )
 
     def action_done(self):
         """Versammlung abschließen und die Protokollkennzahlen festschreiben.
@@ -653,3 +917,483 @@ class KjrAssemblyCandidate(models.Model):
         for rec in self:
             elected = rec.decision_id._elected_candidates() if rec.decision_id else None
             rec.is_elected = bool(elected) and rec in elected
+
+
+class KjrAssemblyInvitation(models.Model):
+    """Versandnachweis der Einladung je eingeladenem Verband.
+
+    Genau ein Nachweis je Vollversammlung und Verband (Constraint). Die
+    versandte Mail steht im Verlauf dieses Datensatzes (mail.thread; die
+    Vorlage löscht nichts, auto_delete=False), Empfänger, Zeitpunkt, Absender
+    und Anzahl zusätzlich in Feldern. ``state`` 'sent' heißt „an den
+    Mailversand übergeben“; die Zustellung an den Mailserver zeigt
+    ``delivery_state`` (aus der zuletzt erzeugten mail.mail).
+    ``access_token`` sichert den Anmeldelink (controllers/assembly.py); er
+    ist für die Empfänger der Einladung gedacht.
+
+    Wer den Link sieht (bewusst offen, nicht per Feldgruppe gesperrt): Die
+    versandte Mail bleibt als mail.message mit dem vollständigen Anmeldelink im
+    Verlauf dieses Datensatzes (auto_delete=False, Nachweis der Ladung und
+    delivery_state). Diese Nachricht darf lesen, wer den Nachweis lesen darf
+    (mail.message folgt dem Dokument), also auch die Sachbearbeitung
+    (group_kjr_reviewer, nur Lesen). Eine Sperre von access_token und
+    registration_url auf die Leitung wäre daher nur Schein; die Felder sind
+    deshalb offen für die Sachbearbeitung lesbar. Bekannte Folge: Wer den Link
+    hat, kann über ihn Online-Anmeldungen dieses Verbands anlegen oder ändern
+    (controllers/assembly.py). Die Sachbearbeitung gehört zur Geschäftsstelle
+    und ist auf Vertraulichkeit verpflichtet; den Link nicht weitergeben.
+    """
+    _name = 'kjr.assembly.invitation'
+    _description = 'Einladung zur Vollversammlung'
+    _inherit = ['mail.thread']
+    _order = 'assembly_id, member_id'
+    _rec_name = 'member_id'
+
+    assembly_id = fields.Many2one(
+        'kjr.assembly', string='Vollversammlung', required=True, index=True,
+        ondelete='cascade',
+    )
+    # restrict: ein versandter Nachweis darf nicht mit dem Kontakt verschwinden.
+    member_id = fields.Many2one(
+        'res.partner', string='Verband', required=True, index=True, ondelete='restrict',
+    )
+    company_id = fields.Many2one(related='assembly_id.company_id', store=True)
+    state = fields.Selection([
+        ('pending', 'Noch nicht versandt'),
+        ('sent', 'Versandt'),
+        ('no_address', 'Keine E-Mail-Adresse'),
+    ], string='Status', default='pending', required=True, tracking=True)
+    recipient_type = fields.Selection([
+        ('delegates', 'Delegierte'),
+        ('delegates_member', 'Delegierte und Verbandskontakt'),
+        ('member', 'Verbandskontakt'),
+    ], string='Empfänger', readonly=True,
+        help='„Delegierte und Verbandskontakt“: Nicht alle Delegierten haben eine '
+             'E-Mail-Adresse; die Einladung ging deshalb zusätzlich an die E-Mail des '
+             'Verbands mit der Bitte um Weitergabe.')
+    assembly_state = fields.Selection(related='assembly_id.state', string='Stand der Versammlung')
+    can_resend = fields.Boolean(
+        string='Erneut sendbar', compute='_compute_can_resend',
+        help='„Erneut senden“ ist nur möglich, solange die Versammlung geplant oder '
+             'eingeladen ist, ihr Termin in der Zukunft liegt und der Verband noch '
+             'eingeladen ist.',
+    )
+    recipient_ids = fields.Many2many(
+        'res.partner', 'kjr_assembly_invitation_recipient_rel', 'invitation_id', 'partner_id',
+        string='Empfänger/innen', readonly=True,
+    )
+    date_sent = fields.Datetime(string='Versandt am', readonly=True, copy=False)
+    sent_by_id = fields.Many2one('res.users', string='Versandt von', readonly=True, copy=False)
+    send_count = fields.Integer(string='Anzahl Versendungen', readonly=True, copy=False)
+    # Zuletzt erzeugte Mail. mail.mail ist nur für Administratoren lesbar
+    # (mail/security/ir.model.access.csv), daher groups; gelesen wird sie nur
+    # mit sudo in _compute_delivery_state.
+    mail_id = fields.Many2one(
+        'mail.mail', string='Versand-E-Mail', readonly=True, copy=False,
+        ondelete='set null', groups='base.group_system',
+    )
+    delivery_state = fields.Selection([
+        ('none', 'Keine E-Mail'),
+        ('queued', 'In Warteschlange'),
+        ('sent', 'An Mailserver übergeben'),
+        ('failed', 'Fehlgeschlagen'),
+        ('unknown', 'Unbekannt'),
+    ], string='Zustellung', compute='_compute_delivery_state',
+        help='Stand der zuletzt verschickten Einladungs-E-Mail. „In Warteschlange“: '
+             'Odoo verschickt sie mit dem nächsten Lauf des Mailversands. '
+             '„Fehlgeschlagen“: „Einladungen versenden“ verschickt sie erneut. '
+             '„Unbekannt“: Die E-Mail wurde gelöscht (z. B. ältere Einladung).',
+    )
+    # groups = Sachbearbeitung (nicht nur Leitung): Der Link steht ohnehin in
+    # der versandten Mail im Verlauf, siehe Klassen-Docstring.
+    access_token = fields.Char(
+        string='Zugangsschlüssel', copy=False, readonly=True,
+        groups='kjr_grant.group_kjr_reviewer',
+        default=lambda self: uuid.uuid4().hex,
+    )
+    registration_url = fields.Char(
+        string='Anmeldelink', compute='_compute_registration_url',
+        groups='kjr_grant.group_kjr_reviewer',
+    )
+    registration_ids = fields.One2many(
+        'kjr.assembly.registration', 'invitation_id', string='Anmeldungen',
+    )
+
+    _assembly_member_uniq = models.Constraint(
+        'UNIQUE(assembly_id, member_id)',
+        'Für diesen Verband gibt es bei dieser Vollversammlung bereits eine Einladung.',
+    )
+
+    @api.depends('state', 'mail_id.state')
+    def _compute_delivery_state(self):
+        for rec in self:
+            mail = rec.sudo().mail_id
+            if mail:
+                rec.delivery_state = MAIL_DELIVERY_STATE.get(mail.state, 'unknown')
+            elif rec.state == 'sent':
+                rec.delivery_state = 'unknown'
+            else:
+                rec.delivery_state = 'none'
+
+    @api.depends('assembly_id.state', 'assembly_id.date',
+                 'assembly_id.invited_member_ids', 'member_id')
+    def _compute_can_resend(self):
+        for rec in self:
+            rec.can_resend = not rec._kjr_resend_blocker()
+
+    def _kjr_resend_blocker(self):
+        """Grund, warum dieser Nachweis nicht (erneut) versandt werden darf, sonst ''.
+
+        Dieselben Sperren wie in kjr.assembly.action_send_invitations: Stand
+        und Termin der Versammlung; dazu muss der Verband noch eingeladen sein.
+        """
+        self.ensure_one()
+        assembly = self.assembly_id
+        if assembly.state not in ('draft', 'invited'):
+            return _('Einladungen lassen sich nur für eine geplante oder bereits eingeladene '
+                     'Vollversammlung versenden.')
+        if assembly.date and assembly.date <= fields.Datetime.now():
+            return _('Der Termin der Vollversammlung liegt in der Vergangenheit; Einladungen '
+                     'werden nicht mehr versandt.')
+        if self.member_id not in assembly.invited_member_ids:
+            return _('„%s“ steht nicht mehr in der Liste der eingeladenen Verbände; die '
+                     'Einladung wird nicht erneut versandt.', self.member_id.display_name)
+        return ''
+
+    @api.depends('access_token')
+    def _compute_registration_url(self):
+        for rec in self:
+            if rec.id and rec.access_token:
+                rec.registration_url = '%s/vollversammlung/anmeldung/%s/%s' % (
+                    rec.get_base_url(), rec.id, rec.access_token)
+            else:
+                rec.registration_url = False
+
+    def _kjr_delegates_without_email(self):
+        """Aktive Delegierte des Verbands ohne E-Mail-Adresse (erhalten keine eigene Mail)."""
+        self.ensure_one()
+        return self.member_id.sudo().kjr_vr_delegate_ids.filtered(
+            lambda p: p.active and not (p.email or '').strip())
+
+    def _kjr_recipients(self):
+        """Empfänger der Einladung: Delegierte mit E-Mail, sonst der Verband selbst.
+
+        Haben nicht alle Delegierten eine E-Mail-Adresse, geht die Einladung
+        zusätzlich an die E-Mail des Verbands (Typ 'delegates_member', die Mail
+        bittet um Weitergabe). mail.mail verschickt je Empfänger eine eigene
+        Mail (_prepare_outgoing_list), Adressen anderer Empfänger sieht also
+        niemand.
+        """
+        self.ensure_one()
+        member = self.member_id.sudo()
+        delegates = member.kjr_vr_delegate_ids.filtered(
+            lambda p: p.active and (p.email or '').strip())
+        member_has_email = bool((member.email or '').strip())
+        if delegates:
+            if self._kjr_delegates_without_email() and member_has_email:
+                return delegates | member, 'delegates_member'
+            return delegates, 'delegates'
+        if member_has_email:
+            return member, 'member'
+        return self.env['res.partner'], False
+
+    def _kjr_missing_email_note(self):
+        """Notiz-Absatz: Delegierte ohne E-Mail je Verband (leer, wenn alle eine haben).
+
+        Für die Versandnotiz an der Versammlung: Diese Delegierten haben keine
+        eigene Einladung bekommen und müssen auf anderem Weg eingeladen werden.
+        """
+        parts = []
+        for rec in self:
+            lacking = rec._kjr_delegates_without_email()
+            if lacking:
+                parts.append('%s: %d' % (rec.member_id.name or '', len(lacking)))
+        if not parts:
+            return Markup()
+        return Markup('<p>%s</p>') % _(
+            'Delegierte ohne E-Mail-Adresse, bitte auf anderem Weg einladen (Verband: '
+            'Anzahl): %s. Die Einladung ging dort zusätzlich an die E-Mail des Verbands, '
+            'sofern vorhanden.', '; '.join(parts))
+
+    def _kjr_send(self, force=False):
+        """Einladung senden; liefert die tatsächlich versandten Nachweise.
+
+        Ohne ``force`` werden schon versandte Nachweise übersprungen (kein
+        Doppelversand). Wirft nie wegen eines einzelnen Verbands: Fehler landen
+        mit Datensatz-ID und Fehlerart im Log (keine Personendaten), der
+        Nachweis bleibt „noch nicht versandt“.
+
+        „Versandt“ heißt: Die Mail steht in der Warteschlange (force_send=False).
+        Die Zustellung selbst zeigt ``delivery_state`` aus ``mail_id``.
+        """
+        template = self.env.ref(INVITATION_TEMPLATE, raise_if_not_found=False)
+        if not template:
+            raise UserError(_('Die Mailvorlage für die Einladung zur Vollversammlung fehlt.'))
+        sent = self.browse()
+        for rec in self:
+            if rec.state == 'sent' and not force:
+                continue
+            recipients, recipient_type = rec._kjr_recipients()
+            if not recipients:
+                rec.write({'state': 'no_address', 'recipient_ids': [(5, 0, 0)],
+                           'recipient_type': False})
+                continue
+            try:
+                with self.env.cr.savepoint():
+                    rec.write({
+                        'recipient_ids': [(6, 0, recipients.ids)],
+                        'recipient_type': recipient_type,
+                    })
+                    # sudo wie bei allen Mailvorlagen dieses Moduls; die
+                    # Schreibrechtprüfung steht im Aufrufer (check_access).
+                    mail_id = template.sudo().send_mail(
+                        rec.id, force_send=False,
+                        email_values={'recipient_ids': [(6, 0, recipients.ids)]},
+                    )
+                    rec.write({
+                        'state': 'sent',
+                        'date_sent': fields.Datetime.now(),
+                        'sent_by_id': self.env.uid,
+                        'send_count': rec.send_count + 1,
+                    })
+                    # mail_id ist nur für Administratoren schreibbar (groups).
+                    rec.sudo().mail_id = mail_id
+            except Exception as err:  # noqa: BLE001 - ein Verband darf den Versand nicht kippen
+                _logger.error('KJR Vollversammlung: Einladung %s nicht versandt (%s).',
+                              rec.id, type(err).__name__)
+                continue
+            sent |= rec
+        return sent
+
+    def action_resend(self):
+        """Einladung bewusst erneut senden (z. B. nach Wechsel der Delegierten).
+
+        Nur solange die Versammlung geplant oder eingeladen ist, ihr Termin in
+        der Zukunft liegt und der Verband noch eingeladen ist
+        (_kjr_resend_blocker); sonst ginge ein gültiger Anmeldelink an einen
+        Verband, der nicht (mehr) eingeladen ist.
+        """
+        self.check_access('write')
+        for rec in self:
+            blocker = rec._kjr_resend_blocker()
+            if blocker:
+                raise UserError(blocker)
+        sent = self._kjr_send(force=True)
+        for rec in sent:
+            body = Markup('<p>%s</p>') % _(
+                'Einladung an %s erneut versandt.', rec.member_id.name or '')
+            body += rec._kjr_missing_email_note()
+            rec.assembly_id.message_post(body=body, subtype_xmlid='mail.mt_note')
+        return True
+
+    def _kjr_register(self, name, email, phone, partner=None):
+        """Anmeldung aus dem Anmeldelink anlegen oder aktualisieren.
+
+        Gleiche E-Mail-Adresse unter DIESER Einladung = dieselbe Online-
+        Anmeldung (wird aktualisiert, nicht verdoppelt). Gesucht wird nur in der
+        eigenen Einladung und nur unter Online-Anmeldungen: Eine Anmeldung, die
+        zu einem anderen Verband gehört oder von der Geschäftsstelle erfasst
+        wurde, wird über den Link nie verändert oder umgehängt; dann entsteht
+        eine neue Anmeldung, ohne dass die Seite verrät, ob die Adresse schon
+        bekannt ist.
+
+        ``partner`` übergibt nur der Controller, und nur für eine angemeldete
+        Person mit ihrer eigenen E-Mail-Adresse. Eine im Formular eingetippte
+        Adresse ist ungeprüft und ordnet deshalb keinen Kontakt zu; den
+        Vorschlag dafür zeigt ``suggested_partner_id``, zuordnen muss die
+        Geschäftsstelle.
+
+        Läuft mit sudo aus dem Controller; Name, E-Mail und Telefon sind dort
+        geprüft, das Telefon prüft zusätzlich die Bedingung am Modell.
+        """
+        self.ensure_one()
+        # SUPERUSER statt sudo(): der Aufrufer ist meist der Public-User; sonst
+        # stünde er als Autor der Verlaufseinträge (Muster
+        # kjr.affiliation.request._kjr_create_from_signup).
+        Registration = self.env['kjr.assembly.registration'].with_user(
+            SUPERUSER_ID).with_context(mail_create_nolog=True, mail_create_nosubscribe=True)
+        email = (email or '').strip()
+        existing = Registration.search([
+            ('assembly_id', '=', self.assembly_id.id),
+            ('invitation_id', '=', self.id),
+            ('member_id', '=', self.member_id.id),
+            ('origin', '=', 'online'),
+            ('email', '=ilike', escape_psql(email)),
+        ], limit=1) if email else Registration
+        vals = {
+            'assembly_id': self.assembly_id.id,
+            'invitation_id': self.id,
+            'member_id': self.member_id.id,
+            'name': name,
+            'email': email,
+            'phone': phone,
+            'state': 'registered',
+            'origin': 'online',
+        }
+        # Kontakt nur setzen, wenn der Controller einen geprüften übergibt. Eine
+        # erneute Anmeldung ohne Login (z. B. Telefon korrigieren) darf die von
+        # der Geschäftsstelle gesetzte Zuordnung (action_assign_suggested_partner)
+        # und damit is_delegate nicht löschen.
+        if partner:
+            vals['partner_id'] = partner.id
+        if existing:
+            existing.write(vals)
+            return existing
+        return Registration.create(vals)
+
+
+class KjrAssemblyRegistration(models.Model):
+    """Anmeldung einer Person zur Vollversammlung.
+
+    Telefon ist Pflicht: Anmeldungen per E-Mail ohne Telefonnummer haben dazu
+    geführt, dass Delegierte am Sitzungstag nicht erreichbar waren und die
+    Beschlussfähigkeit nicht geklärt werden konnte. Die Pflicht gilt am Modell
+    (required + Formatprüfung), also für die Online-Anmeldung und für die
+    Erfassung durch die Geschäftsstelle gleichermaßen.
+
+    Datensparsam: E-Mail und Telefon ohne Feldhistorie (der Zweck braucht nur
+    den aktuellen Stand); gelöscht wird die Anmeldung samt Verlauf nach der
+    Frist ``kjr_grant.assembly_registration_retention_days`` (Cron
+    ``_cron_purge_expired``).
+    """
+    _name = 'kjr.assembly.registration'
+    _description = 'Anmeldung zur Vollversammlung'
+    _inherit = ['mail.thread']
+    _order = 'assembly_id, member_id, name'
+
+    assembly_id = fields.Many2one(
+        'kjr.assembly', string='Vollversammlung', required=True, index=True,
+        ondelete='cascade',
+    )
+    invitation_id = fields.Many2one(
+        'kjr.assembly.invitation', string='Einladung', ondelete='set null', index=True,
+    )
+    member_id = fields.Many2one(
+        'res.partner', string='Verband', required=True, index=True,
+        domain=[('is_company', '=', True), ('is_kjr_member', '=', True)],
+    )
+    partner_id = fields.Many2one(
+        'res.partner', string='Kontakt', ondelete='set null',
+        domain=[('is_company', '=', False)],
+        help='Zugeordneter Kontakt. Die Online-Anmeldung setzt ihn nur, wenn die '
+             'Person mit ihrem Konto angemeldet war und ihre eigene E-Mail-Adresse '
+             'angegeben hat. Sonst ordnet die Geschäftsstelle von Hand zu '
+             '(siehe „Vorschlag Kontakt“).',
+    )
+    suggested_partner_id = fields.Many2one(
+        'res.partner', string='Vorschlag Kontakt (ungeprüft)',
+        compute='_compute_suggested_partner_id',
+        help='Delegierte/r oder Kontakt des Verbands mit derselben E-Mail-Adresse. '
+             'Nur ein Vorschlag: Die Adresse im Anmeldeformular ist nicht geprüft. '
+             'Bitte vor dem Zuordnen bestätigen, z. B. telefonisch.',
+    )
+    name = fields.Char(string='Name', required=True, tracking=True)
+    email = fields.Char(string='E-Mail')
+    phone = fields.Char(
+        string='Telefon', required=True,
+        help='Pflicht: Die Geschäftsstelle muss angemeldete Delegierte vor und am '
+             'Tag der Vollversammlung erreichen können.',
+    )
+    is_delegate = fields.Boolean(
+        string='Gemeldete/r Delegierte/r', compute='_compute_is_delegate',
+        help='Die Person steht in der Delegiertenliste des Verbands.',
+    )
+    state = fields.Selection([
+        ('registered', 'Angemeldet'),
+        ('cancelled', 'Abgemeldet'),
+    ], string='Status', default='registered', required=True, tracking=True)
+    origin = fields.Selection([
+        ('online', 'Online-Anmeldung'),
+        ('office', 'Geschäftsstelle'),
+    ], string='Herkunft', default='office', required=True)
+    date_registered = fields.Datetime(
+        string='Angemeldet am', default=fields.Datetime.now, readonly=True,
+    )
+
+    @api.depends('partner_id', 'email', 'member_id.kjr_vr_delegate_ids',
+                 'member_id.child_ids.email')
+    def _compute_suggested_partner_id(self):
+        Partner = self.env['res.partner']
+        for rec in self:
+            email = (rec.email or '').strip().lower()
+            if rec.partner_id or not email or not rec.member_id:
+                rec.suggested_partner_id = Partner
+                continue
+            member = rec.member_id
+            candidates = member.kjr_vr_delegate_ids | member.child_ids.filtered(
+                lambda p: not p.is_company)
+            rec.suggested_partner_id = candidates.filtered(
+                lambda p: (p.email or '').strip().lower() == email)[:1]
+
+    def action_assign_suggested_partner(self):
+        """Vorschlag bewusst übernehmen (Geschäftsstelle, nach Prüfung)."""
+        self.check_access('write')
+        for rec in self:
+            if rec.suggested_partner_id:
+                rec.partner_id = rec.suggested_partner_id
+        return True
+
+    @api.depends('partner_id', 'member_id.kjr_vr_delegate_ids')
+    def _compute_is_delegate(self):
+        for rec in self:
+            rec.is_delegate = bool(
+                rec.partner_id and rec.partner_id in rec.member_id.kjr_vr_delegate_ids)
+
+    @api.onchange('partner_id')
+    def _onchange_partner_id(self):
+        if self.partner_id:
+            self.name = self.name or self.partner_id.name
+            self.email = self.email or self.partner_id.email
+            self.phone = self.phone or self.partner_id.phone
+
+    @api.constrains('phone')
+    def _check_phone(self):
+        for rec in self:
+            phone = (rec.phone or '').strip()
+            if not phone:
+                raise ValidationError(_(
+                    'Für die Anmeldung zur Vollversammlung ist eine Telefonnummer Pflicht.'))
+            if not ASSEMBLY_PHONE_RE.match(phone):
+                raise ValidationError(_(
+                    'Telefon bitte nur mit Ziffern und den Zeichen + ( ) / - angeben '
+                    '(z. B. 08321 1234-0).'))
+
+    # ── DSGVO: Speicherbegrenzung ───────────────────────────────────────────
+
+    @api.model
+    def _kjr_retention_days(self):
+        """Löschfrist in Tagen nach dem Versammlungstermin; 0 = Löschung aus.
+
+        Einzige Auslegung des Parameters: Cron und Datenschutzhinweis der
+        Anmeldeseite (controllers/assembly.py) nutzen dieselbe Umwandlung,
+        damit der Hinweis nie eine andere Frist nennt, als tatsächlich gilt.
+        Negative Werte gelten wie 0.
+        """
+        raw = self.env['ir.config_parameter'].sudo().get_param(PARAM_REGISTRATION_RETENTION)
+        try:
+            days = int(raw if raw not in (None, False, '') else DEFAULT_REGISTRATION_RETENTION_DAYS)
+        except (TypeError, ValueError):
+            days = DEFAULT_REGISTRATION_RETENTION_DAYS
+        return max(days, 0)
+
+    @api.model
+    def _cron_purge_expired(self):
+        """Anmeldungen nach Frist löschen (0 = aus).
+
+        Nur bei durchgeführten oder abgesagten Versammlungen, deren Termin
+        länger als die Frist zurückliegt. mail.thread.unlink entfernt
+        Nachrichten, Feldhistorie und Follower mit. Die Anwesenheit (Verbände)
+        und das Protokoll der Versammlung bleiben unberührt. Ins Protokoll
+        kommt nur die Anzahl.
+        """
+        days = self._kjr_retention_days()
+        if not days:
+            return 0
+        recs = self.sudo().with_context(active_test=False).search([
+            ('assembly_id.state', 'in', ('done', 'cancelled')),
+            ('assembly_id.date', '<', fields.Datetime.now() - timedelta(days=days)),
+        ])
+        count = len(recs)
+        recs.unlink()
+        _logger.info('KJR Vollversammlung: %d Anmeldung(en) nach Ablauf der Frist gelöscht.', count)
+        return count

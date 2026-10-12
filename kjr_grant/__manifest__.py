@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR App',
-    'version': '19.0.16.0.0',
+    'version': '19.0.17.0.0',
     'category': 'Custom/KJR',
     'summary': 'Zuschussverwaltung, Juleica, Vollversammlung, Fördermittel-Akquise und Verwendungsnachweis für Kreisjugendringe (Odoo 19)',
     'author': 'KLGM UG (haftungsbeschränkt)',
@@ -30,7 +30,10 @@
         'data/website_menu_data.xml',
         'data/mail_template_data.xml',
         'data/kjr_affiliation_mail_template_data.xml',
+        'data/kjr_assembly_mail_template_data.xml',
         'data/ir_cron_data.xml',
+        # Löschfrist und Cron der Anmeldungen zur Vollversammlung (DSGVO).
+        'data/kjr_assembly_data.xml',
         'views/kjr_grant_type_views.xml',
         'views/kjr_grant_application_views.xml',
         'views/kjr_grant_settlement_views.xml',
@@ -43,8 +46,10 @@
         'views/res_partner_views.xml',
         'views/kjr_volunteer_log_views.xml',
         'views/res_config_settings_views.xml',
+        'views/res_config_settings_apply_views.xml',
         'views/menu.xml',
         'views/portal_templates.xml',
+        'views/kjr_assembly_portal_templates.xml',
         'views/auth_signup_templates.xml',
         'report/kjr_report_actions.xml',
         'report/kjr_bescheid_template.xml',
@@ -59,6 +64,7 @@
         'web.assets_frontend': [
             'kjr_grant/static/src/css/portal.css',
             'kjr_grant/static/src/interactions/kjr_signup_club.js',
+            'kjr_grant/static/src/interactions/kjr_apply_totals.js',
         ],
     },
     # Kein 'images'-Eintrag: der Schlüssel benennt die Screenshots bzw. das

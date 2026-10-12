@@ -326,6 +326,11 @@
                             <group>
                                 <field name="deficit" readonly="1"/>
                             </group>
+                            <div class="alert alert-warning" role="alert"
+                                 invisible="not receipt_mismatch">
+                                Die digitale Belegliste weicht von dieser Kostenaufstellung ab,
+                                Details im Reiter „Belegliste“.
+                            </div>
                         </page>
 
                         <page string="Belegliste" name="receipts">
@@ -360,7 +365,26 @@
                                     <field name="receipt_income_total"   readonly="1"/>
                                     <field name="receipt_expense_total"  readonly="1"/>
                                 </group>
+                                <!-- Abgleich mit Punkt 6 (19.0.17.0.0): Abweichung =
+                                     Belegsumme minus Summe der Kostenaufstellung. -->
+                                <group string="Abgleich mit der Kostenaufstellung">
+                                    <field name="income_total"           readonly="1" string="Gesamteinnahmen lt. Kostenaufstellung"/>
+                                    <field name="receipt_income_diff"    readonly="1"/>
+                                    <field name="cost_total"             readonly="1" string="Gesamtkosten lt. Kostenaufstellung"/>
+                                    <field name="receipt_expense_diff"   readonly="1"/>
+                                    <field name="receipt_mismatch" invisible="1"/>
+                                </group>
                             </group>
+                            <div class="alert alert-warning" role="alert"
+                                 invisible="not receipt_mismatch">
+                                <strong>Belegliste und Kostenaufstellung weichen voneinander ab.</strong>
+                                Bitte mit dem Antragsteller klären.
+                                <field name="receipt_check_info" readonly="1" nolabel="1"/>
+                            </div>
+                            <div class="alert alert-success" role="status"
+                                 invisible="not use_digital_receipts or not receipt_count or receipt_mismatch">
+                                Die Summen der Belegliste stimmen mit der Kostenaufstellung überein.
+                            </div>
                             <div class="text-muted" invisible="use_digital_receipts">
                                 Die Belegliste wurde nicht digital erfasst, es gilt die als Datei
                                 hochgeladene Belegliste (Dokumente).

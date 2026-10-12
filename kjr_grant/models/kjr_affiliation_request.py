@@ -30,14 +30,46 @@ Entscheidungen laufen ausschließlich über ``_kjr_do_approve`` und
 ``_kjr_do_reject`` (die Assistenten rufen genau diese Methoden). Status,
 Zuordnung und Ablehnungsgrund sind gegen direktes Schreiben gesperrt
 (``write``); Vereinsangaben und Firma nur bis zur Entscheidung änderbar.
+
+DACHVERBAND UND DELEGIERTE (seit 19.0.17.0.0)
+─────────────────────────────────────────────
+Bei der Registrierung kann die Gruppe zusätzlich ihren Dachverband aus der
+Liste der KJR-Mitgliedsverbände wählen (``requested_parent_id``, z. B.
+Kreisjugendfeuerwehr) und die Person kann angeben, Delegierte/r ihres Verbands
+für die Vollversammlung zu sein (``requested_delegate``, dann mit Pflicht-
+Telefonnummer). Beides ist zunächst nur eine ANGABE:
+
+* Legt die Geschäftsstelle bei der Genehmigung eine neue Organisation an, hängt
+  sie unter dem gewählten Dachverband (eigene Ortsgruppe mit eigener
+  Anschrift, siehe wizard/kjr_affiliation_wizard.py). Ohne eigene
+  Mitgliedschaft öffnet sich für die Ortsgruppe im Portal „Mein Verband“ nicht
+  (commercial_partner_id.is_kjr_member, s. o.); ihre weiteren
+  Ansprechpersonen pflegt bis dahin die Geschäftsstelle.
+* Sichtbarkeit: Der commercial partner grenzt nur die RECHTE ab. Die
+  Leserechte im Portal folgen parent_id (base.res_partner_portal_public_rule:
+  child_of user.commercial_partner_id). Die Portal-Zugänge des Dachverbands
+  lesen deshalb die Ortsgruppe und deren Personen (Name, Funktion, E-Mail,
+  Telefon, Anschrift). Offengelegt im Datenschutzhinweis der Registrierung
+  („Wer es sieht“) und im Genehmigungsassistenten.
+* In die Delegiertenliste (``res.partner.kjr_vr_delegate_ids``) eines Verbands
+  kommt die Person erst mit der Genehmigung (``_kjr_do_approve``, Parameter
+  ``delegate_for``), nie bei der Registrierung selbst.
+* Telefon: Die bei der Registrierung angegebene Nummer steht sofort im
+  eigenen Kontakt der Person (nur wenn dort noch keine steht) und bleibt dort
+  auch nach Ablehnung und Löschung der Registrierung; so steht es im
+  Datenschutzhinweis („Löschung“). Fehlt sie, kann die Geschäftsstelle sie im
+  Genehmigungsassistenten nachtragen (``_kjr_do_approve``, Parameter
+  ``phone``; nur in ein leeres Feld).
 """
 import logging
 from datetime import timedelta
 
 from markupsafe import Markup, escape
 
-from odoo import SUPERUSER_ID, _, api, fields, models
+from odoo import SUPERUSER_ID, Command, _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
+
+from .kjr_assembly import ASSEMBLY_PHONE_RE
 
 _logger = logging.getLogger(__name__)
 
@@ -49,12 +81,21 @@ DEFAULT_RETENTION_DAYS = 180
 # Felder, die nur die Entscheidungsmethoden (sudo) setzen dürfen
 PROTECTED_FIELDS = frozenset({'state', 'target_partner_id', 'date_decided',
                               'decided_by_id', 'origin', 'partner_id', 'user_id',
-                              'rejection_reason'})
+                              'rejection_reason', 'delegate_partner_id'})
 # Angaben, die bis zur Entscheidung korrigierbar sind und danach zum Nachweis
 # gehören (Datenauskunft Art. 15, Ablehnungsgrund im Portal, company_id als
 # Absender und Firmenname der Mails).
 LOCKED_AFTER_DECISION = frozenset({'requested_name', 'requested_function',
-                                   'requested_place', 'company_id'})
+                                   'requested_place', 'company_id',
+                                   'requested_parent_id', 'requested_delegate'})
+# Auswahl „Dachverband“ im Registrierungsformular: aktive KJR-Mitgliedsverbände.
+# Eine Quelle für Formular (controllers/signup.py) und Prüfung
+# (_kjr_create_from_signup), damit nichts außerhalb der Liste ankommt.
+SIGNUP_PARENT_DOMAIN = [('is_kjr_member', '=', True), ('is_company', '=', True)]
+# Delegierte vertreten einen Verband MIT Vertretungsrecht (§ 33 BJR-Satzung);
+# dieselbe Bedingung prüft das Portal (controllers/portal.py, _set_delegate).
+DELEGATE_VERBAND_DOMAIN = [('is_kjr_member', '=', True), ('is_company', '=', True),
+                           ('kjr_vr_right', '=', True)]
 
 
 class KjrAffiliationRequest(models.Model):
@@ -79,6 +120,26 @@ class KjrAffiliationRequest(models.Model):
     requested_name = fields.Char('Angegebener Verein / Verband', required=True)
     requested_function = fields.Char('Funktion im Verein')
     requested_place = fields.Char('Ort / Anschrift (Angabe)')
+    requested_parent_id = fields.Many2one(
+        'res.partner', string='Angegebener Dachverband', ondelete='set null',
+        domain=SIGNUP_PARENT_DOMAIN,
+        help='Bei der Registrierung gewählter Dachverband (z. B. '
+             'Kreisjugendfeuerwehr). Legt die Geschäftsstelle bei der Genehmigung '
+             'eine neue Organisation an, wird sie unter diesem Verband angelegt.',
+    )
+    requested_delegate = fields.Boolean(
+        'Als Delegierte/r gemeldet',
+        help='Die Person hat bei der Registrierung angegeben, Delegierte/r ihres '
+             'Verbands für die Vollversammlung zu sein. In die Delegiertenliste des '
+             'Verbands kommt sie erst mit der Genehmigung.',
+    )
+    partner_phone = fields.Char(related='partner_id.phone', string='Telefon')
+    delegate_partner_id = fields.Many2one(
+        'res.partner', string='Als Delegierte/r eingetragen für', readonly=True,
+        ondelete='set null', tracking=True,
+        help='Verband, in dessen Delegiertenliste die Person mit der Genehmigung '
+             'aufgenommen wurde.',
+    )
     state = fields.Selection(
         [('requested', 'Beantragt'), ('approved', 'Genehmigt'), ('rejected', 'Abgelehnt')],
         string='Status', required=True, default='requested', index=True, tracking=True,
@@ -148,7 +209,8 @@ class KjrAffiliationRequest(models.Model):
         if not self.env.su:
             for vals in vals_list:
                 for key in ('state', 'target_partner_id', 'date_decided',
-                            'decided_by_id', 'origin', 'user_id', 'rejection_reason'):
+                            'decided_by_id', 'origin', 'user_id', 'rejection_reason',
+                            'delegate_partner_id'):
                     vals.pop(key, None)
                 partner = self.env['res.partner'].sudo().browse(vals.get('partner_id'))
                 if partner.exists():
@@ -187,6 +249,12 @@ class KjrAffiliationRequest(models.Model):
         """
         Request = self.with_user(SUPERUSER_ID).with_context(
             mail_create_nolog=True, mail_create_nosubscribe=True)
+        # Dachverband nur aus der Auswahlliste des Formulars; alles andere
+        # (veraltetes Formular, handgebauter Aufruf) fällt still weg, die
+        # Geschäftsstelle entscheidet ohnehin bei der Prüfung.
+        parent = self.env['res.partner'].sudo().browse(data.get('parent_id') or [])
+        if parent and not parent.exists().filtered_domain(SIGNUP_PARENT_DOMAIN):
+            parent = self.env['res.partner']
         req = Request.create({
             'partner_id': user.partner_id.id,
             'user_id': user.id,
@@ -194,8 +262,15 @@ class KjrAffiliationRequest(models.Model):
             'requested_name': data['name'],
             'requested_function': data.get('function') or False,
             'requested_place': data.get('place') or False,
+            'requested_parent_id': parent.id or False,
+            'requested_delegate': bool(data.get('delegate')),
             'origin': 'signup',
         })
+        # Telefon ist eine Kontaktangabe der Person selbst (ihr eigener Partner,
+        # ohne Organisation); Pflicht für Delegierte, siehe controllers/signup.py.
+        phone = (data.get('phone') or '').strip()
+        if phone and not user.partner_id.phone:
+            user.partner_id.sudo().phone = phone
         req._kjr_notify_office()
         return req
 
@@ -285,7 +360,57 @@ class KjrAffiliationRequest(models.Model):
         if self.state != 'requested':
             raise UserError(_('Diese Vereinsregistrierung ist bereits entschieden.'))
 
-    def _kjr_do_approve(self, target, notify=True):
+    @api.model
+    def _kjr_delegate_verband_for(self, target):
+        """Verband, dessen Delegierte/r eine Person unter ``target`` sein kann.
+
+        Die Organisation selbst, wenn sie Vertretungsrecht hat, sonst der
+        nächste übergeordnete Verband mit Vertretungsrecht (Ortsgruppe unter
+        einem Dachverband). Leer, wenn es keinen gibt.
+
+        Folge für das Portal: Delegierte eines ÜBERGEORDNETEN Verbands stehen
+        dort nicht unter „Ansprechpersonen“ (anderer commercial partner) und
+        sind nur über die Geschäftsstelle pflegbar; die Delegiertentabelle in
+        „Mein Verband“ und der Genehmigungsassistent sagen das ausdrücklich.
+        """
+        node = target.sudo()
+        seen = set()
+        while node and node.id not in seen:
+            seen.add(node.id)
+            if node.filtered_domain(DELEGATE_VERBAND_DOMAIN):
+                return node
+            node = node.parent_id
+        return self.env['res.partner']
+
+    def _kjr_check_delegate_for(self, target, delegate_for, phone=False):
+        """Prüft die Aufnahme in die Delegiertenliste vor jeder Änderung.
+
+        Erlaubt ist nur ein Verband mit Vertretungsrecht, der die zugeordnete
+        Organisation selbst ist oder über ihr steht (parent_id-Kette). Telefon
+        ist für Delegierte Pflicht: ohne Nummer ist die Person vor der
+        Vollversammlung nicht erreichbar. ``phone``: im Assistenten
+        nachgetragene Nummer (zählt nur, wenn am Kontakt keine steht).
+        """
+        delegate_for = delegate_for.sudo()
+        if not delegate_for.filtered_domain(DELEGATE_VERBAND_DOMAIN):
+            raise UserError(_(
+                'Delegierte vertreten einen KJR-Mitgliedsverband mit Vertretungsrecht in der '
+                'Vollversammlung. „%s“ hat kein Vertretungsrecht.', delegate_for.display_name))
+        if not self.env['res.partner'].sudo().search_count(
+                [('id', '=', target.id), ('id', 'child_of', delegate_for.id)], limit=1):
+            raise UserError(_(
+                'Die Person kann nur Delegierte/r der zugeordneten Organisation oder eines '
+                'übergeordneten Verbands sein.'))
+        if not ((self.partner_id.sudo().phone or '').strip() or (phone or '').strip()):
+            # Sachbearbeiter haben auf res.partner nur Leserecht: deshalb das
+            # Feld im Assistenten statt „am Kontakt eintragen“.
+            raise UserError(_(
+                'Für Delegierte ist eine Telefonnummer Pflicht. Bei der Person ist keine '
+                'hinterlegt. Bitte die Nummer im Feld „Telefon der Person nachtragen“ '
+                'eintragen (z. B. nach telefonischer Rückfrage) oder das Häkchen „Als '
+                'Delegierte/r eintragen“ entfernen.'))
+
+    def _kjr_do_approve(self, target, notify=True, delegate_for=None, phone=False):
         """Genehmigen: Person der Organisation zuordnen (parent_id setzen).
 
         Das ist die EINZIGE Stelle, an der aus einer Registrierung ein Vereinsrecht
@@ -293,6 +418,14 @@ class KjrAffiliationRequest(models.Model):
         res.partner hat (nur base.group_partner_manager); die Gruppenprüfung und
         die Rechtewache (keine internen Benutzer, kein Umhängen ohne
         Kontaktrecht) stehen deshalb vorher.
+
+        ``delegate_for``: Verband, in dessen Delegiertenliste
+        (kjr_vr_delegate_ids) die Person mit der Genehmigung aufgenommen wird.
+        Nur hier, nie bei der Registrierung.
+
+        ``phone``: von der Geschäftsstelle nachgetragene Telefonnummer
+        (Assistent). Übernommen wird sie nur, wenn am Kontakt noch keine steht;
+        eine vorhandene Nummer der Person bleibt unangetastet.
         """
         self._kjr_check_reviewer()
         self.ensure_one()
@@ -301,6 +434,14 @@ class KjrAffiliationRequest(models.Model):
         target = target.sudo()
         if not target or not target.is_company or target == partner:
             raise UserError(_('Bitte eine Organisation (Unternehmen) als Verband wählen.'))
+        phone = ' '.join((phone or '').split())
+        if (partner.phone or '').strip():
+            phone = ''  # nie eine vorhandene Nummer überschreiben
+        if phone and not ASSEMBLY_PHONE_RE.match(phone):
+            raise UserError(_('Telefon bitte nur mit Ziffern und den Zeichen + ( ) / - angeben '
+                              '(z. B. 08321 1234-0).'))
+        if delegate_for:
+            self._kjr_check_delegate_for(target, delegate_for, phone=phone)
         if not self.env.su:
             # RECHTEWACHE. Das sudo unten darf Sachbearbeitern ohne Schreibrecht
             # auf res.partner nicht mehr erlauben als die Zuordnung einer
@@ -340,8 +481,23 @@ class KjrAffiliationRequest(models.Model):
                 vals[fname] = target._fields[fname].convert_to_write(target[fname], target)
         if self.requested_function and not partner.function:
             vals['function'] = self.requested_function
+        if phone:
+            vals['phone'] = phone
         # company_name setzt res.partner.write bei parent_id selbst auf False.
         partner.write(vals)
+
+        if delegate_for:
+            delegate_for = delegate_for.sudo()
+            # Gezielt nur dieses eine Feld (wie _set_delegate im Portal);
+            # Command.link ist idempotent.
+            if partner not in delegate_for.kjr_vr_delegate_ids:
+                delegate_for.write({'kjr_vr_delegate_ids': [Command.link(partner.id)]})
+                delegate_for.message_post(
+                    body=Markup('<p>%s</p>') % _(
+                        'Delegierte/r aus einer genehmigten Vereinsregistrierung aufgenommen: %s.',
+                        partner.name or ''),
+                    subtype_xmlid='mail.mt_note',
+                )
 
         self.sudo().write({
             'state': 'approved',
@@ -349,6 +505,7 @@ class KjrAffiliationRequest(models.Model):
             'date_decided': fields.Datetime.now(),
             'decided_by_id': self.env.uid,
             'rejection_reason': False,
+            'delegate_partner_id': delegate_for.id if delegate_for else False,
         })
         self.sudo().activity_feedback([ACTIVITY_TYPE], feedback=_('Genehmigt'))
         # Markup escapt den Parameter; sudo lässt den uid unverändert, Autor ist
@@ -357,6 +514,19 @@ class KjrAffiliationRequest(models.Model):
             body=Markup('<p>%s</p>') % _('Genehmigt, zugeordnet zu %s.', target.display_name),
             subtype_xmlid='mail.mt_note',
         )
+        if delegate_for:
+            self.sudo().message_post(
+                body=Markup('<p>%s</p>') % _(
+                    'Als Delegierte/r für %s eingetragen.', delegate_for.display_name),
+                subtype_xmlid='mail.mt_note',
+            )
+        if phone:
+            # Nachweis ohne die Nummer selbst (Datensparsamkeit im Verlauf).
+            self.sudo().message_post(
+                body=Markup('<p>%s</p>') % _(
+                    'Telefonnummer der Person von der Geschäftsstelle nachgetragen.'),
+                subtype_xmlid='mail.mt_note',
+            )
         if notify:
             self._kjr_send_mail('kjr_grant.mail_template_affiliation_approved')
         return True

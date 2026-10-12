@@ -124,6 +124,9 @@ class TestKjrAffiliationSignupHttp(HttpCase):
         # Zweckerweiterung und Empfänger bei Genehmigung (Funktion in den Stammdaten)
         self.assertIn('in Ihre Kontaktdaten übernommen', text)
         self.assertIn('die anderen Zugänge Ihres Verbands', text)
+        # Sichtbarkeit für den Dachverband und Verbleib des Telefons offengelegt
+        self.assertIn('auch die Portal-Zugänge dieses', text)
+        self.assertIn('Die Telefonnummer steht in Ihren Kontaktdaten und bleibt dort', text)
 
         Param.set_param('kjr_grant.affiliation_rejected_retention_days', '0')
         text = self.url_open('/web/signup').text

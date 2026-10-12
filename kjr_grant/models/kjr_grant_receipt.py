@@ -3,8 +3,8 @@
 
 Bildet die Papier-Belegliste des Trägers 1:1 ab: je Zeile ein Beleg mit
 Datum, Beleg-Nr., Empfänger/Einzahler (ANBest-P-Pflichtspalte), Bezeichnung,
-Art (Einnahme/Ausgabe), Position und Betrag. Die Positionen spiegeln die
-Kostenaufstellung des Antrags, damit Belege und Summen zusammenpassen.
+Art (Einnahme/Ausgabe), optional Position, und Betrag. Die Positionen spiegeln
+die Kostenaufstellung des Antrags, damit Belege und Summen zusammenpassen.
 """
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
@@ -55,7 +55,15 @@ class KjrGrantReceipt(models.Model):
             ('jl_fees', 'Ausgabe: Kursgebühren JL-Schulung'),
             ('cost_other', 'Ausgabe: Sonstige Ausgaben'),
         ],
-        string='Position', required=True,
+        string='Position',
+        # Optional seit 19.0.17.0.0 (Kundenentscheidung, Besprechung 00:23:30):
+        # Je Beleg wird nur Einnahme oder Ausgabe gewählt, Punkt 6 bleibt. Ist
+        # eine Position gesetzt, muss sie zur Art passen (Constraint unten) und
+        # fließt in den Abgleich je Position ein (kjr.grant.application:
+        # _compute_receipt_check).
+        help='Optional: Zeile der Kostenaufstellung, zu der der Beleg gehört. '
+             'Ohne Position zählt der Beleg nur in der Summe der Einnahmen bzw. '
+             'Ausgaben.',
     )
     # Immer positiv erfassen — das Vorzeichen steckt in 'direction'.
     amount = fields.Float(string='Betrag (€)', required=True, digits=(12, 2))

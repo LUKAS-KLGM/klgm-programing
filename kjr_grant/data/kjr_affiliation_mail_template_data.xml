@@ -21,6 +21,7 @@
     <p>Guten Tag <t t-out="object.partner_id.name or ''"/>,</p>
     <p>die Geschäftsstelle hat Ihre Zugehörigkeit zu <strong><t t-out="object.target_partner_id.name or ''"/></strong> bestätigt.</p>
     <p t-if="object.target_partner_id.is_kjr_member">In Ihrem Konto können Sie ab sofort Zuschussanträge für Ihren Verband stellen und unter „Mein Verband“ die Verbandsdaten einsehen.</p>
+    <p t-if="object.delegate_partner_id">Außerdem sind Sie jetzt als Delegierte/r von <strong><t t-out="object.delegate_partner_id.name or ''"/></strong> für die Vollversammlung eingetragen. Die Einladungen zur Vollversammlung erhalten Sie per E-Mail.</p>
     <p><a t-att-href="object.get_base_url() + '/my'">Zu Ihrem Konto</a></p>
     <p>Mit freundlichen Grüßen<br/><t t-out="object.company_id.name or ''"/></p>
 </div>

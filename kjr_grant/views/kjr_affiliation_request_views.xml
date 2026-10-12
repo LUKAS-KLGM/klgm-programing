@@ -16,6 +16,8 @@
                 <filter string="Abgelehnt"  name="filter_rejected"  domain="[('state','=','rejected')]"/>
                 <separator/>
                 <filter string="Aus Registrierung" name="filter_signup" domain="[('origin','=','signup')]"/>
+                <filter string="Als Delegierte/r gemeldet" name="filter_delegate" domain="[('requested_delegate','=',True)]"/>
+                <field name="requested_parent_id"/>
                 <filter string="Status" name="filter_group_state" context="{'group_by': 'state'}"/>
             </search>
         </field>
@@ -31,6 +33,8 @@
                 <field name="partner_email"/>
                 <field name="requested_name"/>
                 <field name="requested_function"/>
+                <field name="requested_parent_id" optional="show"/>
+                <field name="requested_delegate" optional="show"/>
                 <field name="target_partner_id" optional="show"/>
                 <field name="decided_by_id" optional="hide"/>
                 <field name="activity_ids" widget="list_activity"/>
@@ -68,11 +72,15 @@
                             <field name="partner_id" readonly="id"/>
                             <field name="user_id"/>
                             <field name="partner_email"/>
+                            <field name="partner_phone"/>
                         </group>
                         <group string="Angaben bei der Registrierung">
                             <field name="requested_name" readonly="state != 'requested'"/>
+                            <field name="requested_parent_id" readonly="state != 'requested'"
+                                   options="{'no_create': True}"/>
                             <field name="requested_function" readonly="state != 'requested'"/>
                             <field name="requested_place" readonly="state != 'requested'"/>
+                            <field name="requested_delegate" readonly="state != 'requested'"/>
                             <field name="date_requested"/>
                             <field name="origin"/>
                         </group>
@@ -80,6 +88,7 @@
                     <group string="Entscheidung" invisible="state == 'requested'">
                         <field name="target_partner_id"/>
                         <field name="target_is_member"/>
+                        <field name="delegate_partner_id" invisible="not delegate_partner_id"/>
                         <field name="date_decided"/>
                         <field name="decided_by_id"/>
                         <field name="rejection_reason" readonly="1" invisible="state != 'rejected'"/>
@@ -123,9 +132,18 @@
                         <field name="request_id" invisible="1"/>
                         <field name="partner_already_linked" invisible="1"/>
                         <field name="partner_id"/>
+                        <field name="partner_phone" invisible="not partner_phone"/>
+                        <!-- Sachbearbeiter haben auf res.partner nur Leserecht: Telefon
+                             wird hier nachgetragen und mit der Genehmigung übernommen
+                             (kjr.affiliation.request._kjr_do_approve, nur in ein leeres Feld). -->
+                        <field name="new_phone" invisible="partner_phone"
+                               required="add_delegate and not partner_phone"
+                               placeholder="z. B. 08321 1234-0"/>
                         <field name="requested_name"/>
+                        <field name="requested_parent_id" invisible="not requested_parent_id"/>
                         <field name="requested_function"/>
                         <field name="requested_place"/>
+                        <field name="requested_delegate"/>
                     </group>
                     <group string="Zuordnung">
                         <field name="mode" widget="radio"/>
@@ -133,14 +151,73 @@
                                required="mode == 'existing'"
                                options="{'no_create': True}"/>
                         <field name="target_is_member" invisible="mode != 'existing' or not target_partner_id"/>
+                        <field name="target_parent_id" invisible="mode != 'existing' or not target_parent_id"/>
                         <field name="new_name"   invisible="mode != 'new'" required="mode == 'new'"/>
                         <field name="new_street" invisible="mode != 'new'" required="mode == 'new'"/>
                         <field name="new_zip"    invisible="mode != 'new'" required="mode == 'new'"/>
                         <field name="new_city"   invisible="mode != 'new'" required="mode == 'new'"/>
                         <field name="new_email"  invisible="mode != 'new'"/>
+                        <field name="new_parent_id" invisible="mode != 'new'"
+                               options="{'no_create': True}"/>
+                        <field name="add_delegate"/>
+                        <field name="delegate_partner_id" invisible="not add_delegate"
+                               required="add_delegate" options="{'no_create': True}"/>
                         <field name="send_mail"/>
                     </group>
                 </group>
+                <div class="alert alert-warning" role="alert"
+                     invisible="not add_delegate or partner_phone or new_phone">
+                    Für Delegierte ist eine Telefonnummer Pflicht. Bei der Person ist keine
+                    hinterlegt. Bitte die Nummer oben unter „Telefon der Person nachtragen“
+                    eintragen (z. B. nach telefonischer Rückfrage) oder das Häkchen „Als
+                    Delegierte/r eintragen“ entfernen.
+                </div>
+                <!-- Datenschutz: Leserechte im Portal folgen parent_id
+                     (base.res_partner_portal_public_rule, child_of
+                     user.commercial_partner_id). Steht so auch im Hinweis der
+                     Registrierung (auth_signup_templates.xml, „Wer es sieht“). -->
+                <div class="alert alert-info" role="status"
+                     invisible="mode != 'existing' or not target_parent_id">
+                    Die gewählte Organisation hängt unter einem übergeordneten Verband (Feld
+                    „Übergeordneter Verband“). Nach der Zuordnung können die Portal-Zugänge
+                    dieses Verbands auch die Person sehen (Name, Funktion, E-Mail, Telefon).
+                </div>
+                <!-- Delegiertenhinweise nach delegate_base_state: ohne gewählte
+                     Organisation nur ein neutraler Hinweis; die Warnung „kein
+                     Vertretungsrecht“ nur, wenn das für die gewählte Organisation
+                     wirklich gilt. -->
+                <field name="delegate_base_state" invisible="1"/>
+                <div class="alert alert-info" role="status"
+                     invisible="not add_delegate or delegate_partner_id or delegate_base_state != 'none'">
+                    Bitte zuerst die Organisation wählen (bei einer neuen Organisation den
+                    übergeordneten Verband). Vorgeschlagen wird dann der Verband mit
+                    Vertretungsrecht, für den die Person Delegierte/r ist.
+                </div>
+                <div class="alert alert-info" role="status"
+                     invisible="not add_delegate or delegate_partner_id or delegate_base_state != 'ok'">
+                    Bitte den Verband mit Vertretungsrecht wählen, für den die Person Delegierte/r
+                    ist, oder das Häkchen „Als Delegierte/r eintragen“ entfernen.
+                </div>
+                <div class="alert alert-warning" role="alert"
+                     invisible="not add_delegate or delegate_partner_id or delegate_base_state != 'no_vr'">
+                    Weder die gewählte Organisation noch ein übergeordneter Verband hat
+                    Vertretungsrecht in der Vollversammlung. Bitte eine andere Organisation wählen
+                    oder das Häkchen entfernen.
+                </div>
+                <!-- Delegierte/r eines übergeordneten Verbands: Im Portal „Mein Verband“
+                     dieses Verbands steht die Person nicht unter „Ansprechpersonen“
+                     (controllers/portal.py, _verband_contacts: commercial_partner_id),
+                     sondern nur in der Delegiertenliste mit dem Vermerk „Änderungen über
+                     die Geschäftsstelle“ (views/portal_templates.xml). -->
+                <div class="alert alert-warning" role="alert"
+                     invisible="not add_delegate or not delegate_partner_id or (mode == 'existing' and delegate_partner_id == target_partner_id)">
+                    Die Person wird Delegierte/r eines übergeordneten Verbands, gehört aber zu einer
+                    anderen Organisation. Im Portal „Mein Verband“ dieses Verbands erscheint sie nur
+                    in der Delegiertenliste, nicht unter „Ansprechpersonen“: Der Verband kann sie dort
+                    weder abmelden noch ihre Daten ändern. An- und Abmeldung als Delegierte/r
+                    (Feld „Vertreter/innen“ am Verband) übernimmt die Geschäftsstelle, auch wenn die
+                    Person ihre Organisation verlässt.
+                </div>
                 <div class="alert alert-warning" role="alert"
                      invisible="mode != 'existing' or not target_partner_id or target_is_member">
                     Diese Organisation ist kein KJR-Mitgliedsverband. Die Person erhält dadurch keine
@@ -149,6 +226,12 @@
                 <div class="alert alert-info" role="status" invisible="mode != 'new'">
                     Die neue Organisation wird ohne KJR-Mitgliedschaft angelegt. Die Mitgliedschaft
                     wird im Reiter KJR Verband gepflegt.
+                    <span invisible="not new_parent_id">Sie wird als eigene Gruppe unter dem
+                        gewählten Dachverband angelegt und behält ihre eigene Anschrift. Solange sie
+                        selbst kein KJR-Mitglied ist, öffnet sich für sie im Portal „Mein Verband“
+                        nicht; weitere Ansprechpersonen pflegt dann die Geschäftsstelle. Die
+                        Portal-Zugänge des Dachverbands können die Gruppe und ihre Personen sehen
+                        (Name, Funktion, E-Mail, Telefon, Anschrift).</span>
                 </div>
                 <footer>
                     <button name="action_confirm" type="object" string="Genehmigen"

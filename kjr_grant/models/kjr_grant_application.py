@@ -360,6 +360,27 @@ class KjrGrantApplication(models.Model):
     receipt_expense_total = fields.Float(
         string='Belege Ausgaben (€)', compute='_compute_receipt_totals', digits=(12, 2),
     )
+    # Abgleich Belegliste ⇄ Kostenaufstellung (19.0.17.0.0, Kundenwunsch B33):
+    # Die Belegsummen werden gegen die Summen aus Punkt 6 gestellt, und, soweit
+    # die Belege eine Position tragen, auch je Position. Nicht gespeichert: reine
+    # Prüfhilfe für die Sachbearbeitung, keine Grundlage der Förderberechnung.
+    receipt_income_diff = fields.Float(
+        string='Abweichung Einnahmen (€)', compute='_compute_receipt_check',
+        digits=(12, 2),
+        help='Belege Einnahmen minus Gesamteinnahmen der Kostenaufstellung.',
+    )
+    receipt_expense_diff = fields.Float(
+        string='Abweichung Ausgaben (€)', compute='_compute_receipt_check',
+        digits=(12, 2),
+        help='Belege Ausgaben minus förderfähige Gesamtkosten der Kostenaufstellung.',
+    )
+    receipt_mismatch = fields.Boolean(
+        string='Belegliste weicht von der Kostenaufstellung ab',
+        compute='_compute_receipt_check',
+    )
+    receipt_check_info = fields.Text(
+        string='Abgleich Belegliste', compute='_compute_receipt_check',
+    )
 
     # ── Förderberechnung ─────────────────────────────────────────────────────
     deficit = fields.Float(
@@ -809,6 +830,109 @@ class KjrGrantApplication(models.Model):
             rec.receipt_expense_total = sum(
                 r.amount for r in rec.receipt_ids if r.direction == 'expense'
             )
+
+    # Position der Belegliste ⇄ Feld der Kostenaufstellung (Punkt 6). Schlüssel
+    # sind die Selection-Werte von kjr.grant.receipt.category.
+    RECEIPT_CATEGORY_FIELDS = {
+        'tn_fees': 'income_tn_fees',
+        'municipality': 'income_municipality',
+        'association': 'income_association',
+        'bjr': 'income_bjr',
+        'income_other': 'income_other',
+        'accommodation': 'cost_accommodation',
+        'transport': 'cost_transport',
+        'referees': 'cost_referees',
+        'allowances': 'cost_allowances',
+        'materials': 'cost_materials',
+        'jl_fees': 'cost_jl_fees',
+        'cost_other': 'cost_other',
+    }
+
+    @staticmethod
+    def _fmt_eur(amount):
+        """Betrag in deutscher Schreibweise (1.234,50 €) für Prüfhinweise."""
+        text = '{:,.2f}'.format(amount or 0.0)
+        return text.replace(',', '#').replace('.', ',').replace('#', '.') + ' €'
+
+    @api.depends(
+        'use_digital_receipts', 'receipt_ids', 'receipt_ids.amount',
+        'receipt_ids.direction', 'receipt_ids.category',
+        'income_total', 'cost_total',
+        'income_tn_fees', 'income_municipality', 'income_association',
+        'income_bjr', 'income_other',
+        'cost_accommodation', 'cost_transport', 'cost_referees',
+        'cost_allowances', 'cost_materials', 'cost_jl_fees', 'cost_other',
+    )
+    def _compute_receipt_check(self):
+        """Belegsummen gegen die Kostenaufstellung abgleichen.
+
+        Gesamt: Belege Einnahmen gegen Gesamteinnahmen, Belege Ausgaben gegen
+        förderfähige Gesamtkosten. Je Position nur, wenn ALLE Belege dieser Art
+        eine Position tragen. Die Position ist seit 19.0.17.0.0 optional, und
+        mit Belegen ohne Position wäre jede Positionsabweichung nur geraten.
+        Abweichung ab einem Cent. Geprüft wird nur bei digitaler Belegliste
+        mit mindestens einem Beleg: ohne Belege meldet das schon die
+        Vollständigkeitsprüfung beim Einreichen."""
+        receipt_model = self.env['kjr.grant.receipt']
+        cat_labels = dict(receipt_model._fields['category']._description_selection(self.env))
+        income_cats = receipt_model.INCOME_CATEGORIES
+        for rec in self:
+            receipts = rec.receipt_ids
+            income_receipts = receipts.filtered(lambda r: r.direction == 'income')
+            expense_receipts = receipts.filtered(lambda r: r.direction == 'expense')
+            income_diff = round(sum(income_receipts.mapped('amount')) - rec.income_total, 2)
+            expense_diff = round(sum(expense_receipts.mapped('amount')) - rec.cost_total, 2)
+            rec.receipt_income_diff = income_diff
+            rec.receipt_expense_diff = expense_diff
+            if not rec.use_digital_receipts or not receipts:
+                rec.receipt_mismatch = False
+                rec.receipt_check_info = False
+                continue
+            lines = []
+            mismatch = False
+            for label, diff, total_receipts, total_form in (
+                (_('Einnahmen'), income_diff, sum(income_receipts.mapped('amount')), rec.income_total),
+                (_('Ausgaben'), expense_diff, sum(expense_receipts.mapped('amount')), rec.cost_total),
+            ):
+                if abs(diff) >= 0.01:
+                    mismatch = True
+                    lines.append(_(
+                        '%(label)s: Belege %(rc)s, Kostenaufstellung %(form)s, Abweichung %(diff)s.',
+                        label=label, rc=self._fmt_eur(total_receipts),
+                        form=self._fmt_eur(total_form), diff=self._fmt_eur(diff),
+                    ))
+                else:
+                    lines.append(_(
+                        '%(label)s: Belege und Kostenaufstellung stimmen überein (%(sum)s).',
+                        label=label, sum=self._fmt_eur(total_form),
+                    ))
+            for direction_receipts, categories in (
+                (income_receipts, [c for c in self.RECEIPT_CATEGORY_FIELDS if c in income_cats]),
+                (expense_receipts, [c for c in self.RECEIPT_CATEGORY_FIELDS if c not in income_cats]),
+            ):
+                if not direction_receipts:
+                    continue
+                without_position = len(direction_receipts.filtered(lambda r: not r.category))
+                if without_position:
+                    lines.append(_(
+                        '%(n)d Beleg(e) ohne Position: Abgleich je Position für diese '
+                        'Art nicht möglich.', n=without_position,
+                    ))
+                    continue
+                for cat in categories:
+                    on_receipts = round(sum(
+                        direction_receipts.filtered(lambda r, c=cat: r.category == c).mapped('amount')
+                    ), 2)
+                    on_form = round(rec[self.RECEIPT_CATEGORY_FIELDS[cat]] or 0.0, 2)
+                    if abs(on_receipts - on_form) >= 0.01:
+                        mismatch = True
+                        lines.append(_(
+                            'Position „%(pos)s“: Belege %(rc)s, Kostenaufstellung %(form)s.',
+                            pos=cat_labels.get(cat, cat),
+                            rc=self._fmt_eur(on_receipts), form=self._fmt_eur(on_form),
+                        ))
+            rec.receipt_mismatch = mismatch
+            rec.receipt_check_info = '\n'.join(lines)
 
     # ══════════════════════════════════════════════════════════════════════════
     # CONSTRAINTS
@@ -2427,6 +2551,13 @@ class KjrGrantApplication(models.Model):
                     'eingeladen noch als anwesend erfasst. Bitte die Delegierten-'
                     'berechtigung prüfen.'
                 ) % self.partner_id.name)
+        # Abgleich Belegliste ⇄ Kostenaufstellung (19.0.17.0.0): nicht blockierend,
+        # die Sachbearbeitung klärt Abweichungen mit dem Antragsteller.
+        if self.receipt_mismatch:
+            warnings.append(_(
+                'Die digitale Belegliste stimmt nicht mit der Kostenaufstellung '
+                'überein: %s'
+            ) % (self.receipt_check_info or '').replace('\n', ' '))
         # Hinweis auf nicht förderfähige Kosten (Richtlinie Ziff. 2 / 3.3).
         if t.code not in ('4_7', '4_9') and self.cost_total > 0:
             warnings.append(_(

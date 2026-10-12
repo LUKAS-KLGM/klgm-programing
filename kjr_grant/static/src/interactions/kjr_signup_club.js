@@ -5,6 +5,9 @@
  * ist, und macht den Vereinsnamen dann zur Pflicht (required). Bei
  * "als Privatperson" werden die Felder ausgeblendet und der Name ist frei.
  *
+ * Seit 19.0.17.0.0: Ist "Ich bin Delegierte/r" angekreuzt, wird das Telefon
+ * zur Pflicht (Delegierte müssen vor der Vollversammlung erreichbar sein).
+ *
  * Nur Komfort: massgeblich ist die Pruefung im Controller
  * (KjrAuthSignupHome._prepare_signup_values, controllers/signup.py).
  */
@@ -15,6 +18,7 @@ export class KjrSignupClub extends Interaction {
     static selector = ".o_kjr_signup_type";
     dynamicContent = {
         "input[name='kjr_signup_type']": { "t-on-change": this.onTypeChange },
+        "input[name='kjr_club_delegate']": { "t-on-change": this.onTypeChange },
     };
 
     start() {
@@ -28,6 +32,11 @@ export class KjrSignupClub extends Interaction {
         const name = this.el.querySelector("input[name='kjr_club_name']");
         if (name) {
             name.required = club;
+        }
+        const delegate = this.el.querySelector("input[name='kjr_club_delegate']");
+        const phone = this.el.querySelector("input[name='kjr_club_phone']");
+        if (phone) {
+            phone.required = club && Boolean(delegate?.checked);
         }
     }
 }

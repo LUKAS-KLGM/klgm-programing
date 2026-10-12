@@ -10,8 +10,10 @@
          Controller ignoriert sie dort (controllers/signup.py).
 
          Kontext (qcontext, nur ohne Token gefüllt): kjr_signup_type,
-         kjr_club_name, kjr_club_function, kjr_club_place. Unbekannte Namen sind
-         in QWeb None. Bewusst keine Vorauswahl der Art.
+         kjr_club_name, kjr_club_function, kjr_club_place, kjr_club_parent_id,
+         kjr_club_delegate, kjr_club_phone und die Auswahlliste
+         kjr_parent_options [(id, name)]. Unbekannte Namen sind in QWeb None.
+         Bewusst keine Vorauswahl der Art.
 
          Ohne JavaScript bleibt der Vereinsblock beim ersten Aufruf verborgen;
          die Fehlerseite des Servers zeigt ihn wieder, sobald "club" gewählt war.
@@ -47,6 +49,23 @@
                                    t-att-value="kjr_club_name"
                                    t-att-required="'required' if kjr_signup_type == 'club' else None"/>
                         </div>
+                        <div class="mb-2" t-if="kjr_parent_options">
+                            <label for="kjr_club_parent_id" class="form-label">Dachverband (freiwillig)</label>
+                            <select name="kjr_club_parent_id" id="kjr_club_parent_id" class="form-select"
+                                    aria-describedby="kjr_club_parent_help">
+                                <option value="">Kein Dachverband / weiß ich nicht</option>
+                                <t t-foreach="kjr_parent_options" t-as="opt">
+                                    <option t-att-value="opt[0]"
+                                            t-att-selected="'selected' if str(opt[0]) == (kjr_club_parent_id or '') else None"
+                                            t-out="opt[1]"/>
+                                </t>
+                            </select>
+                            <div id="kjr_club_parent_help" class="form-text">Gehört Ihre Gruppe zu einem
+                                Dachverband (z. B. Ortsfeuerwehr zur Kreisjugendfeuerwehr)? Dann wählen Sie
+                                ihn hier aus. Ihre Gruppe bekommt trotzdem eigene Zugänge und eigene
+                                Ansprechpersonen. Die Zugänge des Dachverbands können die Kontaktdaten
+                                Ihrer Gruppe sehen (siehe Datenschutzhinweis unten).</div>
+                        </div>
                         <div class="mb-2">
                             <label for="kjr_club_function" class="form-label">Ihre Funktion im Verein (freiwillig)</label>
                             <input type="text" name="kjr_club_function" id="kjr_club_function"
@@ -60,6 +79,25 @@
                                    class="form-control" maxlength="120"
                                    placeholder="z. B. Ort oder Anschrift"
                                    t-att-value="kjr_club_place"/>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="kjr_club_delegate"
+                                   id="kjr_club_delegate" value="1" aria-describedby="kjr_club_delegate_help"
+                                   t-att-checked="'checked' if kjr_club_delegate else None"/>
+                            <label class="form-check-label" for="kjr_club_delegate">Ich bin Delegierte/r
+                                meines Verbands für die Vollversammlung</label>
+                            <div id="kjr_club_delegate_help" class="form-text">In die Delegiertenliste
+                                Ihres Verbands nimmt Sie die Geschäftsstelle mit der Bestätigung auf.
+                                Dafür brauchen wir Ihre Telefonnummer.</div>
+                        </div>
+                        <div class="mb-2">
+                            <label for="kjr_club_phone" class="form-label">Telefon
+                                <span class="o_kjr_phone_hint">(Pflicht für Delegierte, sonst freiwillig)</span></label>
+                            <input type="tel" name="kjr_club_phone" id="kjr_club_phone"
+                                   class="form-control" maxlength="32" autocomplete="tel"
+                                   placeholder="z. B. 08321 1234-0"
+                                   t-att-value="kjr_club_phone"
+                                   t-att-required="'required' if kjr_signup_type == 'club' and kjr_club_delegate else None"/>
                         </div>
                         <t t-call="kjr_grant.signup_club_privacy_notice"/>
                     </div>
@@ -84,7 +122,11 @@
             <h2 class="alert-heading h6" id="kjr_privacy_signup_heading">Datenschutz: was mit diesen Angaben passiert</h2>
             <dl class="row mb-0">
                 <dt class="col-sm-4">Was wir speichern</dt>
-                <dd class="col-sm-8">Vereinsname, Funktion und Ort, wie angegeben.</dd>
+                <!-- Telefon: models/kjr_affiliation_request.py (_kjr_create_from_signup)
+                     schreibt es sofort in den eigenen Kontakt, wenn dort noch keines steht. -->
+                <dd class="col-sm-8">Vereinsname, Dachverband, Funktion, Ort, Telefon und die
+                    Angabe „Delegierte/r“, wie angegeben. Die Telefonnummer wird gleich mit der
+                    Registrierung in Ihre Kontaktdaten übernommen, sofern dort noch keine steht.</dd>
 
                 <dt class="col-sm-4">Wofür</dt>
                 <!-- Zweckerweiterung bei Genehmigung: die Funktion wird in res.partner.function
@@ -93,13 +135,27 @@
                      Ansprechpersonenliste von „Mein Verband“ (views/portal_templates.xml). -->
                 <dd class="col-sm-8">Prüfung der Vereinszugehörigkeit. Nach der Bestätigung wird die
                     angegebene Funktion in Ihre Kontaktdaten übernommen (sofern dort noch keine
-                    steht), damit Ihr Verband Sie als Ansprechperson führen kann.</dd>
+                    steht), damit Ihr Verband Sie als Ansprechperson führen kann. Haben Sie
+                    „Delegierte/r“ angekreuzt, nimmt die Geschäftsstelle Sie mit der Bestätigung
+                    in die Delegiertenliste Ihres Verbands auf; Einladungen zur Vollversammlung
+                    gehen dann an Sie, und die Geschäftsstelle kann Sie telefonisch erreichen.
+                    Ohne Delegiertenangabe ist die Telefonnummer freiwillig; wir nutzen sie für
+                    Rückfragen zu Ihrer Registrierung und, nach der Bestätigung, für Rückfragen
+                    zu Anliegen Ihres Verbands.</dd>
 
                 <dt class="col-sm-4">Wer es sieht</dt>
+                <!-- Dachverband: Die Portal-Leserechte folgen parent_id
+                     (base.res_partner_portal_public_rule, child_of
+                     user.commercial_partner_id). Hängt die Gruppe unter einem
+                     Dachverband (wizard/kjr_affiliation_wizard.py), lesen dessen
+                     Portal-Zugänge sie und ihre Personen mit. -->
                 <dd class="col-sm-8">Die Geschäftsstelle von <t t-out="res_company.name"/>. Nach der
                     Bestätigung erscheinen Ihr Name, Ihre Funktion und Ihre Kontaktdaten (E-Mail,
                     Telefon) in den Verbandsdaten, die die anderen Zugänge Ihres Verbands im Portal
-                    sehen.</dd>
+                    sehen. Gehört Ihr Verein zu einem Dachverband (hier gewählt oder bei uns so
+                    geführt), können nach der Bestätigung auch die Portal-Zugänge dieses
+                    Dachverbands Ihren Namen, Ihre Funktion und Ihre Kontaktdaten (E-Mail,
+                    Telefon) sehen.</dd>
 
                 <dt class="col-sm-4">Löschung</dt>
                 <dd class="col-sm-8">
@@ -111,7 +167,9 @@
                     <t t-else="">Bei Ablehnung nach der in der Datenschutzerklärung genannten Frist.</t>
                     Nach einer Genehmigung bleibt der Nachweis, solange der Kontakt besteht; die
                     übernommene Funktion bleibt Teil Ihrer Kontaktdaten, auch wenn der Nachweis
-                    gelöscht wird.
+                    gelöscht wird. Die Telefonnummer steht in Ihren Kontaktdaten und bleibt dort
+                    auch nach einer Ablehnung, bis Sie sie in Ihrem Konto ändern oder die
+                    Geschäftsstelle um Löschung bitten.
                 </dd>
 
                 <dt class="col-sm-4">Verantwortlich</dt>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vollversammlung: Löschfrist der Anmeldungen (DSGVO, Speicherbegrenzung).
+         noupdate="1": vom Administrator pflegbar, bei Updates nicht überschrieben.
+         Auslegung des Parameters ausschließlich in
+         kjr.assembly.registration._kjr_retention_days (Cron und Datenschutzhinweis
+         der Anmeldeseite nutzen dieselbe Methode). -->
+    <data noupdate="1">
+
+        <!-- Tage nach dem Versammlungstermin; 0 = keine automatische Löschung.
+             Gelöscht wird nur bei durchgeführter oder abgesagter Versammlung.
+             Anwesenheit (Verbände) und Protokoll bleiben unberührt.
+             TODO(KJR): Frist bestätigen (Vorgabe 365 Tage: Zeitraum für Rückfragen
+             und Anfechtung von Beschlüssen). TODO(DSGVO): durch die
+             Datenschutzbeauftragte bestätigen lassen. -->
+        <record id="param_assembly_registration_retention_days" model="ir.config_parameter">
+            <field name="key">kjr_grant.assembly_registration_retention_days</field>
+            <field name="value">365</field>
+        </record>
+
+        <record id="cron_kjr_assembly_registration_purge" model="ir.cron">
+            <field name="name">KJR: Anmeldungen zur Vollversammlung löschen (DSGVO)</field>
+            <field name="model_id" ref="model_kjr_assembly_registration"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_purge_expired()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

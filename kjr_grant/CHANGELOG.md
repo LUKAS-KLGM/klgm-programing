@@ -1,5 +1,208 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.17.0.0 (2026-10-12)
+
+Umsetzung der offenen Punkte aus der Formular-Besprechung mit der Kassenleitung
+(Paket A: Antragsformular, Belegliste/Kostenaufstellung, Bestätigungen;
+Paket B: Dachverband und Delegierte bei der Registrierung, Einladung und Anmeldung
+zur Vollversammlung).
+
+### Neu
+- **Fehlbetrag live im Formular (B15).** Unter „6. Kostenaufstellung“ stehen
+  Gesamteinnahmen, förderfähige Gesamtkosten und Fehlbetrag (Defizit) und
+  rechnen beim Tippen mit (Interaction `kjr_grant.apply_totals`,
+  `static/src/interactions/kjr_apply_totals.js`). Die erste Anzeige rechnet der
+  Server vor, auch nach einer Fehlermeldung. Formel wie im Modell: Kosten minus
+  Einnahmen, nicht unter 0. Die Berechnung im Modell (`deficit`) ist unverändert.
+- **Abgleich Belegliste ⇄ Kostenaufstellung (B33).** Neue Rechenfelder am Antrag:
+  `receipt_income_diff`, `receipt_expense_diff`, `receipt_mismatch`,
+  `receipt_check_info`. Verglichen werden die Belegsummen je Art mit
+  Gesamteinnahmen bzw. förderfähigen Gesamtkosten, und je Position, sofern alle
+  Belege dieser Art eine Position tragen. Anzeige im Backend (Reiter „Belegliste“,
+  Abschnitt „Abgleich mit der Kostenaufstellung“, Warnung auch im Reiter
+  „Kostenaufstellung“), als Hinweis zur Förderfähigkeit im Chatter beim Einreichen,
+  im Portal (Antragsdetail) und live im Formular unter der Belegliste. Nur Hinweis,
+  kein Absendehindernis. Im Portal erscheint der Hinweis nur, solange der Antrag
+  bearbeitet wird (Entwurf, eingereicht, in Prüfung), und sagt, was zu tun ist: Die
+  Geschäftsstelle meldet sich; bei Entwurf/eingereicht kann zusätzlich eine
+  korrigierte Belegliste unter „Dokumente hochladen“ nachgereicht werden.
+- **Vorlage Kostenaufstellung und Belegliste (B31).** Die Druckseite
+  `/service/zuschuss/belegliste-vorlage` enthält jetzt zuerst die Kostenaufstellung
+  (Zeilen wie Punkt 6, Gesamtsummen, Fehlbetrag), danach die Belegliste mit Summe
+  Einnahmen und Summe Ausgaben. Neu als Datei:
+  `/service/zuschuss/vorlage-kostenaufstellung-belegliste.xlsx` (öffentlich) mit den
+  Blättern „Kostenaufstellung“ (Summen, Fehlbetrag und Abgleich mit der Belegliste
+  als Formeln) und „Belegliste“ (Art und Position als Auswahlliste, Summen per
+  SUMIF). Erzeugt mit xlsxwriter (Kernabhängigkeit von Odoo 19), Firmenname aus
+  der Firma. Links im Formular (Block 7), auf der Anleitung und auf der Druckseite.
+- **Einstellungen „Zuschussantrag: Bestätigungen am Formularende“** (Einstellungen ▸
+  KJR Datenschutzangaben), `models/res_config_settings_apply.py`:
+  `kjr_grant.guidelines_url` (Link zu den Zuschussrichtlinien, Vorgabe
+  `/service/zuschuss-hilfe#zuschussrichtlinien`; nur relative Pfade und
+  http(s)-Adressen, sonst Vorgabe), `kjr_grant.funding_notice` (Satz zur Herkunft der Fördermittel, Vorgabe
+  „Die Mittel für die Förderung der Jugendarbeit stellt der Landkreis Oberallgäu.“)
+  und `kjr_grant.hide_funding_notice` (ausblenden). Kein Seed-Datensatz: fehlt der
+  Parameter, gilt die Vorgabe.
+
+### Geändert
+- **Beispiele im Formular (B01, B06).** Wunsch der Kassenleitung gilt, die Rücknahme aus
+  19.0.15.5.0 ist aufgehoben: Bezeichnung „z. B. Ausflug Skyline Park“ (mit Hinweis,
+  das Ziel zu nennen), PLZ „z. B. 86871“, Ort „z. B. Rammingen“ (mit Hinweis:
+  Gemeinde statt Haus- oder Platzname, für die Statistik).
+- **Alter je teilnehmender Person Pflicht (B20).** Der Controller prüft jede
+  ausgefüllte Teilnehmerzeile (`_check_participant_rows`): Name und Alter (ganze
+  Zahl 0 bis 120) müssen angegeben sein, sonst kommt der Antrag mit einer Meldung
+  je Zeile zurück (Sammelschlüssel `participants`). Bisher wurde ein fehlendes Alter
+  still als 0 gespeichert. Auch die per JavaScript angehängten Zeilen tragen jetzt
+  `required`. Eine Teilnahmeliste ganz ohne Zeilen bleibt zulässig (Upload als Datei).
+- Teilnehmer- und Belegzeilen werden über alle übermittelten Zeilennummern gelesen,
+  nicht mehr nur bis zur ersten Lücke, und nach einer Fehlermeldung vollständig
+  wieder angezeigt (vorher nur Zeile 1).
+- **Position je Beleg optional (B34).** Finale Entscheidung der Kassenleitung (Besprechung
+  00:23:30): Punkt 6 bleibt, je Beleg genügt Einnahme oder Ausgabe.
+  `kjr.grant.receipt.category` ist nicht mehr Pflicht; ist eine Position gewählt,
+  bestimmt sie wie bisher die Art und muss zu ihr passen. Formular, Druckvorlage und
+  Excel-Vorlage kennzeichnen die Position als optional. Eine Belegzeile ohne Art und
+  ohne Position gilt als unvollständig und wird nicht gespeichert (die Art wird beim
+  Einlesen nicht mehr still auf „Ausgabe“ gesetzt).
+- **Checkbox 2 mit Link auf die Zuschussrichtlinien (B43)**, Ziel aus
+  `kjr_grant.guidelines_url`. Bestandsinstanzen: `migrations/19.0.17.0.0/post-formular.py`
+  trägt das öffentliche Richtlinien-PDF der Website ein (öffentlicher PDF-Anhang mit
+  „Zuschussrichtlinie“ im Namen, bei mehreren die höchste Jahreszahl; Adresse
+  `/web/content/<id>/<Dateiname>`), sofern noch keine eigene Adresse gepflegt ist.
+  Ohne gepflegte Adresse führt der Link auf den neuen Abschnitt „Zuschussrichtlinien“
+  der Anleitung `/service/zuschuss-hilfe`; dort steht mit gepflegter Adresse der Link
+  „Zuschussrichtlinien öffnen“, sonst der Hinweis, dass die Geschäftsstelle die
+  Richtlinien zusendet (Telefon und E-Mail aus der Firma). Der Einleitungssatz der
+  Anleitung verlinkt auf diesen Abschnitt.
+- **Satz zum Fehlbetrag richtiggestellt.** Statt „Der Zuschuss bemisst sich am
+  Fehlbetrag“ steht im Formular (Punkt 6), auf der Druckvorlage, in der Excel-Vorlage
+  und auf der Anleitung („Häufige Fehler“): „Der Zuschuss ist in der Regel höchstens so
+  hoch wie der Fehlbetrag (Ausnahmen siehe Zuschussrichtlinien).“ Hintergrund:
+  Berechnet wird nach Förderart; der Fehlbetrag ist nur die Obergrenze und gilt für
+  § 4.7, § 4.9 und den Investitionszuschuss nicht (`_calculate_grant`).
+- **Barrierefreiheit:** Die per JavaScript angehängten Teilnehmer- und Belegzeilen
+  tragen dieselben `aria-label` wie die gerenderten Zeilen (Geschlecht, PLZ, Wohnort,
+  Kennziffer, Juleica; Datum, Beleg-Nr., Empfänger / Einzahler, Bezeichnung, Art,
+  Position (optional), Betrag in Euro).
+- **Checkbox 3 mit Hinweis zur Herkunft der Fördermittel (B40)**, Text aus
+  `kjr_grant.funding_notice`, direkt unter der Versicherung und per
+  `aria-describedby` mit ihr verbunden.
+- **Live-Abgleich zählt Belege wie der Server (B33).** Ist eine Position gewählt,
+  bestimmt sie im Formular jetzt auch für den Live-Abgleich, ob der Beleg Einnahme oder
+  Ausgabe ist; nur ohne Position zählt das Feld „Art“ (wie
+  `_parse_receipt_rows`). Vorher konnte z. B. „Einnahme: Teilnehmerbeiträge“ mit Art
+  „Ausgabe“ im Formular als Ausgabe zählen, gespeichert wurde aber eine Einnahme.
+  Zusätzlich leert eine Art, die nicht zur gewählten Position passt, die Position
+  (`syncReceiptCategory`), damit Anzeige und Speicherung übereinstimmen. Die
+  Einnahme-Positionen liefert der Server (`data-kjr-income-categories`, Quelle
+  `kjr.grant.receipt.INCOME_CATEGORIES` über `_receipt_income_categories`).
+- **Barrierefreiheit Belegabgleich (B33).** Die Hinweisboxen „weichen ab“ und
+  „stimmen überein“ sind keine Live-Regionen mehr (sie wurden aus `display:none`
+  eingeblendet und bei jedem Tastendruck neu beschrieben). Angesagt wird über eine
+  dauerhaft vorhandene, leere Live-Region (`role="status"`, `aria-atomic="true"`)
+  außerhalb des Belegblocks, und nur bei einem Wechsel des Zustands, entprellt
+  (1 Sekunde nach der letzten Eingabe), nicht beim Laden der Seite.
+
+### Hinweise
+- Migration für Paket A nur für den Richtlinien-Link (`post-formular.py`, siehe
+  oben; idempotent, protokolliert nur die Anhang-ID). Das Entfernen von `required` an
+  `kjr.grant.receipt.category` nimmt das ORM beim Update selbst zurück (NOT NULL),
+  die neuen Felder am Antrag sind nicht gespeichert, und die Einstellungen kommen
+  ohne Seed aus.
+- **Go-live-Schritt (B43):** Nach dem Update prüfen, ob unter Einstellungen ▸ KJR
+  „Link zu den Zuschussrichtlinien“ auf das aktuelle Richtlinien-PDF zeigt (auf der
+  KJR-Instanz `2026_Zuschussrichtlinien-KJR-OA.pdf`, Anhang der Zuschussseite). Meldet
+  das Protokoll „Kein öffentliches PDF „Zuschussrichtlinien“ gefunden“, die Adresse
+  dort von Hand eintragen. Bei einer neuen Fassung der Richtlinien die Adresse
+  nachziehen.
+- Neue Tests: `tests/test_apply_form_feedback.py` (TransactionCase und HttpCase, u. a.
+  Richtlinien-Link und Abschnitt der Anleitung, Suche des Richtlinien-PDFs, aria-label
+  der angehängten Zeilen, Fehlbetrag-Satz, Art aus Position im Live-Abgleich,
+  Live-Region des Belegabgleichs);
+  `tests/test_form_fields.py` liest die Pflichtkennzeichnung jetzt auch aus den
+  gerenderten Teilnehmerzeilen (`t-attf-name`) und kennt den Sammelschlüssel
+  `participants`.
+
+### Paket B: Verband, Delegierte, Vollversammlung
+
+#### Neu
+- **Dachverband bei der Registrierung (B45).** Im Vereinsblock von `/web/signup`
+  wählt die Gruppe freiwillig ihren Dachverband aus den aktiven
+  KJR-Mitgliedsverbänden (`kjr.affiliation.request.requested_parent_id`, Auswahl und
+  Prüfung über `SIGNUP_PARENT_DOMAIN`; Werte außerhalb der Liste werden abgewiesen).
+  Legt die Geschäftsstelle bei der Genehmigung eine neue Organisation an, entsteht sie
+  als eigene Ortsgruppe unter dem Dachverband (`parent_id`, eigene Anschrift, die
+  Person wird ihr Kontakt); der Assistent schlägt zuerst eine gleichnamige
+  Organisation unter diesem Dachverband vor. Jede Ortsgruppe hat damit eigene Logins
+  und Ansprechpersonen. Datenschutzhinweis der Registrierung („Wer es sieht“) und
+  Assistent sagen, dass die Portal-Zugänge des Dachverbands die Ortsgruppe und ihre
+  Personen lesen (Odoo-Regel `base.res_partner_portal_public_rule`, `child_of`).
+- **Selbstmeldung als Delegierte/r (B46).** Ankreuzfeld „Ich bin Delegierte/r meines
+  Verbands“ (`requested_delegate`), dann ist das Telefon Pflicht. In die
+  Delegiertenliste (`res.partner.kjr_vr_delegate_ids`) kommt die Person erst mit der
+  Genehmigung, und nur für einen Verband mit Vertretungsrecht, der die zugeordnete
+  Organisation selbst ist oder über ihr steht (`_kjr_delegate_verband_for`,
+  `_kjr_check_delegate_for`). Der Assistent schlägt diesen Verband vor und erlaubt,
+  ein fehlendes Telefon nachzutragen (nur in ein leeres Feld). Nachweis am Antrag:
+  `delegate_partner_id`. Die Genehmigungsmail nennt die Aufnahme als Delegierte/r.
+- **Einladungen zur Vollversammlung per E-Mail (B47).** Eingeladene Verbände
+  (`invited_member_ids`, „Alle stimmberechtigten übernehmen“), Button „Einladungen
+  versenden“: je Verband ein Versandnachweis `kjr.assembly.invitation` und die neue
+  Mailvorlage „KJR: Einladung zur Vollversammlung“
+  (`data/kjr_assembly_mail_template_data.xml`) an die Delegierten mit E-Mail, sonst an
+  den Verband; fehlt Delegierten die E-Mail, zusätzlich an den Verband
+  (`recipient_type` „delegates_member“). Kein Doppelversand: ein versandter Nachweis
+  geht nur über „Erneut senden“ noch einmal raus. Versandt wird nur für eine geplante
+  oder eingeladene Versammlung mit Termin in der Zukunft. Die Mail bleibt als
+  Nachweis im Verlauf (`auto_delete` aus); Zustellstatus aus `mail.mail`
+  (`delivery_state`). Firmenname und Absender aus der Firma, Uhrzeit in der Zeitzone
+  der Firma (sonst Europe/Berlin).
+- **Delegiertenverzeichnis an der Vollversammlung (B47).** Reiter „Delegierte“
+  (`delegate_ids`) mit den Delegierten der eingeladenen Verbände samt Telefon und
+  E-Mail.
+- **Online-Anmeldung mit Pflicht-Telefon (B48).** Der Link in der Einladung führt auf
+  `/vollversammlung/anmeldung/<id>/<token>` (`controllers/assembly.py`,
+  `views/kjr_assembly_portal_templates.xml`). Telefon ist Pflicht; jede Anmeldung wird
+  `kjr.assembly.registration` (Statusknopf und Reiter „Anmeldungen“ an der
+  Vollversammlung). Auch die Geschäftsstelle erfasst Anmeldungen nur mit Telefon.
+  Eine Online-Anmeldung wird nur innerhalb derselben Einladung über die E-Mail
+  wiedergefunden; den Kontakt ordnet sie nur zu, wenn die angemeldete Person ihre
+  eigene E-Mail angibt, sonst per Vorschlag „Zuordnen“.
+- **Löschfrist der Anmeldungen (DSGVO).** Systemparameter
+  `kjr_grant.assembly_registration_retention_days` (Vorgabe 365 Tage nach dem
+  Versammlungstermin, 0 = aus) und Cron „KJR: Anmeldungen zur Vollversammlung löschen
+  (DSGVO)“ (`data/kjr_assembly_data.xml`, `_cron_purge_expired`); gelöscht wird nur
+  bei durchgeführter oder abgesagter Versammlung. Anwesenheit und Protokoll bleiben.
+
+#### Geändert
+- **Telefon Pflicht für Delegierte im Portal (B48).** „Mein Verband“: Wer einen
+  Kontakt als Delegierte/n eines Verbands mit Vertretungsrecht führt, muss ein Telefon
+  angeben (`DELEGATE_REQUIRED_FIELDS`); die Delegiertenliste zeigt „fehlt“, im Backend
+  sind Delegierte ohne Telefon rot markiert.
+- Vereinsregistrierungen zeigen Dachverband, Delegierten-Meldung und Telefon in Liste,
+  Formular und Assistent.
+
+#### Hinweise
+- Migration `migrations/19.0.17.0.0/post-verband.py`: ergänzt in der Vorlage
+  „KJR: Vereinszugehörigkeit bestätigt“ (noupdate) den Delegiertenabsatz, nur wenn er
+  fehlt und die ausgelieferte Grußzeile noch steht; bei einer schon vorhandenen
+  Einladungsvorlage `auto_delete` aus und Absatz „auch an die Verbandsadresse“.
+  Idempotent, Protokoll nur mit IDs. Beide Skripte des Ordners (`post-formular.py`,
+  `post-verband.py`) laufen beim Sprung von 19.0.16.0.0 (installiert < 19.0.17.0.0 <=
+  Manifest).
+- Neue Modelle `kjr.assembly.invitation`, `kjr.assembly.registration` (Lesen für
+  Sachbearbeiter, Vollzugriff für Administrator).
+- Grenze (bewusst): Eine über den Dachverband angelegte Ortsgruppe ist eigener
+  commercial partner ohne `is_kjr_member`; ihre Logins haben bis zur Mitgliedschaft
+  keine Antrags- und Verbandsrechte. Fachlich mit dem KJR zu klären.
+- DSGVO offen: Verarbeitungstätigkeit „Anmeldung und Erreichbarkeit zur
+  Vollversammlung“ ins Verzeichnis aufnehmen; die Datenauskunft (Art. 15) enthält
+  Einladungen und Anmeldungen noch nicht; Löschfrist von der Datenschutzbeauftragten
+  bestätigen lassen.
+- Neue Tests: `tests/test_affiliation_verband.py`, `tests/test_assembly_invitation.py`
+  (Versand, kein Doppelversand, HTTP-Anmeldung, Löschfrist).
+
 ## 19.0.16.0.0 (2026-10-12)
 
 ### Neu

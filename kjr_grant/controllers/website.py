@@ -7,9 +7,13 @@ Routen:
   GET/POST /service/antrag-stellen                  Antragsformular (Login)
   GET      /service/antrag-bestaetigung             Bestätigungsseite
   GET      /service/zuschuss-hilfe                  Hilfeseite zum Antrag (öffentlich)
-  GET      /service/zuschuss/belegliste-vorlage     Belegliste zum Ausdrucken (öffentlich)
+  GET      /service/zuschuss/belegliste-vorlage     Kostenaufstellung und Belegliste zum
+                                                    Ausdrucken (öffentlich)
+  GET      /service/zuschuss/vorlage-kostenaufstellung-belegliste.xlsx
+                                                    dieselbe Vorlage als Excel-Datei (öffentlich)
 """
 import base64
+import io
 import logging
 import os
 import re
@@ -17,11 +21,12 @@ from datetime import date as date_cls
 
 from odoo import fields, http, _
 from odoo.exceptions import ValidationError
-from odoo.http import request
+from odoo.http import content_disposition, request
 
 # Formatregeln der Bankverbindung aus dem Modell wiederverwenden, damit die
 # Vorprüfung im Formular und der Constraint beim Speichern nicht auseinanderlaufen.
 from odoo.addons.kjr_grant.models.kjr_grant_application import BIC_RE, IBAN_LENGTHS
+from odoo.addons.kjr_grant.models.res_config_settings_apply import get_apply_form_settings
 
 _logger = logging.getLogger(__name__)
 ALLOWED_EXTENSIONS = {'.pdf', '.xlsx', '.xls', '.csv', '.docx', '.doc', '.jpg', '.jpeg', '.png'}
@@ -38,6 +43,16 @@ PARTICIPANT_ROLE_CODES = ('EA', 'HA', 'HO', 'PR', 'SO')
 # Plausibilitätsgrenze für das manuell erfasste Alter — seit 07/2026 wird im
 # Formular das Alter statt des Geburtsdatums erfasst.
 MAX_PARTICIPANT_AGE = 120
+# Feldnamen einer Teilnehmerzeile (tn_<feld>_<nr>). Zeilen werden über ALLE
+# übermittelten Nummern gelesen, nicht nur bis zur ersten Lücke: sonst ginge
+# eine Zeile hinter einer leer gelassenen Zeile still verloren.
+PARTICIPANT_KEY_RE = re.compile(r'^tn_(name|age|gender|zip|city|role|juleica)_(\d+)$')
+RECEIPT_KEY_RE = re.compile(r'^rc_(date|no|partner|desc|direction|category|amount)_(\d+)$')
+# Schutz gegen manipulierte Formulare mit beliebig vielen Zeilennummern.
+MAX_FORM_ROWS = 500
+# Alter: ganze Zahl, höchstens drei Stellen (Bereich 0..MAX_PARTICIPANT_AGE).
+AGE_RE = re.compile(r'^\d{1,3}$')
+RECEIPT_DIRECTIONS = ('income', 'expense')
 # Förderart, bei der das Neugründungsformular Pflicht ist (§ 4.7 Gruppenstarthilfe).
 FOUNDATION_GRANT_CODE = '4_7'
 # Positionen der digitalen Belegliste (Spiegel von kjr.grant.receipt). Fachliche
@@ -116,6 +131,29 @@ DEADLINE_REMINDER_DAYS = 14
 # TODO(KJR): Zeilenzahl und Papierformat mit der Kassenleitung abstimmen.
 # Bis dahin bewusst konservativ 20 Zeilen auf einer Seite (bisherige Papierliste).
 BLANK_RECEIPT_ROWS = 20
+# Leerzeilen der Belegliste in der Excel-Vorlage (am Rechner ausfüllbar, deshalb
+# mehr als auf dem Papier; weitere Zeilen lassen sich in Excel einfügen).
+XLSX_RECEIPT_ROWS = 60
+
+# Zeilen der Kostenaufstellung (Punkt 6 des Antragsformulars). Eine Quelle für
+# die Druckvorlage und die Excel-Vorlage; die Feldnamen sind die POST-Schlüssel
+# des Antragsformulars und die Felder von kjr.grant.application.
+COST_STATEMENT_INCOME = (
+    ('income_tn_fees', '1. Teilnehmerbeiträge'),
+    ('income_municipality', '2. Zuschuss Gemeinde'),
+    ('income_association', '3. Zuschuss Verband'),
+    ('income_bjr', '4. Zuschuss BJR/BezJR'),
+    ('income_other', '5. sonstige Zuschüsse'),
+)
+COST_STATEMENT_COSTS = (
+    ('cost_accommodation', '1. Unterkunftskosten, Miete, Verpflegung'),
+    ('cost_transport', '2. Fahrtkosten'),
+    ('cost_referees', '3. Honorare für Referenten'),
+    ('cost_allowances', '4. Aufwandsentschädigung'),
+    ('cost_materials', '5. notw. Arbeits- und Hilfsmittel'),
+    ('cost_jl_fees', '6. Kursgebühren bei Teilnahme Jugendleiterschulung'),
+    ('cost_other', '7. sonstige Ausgaben'),
+)
 
 
 def _valid_grant_type_domain(date_ref=None):
@@ -151,6 +189,13 @@ def _parse_amount(value, default=0.0):
         return float(raw or default)
     except (ValueError, TypeError):
         return default
+
+
+def _format_eur(amount):
+    """Betrag in deutscher Schreibweise (1.234,50 €), wie Intl.NumberFormat('de-DE')
+    im Formular."""
+    text = '{:,.2f}'.format(amount or 0.0)
+    return text.replace(',', '#').replace('.', ',').replace('#', '.') + '\u00a0€'
 
 
 class KjrWebsiteController(http.Controller):
@@ -217,14 +262,185 @@ class KjrWebsiteController(http.Controller):
 
         return self._render_apply_form(grant_types, kjr_members, {}, values)
 
-    @staticmethod
-    def _render_apply_form(grant_types, kjr_members, errors, values):
+    @classmethod
+    def _render_apply_form(cls, grant_types, kjr_members, errors, values):
         """Antragsformular rendern. Eine Stelle für alle Rückwege (Erstaufruf und
-        jeder Fehlerpfad), damit kein Renderaufruf einen Kontextwert vergisst."""
+        jeder Fehlerpfad), damit kein Renderaufruf einen Kontextwert vergisst.
+
+        Teilnehmer- und Belegzeilen werden aus den übermittelten Werten wieder
+        aufgebaut, damit nach einer Fehlermeldung auch die per JavaScript
+        angehängten Zeilen 2..n erhalten bleiben (vorher war nur Zeile 1 da).
+        Die Summen der Kostenaufstellung rechnet der Server für die erste
+        Anzeige vor; das Formular aktualisiert sie danach live
+        (static/src/interactions/kjr_apply_totals.js)."""
+        tn_rows = [row for row in cls._participant_form_rows(values) if not row['empty']]
+        rc_rows = [row for row in cls._receipt_form_rows(values) if not row['empty']]
         return request.render('kjr_grant.website_kjr_apply', {
             'grant_types': grant_types, 'kjr_members': kjr_members,
             'page_name': 'kjr_apply', 'errors': errors, 'values': values,
+            'tn_rows': cls._renumber(tn_rows) or [cls._empty_participant_row(1)],
+            'rc_rows': cls._renumber(rc_rows) or [cls._empty_receipt_row(1)],
+            'form_totals': cls._form_totals(values),
+            'rc_income_categories': cls._receipt_income_categories(),
+            'apply_settings': get_apply_form_settings(request.env),
         })
+
+    # ── Zeilen der Teilnahme- und Belegliste ────────────────────────────────
+    @staticmethod
+    def _row_indices(post, key_re):
+        """Alle Zeilennummern, zu denen das Formular Werte übermittelt hat."""
+        indices = set()
+        for key in post:
+            match = key_re.match(key)
+            if match:
+                indices.add(int(match.group(2)))
+        return sorted(indices)[:MAX_FORM_ROWS]
+
+    @staticmethod
+    def _renumber(rows):
+        for nr, row in enumerate(rows, start=1):
+            row['nr'] = nr
+        return rows
+
+    @staticmethod
+    def _empty_participant_row(nr):
+        return {'nr': nr, 'name': '', 'age': '', 'gender': '', 'zip': '',
+                'city': '', 'role': '', 'juleica': False, 'empty': True}
+
+    @classmethod
+    def _participant_form_rows(cls, post):
+        """Rohwerte der Teilnahmeliste (tn_*_<nr>) in Formularreihenfolge.
+
+        Eine Zeile gilt als leer, wenn weder Name noch Alter, PLZ, Wohnort,
+        Geschlecht, Kennziffer oder Juleica angegeben sind; leere Zeilen
+        (z. B. versehentlich angehängt) werden übergangen."""
+        rows = []
+        for idx in cls._row_indices(post, PARTICIPANT_KEY_RE):
+            def _v(field, idx=idx):
+                return (post.get(f'tn_{field}_{idx}') or '').strip()
+            row = {
+                'nr': idx, 'name': _v('name'), 'age': _v('age'),
+                'gender': _v('gender'), 'zip': _v('zip'), 'city': _v('city'),
+                'role': _v('role').upper(), 'juleica': bool(post.get(f'tn_juleica_{idx}')),
+            }
+            row['empty'] = not any((
+                row['name'], row['age'], row['gender'], row['zip'],
+                row['city'], row['role'], row['juleica'],
+            ))
+            rows.append(row)
+        return rows
+
+    @staticmethod
+    def _valid_age(raw):
+        """Alter als int, wenn es eine ganze Zahl von 0 bis MAX_PARTICIPANT_AGE ist,
+        sonst None."""
+        raw = (raw or '').strip()
+        if not AGE_RE.match(raw):
+            return None
+        age = int(raw)
+        return age if age <= MAX_PARTICIPANT_AGE else None
+
+    @classmethod
+    def _check_participant_rows(cls, post, errors):
+        """Name und Alter sind je teilnehmender Person Pflicht (Kundenentscheidung
+        B20, Besprechung 00:11:59: „Alter ... als Pflichtfeld? Auf jeden Fall").
+
+        Geprüft wird jede nicht leere Zeile. Fehlt das Alter oder ist es keine
+        ganze Zahl von 0 bis 120, wird der Antrag mit einer Meldung je Zeile
+        zurückgegeben, statt das Alter wie bisher still als 0 zu speichern.
+        Eine Teilnahmeliste ganz ohne Zeilen bleibt zulässig: sie kann auch als
+        Datei hochgeladen werden (Vollständigkeitsprüfung beim Einreichen).
+        Die Namen erscheinen nur in der Meldung an den Antragsteller selbst,
+        nicht im Log."""
+        problems = []
+        # Gezählt wird wie im erneut angezeigten Formular: leere Zeilen fallen
+        # dort weg (_render_apply_form), die Nummern rücken nach.
+        nr = 0
+        for row in cls._participant_form_rows(post):
+            if row['empty']:
+                continue
+            nr += 1
+            who = _('Zeile %(nr)d (%(name)s)', nr=nr, name=row['name']) \
+                if row['name'] else _('Zeile %d', nr)
+            if not row['name']:
+                problems.append(_('%s: Name fehlt', who))
+            if not row['age']:
+                problems.append(_('%s: Alter fehlt', who))
+            elif cls._valid_age(row['age']) is None:
+                problems.append(_(
+                    '%(who)s: Alter muss eine ganze Zahl von 0 bis %(max)d sein',
+                    who=who, max=MAX_PARTICIPANT_AGE,
+                ))
+        if problems:
+            shown = problems[:10]
+            more = len(problems) - len(shown)
+            text = '; '.join(shown)
+            if more:
+                text += _(' und %d weitere Angabe(n)', more)
+            errors['participants'] = _(
+                'Teilnahmeliste: Bitte geben Sie für jede teilnehmende Person Name '
+                'und Alter an (Alter in Jahren, z. B. 14). %s.', text,
+            )
+
+    @staticmethod
+    def _empty_receipt_row(nr):
+        return {'nr': nr, 'date': '', 'no': '', 'partner': '', 'desc': '',
+                'direction': 'expense', 'category': '', 'amount': '', 'empty': True}
+
+    @staticmethod
+    def _receipt_income_categories():
+        """Positionen, die als Einnahme zählen. Bevorzugt aus dem Modell
+        (kjr.grant.receipt.INCOME_CATEGORIES), damit Controller, Modell und die
+        Live-Prüfung im Formular (data-kjr-income-categories, gelesen von
+        kjr_apply_totals.js) nicht auseinanderlaufen; Fallback auf die Konstante
+        oben. Läuft auch in der Validierung (außerhalb try/except) — deshalb darf
+        der Modellzugriff hier nicht hart fehlschlagen."""
+        if 'kjr.grant.receipt' in request.env:
+            return tuple(getattr(
+                request.env['kjr.grant.receipt'],
+                'INCOME_CATEGORIES', RECEIPT_INCOME_CATEGORIES,
+            ))
+        return RECEIPT_INCOME_CATEGORIES
+
+    @classmethod
+    def _receipt_form_rows(cls, post):
+        """Rohwerte der digitalen Belegliste (rc_*_<nr>) für das erneute Rendern.
+        Die Art allein macht eine Zeile nicht „nicht leer": sie ist im Formular
+        immer vorbelegt. Die Art bleibt roh (leer = keine Angabe), damit
+        _parse_receipt_rows eine Zeile ohne Art und ohne Position verwirft; die
+        Vorlage wählt bei leerer Art ohnehin „Ausgabe" vor."""
+        rows = []
+        for idx in cls._row_indices(post, RECEIPT_KEY_RE):
+            def _v(field, idx=idx):
+                return (post.get(f'rc_{field}_{idx}') or '').strip()
+            row = {
+                'nr': idx, 'date': _v('date'), 'no': _v('no'), 'partner': _v('partner'),
+                'desc': _v('desc'), 'direction': _v('direction'),
+                'category': _v('category'), 'amount': _v('amount'),
+            }
+            row['empty'] = not any((
+                row['date'], row['no'], row['partner'], row['desc'],
+                row['category'], row['amount'],
+            ))
+            rows.append(row)
+        return rows
+
+    @staticmethod
+    def _form_totals(values):
+        """Summen der Kostenaufstellung für die erste Anzeige im Formular.
+        Dieselbe Rechnung wie kjr.grant.application (_compute_income_total,
+        _compute_cost_total, _compute_deficit): Fehlbetrag = Kosten minus
+        Einnahmen, nicht unter 0."""
+        income = sum(max(_parse_amount(values.get(key)), 0.0) for key, _l in COST_STATEMENT_INCOME)
+        cost = sum(max(_parse_amount(values.get(key)), 0.0) for key, _l in COST_STATEMENT_COSTS)
+        totals = {
+            'income': income,
+            'cost': cost,
+            'deficit': max(cost - income, 0.0),
+        }
+        for key in ('income', 'cost', 'deficit'):
+            totals[f'{key}_label'] = _format_eur(totals[key])
+        return totals
 
     def _process_application(self, post, kjr_members, grant_types):
         errors = {}
@@ -299,6 +515,9 @@ class KjrWebsiteController(http.Controller):
             if not post.get(field):
                 errors[field] = confirmation_messages[field]
 
+        # Teilnahmeliste: Name und Alter je Person (B20).
+        self._check_participant_rows(post, errors)
+
         valid_member_ids = kjr_members.ids
         partner_id = _i('partner_id')
         if partner_id not in valid_member_ids and not errors.get('partner_id'):
@@ -323,7 +542,7 @@ class KjrWebsiteController(http.Controller):
             if receipt_required and not self._parse_receipt_rows(post):
                 errors['receipt_ids'] = _(
                     'Bitte erfassen Sie mindestens einen vollständigen Beleg (Datum, '
-                    'Empfänger/Einzahler, Bezeichnung, Position und Betrag) oder laden '
+                    'Empfänger/Einzahler, Bezeichnung, Art und Betrag) oder laden '
                     'Sie stattdessen eine Belegliste als Datei hoch.'
                 )
         elif receipt_required and not self._has_upload('receipt_file'):
@@ -512,94 +731,89 @@ class KjrWebsiteController(http.Controller):
     def _handle_participants(self, application, post):
         """Teilnahmeliste aus dem Formular übernehmen.
         Seit 07/2026 wird das Alter direkt erfasst (kein Geburtsdatum mehr) und die
-        Leitungs-Checkbox durch die Kennziffer (EA/HA/HO/PR/SO) ersetzt."""
+        Leitungs-Checkbox durch die Kennziffer (EA/HA/HO/PR/SO) ersetzt.
+        Seit 19.0.17.0.0 sind Name und Alter je Zeile Pflicht; geprüft wird vorher
+        in _check_participant_rows. Gelesen werden alle übermittelten Zeilen,
+        auch hinter einer Lücke."""
         participant_model = request.env['kjr.grant.participant'].sudo()
-        idx = 1
-        while post.get(f'tn_name_{idx}'):
-            name = post.get(f'tn_name_{idx}', '').strip()
-            if not name:
-                idx += 1
+        sequence = 0
+        for row in self._participant_form_rows(post):
+            if row['empty'] or not row['name']:
+                continue
+            age = self._valid_age(row['age'])
+            if age is None:
+                # Nach _check_participant_rows nicht erreichbar; defensiv
+                # übergehen statt ein falsches Alter zu speichern.
                 continue
             # Nur gültige Selection-Keys übernehmen, alles andere verwerfen.
-            gender = (post.get(f'tn_gender_{idx}') or '').strip()
-            if gender not in PARTICIPANT_GENDERS:
-                gender = False
-            role_code = (post.get(f'tn_role_{idx}') or '').strip().upper()
-            if role_code not in PARTICIPANT_ROLE_CODES:
-                role_code = False
-            age = _parse_int(post.get(f'tn_age_{idx}'))
-            if age < 0 or age > MAX_PARTICIPANT_AGE:
-                age = 0
-            vals = {
+            gender = row['gender'] if row['gender'] in PARTICIPANT_GENDERS else False
+            role_code = row['role'] if row['role'] in PARTICIPANT_ROLE_CODES else False
+            sequence += 10
+            participant_model.create({
                 'application_id': application.id,
-                'sequence': idx * 10,
-                'name': name,
+                'sequence': sequence,
+                'name': row['name'],
                 'age': age,
                 'gender': gender,
                 'role_code': role_code,
-                'zip_code': post.get(f'tn_zip_{idx}', '').strip(),
-                'city': post.get(f'tn_city_{idx}', '').strip(),
+                'zip_code': row['zip'],
+                'city': row['city'],
                 # Kennziffer gesetzt ⇒ Mitarbeitende/Leitung. Die Förderlogik
                 # (Betreuungsschlüssel, Altersfenster-Ausnahme) hängt an is_leader.
                 'is_leader': bool(role_code),
-                'has_juleica': bool(post.get(f'tn_juleica_{idx}')),
-            }
-            participant_model.create(vals)
-            idx += 1
+                'has_juleica': row['juleica'],
+            })
 
     def _parse_receipt_rows(self, post):
         """Zeilen der digitalen Belegliste (rc_*_{i}) aus dem POST lesen.
         Rückgabe: Liste von Wertedicts für kjr.grant.receipt (ohne application_id).
         Wird sowohl für die Validierung als auch für das Anlegen genutzt, damit
         Prüfung und Speicherung nicht auseinanderlaufen. Unvollständige oder
-        unplausible Zeilen werden verworfen statt den Antrag scheitern zu lassen."""
-        # Einnahme-Zuordnung bevorzugt aus dem Modell lesen, damit Controller und
-        # Modell nicht auseinanderlaufen; Fallback auf die Konstante oben. Die
-        # Methode läuft auch in der Validierung (außerhalb try/except) — deshalb
-        # darf der Modellzugriff hier nicht hart fehlschlagen.
-        income_categories = RECEIPT_INCOME_CATEGORIES
-        if 'kjr.grant.receipt' in request.env:
-            income_categories = tuple(getattr(
-                request.env['kjr.grant.receipt'],
-                'INCOME_CATEGORIES', RECEIPT_INCOME_CATEGORIES,
-            ))
+        unplausible Zeilen werden verworfen statt den Antrag scheitern zu lassen.
+
+        Seit 19.0.17.0.0 ist die Position optional (Kundenentscheidung B34:
+        je Beleg nur Einnahme oder Ausgabe). Ist eine Position gewählt,
+        bestimmt sie die Art wie bisher; ohne Position gilt die gewählte Art."""
+        income_categories = self._receipt_income_categories()
         rows = []
-        idx = 1
-        while post.get(f'rc_desc_{idx}'):
-            description = (post.get(f'rc_desc_{idx}') or '').strip()
-            partner_name = (post.get(f'rc_partner_{idx}') or '').strip()
-            category = (post.get(f'rc_category_{idx}') or '').strip()
-            amount = _parse_amount(post.get(f'rc_amount_{idx}'))
-            raw_date = (post.get(f'rc_date_{idx}') or '').strip()
+        sequence = 0
+        for row in self._receipt_form_rows(post):
+            if row['empty']:
+                continue
+            idx = row['nr']
+            amount = _parse_amount(row['amount'])
             try:
-                receipt_date = date_cls.fromisoformat(raw_date)
+                receipt_date = date_cls.fromisoformat(row['date'])
             except ValueError:
                 receipt_date = None
-            if (not description or not partner_name or not receipt_date
-                    or category not in RECEIPT_CATEGORIES or amount <= 0):
-                _logger.info('Belegzeile %d unvollständig oder ungültig — übersprungen.', idx)
-                idx += 1
+            category = row['category'] if row['category'] in RECEIPT_CATEGORIES else False
+            if category:
+                # Richtung aus der Position ableiten: die Client-Angabe wird nur
+                # zur Plausibilitätsprüfung herangezogen, das Modell erzwingt die
+                # Zuordnung ohnehin per Constraint.
+                direction = 'income' if category in income_categories else 'expense'
+                if row['direction'] not in ('', direction):
+                    _logger.info(
+                        'Belegzeile %d: Art passt nicht zur Position (%s), aus Position abgeleitet.',
+                        idx, category,
+                    )
+            else:
+                direction = row['direction'] if row['direction'] in RECEIPT_DIRECTIONS else False
+            if (not row['desc'] or not row['partner'] or not receipt_date
+                    or not direction or amount <= 0):
+                _logger.info('Belegzeile %d unvollständig oder ungültig, übersprungen.', idx)
                 continue
-            # Richtung immer aus der Position ableiten: die Client-Angabe wird nur
-            # zur Plausibilitätsprüfung herangezogen, das Modell erzwingt die
-            # Zuordnung ohnehin per Constraint.
-            direction = 'income' if category in income_categories else 'expense'
-            if (post.get(f'rc_direction_{idx}') or '').strip() not in ('', direction):
-                _logger.info(
-                    'Belegzeile %d: Art passt nicht zur Position (%s) — aus Position abgeleitet.',
-                    idx, category,
-                )
+            sequence += 10
             rows.append({
-                'sequence': idx * 10,
+                'sequence': sequence,
                 'date': receipt_date,
-                'receipt_no': (post.get(f'rc_no_{idx}') or '').strip(),
-                'partner_name': partner_name,
-                'description': description,
+                'receipt_no': row['no'],
+                'partner_name': row['partner'],
+                'description': row['desc'],
                 'direction': direction,
                 'category': category,
                 'amount': amount,
             })
-            idx += 1
         return rows
 
     def _handle_receipts(self, application, post):
@@ -716,6 +930,8 @@ class KjrWebsiteController(http.Controller):
             'reminder_days': DEADLINE_REMINDER_DAYS,
             'payout_cutoff_day': cutoff_day,
             'payout_cutoff_month': cutoff_month,
+            # B43: Abschnitt „Zuschussrichtlinien" (Ziel des Links in Checkbox 2).
+            'apply_settings': get_apply_form_settings(request.env),
         })
 
     @http.route(
@@ -723,12 +939,208 @@ class KjrWebsiteController(http.Controller):
         website=True, sitemap=True,
     )
     def kjr_belegliste_vorlage(self, **kw):
-        """Leere Belegliste zum Ausdrucken (ANBest-P). Spalten identisch zur
-        digitalen Belegliste im Antragsformular (Block 7), damit Papier- und
-        Digitalweg deckungsgleich bleiben. Bewusst eine reine Website-Seite und
-        kein QWeb-Report: ein Report bräuchte einen Datensatz, hier soll aber ein
-        Blankoformular ohne Antrag druckbar sein."""
+        """Leere Kostenaufstellung und Belegliste zum Ausdrucken (ANBest-P).
+        Zeilen und Spalten identisch zu Punkt 6 und zur digitalen Belegliste im
+        Antragsformular (Block 7), damit Papier- und Digitalweg deckungsgleich
+        bleiben. Bewusst eine reine Website-Seite und kein QWeb-Report: ein
+        Report bräuchte einen Datensatz, hier soll aber ein Blankoformular ohne
+        Antrag druckbar sein. Seit 19.0.17.0.0 mit Kostenaufstellung (B31)."""
         return request.render('kjr_grant.website_kjr_belegliste_vorlage', {
             'page_name': 'kjr_belegliste_vorlage',
             'blank_rows': list(range(1, BLANK_RECEIPT_ROWS + 1)),
+            'cost_income_lines': COST_STATEMENT_INCOME,
+            'cost_cost_lines': COST_STATEMENT_COSTS,
         })
+
+    @http.route(
+        '/service/zuschuss/vorlage-kostenaufstellung-belegliste.xlsx',
+        type='http', auth='public', website=True, sitemap=False, methods=['GET'],
+    )
+    def kjr_vorlage_xlsx(self, **kw):
+        """Kostenaufstellung und Belegliste als Excel-Datei zum Ausfüllen am
+        Rechner (Kundenwunsch B31, Besprechung 00:19:06: „downloaden ...,
+        dass Sie es mir hier uploaden können"). Die ausgefüllte Datei wird im
+        Antragsformular unter „8. Dokumente" hochgeladen (.xlsx ist zulässig).
+        xlsxwriter ist eine Kernabhängigkeit von Odoo 19 (setup.py,
+        requirements.txt), also auf jeder Instanz vorhanden."""
+        content = self._build_template_xlsx(request.env)
+        return request.make_response(content, headers=[
+            ('Content-Type',
+             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+            ('Content-Disposition',
+             content_disposition('Kostenaufstellung_und_Belegliste.xlsx')),
+            ('Content-Length', str(len(content))),
+        ])
+
+    @staticmethod
+    def _build_template_xlsx(env):
+        """Arbeitsmappe mit den Blättern „Kostenaufstellung" und „Belegliste".
+
+        Kostenaufstellung: Zeilen wie Punkt 6, Summen und Fehlbetrag als
+        Formel (Fehlbetrag = Gesamtkosten minus Gesamteinnahmen, nicht unter 0,
+        wie _compute_deficit), dazu der Abgleich mit den Summen der Belegliste.
+        Belegliste: Spalten wie die digitale Belegliste, Art als Auswahlliste,
+        Position optional als Auswahlliste (Positionen aus kjr.grant.receipt).
+        Firmenname aus res.company, kein Inhalt aus Anträgen."""
+        import xlsxwriter  # noqa: PLC0415 - Kernabhängigkeit, nur hier gebraucht
+
+        company = env.company.sudo()
+        receipt_model = env['kjr.grant.receipt']
+        positions = [
+            label for _value, label
+            in receipt_model._fields['category']._description_selection(env)
+        ]
+
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        title = workbook.add_format({'bold': True, 'font_size': 14})
+        bold = workbook.add_format({'bold': True})
+        muted = workbook.add_format({'italic': True, 'font_color': '#555555', 'text_wrap': True})
+        head = workbook.add_format({'bold': True, 'bg_color': '#E9ECEF', 'border': 1, 'text_wrap': True})
+        cell = workbook.add_format({'border': 1})
+        input_cell = workbook.add_format({'border': 1, 'bg_color': '#FFFDE7'})
+        money_in = workbook.add_format({'border': 1, 'bg_color': '#FFFDE7', 'num_format': '#,##0.00 €'})
+        money = workbook.add_format({'border': 1, 'num_format': '#,##0.00 €'})
+        money_bold = workbook.add_format({'border': 1, 'bold': True, 'num_format': '#,##0.00 €'})
+        date_in = workbook.add_format({'border': 1, 'bg_color': '#FFFDE7', 'num_format': 'dd.mm.yyyy'})
+        label_bold = workbook.add_format({'border': 1, 'bold': True})
+
+        # Zelladressen der Belegliste vorab, die Kostenaufstellung (erstes Blatt)
+        # bezieht sich per Formel darauf. Zeilen 0-basiert wie in xlsxwriter.
+        first = 6
+        last = first + XLSX_RECEIPT_ROWS - 1
+        sum_row = last + 2
+        amount_range = 'Belegliste!$H$%d:$H$%d' % (first + 1, last + 1)
+        kind_range = 'Belegliste!$F$%d:$F$%d' % (first + 1, last + 1)
+        receipts_income_cell = 'Belegliste!$H$%d' % (sum_row + 1)
+        receipts_expense_cell = 'Belegliste!$H$%d' % (sum_row + 2)
+
+        # ── Blatt 1: Kostenaufstellung ──────────────────────────────────────
+        ka = workbook.add_worksheet('Kostenaufstellung')
+        ka.set_paper(9)
+        ka.fit_to_pages(1, 1)
+        ka.set_column('A:A', 52)
+        ka.set_column('B:B', 16)
+        ka.set_column('C:C', 4)
+        ka.write(0, 0, 'Kostenaufstellung zum Zuschussantrag', title)
+        ka.write(1, 0, company.name or '', bold)
+        ka.write(2, 0, 'Antragsteller (Organisation)')
+        ka.write_blank(2, 1, None, input_cell)
+        ka.write(3, 0, 'Bezeichnung der Maßnahme')
+        ka.write_blank(3, 1, None, input_cell)
+        ka.write(4, 0, 'Beginn und Ende der Maßnahme')
+        ka.write_blank(4, 1, None, input_cell)
+
+        row = 6
+        ka.write_row(row, 0, ['Einnahmen', 'Betrag (€)'], head)
+        income_first = row + 1
+        for _key, label in COST_STATEMENT_INCOME:
+            row += 1
+            ka.write(row, 0, label, cell)
+            ka.write_blank(row, 1, None, money_in)
+        income_total_row = row + 1
+        ka.write(income_total_row, 0, 'Gesamteinnahmen', label_bold)
+        ka.write_formula(income_total_row, 1, '=SUM(B%d:B%d)' % (income_first + 1, row + 1), money_bold)
+
+        row = income_total_row + 2
+        ka.write_row(row, 0, ['Förderfähige Kosten', 'Betrag (€)'], head)
+        cost_first = row + 1
+        for _key, label in COST_STATEMENT_COSTS:
+            row += 1
+            ka.write(row, 0, label, cell)
+            ka.write_blank(row, 1, None, money_in)
+        cost_total_row = row + 1
+        ka.write(cost_total_row, 0, 'Förderfähige Gesamtkosten', label_bold)
+        ka.write_formula(cost_total_row, 1, '=SUM(B%d:B%d)' % (cost_first + 1, row + 1), money_bold)
+
+        deficit_row = cost_total_row + 2
+        ka.write(deficit_row, 0, 'Fehlbetrag (Gesamtkosten minus Gesamteinnahmen)', label_bold)
+        ka.write_formula(
+            deficit_row, 1,
+            '=MAX(B%d-B%d,0)' % (cost_total_row + 1, income_total_row + 1), money_bold,
+        )
+        ka.write(
+            deficit_row + 1, 0,
+            'Der Zuschuss ist in der Regel höchstens so hoch wie der Fehlbetrag '
+            '(Ausnahmen siehe Zuschussrichtlinien).', muted,
+        )
+
+        check_row = deficit_row + 3
+        ka.write_row(check_row, 0, ['Abgleich mit der Belegliste', 'Abweichung (€)'], head)
+        ka.write(check_row + 1, 0, 'Belege Einnahmen minus Gesamteinnahmen', cell)
+        ka.write_formula(check_row + 1, 1, '=%s-B%d' % (receipts_income_cell, income_total_row + 1), money)
+        ka.write(check_row + 2, 0, 'Belege Ausgaben minus förderfähige Gesamtkosten', cell)
+        ka.write_formula(check_row + 2, 1, '=%s-B%d' % (receipts_expense_cell, cost_total_row + 1), money)
+        ka.write(check_row + 3, 0, 'Beide Abweichungen sollten 0,00 € sein.', muted)
+        ka.write(check_row + 6, 0, 'Ort, Datum')
+        ka.write(check_row + 8, 0, 'Rechtsverbindliche Unterschrift (Organisation)')
+        ka.set_row(check_row + 10, 32)
+        ka.merge_range(check_row + 10, 0, check_row + 10, 1,
+                       'Gelb hinterlegte Felder ausfüllen. Die Datei ausgefüllt im '
+                       'Antragsformular unter „8. Dokumente" hochladen.', muted)
+
+        # ── Blatt 2: Belegliste ─────────────────────────────────────────────
+        bl = workbook.add_worksheet('Belegliste')
+        bl.set_landscape()
+        bl.set_paper(9)  # A4
+        bl.fit_to_pages(1, 0)
+        bl.repeat_rows(5)
+        bl.set_column('A:A', 5)
+        bl.set_column('B:C', 12)
+        bl.set_column('D:E', 30)
+        bl.set_column('F:F', 12)
+        bl.set_column('G:G', 36)
+        bl.set_column('H:H', 14)
+        bl.write(0, 0, 'Belegliste zum Zuschussantrag', title)
+        bl.write(1, 0, company.name or '', bold)
+        bl.write(2, 0, 'Antragsteller (Organisation):')
+        bl.write(3, 0, 'Bezeichnung der Maßnahme:')
+        bl.merge_range(2, 3, 2, 7, '', input_cell)
+        bl.merge_range(3, 3, 3, 7, '', input_cell)
+        headers = ['Nr.', 'Datum', 'Beleg-Nr.', 'Empfänger / Einzahler', 'Bezeichnung',
+                   'Art (Einnahme/Ausgabe)', 'Position (optional)', 'Betrag (€)']
+        bl.write_row(5, 0, headers, head)
+        for offset in range(XLSX_RECEIPT_ROWS):
+            row = first + offset
+            bl.write_number(row, 0, offset + 1, cell)
+            bl.write_blank(row, 1, None, date_in)
+            for col in (2, 3, 4, 5, 6):
+                bl.write_blank(row, col, None, input_cell)
+            bl.write_blank(row, 7, None, money_in)
+        bl.data_validation(first, 5, last, 5, {
+            'validate': 'list', 'source': '=Listen!$A$1:$A$2',
+            'input_title': 'Art', 'input_message': 'Einnahme oder Ausgabe wählen.',
+        })
+        bl.data_validation(first, 6, last, 6, {
+            'validate': 'list', 'source': '=Listen!$B$1:$B$%d' % len(positions),
+            'input_title': 'Position (optional)',
+            'input_message': 'Zeile der Kostenaufstellung, zu der der Beleg gehört.',
+        })
+        bl.data_validation(first, 7, last, 7, {
+            'validate': 'decimal', 'criteria': '>', 'value': 0,
+            'error_message': 'Beträge immer positiv erfassen; Einnahme oder Ausgabe steht in der Spalte „Art".',
+        })
+        bl.write(sum_row, 6, 'Summe Einnahmen', label_bold)
+        bl.write_formula(sum_row, 7, '=SUMIF(%s,"Einnahme",%s)' % (kind_range, amount_range), money_bold)
+        bl.write(sum_row + 1, 6, 'Summe Ausgaben', label_bold)
+        bl.write_formula(sum_row + 1, 7, '=SUMIF(%s,"Ausgabe",%s)' % (kind_range, amount_range), money_bold)
+        bl.set_row(sum_row + 3, 32)
+        bl.merge_range(sum_row + 3, 0, sum_row + 3, 7,
+                       'Diese Belege sind vom Antragsteller zum Zwecke der Nachprüfung '
+                       '5 Jahre im Original aufzubewahren. Die Richtigkeit und sachliche '
+                       'Notwendigkeit der aufgeführten Einnahmen und Ausgaben wird bestätigt.',
+                       muted)
+        bl.write(sum_row + 6, 1, 'Ort, Datum')
+        bl.write(sum_row + 6, 4, 'Rechtsverbindliche Unterschrift (Organisation)')
+
+        # ── Blatt 3: Auswahllisten (ausgeblendet). Eine Liste direkt in
+        # der Datenüberprüfung ist auf 255 Zeichen begrenzt, die Positionen
+        # sind länger.
+        lists = workbook.add_worksheet('Listen')
+        lists.write_column(0, 0, ['Einnahme', 'Ausgabe'])
+        lists.write_column(0, 1, positions)
+        lists.hide()
+
+        ka.activate()
+        workbook.close()
+        return output.getvalue()

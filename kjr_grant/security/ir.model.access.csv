@@ -46,3 +46,7 @@ access_kjr_affiliation_approve_wizard_manager,kjr.affiliation.approve.wizard man
 access_kjr_affiliation_approve_wizard_reviewer,kjr.affiliation.approve.wizard reviewer,model_kjr_affiliation_approve_wizard,kjr_grant.group_kjr_reviewer,1,1,1,1
 access_kjr_affiliation_reject_wizard_manager,kjr.affiliation.reject.wizard manager,model_kjr_affiliation_reject_wizard,kjr_grant.group_kjr_manager,1,1,1,1
 access_kjr_affiliation_reject_wizard_reviewer,kjr.affiliation.reject.wizard reviewer,model_kjr_affiliation_reject_wizard,kjr_grant.group_kjr_reviewer,1,1,1,1
+access_kjr_assembly_invitation_manager,kjr.assembly.invitation manager,model_kjr_assembly_invitation,kjr_grant.group_kjr_manager,1,1,1,1
+access_kjr_assembly_invitation_reviewer,kjr.assembly.invitation reviewer (nur Lesen),model_kjr_assembly_invitation,kjr_grant.group_kjr_reviewer,1,0,0,0
+access_kjr_assembly_registration_manager,kjr.assembly.registration manager,model_kjr_assembly_registration,kjr_grant.group_kjr_manager,1,1,1,1
+access_kjr_assembly_registration_reviewer,kjr.assembly.registration reviewer (nur Lesen),model_kjr_assembly_registration,kjr_grant.group_kjr_reviewer,1,0,0,0

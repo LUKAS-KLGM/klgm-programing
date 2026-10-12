@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Einstellungen zum Antragsformular (19.0.17.0.0): Link der Bestätigung
+         „Zuschussrichtlinien" und Hinweis zur Herkunft der Fördermittel.
+         Eigener Block im App-Abschnitt von kjr_grant (res_config_settings_views.xml),
+         Felder in models/res_config_settings_apply.py. -->
+    <record id="res_config_settings_view_form_kjr_apply" model="ir.ui.view">
+        <field name="name">res.config.settings.form.inherit.kjr.grant.apply</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="kjr_grant.res_config_settings_view_form_kjr_privacy"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='kjr_grant']" position="inside">
+                <block title="Zuschussantrag: Bestätigungen am Formularende"
+                       help="Link und Hinweistext der Pflichtbestätigungen im Antragsformular /service/antrag-stellen.">
+                    <setting string="Link zu den Zuschussrichtlinien"
+                             help="Ziel des Links in „Ich habe die Zuschussrichtlinien gelesen“ und auf der Anleitung, am besten das öffentliche PDF (/web/content/…). Ohne eigene Adresse führt der Link auf den Abschnitt „Zuschussrichtlinien“ der Anleitung; dort steht dann nur, dass die Geschäftsstelle die Richtlinien zusendet.">
+                        <field name="kjr_grant_guidelines_url"/>
+                    </setting>
+                    <setting string="Herkunft der Fördermittel"
+                             help="Satz unter „Ich versichere, dass alle Angaben vollständig sind …“.">
+                        <field name="kjr_grant_funding_notice"
+                               readonly="kjr_grant_hide_funding_notice"/>
+                        <div class="mt-2">
+                            <field name="kjr_grant_hide_funding_notice"/>
+                            <label for="kjr_grant_hide_funding_notice" string="Hinweis ausblenden"/>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

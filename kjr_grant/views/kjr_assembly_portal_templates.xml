@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Anmeldung zur Vollversammlung (controllers/assembly.py).
+
+         Kontext: invitation_id, token, assembly_name, assembly_date (Text),
+         assembly_location, member_name, is_open (bool), office (dict name,
+         email, phone), values (dict name, email, phone), errors (dict je Feld),
+         success (bool), retention_days (int, 0 = keine automatische Löschung),
+         privacy_controller (Text). Die Seite liest keinen Datensatz selbst.
+
+         Telefon ist Pflicht (required im Browser, maßgeblich im Controller und
+         am Modell kjr.assembly.registration). -->
+    <template id="assembly_registration_page" name="KJR Vollversammlung: Anmeldung">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-4 mb-5 o_kjr_assembly_registration">
+                <h1 class="mb-3">Anmeldung zur Vollversammlung</h1>
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h2 class="h5" t-out="assembly_name"/>
+                        <p class="mb-1" t-if="assembly_date">Termin: <t t-out="assembly_date"/> Uhr</p>
+                        <p class="mb-1" t-if="assembly_location">Ort: <t t-out="assembly_location"/></p>
+                        <p class="mb-0">Eingeladener Verband: <strong t-out="member_name"/></p>
+                    </div>
+                </div>
+
+                <!-- Ändern geht nur, solange die Anmeldung offen ist
+                     (controllers/assembly.py, _kjr_is_open: Status „Eingeladen“ und
+                     Termin in der Zukunft). Eine Abmeldung über den Link gibt es nicht. -->
+                <div t-if="success" class="alert alert-success" role="status">
+                    <p class="mb-1">Vielen Dank, Ihre Anmeldung ist gespeichert. Bis zum Termin können
+                        Sie Ihre Angaben über diesen Link mit derselben E-Mail-Adresse ändern.</p>
+                    <p class="mb-0">Wenn Sie nicht teilnehmen können, melden Sie sich bitte bei der
+                        Geschäftsstelle<t t-if="office.get('name')"> von <t t-out="office.get('name')"/></t> ab<t t-if="office.get('email') or office.get('phone')">:
+                        <t t-if="office.get('email')"><a t-attf-href="mailto:#{office.get('email')}" t-out="office.get('email')"/></t><t t-if="office.get('email') and office.get('phone')"> oder </t><t t-if="office.get('phone')">Tel. <t t-out="office.get('phone')"/></t></t>.</p>
+                </div>
+                <div t-elif="not is_open" class="alert alert-info" role="status">
+                    Für diese Vollversammlung ist keine Online-Anmeldung (mehr) möglich. Bitte wenden
+                    Sie sich an die Geschäftsstelle<t t-if="office.get('name')"> von <t t-out="office.get('name')"/></t>.
+                </div>
+                <form t-else="" method="post"
+                      t-attf-action="/vollversammlung/anmeldung/#{invitation_id}/#{token}" novalidate="novalidate">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <div t-if="errors" class="alert alert-danger" role="alert">
+                        Bitte prüfen Sie die markierten Angaben.
+                    </div>
+                    <!-- Barrierefreiheit: Der Stern ist für Screenreader ausgeblendet
+                         (aria-hidden, Muster portal_templates.xml); maßgeblich ist das
+                         Attribut required am Feld. -->
+                    <p class="small text-muted">Mit * markierte Felder sind Pflicht.</p>
+                    <!-- Barrierefreiheit: Fehlertexte haben eine id und hängen per
+                         aria-describedby am Feld, aria-invalid markiert das Feld. Angesagt
+                         wird nur der Sammelhinweis oben (role="alert"), nicht jeder
+                         Feldfehler einzeln. -->
+                    <div class="mb-3">
+                        <label for="kjr_reg_name" class="form-label">Name <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input type="text" name="name" id="kjr_reg_name" maxlength="120" required="required"
+                               autocomplete="name"
+                               t-att-aria-invalid="'true' if errors.get('name') else None"
+                               t-att-aria-describedby="'kjr_reg_name_err' if errors.get('name') else None"
+                               t-attf-class="form-control #{errors.get('name') and 'is-invalid' or ''}"
+                               t-att-value="values.get('name', '')"/>
+                        <div t-if="errors.get('name')" id="kjr_reg_name_err" class="invalid-feedback d-block" t-out="errors.get('name')"/>
+                    </div>
+                    <div class="mb-3">
+                        <label for="kjr_reg_email" class="form-label">E-Mail <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input type="email" name="email" id="kjr_reg_email" maxlength="120" required="required"
+                               autocomplete="email"
+                               t-att-aria-invalid="'true' if errors.get('email') else None"
+                               t-att-aria-describedby="'kjr_reg_email_err' if errors.get('email') else None"
+                               t-attf-class="form-control #{errors.get('email') and 'is-invalid' or ''}"
+                               t-att-value="values.get('email', '')"/>
+                        <div t-if="errors.get('email')" id="kjr_reg_email_err" class="invalid-feedback d-block" t-out="errors.get('email')"/>
+                    </div>
+                    <div class="mb-3">
+                        <label for="kjr_reg_phone" class="form-label">Telefon <span class="text-danger" aria-hidden="true">*</span></label>
+                        <input type="tel" name="phone" id="kjr_reg_phone" maxlength="32" required="required"
+                               autocomplete="tel" placeholder="z. B. 08321 1234-0"
+                               t-att-aria-invalid="'true' if errors.get('phone') else None"
+                               t-att-aria-describedby="'kjr_reg_phone_err kjr_reg_phone_help' if errors.get('phone') else 'kjr_reg_phone_help'"
+                               t-attf-class="form-control #{errors.get('phone') and 'is-invalid' or ''}"
+                               t-att-value="values.get('phone', '')"/>
+                        <div t-if="errors.get('phone')" id="kjr_reg_phone_err" class="invalid-feedback d-block" t-out="errors.get('phone')"/>
+                        <div id="kjr_reg_phone_help" class="form-text">Damit wir Sie vor und am Tag der
+                            Versammlung erreichen können, z. B. wenn die Beschlussfähigkeit geklärt
+                            werden muss.</div>
+                    </div>
+                    <!-- Aufbau wie der Hinweis im Registrierungsformular
+                         (auth_signup_templates.xml, signup_club_privacy_notice):
+                         retention_days aus kjr.assembly.registration._kjr_retention_days
+                         (dieselbe Auslegung wie der Lösch-Cron), privacy_controller aus dem
+                         Systemparameter kjr.privacy.controller (controllers/assembly.py). -->
+                    <section class="o_kjr_privacy_notice alert alert-light border small" role="region"
+                             aria-labelledby="kjr_reg_privacy_heading">
+                        <h2 class="alert-heading h6" id="kjr_reg_privacy_heading">Datenschutz: was mit diesen Angaben passiert</h2>
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Was wir speichern</dt>
+                            <!-- Telefon in den Kontakt: controllers/assembly.py (nur angemeldet,
+                                 eigene E-Mail, Kontakt ohne Telefon). Wortlaut zu „Wer es sieht“
+                                 und „Löschung“ wie im Registrierungshinweis
+                                 (auth_signup_templates.xml). -->
+                            <dd class="col-sm-8">Name, E-Mail und Telefon, wie angegeben. Sind Sie
+                                mit Ihrem Konto angemeldet und geben Ihre eigene E-Mail-Adresse an,
+                                wird die Anmeldung Ihrem Kontakt zugeordnet; fehlt dort die
+                                Telefonnummer, wird sie dauerhaft in Ihre Kontaktdaten übernommen.</dd>
+
+                            <dt class="col-sm-4">Wofür</dt>
+                            <dd class="col-sm-8">Organisation der Vollversammlung, Feststellung der
+                                Beschlussfähigkeit und um Sie vor und am Tag der Versammlung erreichen
+                                zu können.</dd>
+
+                            <dt class="col-sm-4">Wer es sieht</dt>
+                            <dd class="col-sm-8">Die Geschäftsstelle<t t-if="office.get('name')"> von <t t-out="office.get('name')"/></t>.
+                                Wird die Telefonnummer in Ihre Kontaktdaten übernommen, sehen sie dort
+                                auch die anderen Portal-Zugänge Ihres Verbands (und ggf. Ihres
+                                Dachverbands).</dd>
+
+                            <dt class="col-sm-4">Löschung</dt>
+                            <dd class="col-sm-8">
+                                <t t-if="retention_days"><t t-out="retention_days"/> Tage nach dem Termin
+                                    der Vollversammlung, sobald sie durchgeführt oder abgesagt ist.</t>
+                                <t t-elif="retention_days == 0">Die Anmeldung wird aufbewahrt, bis die
+                                    Geschäftsstelle sie löscht.</t>
+                                <t t-else="">Nach der in der Datenschutzerklärung genannten Frist.</t>
+                                Eine in Ihre Kontaktdaten übernommene Telefonnummer bleibt dort, bis Sie
+                                sie in Ihrem Konto ändern oder die Geschäftsstelle um Löschung bitten;
+                                die Löschfrist gilt nur für die Anmeldung.
+                            </dd>
+
+                            <dt class="col-sm-4">Verantwortlich</dt>
+                            <dd class="col-sm-8">
+                                <span t-if="privacy_controller" t-out="privacy_controller"/>
+                                <span t-else="" class="badge text-bg-warning">Angabe folgt</span>
+                            </dd>
+                        </dl>
+                        <p class="mb-0 mt-2">Ausführlich steht das in der
+                            <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.</p>
+                    </section>
+                    <button type="submit" class="btn btn-primary">Verbindlich anmelden</button>
+                </form>
+
+                <p class="small text-muted mt-4" t-if="office.get('email') or office.get('phone')">
+                    Fragen? <t t-if="office.get('email')"><t t-out="office.get('email')"/></t>
+                    <t t-if="office.get('email') and office.get('phone')"> · </t>
+                    <t t-if="office.get('phone')"><t t-out="office.get('phone')"/></t>
+                </p>
+            </div>
+        </t>
+    </template>
+</odoo>

@@ -46,9 +46,12 @@ class TestKjrGrantFormFields(TransactionCase):
     # receipt_file: nur bedingt Pflicht. Das JavaScript im Formular setzt required je
     #   Förderart und Entweder-oder-Schalter; der statische Wert ist die konservative
     #   Annahme, die der Controller ohne gewählte Förderart genauso trifft.
-    # tn_name_1 / tn_age_1: offene Kundenfrage, ob mindestens eine Teilnehmerzeile
-    #   Pflicht ist. Der Server prüft die Teilnahmeliste nicht. Siehe Kommentar über
-    #   der Teilnahmeliste in views/portal_templates.xml.
+    # tn_name_1 / tn_age_1: Name und Alter sind je ausgefüllter Teilnehmerzeile
+    #   Pflicht (B20, 19.0.17.0.0); der Server prüft das zeilenweise in
+    #   _check_participant_rows und meldet es unter dem Sammelschlüssel
+    #   'participants'. In WEBSITE_REQUIRED_FIELDS stehen sie nicht, weil eine
+    #   Teilnahmeliste ganz ohne Zeilen zulässig bleibt (Upload als Datei).
+    #   Siehe Kommentar über der Teilnahmeliste in views/portal_templates.xml.
     TEMPLATE_ONLY_REQUIRED = {'receipt_file', 'tn_name_1', 'tn_age_1'}
 
     # Feldnamen, zu denen der Controller eine Fehlermeldung setzt, OHNE dass das
@@ -58,7 +61,11 @@ class TestKjrGrantFormFields(TransactionCase):
     #                Ganzes; required trägt sie nicht, die Alternative ist der
     #                Upload receipt_file.
     # general      - kein Feld, sondern der Sammelfehler des Speicherversuchs.
-    ERROR_KEYS_WITHOUT_REQUIRED = {'payment_bic', 'receipt_ids', 'general'}
+    # participants - Sammelmeldung der Teilnahmeliste (Name und Alter je
+    #                ausgefüllter Zeile, B20). Die Felder tn_name_<n>/tn_age_<n>
+    #                tragen required in der Vorlage und in den per JavaScript
+    #                angehängten Zeilen.
+    ERROR_KEYS_WITHOUT_REQUIRED = {'payment_bic', 'receipt_ids', 'general', 'participants'}
 
     @classmethod
     def setUpClass(cls):
@@ -249,6 +256,15 @@ class TestKjrGrantFormFields(TransactionCase):
         with self.assertRaises(ValidationError), self.env.cr.savepoint():
             self._receipt(app, amount=-10.0)
 
+    def test_receipt_without_category_is_valid(self):
+        """B34 (19.0.17.0.0): Die Position ist optional, je Beleg genügt die Art."""
+        app = self._app()
+        r = self._receipt(app, category=False, direction='income',
+                          description='Spende Elternbeirat', amount=50.0)
+        self.assertFalse(r.category)
+        self.assertEqual(r.direction, 'income')
+        self.assertFalse(self.Receipt._fields['category'].required)
+
     def test_receipt_expense_rejects_income_category(self):
         """Art „Ausgabe" mit der Einnahme-Position „Teilnehmerbeiträge" würde die
         Belegsummen gegen die falsche Seite der Kostenaufstellung laufen lassen."""
@@ -393,10 +409,17 @@ class TestKjrGrantFormFields(TransactionCase):
 
     # ══ Pflichtfelder: Controller und Vorlage dürfen nicht auseinanderlaufen ══
     def _template_required_fields(self):
-        """Feldnamen, die die Vorlage website_kjr_apply als required ausweist."""
+        """Feldnamen, die die Vorlage website_kjr_apply als required ausweist.
+
+        Die Teilnehmerzeilen werden seit 19.0.17.0.0 in einer Schleife gerendert
+        (t-attf-name="tn_name_{{ tn['nr'] }}"); gezählt wird die erste Zeile,
+        also mit der Nummer 1."""
         arch = self.env.ref('kjr_grant.website_kjr_apply').arch
         root = etree.fromstring(arch.encode('utf-8'))
-        return {el.get('name') for el in root.xpath('//*[@required][@name]')}
+        names = {el.get('name') for el in root.xpath('//*[@required][@name]')}
+        for el in root.xpath('//*[@required][@t-attf-name]'):
+            names.add(re.sub(r'\{\{[^}]*\}\}', '1', el.get('t-attf-name')))
+        return names
 
     def test_apply_form_marks_every_controller_required_field(self):
         """Jedes Feld, das der Controller als Pflicht prüft, muss im Formular

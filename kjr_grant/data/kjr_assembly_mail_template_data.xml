@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Einladung zur Vollversammlung (models/kjr_assembly.py,
+         kjr.assembly.invitation._kjr_send). Empfänger setzt der Versand
+         (email_values recipient_ids): die Delegierten des Verbands, sonst die
+         E-Mail des Verbands; fehlt Delegierten die E-Mail, zusätzlich die des
+         Verbands (recipient_type 'delegates_member'). Deshalb kein partner_to hier.
+         Absatz 'delegates_member' für Bestandsinstanzen: migrations/19.0.17.0.0/post-verband.py.
+         noupdate="1" wie alle Mailvorlagen dieses Moduls; Textkorrekturen an
+         Bestandsinstanzen nur per Migration. Firmenname und Absender
+         ausschließlich aus object.company_id (White-Label). Im Rumpf nur t-out. -->
+    <data noupdate="1">
+
+        <record id="mail_template_assembly_invitation" model="mail.template">
+            <field name="name">KJR: Einladung zur Vollversammlung</field>
+            <field name="model_id" ref="model_kjr_assembly_invitation"/>
+            <field name="subject">Einladung: {{ object.assembly_id.name }}</field>
+            <field name="email_from">{{ (object.company_id.email or '') }}</field>
+            <field name="lang">{{ object.member_id.lang }}</field>
+            <!-- auto_delete False: Die versandte Mail bleibt im Verlauf des
+                 Versandnachweises (kjr.assembly.invitation) als Nachweis der Ladung,
+                 und delivery_state kann ihren Zustellstatus lesen. Bestandsinstanzen:
+                 migrations/19.0.17.0.0/post-verband.py. -->
+            <field name="auto_delete" eval="False"/>
+            <field name="body_html" type="html">
+<div style="margin:0;padding:0;">
+    <p>Guten Tag,</p>
+    <p>wir laden <strong><t t-out="object.member_id.name or ''"/></strong> herzlich zur
+        <strong><t t-out="object.assembly_id.name or ''"/></strong> ein.</p>
+    <p>
+        Termin: <t t-out="format_datetime(object.assembly_id.date, tz=(object.company_id.partner_id.tz or 'Europe/Berlin'), dt_format='dd.MM.yyyy, HH:mm') or ''"/> Uhr
+        <t t-if="object.assembly_id.location"><br/>Ort: <t t-out="object.assembly_id.location"/></t>
+    </p>
+    <div t-if="object.assembly_id.agenda">
+        <p><strong>Tagesordnung</strong></p>
+        <t t-out="object.assembly_id.agenda"/>
+    </div>
+    <p>Bitte melden Sie Ihre Teilnahme online an. Bei der Anmeldung ist eine Telefonnummer
+        anzugeben, damit wir Sie vor und am Tag der Versammlung erreichen können.</p>
+    <p><a t-att-href="object.registration_url">Zur Anmeldung</a></p>
+    <p t-if="object.recipient_type == 'member'">Diese Einladung geht an die Kontaktadresse Ihres
+        Verbands, weil für Ihren Verband keine Delegierten mit E-Mail-Adresse hinterlegt sind.
+        Bitte leiten Sie sie an Ihre Delegierten weiter und tragen Sie Ihre Delegierten im Portal
+        unter „Mein Verband“ ein.</p>
+    <p t-if="object.recipient_type == 'delegates_member'">Diese Einladung geht auch an die
+        Kontaktadresse Ihres Verbands, weil nicht für alle Delegierten eine E-Mail-Adresse
+        hinterlegt ist. Bitte leiten Sie sie an diese Delegierten weiter und ergänzen Sie die
+        E-Mail-Adressen im Portal unter „Mein Verband“.</p>
+    <p t-if="object.company_id.email or object.company_id.phone">Bei Fragen erreichen Sie uns unter
+        <t t-if="object.company_id.email"><t t-out="object.company_id.email"/><t t-if="object.company_id.phone"> oder </t></t><t t-if="object.company_id.phone"><t t-out="object.company_id.phone"/></t>.</p>
+    <p>Mit freundlichen Grüßen<br/><t t-out="object.company_id.name or ''"/></p>
+</div>
+            </field>
+        </record>
+
+    </data>
+</odoo>

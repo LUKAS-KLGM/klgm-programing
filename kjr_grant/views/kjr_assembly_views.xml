@@ -114,13 +114,53 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_invite" string="Einladen" type="object" invisible="state != 'draft'"/>
+                    <button name="action_fill_invited_members" string="Alle stimmberechtigten übernehmen"
+                            type="object" invisible="state != 'draft'"
+                            help="Trägt alle Mitgliedsverbände mit Vertretungsrecht als eingeladen ein. Von Hand eingetragene Verbände bleiben."/>
+                    <button name="action_invite" string="Einladen" type="object" class="btn-primary"
+                            invisible="state != 'draft' or date_in_past"
+                            confirm="Die Einladung wird jetzt per E-Mail an die Delegierten der eingeladenen Verbände versendet (ohne Delegierte an die E-Mail des Verbands). Fortfahren?"/>
+                    <!-- Nachträglich erfasste Sitzung: Termin vorbei, kein Mailversand
+                         (kjr.assembly.action_invite). -->
+                    <button name="action_invite" string="Als eingeladen erfassen" type="object"
+                            invisible="state != 'draft' or not date_in_past"
+                            confirm="Der Termin liegt in der Vergangenheit. Die Versammlung wird ohne E-Mail-Versand als eingeladen erfasst (nachträglich erfasste Sitzung). Fortfahren?"/>
+                    <button name="action_send_invitations" string="Einladungen versenden" type="object"
+                            invisible="state != 'invited' or not invitation_open_count or date_in_past"
+                            confirm="Die Einladung geht an alle eingeladenen Verbände, die noch keine erhalten haben. Bereits versandte Einladungen werden nicht erneut verschickt. Fortfahren?"/>
                     <button name="action_done" string="Durchgeführt" type="object" class="btn-primary" invisible="state != 'invited'"/>
                     <button name="action_cancel" string="Absagen" type="object" invisible="state in ('done','cancelled')"/>
                     <button name="action_print_protokoll" string="Protokoll drucken" type="object"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,invited,done"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_registrations" type="object" class="oe_stat_button"
+                                icon="fa-user-plus">
+                            <field name="registration_count" widget="statinfo" string="Anmeldungen"/>
+                        </button>
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not delegate_missing_phone_count">
+                        <field name="delegate_missing_phone_count" nolabel="1" readonly="1" class="oe_inline"/>
+                        Delegierte der eingeladenen Verbände haben keine Telefonnummer. Bitte nachtragen
+                        (Reiter „Delegierte“), damit sie vor der Versammlung erreichbar sind.
+                    </div>
+                    <!-- Delegierte ohne E-Mail bekommen keine eigene Einladung
+                         (kjr.assembly.invitation._kjr_recipients); die Mail geht dann
+                         zusätzlich an die Verbandsadresse, falls vorhanden. -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not delegate_missing_email_count or state in ('done', 'cancelled')">
+                        <field name="delegate_missing_email_count" nolabel="1" readonly="1" class="oe_inline"/>
+                        Delegierte der eingeladenen Verbände haben keine E-Mail-Adresse und erhalten
+                        keine eigene Einladung. Bitte auf anderem Weg einladen oder die Adresse nachtragen
+                        (Reiter „Delegierte“). Die Einladung geht in diesem Fall zusätzlich an die
+                        E-Mail des Verbands.
+                    </div>
+                    <div class="alert alert-info" role="status"
+                         invisible="not date_in_past or state not in ('draft', 'invited')">
+                        Der Termin liegt in der Vergangenheit. Einladungen werden nicht mehr versandt.
+                    </div>
                     <group>
                         <group>
                             <field name="name"/>
@@ -133,6 +173,10 @@
                         <group>
                             <field name="eligible_member_count" readonly="1"/>
                             <field name="invited_count" readonly="1"/>
+                            <field name="invitation_sent_count" readonly="1"/>
+                            <field name="invitation_open_count" readonly="1"
+                                   invisible="state == 'draft'"
+                                   decoration-warning="invitation_open_count"/>
                             <field name="attendee_count" readonly="1"/>
                             <field name="is_repeat_session"/>
                             <field name="quorum_reached" readonly="1"/>
@@ -144,7 +188,79 @@
                     </group>
                     <notebook>
                         <page string="Tagesordnung"><field name="agenda" nolabel="1"/></page>
-                        <page string="Eingeladene Verbände"><field name="invited_member_ids" nolabel="1"/></page>
+                        <page string="Eingeladene Verbände" name="invited">
+                            <field name="invited_member_ids" nolabel="1"
+                                   readonly="state in ('done', 'cancelled')"
+                                   options="{'no_create': True}">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="email"/>
+                                    <field name="phone"/>
+                                    <field name="kjr_vr_right" string="Vertretungsrecht"/>
+                                    <field name="kjr_vr_delegate_count" string="Delegierte"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Delegierte" name="delegates">
+                            <div class="text-muted mb-2">
+                                Delegiertenverzeichnis: die Vertreter/innen aller eingeladenen Verbände
+                                (gepflegt am Verband, Feld „Vertreter/innen“, oder vom Verband im Portal).
+                                Telefon ist für Delegierte Pflicht.
+                            </div>
+                            <field name="delegate_ids" nolabel="1" readonly="1">
+                                <list decoration-danger="not phone" decoration-warning="phone and not email">
+                                    <field name="name"/>
+                                    <field name="parent_id" string="Organisation"/>
+                                    <field name="function"/>
+                                    <field name="email"/>
+                                    <field name="phone"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Einladungsversand" name="invitations" invisible="not invitation_ids">
+                            <field name="invitation_ids" nolabel="1" readonly="1">
+                                <list decoration-success="state == 'sent' and delivery_state != 'failed'"
+                                      decoration-danger="state == 'no_address' or delivery_state == 'failed'">
+                                    <field name="member_id"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="delivery_state" widget="badge"
+                                           decoration-warning="delivery_state == 'queued'"
+                                           decoration-success="delivery_state == 'sent'"
+                                           decoration-danger="delivery_state == 'failed'"/>
+                                    <field name="recipient_type"/>
+                                    <field name="recipient_ids" widget="many2many_tags"/>
+                                    <field name="date_sent"/>
+                                    <field name="sent_by_id" optional="hide"/>
+                                    <field name="send_count" optional="hide"/>
+                                    <field name="can_resend" column_invisible="1"/>
+                                    <button name="action_resend" type="object" string="Erneut senden"
+                                            icon="fa-repeat" groups="kjr_grant.group_kjr_manager"
+                                            invisible="not can_resend"
+                                            confirm="Die Einladung wird an diesen Verband erneut verschickt. Fortfahren?"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Anmeldungen" name="registrations">
+                            <div class="text-muted mb-2">
+                                Anmeldungen über den Link in der Einladung oder von der Geschäftsstelle
+                                erfasst. Telefon ist Pflicht.
+                            </div>
+                            <field name="registration_ids" nolabel="1"
+                                   context="{'default_origin': 'office'}">
+                                <list editable="bottom">
+                                    <field name="member_id" options="{'no_create': True}"/>
+                                    <field name="partner_id" optional="show" options="{'no_create': True}"/>
+                                    <field name="suggested_partner_id" optional="show"/>
+                                    <field name="name"/>
+                                    <field name="email"/>
+                                    <field name="phone"/>
+                                    <field name="is_delegate" optional="show"/>
+                                    <field name="origin" readonly="1" optional="show"/>
+                                    <field name="date_registered" optional="hide"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
                         <page string="Anwesenheit">
                             <div class="text-muted mb-2">
                                 Erfasst werden die anwesenden <strong>Mitgliedsverbände</strong>
@@ -180,6 +296,117 @@
                         <page string="Protokoll"><field name="protocol" nolabel="1"/></page>
                     </notebook>
                     <field name="note" placeholder="Anmerkungen..."/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="view_kjr_assembly_registration_list" model="ir.ui.view">
+        <field name="name">kjr.assembly.registration.list</field>
+        <field name="model">kjr.assembly.registration</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="assembly_id"/>
+                <field name="member_id" options="{'no_create': True}"/>
+                <field name="partner_id" optional="show" options="{'no_create': True}"/>
+                <field name="suggested_partner_id" optional="show"/>
+                <field name="name"/>
+                <field name="email"/>
+                <field name="phone"/>
+                <field name="is_delegate" optional="show"/>
+                <field name="origin" readonly="1"/>
+                <field name="date_registered" optional="hide"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_kjr_assembly_registration_form" model="ir.ui.view">
+        <field name="name">kjr.assembly.registration.form</field>
+        <field name="model">kjr.assembly.registration</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-info" role="status"
+                         invisible="partner_id or not suggested_partner_id">
+                        Die E-Mail-Adresse passt zu einem Kontakt des Verbands. Sie stammt aus dem
+                        Anmeldeformular und ist nicht geprüft. Bitte vor dem Zuordnen bestätigen.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="assembly_id"/>
+                            <field name="member_id" options="{'no_create': True}"/>
+                            <field name="invitation_id" readonly="1" invisible="not invitation_id"/>
+                            <field name="partner_id" options="{'no_create': True}"/>
+                            <label for="suggested_partner_id" invisible="not suggested_partner_id"/>
+                            <div class="o_row" invisible="not suggested_partner_id">
+                                <field name="suggested_partner_id"/>
+                                <button name="action_assign_suggested_partner" type="object"
+                                        string="Zuordnen" class="btn-link" icon="fa-link"
+                                        groups="kjr_grant.group_kjr_manager"/>
+                            </div>
+                            <field name="is_delegate"/>
+                        </group>
+                        <group>
+                            <field name="name"/>
+                            <field name="email"/>
+                            <field name="phone"/>
+                            <field name="origin" readonly="1"/>
+                            <field name="date_registered"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="view_kjr_assembly_invitation_form" model="ir.ui.view">
+        <field name="name">kjr.assembly.invitation.form</field>
+        <field name="model">kjr.assembly.invitation</field>
+        <field name="arch" type="xml">
+            <form create="false">
+                <header>
+                    <button name="action_resend" type="object" string="Erneut senden"
+                            groups="kjr_grant.group_kjr_manager"
+                            invisible="not can_resend"
+                            confirm="Die Einladung wird an diesen Verband erneut verschickt. Fortfahren?"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <field name="can_resend" invisible="1"/>
+                    <group>
+                        <group>
+                            <field name="assembly_id" readonly="1"/>
+                            <field name="assembly_state" readonly="1"/>
+                            <field name="member_id" readonly="1"/>
+                            <field name="recipient_type"/>
+                            <field name="recipient_ids" widget="many2many_tags"/>
+                        </group>
+                        <group>
+                            <field name="date_sent"/>
+                            <field name="delivery_state" widget="badge"
+                                   decoration-warning="delivery_state == 'queued'"
+                                   decoration-success="delivery_state == 'sent'"
+                                   decoration-danger="delivery_state == 'failed'"/>
+                            <field name="sent_by_id"/>
+                            <field name="send_count"/>
+                            <!-- Sachbearbeitung darf den Link sehen: er steht ohnehin in der
+                                 versandten Mail im Verlauf (models/kjr_assembly.py,
+                                 kjr.assembly.invitation). -->
+                            <field name="registration_url" readonly="1"
+                                   groups="kjr_grant.group_kjr_reviewer"/>
+                        </group>
+                    </group>
+                    <field name="registration_ids" readonly="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="email"/>
+                            <field name="phone"/>
+                            <field name="state"/>
+                        </list>
+                    </field>
                 </sheet>
                 <chatter/>
             </form>

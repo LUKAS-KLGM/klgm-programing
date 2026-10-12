@@ -751,7 +751,7 @@
                                                                             </div>
                                                                         </t>
                                                                         <div class="col-md-4 mb-2">
-                                                                            <label t-attf-for="c#{contact.id}_phone" class="form-label">Telefon</label>
+                                                                            <label t-attf-for="c#{contact.id}_phone" class="form-label">Telefon<t t-if="member_info.get('vr_right')"> (Pflicht für Delegierte)</t></label>
                                                                             <input type="tel" t-attf-id="c#{contact.id}_phone" name="contact_phone"
                                                                                    t-attf-class="form-control form-control-sm #{cerr.get('contact_phone') and 'is-invalid' or ''}"
                                                                                    t-att-value="cvals.get('contact_phone', contact.phone or '')"
@@ -916,7 +916,7 @@
                                                 </div>
                                             </div>
                                             <div class="col-md-4 mb-2">
-                                                <label for="new_contact_phone" class="form-label">Telefon</label>
+                                                <label for="new_contact_phone" class="form-label">Telefon<t t-if="member_info.get('vr_right')"> (Pflicht für Delegierte)</t></label>
                                                 <input type="tel" id="new_contact_phone" name="contact_phone"
                                                        t-attf-class="form-control #{nerr.get('contact_phone') and 'is-invalid' or ''}"
                                                        t-att-value="nvals.get('contact_phone', '')"
@@ -1006,10 +1006,18 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
+                                                <!-- Pflegbar ist nur, wer oben unter „Ansprechpersonen“
+                                                     steht (contacts, _verband_contacts). Delegierte aus einer
+                                                     Ortsgruppe ohne eigenes Vertretungsrecht (Genehmigung einer
+                                                     Vereinsregistrierung, kjr.affiliation.request._kjr_do_approve)
+                                                     stehen dort nicht: kein Anker, Änderungen über die
+                                                     Geschäftsstelle. -->
                                                 <t t-foreach="delegates" t-as="delegate">
+                                                    <t t-set="delegate_editable" t-value="delegate in contacts"/>
                                                     <tr>
                                                         <th scope="row" class="fw-normal">
-                                                            <a t-attf-href="#kontakt_#{delegate.id}"><t t-esc="delegate.name"/></a>
+                                                            <a t-if="delegate_editable" t-attf-href="#kontakt_#{delegate.id}"><t t-esc="delegate.name"/></a>
+                                                            <t t-else="" t-out="delegate.name"/>
                                                         </th>
                                                         <td><t t-esc="delegate.function or '-'"/></td>
                                                         <td>
@@ -1018,8 +1026,17 @@
                                                             </t>
                                                             <t t-else="">-</t>
                                                         </td>
-                                                        <td><t t-esc="delegate.phone or '-'"/></td>
-                                                        <td><span class="badge text-bg-info">Delegierte/r</span></td>
+                                                        <td>
+                                                            <t t-if="delegate.phone"><t t-esc="delegate.phone"/></t>
+                                                            <span t-elif="delegate_editable" class="badge text-bg-warning">fehlt, bitte nachtragen</span>
+                                                            <span t-else="" class="badge text-bg-warning">fehlt, bitte der Geschäftsstelle melden</span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge text-bg-info">Delegierte/r</span>
+                                                            <div t-if="not delegate_editable" class="form-text mt-1">
+                                                                <t t-if="delegate.parent_id and delegate.parent_id != verband">gehört zu <t t-out="delegate.parent_id.name"/>; </t>Änderungen über die Geschäftsstelle
+                                                            </div>
+                                                        </td>
                                                     </tr>
                                                 </t>
                                             </tbody>
@@ -1029,6 +1046,10 @@
                                         Das Kennzeichen setzen und entfernen Sie oben bei der jeweiligen
                                         Person unter „Ansprechpersonen“, bewusst an einer einzigen
                                         Stelle, damit die beiden Listen nicht auseinanderlaufen.
+                                        Delegierte, die dort nicht stehen (z. B. aus einer Ortsgruppe
+                                        Ihres Verbands), meldet die Geschäftsstelle an und ab; ändern sich
+                                        ihre Daten oder scheiden sie aus, sagen Sie der Geschäftsstelle
+                                        bitte Bescheid.
                                     </p>
                                 </t>
                             </div>
@@ -1422,6 +1443,18 @@
                                         <dt class="col-7">Fehlbetrag</dt>
                                         <dd class="col-5"><t t-esc="'%.2f €' % grant.deficit"/></dd>
                                     </dl>
+                                    <!-- B33: Abgleich mit der digitalen Belegliste -->
+                                    <!-- Nur solange der Antrag bearbeitet wird; Portal hat nur
+                                         Leserecht, Korrektur = neue Belegliste als Dokument
+                                         (Upload nur in draft/submitted, controllers/portal.py). -->
+                                    <div t-if="grant.receipt_mismatch and grant.state in ('draft', 'submitted', 'in_review')"
+                                         class="alert alert-warning small mt-2 mb-0" role="status">
+                                        Die Summen Ihrer Belegliste weichen von der
+                                        Kostenaufstellung ab. Die Geschäftsstelle meldet sich
+                                        bei Ihnen<t t-if="grant.state in ('draft', 'submitted')">; Sie
+                                        können auch eine korrigierte Belegliste unten unter
+                                        „Dokumente hochladen“ hochladen</t>.
+                                    </div>
                                 </div>
                                 <div class="col-md-4">
                                     <h6>Förderung</h6>
@@ -1704,7 +1737,10 @@
                     </div>
                 </t>
 
+                <!-- o_kjr_apply_form: Live-Summen der Kostenaufstellung und Abgleich
+                     mit der Belegliste (static/src/interactions/kjr_apply_totals.js). -->
                 <form method="post" action="/service/antrag-stellen"
+                      class="o_kjr_apply_form"
                       enctype="multipart/form-data" novalidate="novalidate">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
@@ -1719,8 +1755,12 @@
                                     <label class="form-label fw-bold">Bezeichnung der Maßnahme *</label>
                                     <input type="text" name="measure_name" class="form-control"
                                            t-att-value="values.get('measure_name','')"
-                                           placeholder="z. B. Sommerfreizeit der Jungschar 2026"
+                                           placeholder="z. B. Ausflug Skyline Park"
                                            required="required"/>
+                                    <div class="form-text">
+                                        Bitte konkret mit Ziel, z. B. „Ausflug Skyline Park“
+                                        statt „Sommerausflug“.
+                                    </div>
                                 </div>
                             </div>
                             <div class="row">
@@ -1750,13 +1790,18 @@
                                     <label class="form-label fw-bold">PLZ *</label>
                                     <input type="text" name="measure_zip" class="form-control"
                                            t-att-value="values.get('measure_zip','')"
+                                           placeholder="z. B. 86871" inputmode="numeric"
                                            required="required"/>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label fw-bold">Ort der Maßnahme *</label>
                                     <input type="text" name="measure_location" class="form-control"
                                            t-att-value="values.get('measure_location','')"
-                                           placeholder="z. B. Jugendzeltplatz" required="required"/>
+                                           placeholder="z. B. Rammingen" required="required"/>
+                                    <div class="form-text">
+                                        Gemeinde bzw. Ort, nicht der Name des Hauses oder Platzes
+                                        (für die Statistik).
+                                    </div>
                                 </div>
                             </div>
                             <div class="row">
@@ -1848,6 +1893,7 @@
                             <p class="text-muted small">
                                 Laut Zuschussrichtlinien ist die Teilnahmeliste bei Maßnahmen mit
                                 Teilnehmenden Pflicht. Bitte alle Teilnehmer/innen eintragen.
+                                Name und Alter sind für jede Person Pflicht.
                             </p>
                             <div class="table-responsive">
                                 <table class="table table-sm" id="tn_table">
@@ -1865,43 +1911,46 @@
                                         </tr>
                                     </thead>
                                     <tbody id="tn_rows">
-                                        <!-- Pflichtkennzeichnung: Zeile 1 verlangt Name und Alter im
-                                             Browser (required), der Server prüft die Teilnahmeliste
-                                             NICHT (controllers/website.py: _handle_participants nimmt
-                                             auch null Zeilen an). Ob mindestens eine Teilnehmerzeile
-                                             fachlich Pflicht ist, ist eine offene Frage an den Kunden;
-                                             bis zur Entscheidung bleibt beides unverändert.
-                                             tests/test_form_fields.py hält diese Ausnahme ausdrücklich
-                                             fest (TEMPLATE_ONLY_REQUIRED), damit sie nicht unbemerkt
-                                             wächst. Die per JavaScript angehängten Zeilen 2..n tragen
-                                             bewusst kein required. -->
+                                        <!-- Pflichtkennzeichnung: Name und Alter sind je
+                                             teilnehmender Person Pflicht (Kundenentscheidung B20,
+                                             19.0.17.0.0). Der Server prüft jede nicht leere Zeile
+                                             (controllers/website.py: _check_participant_rows); eine
+                                             Teilnahmeliste ganz ohne Zeilen bleibt zulässig, weil sie
+                                             auch als Datei hochgeladen werden kann. Deshalb stehen
+                                             tn_name_1/tn_age_1 nicht in WEBSITE_REQUIRED_FIELDS,
+                                             sondern in TEMPLATE_ONLY_REQUIRED (tests/test_form_fields.py).
+                                             Die per JavaScript angehängten Zeilen tragen required
+                                             ebenfalls. Die Zeilen werden aus tn_rows gerendert, damit
+                                             nach einer Fehlermeldung alle Zeilen erhalten bleiben. -->
+                                        <t t-foreach="tn_rows" t-as="tn">
                                         <tr class="tn-row">
-                                            <td class="tn-nr">1</td>
-                                            <td><input type="text" name="tn_name_1" class="form-control form-control-sm" t-att-value="values.get('tn_name_1','')" required="required"/></td>
-                                            <td><input type="number" name="tn_age_1" class="form-control form-control-sm" style="width:80px" min="0" max="120" t-att-value="values.get('tn_age_1','')" required="required"/></td>
+                                            <td class="tn-nr"><t t-out="tn['nr']"/></td>
+                                            <td><input type="text" t-attf-name="tn_name_{{ tn['nr'] }}" class="form-control form-control-sm" t-att-value="tn['name']" required="required" aria-label="Name, Vorname"/></td>
+                                            <td><input type="number" t-attf-name="tn_age_{{ tn['nr'] }}" class="form-control form-control-sm" style="width:80px" min="0" max="120" step="1" t-att-value="tn['age']" required="required" aria-label="Alter in Jahren"/></td>
                                             <td>
-                                                <select name="tn_gender_1" class="form-select form-select-sm">
+                                                <select t-attf-name="tn_gender_{{ tn['nr'] }}" class="form-select form-select-sm" aria-label="Geschlecht">
                                                     <option value="">-</option>
-                                                    <option value="male"    t-att-selected="values.get('tn_gender_1') == 'male'">männlich</option>
-                                                    <option value="female"  t-att-selected="values.get('tn_gender_1') == 'female'">weiblich</option>
-                                                    <option value="diverse" t-att-selected="values.get('tn_gender_1') == 'diverse'">divers</option>
+                                                    <option value="male"    t-att-selected="tn['gender'] == 'male'">männlich</option>
+                                                    <option value="female"  t-att-selected="tn['gender'] == 'female'">weiblich</option>
+                                                    <option value="diverse" t-att-selected="tn['gender'] == 'diverse'">divers</option>
                                                 </select>
                                             </td>
-                                            <td><input type="text" name="tn_zip_1" class="form-control form-control-sm" style="width:80px" t-att-value="values.get('tn_zip_1','')"/></td>
-                                            <td><input type="text" name="tn_city_1" class="form-control form-control-sm" t-att-value="values.get('tn_city_1','')"/></td>
+                                            <td><input type="text" t-attf-name="tn_zip_{{ tn['nr'] }}" class="form-control form-control-sm" style="width:80px" t-att-value="tn['zip']" aria-label="PLZ"/></td>
+                                            <td><input type="text" t-attf-name="tn_city_{{ tn['nr'] }}" class="form-control form-control-sm" t-att-value="tn['city']" aria-label="Wohnort"/></td>
                                             <td>
-                                                <select name="tn_role_1" class="form-select form-select-sm">
+                                                <select t-attf-name="tn_role_{{ tn['nr'] }}" class="form-select form-select-sm" aria-label="Kennziffer">
                                                     <option value="">-</option>
-                                                    <option value="EA" t-att-selected="values.get('tn_role_1') == 'EA'">EA</option>
-                                                    <option value="HA" t-att-selected="values.get('tn_role_1') == 'HA'">HA</option>
-                                                    <option value="HO" t-att-selected="values.get('tn_role_1') == 'HO'">HO</option>
-                                                    <option value="PR" t-att-selected="values.get('tn_role_1') == 'PR'">PR</option>
-                                                    <option value="SO" t-att-selected="values.get('tn_role_1') == 'SO'">SO</option>
+                                                    <option value="EA" t-att-selected="tn['role'] == 'EA'">EA</option>
+                                                    <option value="HA" t-att-selected="tn['role'] == 'HA'">HA</option>
+                                                    <option value="HO" t-att-selected="tn['role'] == 'HO'">HO</option>
+                                                    <option value="PR" t-att-selected="tn['role'] == 'PR'">PR</option>
+                                                    <option value="SO" t-att-selected="tn['role'] == 'SO'">SO</option>
                                                 </select>
                                             </td>
-                                            <td class="text-center"><input type="checkbox" name="tn_juleica_1" class="form-check-input" t-att-checked="values.get('tn_juleica_1') and 'checked' or None"/></td>
+                                            <td class="text-center"><input type="checkbox" t-attf-name="tn_juleica_{{ tn['nr'] }}" class="form-check-input" t-att-checked="tn['juleica'] and 'checked' or None" aria-label="Juleica"/></td>
                                             <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeParticipantRow(this)" aria-label="Teilnehmerzeile entfernen"><i class="fa fa-trash" title="Teilnehmerzeile entfernen"/></button></td>
                                         </tr>
+                                        </t>
                                     </tbody>
                                 </table>
                             </div>
@@ -1919,17 +1968,17 @@
                                     row.className = 'tn-row';
                                     row.innerHTML =
                                         '&lt;td class="tn-nr"&gt;' + nr + '&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;input type="text" name="tn_name_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;input type="number" name="tn_age_' + nr + '" class="form-control form-control-sm" style="width:80px" min="0" max="120"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;select name="tn_gender_' + nr + '" class="form-select form-select-sm"&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="tn_name_' + nr + '" class="form-control form-control-sm" required="required" aria-label="Name, Vorname"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="number" name="tn_age_' + nr + '" class="form-control form-control-sm" style="width:80px" min="0" max="120" step="1" required="required" aria-label="Alter in Jahren"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;select name="tn_gender_' + nr + '" class="form-select form-select-sm" aria-label="Geschlecht"&gt;' +
                                         '&lt;option value=""&gt;-&lt;/option&gt;' +
                                         '&lt;option value="male"&gt;männlich&lt;/option&gt;' +
                                         '&lt;option value="female"&gt;weiblich&lt;/option&gt;' +
                                         '&lt;option value="diverse"&gt;divers&lt;/option&gt;' +
                                         '&lt;/select&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;input type="text" name="tn_zip_' + nr + '" class="form-control form-control-sm" style="width:80px"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;input type="text" name="tn_city_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;select name="tn_role_' + nr + '" class="form-select form-select-sm"&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="tn_zip_' + nr + '" class="form-control form-control-sm" style="width:80px" aria-label="PLZ"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="tn_city_' + nr + '" class="form-control form-control-sm" aria-label="Wohnort"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;select name="tn_role_' + nr + '" class="form-select form-select-sm" aria-label="Kennziffer"&gt;' +
                                         '&lt;option value=""&gt;-&lt;/option&gt;' +
                                         '&lt;option value="EA"&gt;EA&lt;/option&gt;' +
                                         '&lt;option value="HA"&gt;HA&lt;/option&gt;' +
@@ -1937,7 +1986,7 @@
                                         '&lt;option value="PR"&gt;PR&lt;/option&gt;' +
                                         '&lt;option value="SO"&gt;SO&lt;/option&gt;' +
                                         '&lt;/select&gt;&lt;/td&gt;' +
-                                        '&lt;td class="text-center"&gt;&lt;input type="checkbox" name="tn_juleica_' + nr + '" class="form-check-input"/&gt;&lt;/td&gt;' +
+                                        '&lt;td class="text-center"&gt;&lt;input type="checkbox" name="tn_juleica_' + nr + '" class="form-check-input" aria-label="Juleica"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;button type="button" class="btn btn-sm btn-outline-danger" aria-label="Teilnehmerzeile entfernen" onclick="removeParticipantRow(this)"&gt;&lt;i class="fa fa-trash" title="Teilnehmerzeile entfernen"&gt;&lt;/i&gt;&lt;/button&gt;&lt;/td&gt;';
                                     tbody.appendChild(row);
                                 }
@@ -2086,7 +2135,7 @@
                                             </label>
                                             <div class="input-group">
                                                 <input type="number" t-att-name="inc_field[0]"
-                                                       class="form-control"
+                                                       class="form-control" data-kjr-sum="income"
                                                        t-att-value="values.get(inc_field[0], 0)"
                                                        min="0" step="0.01"/>
                                                 <span class="input-group-text">€</span>
@@ -2111,7 +2160,7 @@
                                             </label>
                                             <div class="input-group">
                                                 <input type="number" t-att-name="cost_field[0]"
-                                                       class="form-control"
+                                                       class="form-control" data-kjr-sum="cost"
                                                        t-att-value="values.get(cost_field[0], 0)"
                                                        min="0" step="0.01"/>
                                                 <span class="input-group-text">€</span>
@@ -2120,6 +2169,38 @@
                                     </t>
                                 </div>
                             </div>
+                            <!-- B15: Summen und Fehlbetrag (Defizit) live. Erste Anzeige
+                                 rechnet der Server vor (form_totals, gleiche Formel wie
+                                 kjr.grant.application: Fehlbetrag = Kosten minus Einnahmen,
+                                 nicht unter 0); beim Tippen aktualisiert die Interaction
+                                 kjr_apply_totals.js. Maßgeblich bleibt die Berechnung im
+                                 Modell nach dem Speichern. -->
+                            <div class="row g-2 mt-3 o_kjr_cost_summary" aria-live="polite">
+                                <div class="col-md-4">
+                                    <div class="border rounded p-2 h-100">
+                                        <div class="small text-muted">Gesamteinnahmen</div>
+                                        <div class="fw-bold" data-kjr-total="income"><t t-out="form_totals['income_label']"/></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="border rounded p-2 h-100">
+                                        <div class="small text-muted">Förderfähige Gesamtkosten</div>
+                                        <div class="fw-bold" data-kjr-total="cost"><t t-out="form_totals['cost_label']"/></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="border rounded p-2 h-100 border-primary">
+                                        <div class="small text-muted">Fehlbetrag (Defizit)</div>
+                                        <div class="fw-bold" data-kjr-total="deficit"><t t-out="form_totals['deficit_label']"/></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="form-text mb-0 mt-2">
+                                Fehlbetrag = förderfähige Gesamtkosten minus Gesamteinnahmen
+                                (nicht unter 0 €). Der Zuschuss ist in der Regel höchstens so hoch
+                                wie der Fehlbetrag (Ausnahmen siehe
+                                <a t-att-href="apply_settings['guidelines_url']" target="_blank" rel="noopener">Zuschussrichtlinien</a>).
+                            </p>
                         </div>
                     </div>
 
@@ -2149,17 +2230,28 @@
                                 Diese Belege sind vom Antragsteller zum Zwecke der Nachprüfung
                                 5 Jahre im Original aufzubewahren.
                             </p>
-                            <!-- Papierweg: gleiche Spalten wie die digitale Belegliste. -->
+                            <!-- Papier- bzw. Dateiweg (B31): Kostenaufstellung und Belegliste
+                                 mit denselben Zeilen und Spalten wie Punkt 6 und Block 7. -->
                             <p class="small mb-3">
-                                <i class="fa fa-print me-1"/>
-                                Lieber auf Papier sammeln?
+                                <i class="fa fa-download me-1"/>
+                                Lieber außerhalb des Formulars ausfüllen? Vorlage für
+                                Kostenaufstellung und Belegliste
+                                <a href="/service/zuschuss/vorlage-kostenaufstellung-belegliste.xlsx">
+                                    als Excel-Datei
+                                </a>
+                                oder
                                 <a href="/service/zuschuss/belegliste-vorlage" target="_blank">
-                                    Vorlage zum Ausdrucken
+                                    zum Ausdrucken
                                 </a>.
-                                Ausgefüllt und unterschrieben können Sie sie unter
-                                „8. Dokumente“ als Scan hochladen.
+                                Ausgefüllt (und unterschrieben) laden Sie sie unter
+                                „8. Dokumente“ hoch.
                             </p>
-                            <div id="rc_wrapper" class="d-none">
+                            <!-- data-kjr-income-categories: Positionen, die als Einnahme
+                                 zählen (Controller: _receipt_income_categories, Quelle
+                                 kjr.grant.receipt.INCOME_CATEGORIES). Gelesen vom Inline-Skript
+                                 unten und von kjr_apply_totals.js (Live-Abgleich B33). -->
+                            <div id="rc_wrapper" class="d-none"
+                                 t-att-data-kjr-income-categories="' '.join(rc_income_categories or [])">
                                 <div class="table-responsive">
                                     <table class="table table-sm" id="rc_table">
                                         <thead class="table-light">
@@ -2170,56 +2262,93 @@
                                                 <th>Empfänger / Einzahler *</th>
                                                 <th>Bezeichnung *</th>
                                                 <th>Art *</th>
-                                                <th>Position *</th>
+                                                <th>Position <span class="fw-normal text-muted">(optional)</span></th>
                                                 <th>Betrag (€) *</th>
                                                 <th></th>
                                             </tr>
                                         </thead>
                                         <tbody id="rc_rows">
+                                            <!-- Aus rc_rows gerendert, damit nach einer Fehlermeldung
+                                                 alle Belegzeilen erhalten bleiben. Position optional
+                                                 seit 19.0.17.0.0 (B34): je Beleg nur Einnahme oder
+                                                 Ausgabe; eine gewählte Position setzt die Art. -->
+                                            <t t-foreach="rc_rows" t-as="rc">
                                             <tr class="rc-row">
-                                                <td class="rc-nr">1</td>
-                                                <td><input type="date" name="rc_date_1" class="form-control form-control-sm" t-att-value="values.get('rc_date_1','')"/></td>
-                                                <td><input type="text" name="rc_no_1" class="form-control form-control-sm" style="width:90px" t-att-value="values.get('rc_no_1','')"/></td>
-                                                <td><input type="text" name="rc_partner_1" class="form-control form-control-sm" t-att-value="values.get('rc_partner_1','')"/></td>
-                                                <td><input type="text" name="rc_desc_1" class="form-control form-control-sm" t-att-value="values.get('rc_desc_1','')"/></td>
+                                                <td class="rc-nr"><t t-out="rc['nr']"/></td>
+                                                <td><input type="date" t-attf-name="rc_date_{{ rc['nr'] }}" class="form-control form-control-sm" t-att-value="rc['date']" aria-label="Datum"/></td>
+                                                <td><input type="text" t-attf-name="rc_no_{{ rc['nr'] }}" class="form-control form-control-sm" style="width:90px" t-att-value="rc['no']" aria-label="Beleg-Nr."/></td>
+                                                <td><input type="text" t-attf-name="rc_partner_{{ rc['nr'] }}" class="form-control form-control-sm" t-att-value="rc['partner']" aria-label="Empfänger / Einzahler"/></td>
+                                                <td><input type="text" t-attf-name="rc_desc_{{ rc['nr'] }}" class="form-control form-control-sm" t-att-value="rc['desc']" aria-label="Bezeichnung"/></td>
                                                 <td>
-                                                    <select name="rc_direction_1" class="form-select form-select-sm">
-                                                        <option value="expense" t-att-selected="values.get('rc_direction_1','expense') == 'expense'">Ausgabe</option>
-                                                        <option value="income"  t-att-selected="values.get('rc_direction_1') == 'income'">Einnahme</option>
+                                                    <select t-attf-name="rc_direction_{{ rc['nr'] }}" class="form-select form-select-sm" onchange="syncReceiptCategory(this)" aria-label="Art">
+                                                        <option value="expense" t-att-selected="rc['direction'] != 'income'">Ausgabe</option>
+                                                        <option value="income"  t-att-selected="rc['direction'] == 'income'">Einnahme</option>
                                                     </select>
                                                 </td>
                                                 <td>
-                                                    <select name="rc_category_1" class="form-select form-select-sm" onchange="syncReceiptDirection(this)">
-                                                        <option value="">-</option>
-                                                        <option value="tn_fees"       t-att-selected="values.get('rc_category_1') == 'tn_fees'">Einnahme: Teilnehmerbeiträge</option>
-                                                        <option value="municipality"  t-att-selected="values.get('rc_category_1') == 'municipality'">Einnahme: Zuschuss Gemeinde</option>
-                                                        <option value="association"   t-att-selected="values.get('rc_category_1') == 'association'">Einnahme: Zuschuss Verband</option>
-                                                        <option value="bjr"           t-att-selected="values.get('rc_category_1') == 'bjr'">Einnahme: Zuschuss BJR/BezJR</option>
-                                                        <option value="income_other"  t-att-selected="values.get('rc_category_1') == 'income_other'">Einnahme: Sonstige Zuschüsse</option>
-                                                        <option value="accommodation" t-att-selected="values.get('rc_category_1') == 'accommodation'">Ausgabe: Unterkunft, Verpflegung, Miete</option>
-                                                        <option value="transport"     t-att-selected="values.get('rc_category_1') == 'transport'">Ausgabe: Fahrtkosten</option>
-                                                        <option value="referees"      t-att-selected="values.get('rc_category_1') == 'referees'">Ausgabe: Honorare Referenten</option>
-                                                        <option value="allowances"    t-att-selected="values.get('rc_category_1') == 'allowances'">Ausgabe: Aufwandsentschädigungen</option>
-                                                        <option value="materials"     t-att-selected="values.get('rc_category_1') == 'materials'">Ausgabe: Arbeits- und Hilfsmittel</option>
-                                                        <option value="jl_fees"       t-att-selected="values.get('rc_category_1') == 'jl_fees'">Ausgabe: Kursgebühren JL-Schulung</option>
-                                                        <option value="cost_other"    t-att-selected="values.get('rc_category_1') == 'cost_other'">Ausgabe: Sonstige Ausgaben</option>
+                                                    <select t-attf-name="rc_category_{{ rc['nr'] }}" class="form-select form-select-sm" onchange="syncReceiptDirection(this)" aria-label="Position (optional)">
+                                                        <option value="">- keine Angabe -</option>
+                                                        <option value="tn_fees"       t-att-selected="rc['category'] == 'tn_fees'">Einnahme: Teilnehmerbeiträge</option>
+                                                        <option value="municipality"  t-att-selected="rc['category'] == 'municipality'">Einnahme: Zuschuss Gemeinde</option>
+                                                        <option value="association"   t-att-selected="rc['category'] == 'association'">Einnahme: Zuschuss Verband</option>
+                                                        <option value="bjr"           t-att-selected="rc['category'] == 'bjr'">Einnahme: Zuschuss BJR/BezJR</option>
+                                                        <option value="income_other"  t-att-selected="rc['category'] == 'income_other'">Einnahme: Sonstige Zuschüsse</option>
+                                                        <option value="accommodation" t-att-selected="rc['category'] == 'accommodation'">Ausgabe: Unterkunft, Verpflegung, Miete</option>
+                                                        <option value="transport"     t-att-selected="rc['category'] == 'transport'">Ausgabe: Fahrtkosten</option>
+                                                        <option value="referees"      t-att-selected="rc['category'] == 'referees'">Ausgabe: Honorare Referenten</option>
+                                                        <option value="allowances"    t-att-selected="rc['category'] == 'allowances'">Ausgabe: Aufwandsentschädigungen</option>
+                                                        <option value="materials"     t-att-selected="rc['category'] == 'materials'">Ausgabe: Arbeits- und Hilfsmittel</option>
+                                                        <option value="jl_fees"       t-att-selected="rc['category'] == 'jl_fees'">Ausgabe: Kursgebühren JL-Schulung</option>
+                                                        <option value="cost_other"    t-att-selected="rc['category'] == 'cost_other'">Ausgabe: Sonstige Ausgaben</option>
                                                     </select>
                                                 </td>
-                                                <td><input type="number" name="rc_amount_1" class="form-control form-control-sm" style="width:110px" min="0" step="0.01" t-att-value="values.get('rc_amount_1','')"/></td>
+                                                <td><input type="number" t-attf-name="rc_amount_{{ rc['nr'] }}" class="form-control form-control-sm" style="width:110px" min="0" step="0.01" t-att-value="rc['amount']" aria-label="Betrag in Euro"/></td>
                                                 <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeReceiptRow(this)" aria-label="Belegzeile entfernen"><i class="fa fa-trash" title="Belegzeile entfernen"/></button></td>
                                             </tr>
+                                            </t>
                                         </tbody>
                                     </table>
                                 </div>
                                 <p class="text-muted small mb-0">
-                                    Die Position bestimmt die Art (Einnahme/Ausgabe). Sie wird bei der
-                                    Auswahl automatisch gesetzt.
+                                    Je Beleg genügt die Art (Einnahme oder Ausgabe). Die Position
+                                    ist freiwillig; wählen Sie eine, wird die Art passend gesetzt.
                                 </p>
+                                <!-- B33: Abgleich der Belegsummen mit Punkt 6, live über
+                                     kjr_apply_totals.js. Nur Hinweis, kein Absendehindernis;
+                                     die Sachbearbeitung sieht denselben Abgleich im Backend.
+                                     Die sichtbaren Boxen sind bewusst keine Live-Regionen:
+                                     vorgelesen wird über data-kjr-receipt-check-live unten. -->
+                                <div class="alert alert-warning small mt-3 mb-0 d-none"
+                                     data-kjr-receipt-check="mismatch">
+                                    <strong>Belegliste und Kostenaufstellung weichen ab.</strong>
+                                    <span data-kjr-receipt-check-text=""/>
+                                    Bitte prüfen Sie die Beträge unter „6. Kostenaufstellung“
+                                    und in der Belegliste.
+                                </div>
+                                <div class="alert alert-success small mt-3 mb-0 d-none"
+                                     data-kjr-receipt-check="match">
+                                    Die Summen der Belegliste stimmen mit der Kostenaufstellung überein.
+                                </div>
                             </div>
+                            <!-- Barrierefreiheit B33: dauerhaft vorhandene, leere Live-Region
+                                 außerhalb aller d-none-Container (aus display:none
+                                 eingeblendete Live-Regionen werden oft nicht vorgelesen).
+                                 kjr_apply_totals.js schreibt hier nur bei einem Wechsel des
+                                 Abgleichs (übereinstimmend/abweichend/inaktiv), entprellt und
+                                 als kurze Zusammenfassung, nicht bei jedem Tastendruck. -->
+                            <div class="visually-hidden" role="status" aria-live="polite"
+                                 aria-atomic="true" data-kjr-receipt-check-live=""/>
                             <script type="text/javascript">
-                                var RC_INCOME_CATEGORIES = ['tn_fees', 'municipality', 'association', 'bjr', 'income_other'];
+                                // Einnahme-Positionen vom Server (data-kjr-income-categories),
+                                // die Liste unten nur als Rückfall, falls das Attribut fehlt.
+                                var RC_INCOME_CATEGORIES = (function () {
+                                    var wrapper = document.getElementById('rc_wrapper');
+                                    var raw = wrapper ? (wrapper.getAttribute('data-kjr-income-categories') || '') : '';
+                                    var list = raw.split(' ').filter(function (v) { return v; });
+                                    return list.length ? list : ['tn_fees', 'municipality', 'association', 'bjr', 'income_other'];
+                                })();
                                 var RC_CATEGORY_OPTIONS =
-                                    '&lt;option value=""&gt;-&lt;/option&gt;' +
+                                    '&lt;option value=""&gt;- keine Angabe -&lt;/option&gt;' +
                                     '&lt;option value="tn_fees"&gt;Einnahme: Teilnehmerbeiträge&lt;/option&gt;' +
                                     '&lt;option value="municipality"&gt;Einnahme: Zuschuss Gemeinde&lt;/option&gt;' +
                                     '&lt;option value="association"&gt;Einnahme: Zuschuss Verband&lt;/option&gt;' +
@@ -2241,18 +2370,18 @@
                                     row.className = 'rc-row';
                                     row.innerHTML =
                                         '&lt;td class="rc-nr"&gt;' + nr + '&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;input type="date" name="rc_date_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;input type="text" name="rc_no_' + nr + '" class="form-control form-control-sm" style="width:90px"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;input type="text" name="rc_partner_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;input type="text" name="rc_desc_' + nr + '" class="form-control form-control-sm"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;select name="rc_direction_' + nr + '" class="form-select form-select-sm"&gt;' +
+                                        '&lt;td&gt;&lt;input type="date" name="rc_date_' + nr + '" class="form-control form-control-sm" aria-label="Datum"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="rc_no_' + nr + '" class="form-control form-control-sm" style="width:90px" aria-label="Beleg-Nr."/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="rc_partner_' + nr + '" class="form-control form-control-sm" aria-label="Empfänger / Einzahler"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="rc_desc_' + nr + '" class="form-control form-control-sm" aria-label="Bezeichnung"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;select name="rc_direction_' + nr + '" class="form-select form-select-sm" onchange="syncReceiptCategory(this)" aria-label="Art"&gt;' +
                                         '&lt;option value="expense"&gt;Ausgabe&lt;/option&gt;' +
                                         '&lt;option value="income"&gt;Einnahme&lt;/option&gt;' +
                                         '&lt;/select&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;select name="rc_category_' + nr + '" class="form-select form-select-sm" onchange="syncReceiptDirection(this)"&gt;' +
+                                        '&lt;td&gt;&lt;select name="rc_category_' + nr + '" class="form-select form-select-sm" onchange="syncReceiptDirection(this)" aria-label="Position (optional)"&gt;' +
                                         RC_CATEGORY_OPTIONS +
                                         '&lt;/select&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;input type="number" name="rc_amount_' + nr + '" class="form-control form-control-sm" style="width:110px" min="0" step="0.01"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="number" name="rc_amount_' + nr + '" class="form-control form-control-sm" style="width:110px" min="0" step="0.01" aria-label="Betrag in Euro"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;button type="button" class="btn btn-sm btn-outline-danger" aria-label="Belegzeile entfernen" onclick="removeReceiptRow(this)"&gt;&lt;i class="fa fa-trash" title="Belegzeile entfernen"&gt;&lt;/i&gt;&lt;/button&gt;&lt;/td&gt;';
                                     tbody.appendChild(row);
                                 }
@@ -2281,6 +2410,20 @@
                                         dir.value = 'income';
                                     } else {
                                         dir.value = 'expense';
+                                    }
+                                }
+                                // Gegenrichtung (B33): Wird die Art geändert und passt die gewählte
+                                // Position nicht mehr dazu, wird die Position geleert. Sonst leitet
+                                // der Server die Art aus der Position ab und speichert die Zeile
+                                // anders, als Art und Live-Abgleich sie anzeigen.
+                                function syncReceiptCategory(sel) {
+                                    var row = sel.closest('tr');
+                                    if (!row) { return; }
+                                    var cat = row.querySelector('select[name^="rc_category_"]');
+                                    if (!cat || !cat.value) { return; }
+                                    var catIsIncome = RC_INCOME_CATEGORIES.indexOf(cat.value) !== -1;
+                                    if (catIsIncome !== (sel.value === 'income')) {
+                                        cat.value = '';
                                     }
                                 }
                                 // Verlangt die gewählte Förderart überhaupt eine Belegliste?
@@ -2477,19 +2620,28 @@
                                name="confirm_guidelines" id="confirm_guidelines" required="required"
                                t-att-checked="values.get('confirm_guidelines') and 'checked' or None"/>
                         <label class="form-check-label" for="confirm_guidelines">
-                            Ich habe die Zuschussrichtlinien gelesen und erkenne sie an. *
+                            Ich habe die
+                            <a t-att-href="apply_settings['guidelines_url']" target="_blank" rel="noopener">Zuschussrichtlinien</a>
+                            gelesen und erkenne sie an. *
                         </label>
                     </div>
 
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" value="1"
                                name="confirm_truthful" id="confirm_truthful" required="required"
+                               t-att-aria-describedby="apply_settings['funding_notice'] and 'confirm_truthful_funding' or None"
                                t-att-checked="values.get('confirm_truthful') and 'checked' or None"/>
                         <label class="form-check-label" for="confirm_truthful">
                             Ich versichere, dass alle Angaben vollständig sind und der Wahrheit
                             entsprechen. Mir ist bewusst, dass eventuell zu viel erhaltene Beträge
                             unaufgefordert sofort mitzuteilen und zurückzuzahlen sind. *
                         </label>
+                        <!-- B40: Herkunft der Fördermittel. Text aus den Einstellungen
+                             (models/res_config_settings_apply.py), abschaltbar. -->
+                        <div class="form-text" id="confirm_truthful_funding"
+                             t-if="apply_settings['funding_notice']">
+                            <t t-out="apply_settings['funding_notice']"/>
+                        </div>
                     </div>
 
                     <!-- Die frühere Checkbox "Einwilligung der Erziehungsberechtigten liegt vor"
@@ -2568,8 +2720,40 @@
                 <p class="text-muted mb-4">
                     Schritt-für-Schritt-Anleitung zum Zuschussantrag bei
                     <t t-out="res_company.name"/>. Maßgeblich sind in jedem Fall die
-                    Zuschussrichtlinien von <t t-out="res_company.name"/>.
+                    <a href="#zuschussrichtlinien">Zuschussrichtlinien</a> von <t t-out="res_company.name"/>.
                 </p>
+
+                <!-- B43: Ziel des Links „Zuschussrichtlinien" in Checkbox 2 des
+                     Antragsformulars, solange keine eigene Adresse gepflegt ist
+                     (DEFAULT_GUIDELINES_URL in models/res_config_settings_apply.py).
+                     Mit gepflegter Adresse steht hier der Link auf das Dokument. -->
+                <div class="card border-primary mb-4" id="zuschussrichtlinien">
+                    <div class="card-body">
+                        <h2 class="h5">Zuschussrichtlinien</h2>
+                        <t t-if="apply_settings and apply_settings['guidelines_document_url']">
+                            <p>
+                                Grundlage jedes Antrags sind die Zuschussrichtlinien von
+                                <t t-out="res_company.name"/>. Bitte lesen Sie sie vor dem
+                                Antrag; am Ende des Formulars bestätigen Sie, dass Sie sie
+                                gelesen haben.
+                            </p>
+                            <a t-att-href="apply_settings['guidelines_document_url']"
+                               class="btn btn-primary" target="_blank" rel="noopener">
+                                <i class="fa fa-file-text-o me-1" title="Dokument" aria-hidden="true"/>Zuschussrichtlinien öffnen
+                            </a>
+                        </t>
+                        <t t-else="">
+                            <p class="mb-0">
+                                Grundlage jedes Antrags sind die Zuschussrichtlinien von
+                                <t t-out="res_company.name"/>. Die aktuelle Fassung sendet Ihnen
+                                die Geschäftsstelle gerne zu<t t-if="res_company.phone or res_company.email">:</t><t t-else="">.</t>
+                                <t t-if="res_company.phone">Tel. <t t-out="res_company.phone"/></t>
+                                <t t-if="res_company.phone and res_company.email"> · </t>
+                                <a t-if="res_company.email" t-attf-href="mailto:{{ res_company.email }}"><t t-out="res_company.email"/></a>
+                            </p>
+                        </t>
+                    </div>
+                </div>
 
                 <div class="d-flex flex-wrap gap-2 mb-4">
                     <a href="/service/antrag-stellen" class="btn btn-primary">
@@ -2577,7 +2761,11 @@
                     </a>
                     <a href="/service/zuschuss/belegliste-vorlage" class="btn btn-outline-secondary"
                        target="_blank">
-                        <i class="fa fa-print me-1"/>Belegliste zum Ausdrucken
+                        <i class="fa fa-print me-1"/>Kostenaufstellung und Belegliste zum Ausdrucken
+                    </a>
+                    <a href="/service/zuschuss/vorlage-kostenaufstellung-belegliste.xlsx"
+                       class="btn btn-outline-secondary">
+                        <i class="fa fa-download me-1"/>Als Excel-Datei
                     </a>
                 </div>
 
@@ -2809,10 +2997,12 @@
                             <li>
                                 <strong>Belegliste:</strong> entweder digital im Formular
                                 (Block 7) oder als Datei. Beides zusammen ist nicht nötig.
-                                Eine
-                                <a href="/service/zuschuss/belegliste-vorlage" target="_blank">Vorlage
-                                zum Ausdrucken</a>
-                                steht bereit. Die Originalbelege bleiben bei Ihnen und sind
+                                Eine Vorlage für Kostenaufstellung und Belegliste steht
+                                <a href="/service/zuschuss/vorlage-kostenaufstellung-belegliste.xlsx">als
+                                Excel-Datei</a> und
+                                <a href="/service/zuschuss/belegliste-vorlage" target="_blank">zum
+                                Ausdrucken</a>
+                                bereit. Die Originalbelege bleiben bei Ihnen und sind
                                 5 Jahre aufzubewahren. Bei Förderarten ohne Belegliste-Pflicht
                                 (siehe Tabelle oben) entfällt beides.
                             </li>
@@ -2968,8 +3158,9 @@
                             <div class="list-group-item">
                                 <strong>Kosten ohne Einnahmen.</strong>
                                 Teilnehmerbeiträge und Zuschüsse Dritter (Gemeinde, Verband,
-                                BJR) gehören in die Kostenaufstellung. Der Zuschuss bemisst
-                                sich am verbleibenden Fehlbetrag.
+                                BJR) gehören in die Kostenaufstellung. Der Zuschuss ist in
+                                der Regel höchstens so hoch wie der verbleibende Fehlbetrag
+                                (Ausnahmen siehe <a href="#zuschussrichtlinien">Zuschussrichtlinien</a>).
                             </div>
                         </div>
                     </div>
@@ -2984,11 +3175,13 @@
         </t>
     </template>
 
-    <!-- ── Website: Belegliste-Vorlage zum Ausdrucken ──────────────────── -->
-    <!-- Blankoformular nach ANBest-P mit denselben Spalten wie die digitale
-         Belegliste im Antragsformular (Block 7). Bewusst kein QWeb-Report:
-         ein Report bräuchte einen Antragsdatensatz, hier soll ohne Antrag
-         gedruckt werden können. -->
+    <!-- ── Website: Vorlage Kostenaufstellung und Belegliste zum Ausdrucken ── -->
+    <!-- Blankoformular nach ANBest-P: Seite 1 Kostenaufstellung mit denselben
+         Zeilen wie Punkt 6 des Antragsformulars (seit 19.0.17.0.0, B31), danach
+         die Belegliste mit denselben Spalten wie Block 7. Bewusst kein
+         QWeb-Report: ein Report bräuchte einen Antragsdatensatz, hier soll ohne
+         Antrag gedruckt werden können. Dieselbe Vorlage gibt es als Excel-Datei
+         (/service/zuschuss/vorlage-kostenaufstellung-belegliste.xlsx). -->
     <template id="website_kjr_belegliste_vorlage" name="KJR Belegliste Vorlage">
         <t t-call="website.layout">
             <div id="wrap" class="container mt-4 mb-5 kjr-belegliste-vorlage">
@@ -3003,6 +3196,7 @@
                         .kjr-belegliste-vorlage { font-size: 10pt; }
                         .kjr-belegliste-vorlage table.kjr-bl { page-break-inside: auto; }
                         .kjr-belegliste-vorlage table.kjr-bl tr { page-break-inside: avoid; }
+                        .kjr-belegliste-vorlage .kjr-page-break { page-break-before: always; }
                         @page { size: A4 landscape; margin: 12mm; }
                     }
                 </style>
@@ -3012,25 +3206,99 @@
                         <ol class="breadcrumb">
                             <li class="breadcrumb-item"><a href="/">Start</a></li>
                             <li class="breadcrumb-item"><a href="/service/zuschuss-hilfe">Anleitung</a></li>
-                            <li class="breadcrumb-item active">Belegliste-Vorlage</li>
+                            <li class="breadcrumb-item active">Vorlage Kostenaufstellung und Belegliste</li>
                         </ol>
                     </nav>
                     <div class="alert alert-info d-flex flex-wrap justify-content-between align-items-center">
                         <div class="me-3">
-                            Leere Belegliste zum Ausdrucken. Ausgefüllt und unterschrieben
-                            können Sie sie als Scan zum Antrag hochladen, oder Sie erfassen
-                            die Belege direkt im
+                            Leere Kostenaufstellung und Belegliste zum Ausdrucken oder als
+                            Excel-Datei zum Ausfüllen am Rechner. Ausgefüllt (und
+                            unterschrieben) laden Sie sie im
                             <a href="/service/antrag-stellen">Antragsformular</a>
-                            (Block 7 „Belegliste").
+                            unter „8. Dokumente" hoch, oder Sie erfassen die Belege direkt
+                            im Formular (Block 7 „Belegliste").
                         </div>
-                        <button type="button" class="btn btn-primary mt-2 mt-md-0"
-                                onclick="window.print()">
-                            <i class="fa fa-print me-1"/>Drucken
-                        </button>
+                        <div class="d-flex flex-wrap gap-2 mt-2 mt-md-0">
+                            <a href="/service/zuschuss/vorlage-kostenaufstellung-belegliste.xlsx"
+                               class="btn btn-outline-primary">
+                                <i class="fa fa-file-excel-o me-1"/>Excel-Datei herunterladen
+                            </a>
+                            <button type="button" class="btn btn-primary"
+                                    onclick="window.print()">
+                                <i class="fa fa-print me-1"/>Drucken
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <h2 class="mb-1">Belegliste zum Zuschussantrag</h2>
+                <!-- Seite 1: Kostenaufstellung (Zeilen wie Punkt 6 des Antragsformulars) -->
+                <h2 class="mb-1">Kostenaufstellung zum Zuschussantrag</h2>
+                <p class="small text-muted">
+                    <t t-out="res_company.name"/>: Einnahmen und förderfähige Kosten der
+                    Maßnahme. Der Zuschuss ist in der Regel höchstens so hoch wie der
+                    Fehlbetrag (Ausnahmen siehe Zuschussrichtlinien).
+                </p>
+                <div class="row mb-3">
+                    <div class="col-md-6 mb-2">
+                        <div class="small text-muted">Antragsteller (Organisation)</div>
+                        <div class="kjr-fill"></div>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <div class="small text-muted">Bezeichnung der Maßnahme</div>
+                        <div class="kjr-fill"></div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-bordered table-sm kjr-bl">
+                            <thead class="table-light">
+                                <tr><th>Einnahmen</th><th style="width:30%;" class="text-end">Betrag (€)</th></tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="cost_income_lines" t-as="line">
+                                    <tr><td><t t-out="line[1]"/></td><td></td></tr>
+                                </t>
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-light">
+                                    <td class="fw-bold">Gesamteinnahmen</td><td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-bordered table-sm kjr-bl">
+                            <thead class="table-light">
+                                <tr><th>Förderfähige Kosten</th><th style="width:30%;" class="text-end">Betrag (€)</th></tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="cost_cost_lines" t-as="line">
+                                    <tr><td><t t-out="line[1]"/></td><td></td></tr>
+                                </t>
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-light">
+                                    <td class="fw-bold">Förderfähige Gesamtkosten</td><td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                <table class="table table-bordered table-sm kjr-bl mb-2">
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold">Fehlbetrag (förderfähige Gesamtkosten minus Gesamteinnahmen)</td>
+                            <td style="width:30%;"></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="small text-muted mb-4">
+                    Die Summen der Belegliste (Einnahmen und Ausgaben) müssen mit
+                    Gesamteinnahmen und förderfähigen Gesamtkosten übereinstimmen.
+                </p>
+
+                <!-- Seite 2: Belegliste -->
+                <h2 class="mb-1 kjr-page-break">Belegliste zum Zuschussantrag</h2>
                 <p class="small text-muted">
                     <t t-out="res_company.name"/>: Nachweis der Einnahmen und Ausgaben
                     nach ANBest-P. Die Originalbelege sind vom Antragsteller 5 Jahre
@@ -3072,7 +3340,7 @@
                                 <th style="width:20%;">Empfänger / Einzahler</th>
                                 <th style="width:22%;">Bezeichnung</th>
                                 <th style="width:11%;">Art (Einnahme/Ausgabe)</th>
-                                <th style="width:15%;">Position</th>
+                                <th style="width:15%;">Position (optional)</th>
                                 <th style="width:11%;" class="text-end">Betrag (€)</th>
                             </tr>
                         </thead>
@@ -3092,14 +3360,19 @@
                         </tbody>
                         <tfoot>
                             <tr class="table-light">
-                                <td colspan="7" class="text-end fw-bold">Summe</td>
+                                <td colspan="7" class="text-end fw-bold">Summe Einnahmen</td>
+                                <td></td>
+                            </tr>
+                            <tr class="table-light">
+                                <td colspan="7" class="text-end fw-bold">Summe Ausgaben</td>
                                 <td></td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
 
-                <!-- Positionen: identisch zur Auswahl im Antragsformular -->
+                <!-- Positionen: identisch zur Auswahl im Antragsformular; seit
+                     19.0.17.0.0 freiwillig (B34). -->
                 <div class="row small text-muted mb-4">
                     <div class="col-md-6">
                         <strong>Positionen Einnahmen:</strong>

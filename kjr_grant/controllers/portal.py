@@ -64,6 +64,11 @@ VERBAND_REQUIRED_FIELDS = ('street', 'zip', 'city', 'email')
 # Ansprechpersonen und Delegierte (Kontakte unterhalb des Verbands).
 CONTACT_WRITABLE_FIELDS = ('name', 'function', 'email', 'phone')
 CONTACT_REQUIRED_FIELDS = ('name',)
+# Delegierte zusätzlich (seit 19.0.17.0.0): ohne Telefonnummer sind sie vor der
+# Vollversammlung nicht erreichbar, die Beschlussfähigkeit lässt sich dann nicht
+# klären. Geprüft in _verband_save_contact, sobald das Häkchen „Delegierte/r“
+# gesetzt ist.
+DELEGATE_REQUIRED_FIELDS = ('phone',)
 
 # Hängt an einer Ansprechperson ein PORTALZUGANG, darf der Verband an ihr nur
 # noch diese Felder ändern. Grund ist keine Formalie, sondern eine echte
@@ -867,6 +872,18 @@ class KjrPortalController(CustomerPortal):
         self._validate_partner_vals(
             vals, CONTACT_REQUIRED_FIELDS, errors, key_prefix='contact_',
         )
+        # Pflichtangaben für Delegierte. Maßgeblich ist der Wert NACH dem
+        # Speichern: was nicht mitgeschickt wurde, bleibt (siehe
+        # _collect_partner_vals) — dann zählt der gespeicherte Stand. Nur bei
+        # Verbänden mit Vertretungsrecht, wie das Häkchen selbst.
+        if verband.kjr_vr_right and post.get('contact_is_delegate'):
+            for fname in DELEGATE_REQUIRED_FIELDS:
+                effective = vals[fname] if fname in vals else (contact[fname] if contact else '')
+                if not (effective or '').strip() and ('contact_' + fname) not in errors:
+                    errors['contact_' + fname] = (
+                        '%s ist für Delegierte Pflicht, damit die Geschäftsstelle sie vor der '
+                        'Vollversammlung erreichen kann.' % PARTNER_FIELD_LABELS.get(fname, fname)
+                    )
         if errors:
             return self._render_verband(verband, values, errors)
 

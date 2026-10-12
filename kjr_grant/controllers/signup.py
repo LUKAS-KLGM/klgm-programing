@@ -13,6 +13,11 @@ res.users.signup entfernt den Schlüssel noch einmal vor super().
 
 Der Spam-Schutz (kjr_website_antispam) nimmt die Registrierung ausdrücklich aus;
 das bleibt so.
+
+Seit 19.0.17.0.0 zusätzlich (Vereinsblock): Auswahl des Dachverbands aus den
+KJR-Mitgliedsverbänden (freiwillig), Ankreuzfeld „Ich bin Delegierte/r meines
+Verbands“ und Telefon (Pflicht bei Delegierten). In die Delegiertenliste kommt
+die Person erst mit der Genehmigung (models/kjr_affiliation_request.py).
 """
 import re
 
@@ -20,9 +25,12 @@ from odoo import _
 from odoo.exceptions import UserError
 from odoo.http import request
 from odoo.addons.auth_signup.controllers.main import AuthSignupHome
+from odoo.addons.kjr_grant.controllers.portal import PHONE_RE
+from odoo.addons.kjr_grant.models.kjr_affiliation_request import SIGNUP_PARENT_DOMAIN
 from odoo.addons.kjr_grant.models.res_users import AFFILIATION_KEY
 
-KJR_SIGNUP_PARAMS = ('kjr_signup_type', 'kjr_club_name', 'kjr_club_function', 'kjr_club_place')
+KJR_SIGNUP_PARAMS = ('kjr_signup_type', 'kjr_club_name', 'kjr_club_function', 'kjr_club_place',
+                     'kjr_club_parent_id', 'kjr_club_delegate', 'kjr_club_phone')
 CLUB_NAME_MAX, CLUB_FUNCTION_MAX, CLUB_PLACE_MAX = 120, 80, 120
 CLUB_NAME_MIN = 2
 URL_RE = re.compile(r'(https?://|www\.)', re.I)
@@ -42,7 +50,15 @@ class KjrAuthSignupHome(AuthSignupHome):
             # Lösch-Cron (int, Rückfall 180, 0 = keine Löschung).
             qcontext['kjr_retention_days'] = request.env[
                 'kjr.affiliation.request'].sudo()._kjr_retention_days()
+            # Auswahlliste Dachverband: nur Name und ID (sudo, Public-User).
+            qcontext['kjr_parent_options'] = [
+                (p.id, p.name) for p in self._kjr_signup_parent_options()]
         return qcontext
+
+    @staticmethod
+    def _kjr_signup_parent_options():
+        """Wählbare Dachverbände: aktive KJR-Mitgliedsverbände, nach Name."""
+        return request.env['res.partner'].sudo().search(SIGNUP_PARENT_DOMAIN, order='name')
 
     def _prepare_signup_values(self, qcontext):
         values = super()._prepare_signup_values(qcontext)
@@ -69,5 +85,26 @@ class KjrAuthSignupHome(AuthSignupHome):
             raise UserError(_('Eine Angabe zum Verein ist zu lang.'))
         if any(URL_RE.search(v) for v in (name, function, place)):
             raise UserError(_('Bitte keine Internetadressen in den Angaben zum Verein.'))
-        values[AFFILIATION_KEY] = {'name': name, 'function': function, 'place': place}
+        parent_id = 0
+        raw_parent = (qcontext.get('kjr_club_parent_id') or '').strip()
+        if raw_parent:
+            try:
+                parent_id = int(raw_parent)
+            except ValueError:
+                parent_id = -1
+            if parent_id not in self._kjr_signup_parent_options().ids:
+                raise UserError(_('Bitte wählen Sie Ihren Dachverband aus der Liste oder lassen '
+                                  'Sie das Feld leer.'))
+        delegate = bool(qcontext.get('kjr_club_delegate'))
+        phone = ' '.join((qcontext.get('kjr_club_phone') or '').split())
+        if delegate and not phone:
+            raise UserError(_('Als Delegierte/r geben Sie bitte eine Telefonnummer an, damit die '
+                              'Geschäftsstelle Sie vor der Vollversammlung erreichen kann.'))
+        if phone and not PHONE_RE.match(phone):
+            raise UserError(_('Telefon bitte nur mit Ziffern und den Zeichen + ( ) / - angeben '
+                              '(z. B. 08321 1234-0).'))
+        values[AFFILIATION_KEY] = {
+            'name': name, 'function': function, 'place': place,
+            'parent_id': parent_id or False, 'delegate': delegate, 'phone': phone,
+        }
         return values
