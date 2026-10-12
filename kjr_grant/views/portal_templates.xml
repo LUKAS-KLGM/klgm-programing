@@ -51,6 +51,36 @@
         </xpath>
     </template>
 
+    <!-- ── Portal Home: Hinweis zur Vereinszugehörigkeit ───────────────
+         Steht über den Kacheln, solange eine Vereinsregistrierung geprüft wird
+         oder abgelehnt wurde und die Person (noch) keinem Mitgliedsverband
+         zugeordnet ist. kjr_affiliation liefert
+         KjrPortalController._prepare_portal_layout_values (nur Text und
+         Ja/Nein aus res.partner._kjr_affiliation_portal_info); fehlt der
+         Schlüssel (interne Benutzer), bleibt der Block leer. -->
+    <template id="portal_my_home_kjr_affiliation" name="KJR Vereinszugehörigkeit (Hinweis)"
+              inherit_id="portal.portal_my_home" priority="33">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="before">
+            <t t-set="kjr_aff" t-value="kjr_affiliation or {}"/>
+            <t t-if="not kjr_aff.get('is_member') and kjr_aff.get('state') == 'requested'">
+                <div class="alert alert-info" role="status">
+                    <h5 class="alert-heading h6">Vereinszugehörigkeit wird geprüft</h5>
+                    <p class="mb-0">Sie haben sich für „<t t-out="kjr_aff.get('requested_name')"/>“
+                        registriert. Die Geschäftsstelle prüft die Zuordnung. Bis dahin stehen
+                        Zuschussanträge und Verbandsdaten noch nicht zur Verfügung. Sie erhalten
+                        eine E-Mail, sobald die Prüfung abgeschlossen ist.</p>
+                </div>
+            </t>
+            <t t-elif="not kjr_aff.get('is_member') and kjr_aff.get('state') == 'rejected'">
+                <div class="alert alert-warning" role="status">
+                    <h5 class="alert-heading h6">Vereinszugehörigkeit nicht bestätigt</h5>
+                    <p t-if="kjr_aff.get('rejection_reason')">Begründung: <t t-out="kjr_aff.get('rejection_reason')"/></p>
+                    <p class="mb-0">Bei Fragen wenden Sie sich bitte an die Geschäftsstelle.</p>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
     <!-- ── Portal: Antrags-Liste ──────────────────────────────────────── -->
     <template id="portal_my_kjr_grants" name="Meine KJR-Zuschussanträge">
         <t t-call="portal.portal_layout">
@@ -179,6 +209,7 @@
                         'global' für formularübergreifende Meldungen.
            success      optionaler Bestätigungstext nach dem Speichern.
            warning      optionaler Hinweistext (Rückfrage, kein Fehler).
+           affiliation  dict (state, requested_name, target_name, rejection_reason, is_member); nur auf der Hinweisseite gefüllt, sonst {}.
 
          VIER FORMULARE, alle POST auf /my/verband, unterschieden durch das
          versteckte Feld action — genau diese vier Namen, keine Synonyme:
@@ -216,7 +247,20 @@
             <t t-set="posted_action" t-value="values.get('action') or ''"/>
 
             <t t-if="not verband">
-                <div class="alert alert-info mt-3" role="alert">
+                <t t-set="affiliation" t-value="affiliation or {}"/>
+                <div t-if="affiliation.get('state') == 'requested'" class="alert alert-info mt-3" role="status">
+                    <h5 class="alert-heading h6">Vereinszugehörigkeit wird geprüft</h5>
+                    <p class="mb-0">Sie haben sich für „<t t-out="affiliation.get('requested_name')"/>“
+                        registriert. Die Geschäftsstelle prüft die Zuordnung. Bis dahin stehen
+                        Zuschussanträge und Verbandsdaten noch nicht zur Verfügung. Sie erhalten
+                        eine E-Mail, sobald die Prüfung abgeschlossen ist.</p>
+                </div>
+                <div t-elif="affiliation.get('state') == 'rejected'" class="alert alert-warning mt-3" role="status">
+                    <h5 class="alert-heading h6">Vereinszugehörigkeit nicht bestätigt</h5>
+                    <p t-if="affiliation.get('rejection_reason')">Begründung: <t t-out="affiliation.get('rejection_reason')"/></p>
+                    <p class="mb-0">Bei Fragen wenden Sie sich bitte an die Geschäftsstelle.</p>
+                </div>
+                <div t-else="" class="alert alert-info mt-3" role="alert">
                     <h5 class="alert-heading h6">Kein Verband hinterlegt</h5>
                     <p class="mb-0">
                         Ihr Zugang ist derzeit keinem KJR-Mitgliedsverband zugeordnet.
@@ -1532,8 +1576,9 @@
                                 <i class="fa fa-user-plus text-success" style="font-size:3rem;" title="Registrieren" aria-hidden="true"/>
                                 <h3 class="mt-3 mb-3">Registrieren</h3>
                                 <p class="text-muted">
-                                    Erstmalig hier? Erstellen Sie ein Konto.
-                                    Mehrere Personen pro Verband können sich registrieren.
+                                    Erstmalig hier? Erstellen Sie ein Konto und geben Sie an,
+                                    ob Sie sich als Privatperson oder für einen Verein bzw.
+                                    Verband registrieren.
                                 </p>
                                 <a href="/web/signup?redirect=/service/antrag-stellen"
                                    class="btn btn-success btn-lg w-100">
@@ -1547,8 +1592,9 @@
                     <div class="col-lg-8">
                         <div class="alert alert-info text-center">
                             <strong>Hinweis:</strong> Mehrere Kontaktpersonen eines Verbandes können sich
-                            jeweils eigene Zugangsdaten erstellen. Die Anträge werden dem gewählten
-                            Mitgliedsverband zugeordnet.
+                            jeweils eigene Zugangsdaten erstellen. Die Zuordnung zum Verband bestätigt
+                            die Geschäftsstelle; erst danach können Anträge für den Verband gestellt
+                            werden.
                         </div>
                         <div class="text-center mb-3">
                             <a href="/service/zuschuss-hilfe" class="btn btn-outline-primary">
@@ -1562,6 +1608,58 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ── Website: Hinweisseite statt Antragsformular ───────────────────
+         /service/antrag-stellen ohne zugeordneten Mitgliedsverband
+         (controllers/website.py, kjr_apply). Kontext: page_name,
+         kjr_affiliation (dict aus res.partner._kjr_affiliation_portal_info),
+         office (dict name, phone, email der Geschäftsstelle). -->
+    <template id="website_kjr_apply_no_member" name="KJR Zuschussantrag: Hinweis ohne Verband">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-4 mb-5 kjr-apply-form">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Start</a></li>
+                        <li class="breadcrumb-item active">Zuschussantrag stellen</li>
+                    </ol>
+                </nav>
+                <h1 class="mb-3">Zuschussantrag stellen</h1>
+                <t t-set="kjr_aff" t-value="kjr_affiliation or {}"/>
+                <t t-set="office" t-value="office or {}"/>
+                <div t-if="kjr_aff.get('state') == 'requested'" class="alert alert-info" role="status">
+                    Ihre Zugehörigkeit zu „<t t-out="kjr_aff.get('requested_name')"/>“ wird geprüft.
+                    Sobald die Geschäftsstelle sie bestätigt hat, können Sie hier Anträge für Ihren
+                    Verband stellen. Sie erhalten dann eine E-Mail.
+                </div>
+                <div t-elif="kjr_aff.get('state') == 'rejected'" class="alert alert-warning" role="status">
+                    <p class="mb-0">Ihre Vereinszugehörigkeit wurde nicht bestätigt.</p>
+                    <p t-if="kjr_aff.get('rejection_reason')" class="mb-0 mt-2">Begründung: <t t-out="kjr_aff.get('rejection_reason')"/></p>
+                </div>
+                <div t-else="" class="alert alert-info" role="status">
+                    Ihr Zugang ist keinem KJR-Mitgliedsverband zugeordnet. Zuschussanträge stellen
+                    Mitgliedsverbände. Wenn Sie für einen Mitgliedsverband tätig sind, wenden Sie sich
+                    bitte an die Geschäftsstelle.
+                </div>
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h2 class="h6">Kontakt zur Geschäftsstelle</h2>
+                        <p class="mb-1"><t t-out="office.get('name') or ''"/></p>
+                        <p class="mb-1">Telefon:
+                            <t t-if="office.get('phone')"><t t-out="office.get('phone')"/></t>
+                            <span t-else="" class="badge text-bg-warning">Kontaktdaten folgen</span>
+                        </p>
+                        <p class="mb-0">E-Mail:
+                            <t t-if="office.get('email')"><a t-attf-href="mailto:{{ office.get('email') }}"><t t-out="office.get('email')"/></a></t>
+                            <span t-else="" class="badge text-bg-warning">Kontaktdaten folgen</span>
+                        </p>
+                    </div>
+                </div>
+                <a href="/service/zuschuss-hilfe" class="btn btn-outline-primary">
+                    <i class="fa fa-question-circle me-1" title="Hilfe" aria-hidden="true"/>Wie stelle ich einen Zuschussantrag?
+                </a>
             </div>
         </t>
     </template>
@@ -2518,14 +2616,17 @@
                             </li>
                             <li>
                                 <strong>Mehrere Personen pro Verband</strong> können sich eigene
-                                Zugangsdaten anlegen. Jede/r sieht die Anträge des eigenen
-                                Verbandes.
+                                Zugangsdaten anlegen. Wählen Sie bei der Registrierung „für einen
+                                Verein / Verband“. Nach der Bestätigung durch die Geschäftsstelle
+                                sieht jede/r die Anträge des eigenen Verbandes.
                             </li>
                             <li>
                                 Im Antragsformular wählen Sie unter „2. Antragsteller/in" die
                                 Organisation aus. Erscheint Ihr Verband dort nicht, ist er
                                 noch nicht als Mitgliedsverband hinterlegt. Bitte bei der
-                                Geschäftsstelle melden.
+                                Geschäftsstelle melden. Steht dort der Hinweis, dass Ihre
+                                Zugehörigkeit geprüft wird, hat die Geschäftsstelle Ihre
+                                Registrierung noch nicht bestätigt.
                             </li>
                         </ul>
                         <p class="mb-0">

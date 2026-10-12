@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR App',
-    'version': '19.0.15.7.0',
+    'version': '19.0.16.0.0',
     'category': 'Custom/KJR',
     'summary': 'Zuschussverwaltung, Juleica, Vollversammlung, Fördermittel-Akquise und Verwendungsnachweis für Kreisjugendringe (Odoo 19)',
     'author': 'KLGM UG (haftungsbeschränkt)',
@@ -13,7 +13,9 @@
     # 'sign' (Enterprise) ist optional: fehlt es im Build, wird das Modul sonst
     # übersprungen ("Unmet dependencies"). Die digitale Unterschrift degradiert
     # sauber (PDF wird angehängt), siehe action_send_signature.
-    'depends': ['base', 'mail', 'portal', 'website', 'account'],
+    # 'auth_signup' ausdrücklich: controllers/signup.py und models/res_users.py
+    # importieren daraus, views/auth_signup_templates.xml erbt auth_signup.signup.
+    'depends': ['base', 'mail', 'portal', 'auth_signup', 'website', 'account'],
     'data': [
         'security/kjr_grant_security.xml',
         'security/ir.model.access.csv',
@@ -27,6 +29,7 @@
         'data/auth_signup_data.xml',
         'data/website_menu_data.xml',
         'data/mail_template_data.xml',
+        'data/kjr_affiliation_mail_template_data.xml',
         'data/ir_cron_data.xml',
         'views/kjr_grant_type_views.xml',
         'views/kjr_grant_application_views.xml',
@@ -36,11 +39,13 @@
         'views/kjr_juleica_views.xml',
         'views/kjr_assembly_views.xml',
         'views/kjr_funding_views.xml',
+        'views/kjr_affiliation_request_views.xml',
         'views/res_partner_views.xml',
         'views/kjr_volunteer_log_views.xml',
         'views/res_config_settings_views.xml',
         'views/menu.xml',
         'views/portal_templates.xml',
+        'views/auth_signup_templates.xml',
         'report/kjr_report_actions.xml',
         'report/kjr_bescheid_template.xml',
         'report/kjr_jahresbericht_template.xml',
@@ -53,6 +58,7 @@
     'assets': {
         'web.assets_frontend': [
             'kjr_grant/static/src/css/portal.css',
+            'kjr_grant/static/src/interactions/kjr_signup_club.js',
         ],
     },
     # Kein 'images'-Eintrag: der Schlüssel benennt die Screenshots bzw. das

@@ -1,5 +1,91 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.16.0.0 (2026-10-12)
+
+### Neu
+- Registrierung unterscheidet „als Privatperson“ und „für einen Verein / Verband“
+  (Vereinsname Pflicht, mindestens 2 Zeichen, damit Abkürzungen wie „SV“ gehen; leeres
+  und zu kurzes Feld haben getrennte Meldungen; Funktion und Ort freiwillig). Privatkonten sind wie bisher sofort
+  nutzbar. Vereinskonten sind nutzbar, werden aber erst nach Genehmigung durch die
+  Geschäftsstelle dem Verband zugeordnet (`parent_id`); bis dahin keine Antrags-,
+  Verbands- oder Mitgliedspreisrechte (alle Rechte hängen unverändert am commercial
+  partner: `is_kjr_member` bzw. Mitgliedsverbände im Teilbaum `child_of`).
+- Neues Modell `kjr.affiliation.request` (Menü Verbände ▸ Vereinsregistrierungen):
+  Genehmigen mit Auswahl oder Neuanlage der Organisation, Ablehnen mit optionalem
+  Grund, Aktivität für die Geschäftsstelle, zwei Mailvorlagen (Firmenname aus der Firma).
+  Status, Zuordnung und Ablehnungsgrund sind gegen direktes Schreiben gesperrt; entschieden
+  wird nur über die beiden Assistenten. Vereinsangaben (Name, Funktion, Ort) und Firma
+  (Absender und Firmenname der Mails) sind nur bis zur Entscheidung änderbar, danach
+  Nachweis (auch per RPC und Import). Die Liste der Vereinsregistrierungen am Kontakt
+  (`kjr_affiliation_request_ids`) ist wie das Modell nur für Sachbearbeiter und Leitung
+  sichtbar (auch in `fields_get` und im Export). Beim Genehmigen schützt eine Adresswache davor, dass Odoo die
+  Privatanschrift der Person in eine Organisation ohne vollständige Anschrift schreibt,
+  und die USt-IdNr. der Person wandert nicht zum Verband. Eine Rechtewache verhindert,
+  dass Sachbearbeiter ohne Kontaktrecht darüber Kontakte interner Benutzer zuordnen
+  oder Kontakte aus einer anderen Organisation umhängen.
+- Statushinweis im Portal (Mein Konto, Mein Verband, Zuschussantrag) statt leerer Formulare.
+- Datenschutzhinweis (Art. 13) zu den Vereinsangaben im Registrierungsformular; abgelehnte
+  Registrierungen löscht der Cron „KJR: Abgelehnte Vereinsregistrierungen löschen“ nach
+  `kjr_grant.affiliation_rejected_retention_days` Tagen (Vorgabe 180, 0 = aus). Der
+  Hinweis nennt dieselbe Frist wie der Cron (gemeinsame Auslegung
+  `_kjr_retention_days`); bei 0 steht dort, dass abgelehnte Registrierungen bis zur
+  Löschung durch die Geschäftsstelle aufbewahrt werden. Der Hinweis nennt auch die
+  Folgen der Genehmigung: die angegebene Funktion wird in die Kontaktdaten übernommen
+  (wenn dort noch keine steht), Name, Funktion und Kontaktdaten erscheinen in „Mein
+  Verband“ für die anderen Zugänge des Verbands, und die Funktion bleibt beim Kontakt,
+  auch wenn der Nachweis gelöscht wird.
+
+### Behoben
+- **Signup-Token ergaben ein Verbandskonto ohne Freigabe.** Ist die freie Registrierung
+  an (website_sale, also jede Instanz mit kjr_event_shop, setzt `auth_signup_uninvited`
+  auf b2c), enthalten Benachrichtigungen an Mitgliedsverbände und deren Kontakte sowie
+  die Shop-Bestellbestätigung einen Registrierungslink. Darüber entstand ein Konto unter
+  dem Verband. Jetzt gesperrt in `res.users.signup`; die Portaleinladung der
+  Geschäftsstelle funktioniert unverändert. Archivierte Portalzugänge unter einem
+  Mitgliedsverband reaktiviert die Geschäftsstelle. Maßstab ist derselbe wie für die
+  Rechte (`res.partner._kjr_grants_member_rights`, Mitgliedsverband im Teilbaum des
+  commercial partners): gesperrt sind also auch Kontakte unter einem Dachverband ohne
+  eigene Mitgliedschaft, unter dem Mitgliedsorganisationen hängen. Zusätzlich lässt
+  `res.partner.signup_get_auth_param` den Registrierungslink in Mails an Kontakte unter
+  einem Mitgliedsverband weg (Kosmetik; der Zugriffslink bleibt).
+
+### Geändert
+- Texte auf Landing- und Hilfeseite der Zuschussstrecke.
+- `/service/antrag-stellen` zeigt ohne zugeordneten Mitgliedsverband eine Hinweisseite;
+  das gilt auch für interne Benutzer ohne Sachbearbeiterrolle und ohne Verband.
+- Datenauskunft (Art. 15) um Vereinsregistrierungen ergänzt (Angaben, Status,
+  zugeordnete Organisation, Ablehnungsgrund).
+- Kommentar in `data/auth_signup_data.xml` korrigiert (Schlüssel wird nicht gelesen).
+- `auth_signup` steht jetzt ausdrücklich in `depends` (war über `website` ohnehin geladen).
+
+### Hinweise
+- Migration 19.0.16.0.0 übernimmt aktive Portalkonten unter Mitgliedsverbänden als „genehmigt“
+  (Herkunft „Bestandsübernahme“); dieselbe Übernahme läuft im `post_init_hook`. Maßstab
+  ist derselbe wie für die Rechte (`_kjr_grants_member_rights`, `child_of`): auch Konten
+  unter einem Dachverband ohne eigene Mitgliedschaft, unter dem Mitgliedsorganisationen
+  hängen, werden übernommen (Zielorganisation: der Dachverband).
+- Freie Registrierung: mit kjr_event_shop (website_sale) bereits b2c; sonst in den
+  Website-Einstellungen einschalten, andernfalls liefert `/web/signup` 404.
+- Zuständige Person für neue Vereinsregistrierungen optional per Systemparameter
+  `kjr_grant.affiliation_responsible_user_id` (Benutzer-ID, nur wirksam für aktive interne
+  Sachbearbeiter); sonst die erste Person der Gruppe Sachbearbeiter, sonst bleibt die
+  Aktivität ohne Zuweisung (Warnung im Log).
+- Der Ordner `migrations/19.0.15.7.0` bleibt, wo er ist: Odoo führt ihn auch beim Sprung
+  auf 19.0.16.0.0 aus, solange die installierte Version kleiner als 19.0.15.7.0 ist
+  (`odoo/modules/migration.py`: installiert < Ordnerversion <= Manifestversion).
+- Neue Tests: `tests/test_affiliation.py` (TransactionCase) und
+  `tests/test_affiliation_signup_http.py` (erster HttpCase im Repo, Registrierungsformular).
+
+### Offen
+- Löschfrist abgelehnter Registrierungen bestätigen (Vorgabe 180 Tage).
+- TODO(DSGVO): Verarbeitungstätigkeit „Prüfung der Vereinszugehörigkeit“ ins Verzeichnis
+  aufnehmen (DOKUS/Datenschutzkonzept).
+- Nebenbefund: Über `/my/account` (Feld Firmenname) kann ein zugeordneter Verbandsnutzer
+  den Namen des Verbands ändern (Odoo-Standard). Jede Genehmigung vergrößert diesen Kreis.
+  Eigenes Ticket.
+- Eine Privatperson, die später einem Verein zugeordnet werden möchte, meldet sich bei der
+  Geschäftsstelle (Anlage der Registrierung im Backend); kein Portalformular.
+
 ## 19.0.15.7.0 (2026-10-11)
 
 ### Behoben

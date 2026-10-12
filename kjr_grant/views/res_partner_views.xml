@@ -25,6 +25,18 @@
                             <field name="kjr_grant_total_approved"  readonly="1"/>
                         </group>
                     </group>
+                    <group string="Vereinsregistrierung"
+                           invisible="is_company or not kjr_affiliation_request_ids"
+                           groups="kjr_grant.group_kjr_reviewer">
+                        <field name="kjr_affiliation_request_ids" readonly="1" nolabel="1" colspan="2">
+                            <list>
+                                <field name="date_requested"/>
+                                <field name="requested_name"/>
+                                <field name="state" widget="badge"/>
+                                <field name="target_partner_id"/>
+                            </list>
+                        </field>
+                    </group>
                     <group invisible="not is_kjr_member">
                         <group string="Vertretungsrecht (Vollversammlung)">
                             <field name="kjr_vr_right"/>

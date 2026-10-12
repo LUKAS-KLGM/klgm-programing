@@ -40,3 +40,9 @@ access_kjr_grant_payout_run_manager,kjr.grant.payout.run manager,model_kjr_grant
 access_kjr_grant_payout_run_reviewer,kjr.grant.payout.run reviewer,model_kjr_grant_payout_run,kjr_grant.group_kjr_reviewer,1,1,1,1
 access_kjr_assembly_candidate_manager,kjr.assembly.candidate manager,model_kjr_assembly_candidate,kjr_grant.group_kjr_manager,1,1,1,1
 access_kjr_assembly_candidate_reviewer,kjr.assembly.candidate reviewer (nur Lesen - ausgezaehlte Stimmen bleiben unveraendert),model_kjr_assembly_candidate,kjr_grant.group_kjr_reviewer,1,0,0,0
+access_kjr_affiliation_request_manager,kjr.affiliation.request manager,model_kjr_affiliation_request,kjr_grant.group_kjr_manager,1,1,1,1
+access_kjr_affiliation_request_reviewer,kjr.affiliation.request reviewer,model_kjr_affiliation_request,kjr_grant.group_kjr_reviewer,1,1,1,0
+access_kjr_affiliation_approve_wizard_manager,kjr.affiliation.approve.wizard manager,model_kjr_affiliation_approve_wizard,kjr_grant.group_kjr_manager,1,1,1,1
+access_kjr_affiliation_approve_wizard_reviewer,kjr.affiliation.approve.wizard reviewer,model_kjr_affiliation_approve_wizard,kjr_grant.group_kjr_reviewer,1,1,1,1
+access_kjr_affiliation_reject_wizard_manager,kjr.affiliation.reject.wizard manager,model_kjr_affiliation_reject_wizard,kjr_grant.group_kjr_manager,1,1,1,1
+access_kjr_affiliation_reject_wizard_reviewer,kjr.affiliation.reject.wizard reviewer,model_kjr_affiliation_reject_wizard,kjr_grant.group_kjr_reviewer,1,1,1,1

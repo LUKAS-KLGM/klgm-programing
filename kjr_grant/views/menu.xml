@@ -31,6 +31,9 @@
               parent="menu_kjr_root" sequence="20"/>
     <menuitem id="menu_kjr_member_partners" name="Mitgliedsverbände"
               parent="menu_kjr_members" action="action_kjr_member_partners" sequence="10"/>
+    <menuitem id="menu_kjr_affiliation_requests" name="Vereinsregistrierungen"
+              parent="menu_kjr_members" action="action_kjr_affiliation_request" sequence="20"
+              groups="kjr_grant.group_kjr_reviewer"/>
 
     <menuitem id="menu_kjr_juleica" name="Juleica"
               parent="menu_kjr_root" sequence="13"/>

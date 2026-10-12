@@ -28,6 +28,8 @@ Lauf. Es ist eine Voreinstellung, keine Zwangsjacke.
 """
 import logging
 
+from odoo import SUPERUSER_ID, fields
+
 _logger = logging.getLogger(__name__)
 
 # Module, deren Portal-Rubriken bleiben.
@@ -90,6 +92,57 @@ def cleanup_portal_home(env):
     return len(deactivated)
 
 
+def backfill_affiliation_requests(env):
+    """Aktive Portalkonten, die bereits unter einem Mitgliedsverband hängen, gelten
+    als genehmigt (Vereinsregistrierung, seit 19.0.16.0.0). Idempotent.
+
+    „Unter einem Mitgliedsverband“ heißt: derselbe Maßstab wie für die Rechte
+    (res.partner._kjr_grants_member_rights, Mitgliedsverband im Teilbaum des
+    commercial partners). Ein Dachverband ohne eigene Mitgliedschaft, unter dem
+    Mitgliedsorganisationen hängen, zählt also mit; Zielorganisation des Nachweises
+    ist immer der commercial partner.
+
+    Ausgelassen werden Zugänge direkt auf dem Verbandspartner (kein Antrag nötig),
+    nicht zugeordnete Konten, archivierte Konten (search mit active_test) und
+    Personen, für die schon eine Vereinsregistrierung besteht. Ins Protokoll kommt
+    nur der Zähler.
+    """
+    Request = env['kjr.affiliation.request'].sudo().with_context(
+        tracking_disable=True, mail_create_nolog=True,
+        mail_create_nosubscribe=True, mail_notrack=True)
+    users = env['res.users'].sudo().search([('share', '=', True)])
+    count = 0
+    for user in users:
+        partner = user.partner_id
+        commercial = partner.commercial_partner_id
+        # Gleicher Maßstab wie für die Rechte (child_of, schließt den Dachverband
+        # ohne eigene Mitgliedschaft mit Mitgliedsorganisationen darunter ein).
+        if not partner or commercial == partner or not partner._kjr_grants_member_rights():
+            continue
+        if Request.search_count([('partner_id', '=', partner.id)], limit=1):
+            continue
+        Request.create({
+            'partner_id': partner.id,
+            'user_id': user.id,
+            'company_id': user.company_id.id or env.company.id,
+            'requested_name': commercial.name,
+            'state': 'approved',
+            'origin': 'migration',
+            'target_partner_id': commercial.id,
+            'date_requested': user.create_date,
+            'date_decided': fields.Datetime.now(),
+            'decided_by_id': SUPERUSER_ID,
+        })
+        count += 1
+    return count
+
+
 def post_init_hook(env):
-    """Bei der Installation aufräumen."""
+    """Bei der Installation aufräumen und Bestandskonten übernehmen.
+
+    Die Übernahme läuft auch hier, weil is_kjr_member über kjr_rental und
+    kjr_facility schon vor der Installation von kjr_grant gefüllt sein kann.
+    """
     cleanup_portal_home(env)
+    count = backfill_affiliation_requests(env)
+    _logger.info('Vereinsregistrierung: %d Bestandskonto(en) als genehmigt übernommen.', count)

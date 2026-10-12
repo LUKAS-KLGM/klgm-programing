@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vereinsregistrierung: Mails an die Person bei Genehmigung und Ablehnung.
+         noupdate="1" wie alle Mailvorlagen dieses Moduls: im Backend gepflegte
+         Texte überleben ein Update. Neue xmlids legt Odoo auch im Update-Modus an
+         (odoo/tools/convert.py überspringt nur VORHANDENE Datensätze).
+         Firmenname, Absender und Kontaktdaten kommen ausschließlich aus
+         object.company_id (White-Label). Im Rumpf nur t-out, kein {{ }}. -->
+    <data noupdate="1">
+
+        <record id="mail_template_affiliation_approved" model="mail.template">
+            <field name="name">KJR: Vereinszugehörigkeit bestätigt</field>
+            <field name="model_id" ref="model_kjr_affiliation_request"/>
+            <field name="subject">Ihre Vereinszugehörigkeit wurde bestätigt</field>
+            <field name="email_from">{{ (object.company_id.email or '') }}</field>
+            <field name="partner_to">{{ object.partner_id.id }}</field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="body_html" type="html">
+<div style="margin:0;padding:0;">
+    <p>Guten Tag <t t-out="object.partner_id.name or ''"/>,</p>
+    <p>die Geschäftsstelle hat Ihre Zugehörigkeit zu <strong><t t-out="object.target_partner_id.name or ''"/></strong> bestätigt.</p>
+    <p t-if="object.target_partner_id.is_kjr_member">In Ihrem Konto können Sie ab sofort Zuschussanträge für Ihren Verband stellen und unter „Mein Verband“ die Verbandsdaten einsehen.</p>
+    <p><a t-att-href="object.get_base_url() + '/my'">Zu Ihrem Konto</a></p>
+    <p>Mit freundlichen Grüßen<br/><t t-out="object.company_id.name or ''"/></p>
+</div>
+            </field>
+        </record>
+
+        <record id="mail_template_affiliation_rejected" model="mail.template">
+            <field name="name">KJR: Vereinszugehörigkeit nicht bestätigt</field>
+            <field name="model_id" ref="model_kjr_affiliation_request"/>
+            <field name="subject">Ihre Registrierung für einen Verein</field>
+            <field name="email_from">{{ (object.company_id.email or '') }}</field>
+            <field name="partner_to">{{ object.partner_id.id }}</field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="body_html" type="html">
+<div style="margin:0;padding:0;">
+    <p>Guten Tag <t t-out="object.partner_id.name or ''"/>,</p>
+    <p>die Geschäftsstelle konnte Ihre Zugehörigkeit zu „<t t-out="object.requested_name or ''"/>“ nicht bestätigen.</p>
+    <p t-if="object.rejection_reason">Begründung: <t t-out="object.rejection_reason"/></p>
+    <p>Ihr Konto bleibt als persönliches Konto bestehen.
+        <t t-if="object.company_id.email or object.company_id.phone">Bei Fragen erreichen Sie uns unter <t t-if="object.company_id.email"><t t-out="object.company_id.email"/><t t-if="object.company_id.phone"> oder </t></t><t t-if="object.company_id.phone"><t t-out="object.company_id.phone"/></t>.</t>
+        <t t-else="">Bei Fragen wenden Sie sich bitte an die Geschäftsstelle.</t></p>
+    <p>Mit freundlichen Grüßen<br/><t t-out="object.company_id.name or ''"/></p>
+</div>
+            </field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Registrierung: Privatperson oder für einen Verein / Verband ────
+         Erweitert auth_signup.signup (NICHT auth_signup.fields, das nutzt auch
+         reset_password mit). Der Anker <t t-call="auth_signup.fields"/> ist in
+         auth_signup.signup eindeutig.
+
+         Nur ohne Token: Einladung und Passwort-Reset zeigen die Wahl nicht, der
+         Controller ignoriert sie dort (controllers/signup.py).
+
+         Kontext (qcontext, nur ohne Token gefüllt): kjr_signup_type,
+         kjr_club_name, kjr_club_function, kjr_club_place. Unbekannte Namen sind
+         in QWeb None. Bewusst keine Vorauswahl der Art.
+
+         Ohne JavaScript bleibt der Vereinsblock beim ersten Aufruf verborgen;
+         die Fehlerseite des Servers zeigt ihn wieder, sobald "club" gewählt war.
+         Die Interaction kjr_grant.signup_club blendet ihn beim Umschalten ein. -->
+    <template id="signup_kjr_affiliation" name="KJR: Registrierung als Privatperson oder für einen Verein"
+              inherit_id="auth_signup.signup">
+        <xpath expr="//t[@t-call='auth_signup.fields']" position="before">
+            <t t-if="not token">
+                <fieldset class="mb-3 o_kjr_signup_type">
+                    <legend class="form-label fs-6 mb-1">Ich registriere mich *</legend>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="kjr_signup_type"
+                               id="kjr_signup_private" value="private" required="required"
+                               t-att-checked="'checked' if kjr_signup_type == 'private' else None"/>
+                        <label class="form-check-label" for="kjr_signup_private">als Privatperson</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="kjr_signup_type"
+                               id="kjr_signup_club" value="club"
+                               t-att-checked="'checked' if kjr_signup_type == 'club' else None"/>
+                        <label class="form-check-label" for="kjr_signup_club">für einen Verein / Verband</label>
+                    </div>
+                    <div t-attf-class="o_kjr_club_fields mt-2 #{'' if kjr_signup_type == 'club' else 'd-none'}">
+                        <p class="small text-muted">Ihr Konto ist sofort nutzbar. Die Zuordnung zu
+                            Ihrem Verein bestätigt die Geschäftsstelle von <t t-out="res_company.name"/>.
+                            Bis dahin können Sie keine Zuschussanträge für den Verein stellen und keine
+                            Verbandsdaten pflegen. Sie erhalten eine E-Mail, sobald die Prüfung
+                            abgeschlossen ist.</p>
+                        <div class="mb-2">
+                            <label for="kjr_club_name" class="form-label">Name des Vereins / Verbands *</label>
+                            <input type="text" name="kjr_club_name" id="kjr_club_name"
+                                   class="form-control" maxlength="120"
+                                   t-att-value="kjr_club_name"
+                                   t-att-required="'required' if kjr_signup_type == 'club' else None"/>
+                        </div>
+                        <div class="mb-2">
+                            <label for="kjr_club_function" class="form-label">Ihre Funktion im Verein (freiwillig)</label>
+                            <input type="text" name="kjr_club_function" id="kjr_club_function"
+                                   class="form-control" maxlength="80"
+                                   placeholder="z. B. Vorsitz, Kassier, Jugendleitung"
+                                   t-att-value="kjr_club_function"/>
+                        </div>
+                        <div class="mb-2">
+                            <label for="kjr_club_place" class="form-label">Ort / Anschrift des Vereins (freiwillig)</label>
+                            <input type="text" name="kjr_club_place" id="kjr_club_place"
+                                   class="form-control" maxlength="120"
+                                   placeholder="z. B. Ort oder Anschrift"
+                                   t-att-value="kjr_club_place"/>
+                        </div>
+                        <t t-call="kjr_grant.signup_club_privacy_notice"/>
+                    </div>
+                </fieldset>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- ── Datenschutzhinweis (Art. 13 DSGVO) zu den Vereinsangaben ──────
+         Kurzfassung nach dem Muster kjr_grant.verband_privacy_notice. Die
+         Verantwortliche Stelle kommt aus dem Systemparameter
+         kjr.privacy.controller (Einstellungen, Abschnitt „KJR
+         Datenschutzangaben“); solange er leer ist, steht sichtbar der
+         Warnhinweis. Die Löschfrist abgelehnter Registrierungen kommt aus
+         kjr_grant.affiliation_rejected_retention_days (Cron
+         cron_kjr_affiliation_purge_rejected).
+         TODO(DSGVO): Verarbeitungstätigkeit „Prüfung der Vereinszugehörigkeit“
+         ins Verzeichnis aufnehmen (DOKUS/Datenschutzkonzept). -->
+    <template id="signup_club_privacy_notice" name="KJR Registrierung: Datenschutzhinweis Verein">
+        <section class="o_kjr_privacy_notice alert alert-light border mt-2 small"
+                 role="region" aria-labelledby="kjr_privacy_signup_heading">
+            <h2 class="alert-heading h6" id="kjr_privacy_signup_heading">Datenschutz: was mit diesen Angaben passiert</h2>
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Was wir speichern</dt>
+                <dd class="col-sm-8">Vereinsname, Funktion und Ort, wie angegeben.</dd>
+
+                <dt class="col-sm-4">Wofür</dt>
+                <!-- Zweckerweiterung bei Genehmigung: die Funktion wird in res.partner.function
+                     übernommen, wenn dort noch nichts steht
+                     (models/kjr_affiliation_request.py, Genehmigen), und erscheint dann in der
+                     Ansprechpersonenliste von „Mein Verband“ (views/portal_templates.xml). -->
+                <dd class="col-sm-8">Prüfung der Vereinszugehörigkeit. Nach der Bestätigung wird die
+                    angegebene Funktion in Ihre Kontaktdaten übernommen (sofern dort noch keine
+                    steht), damit Ihr Verband Sie als Ansprechperson führen kann.</dd>
+
+                <dt class="col-sm-4">Wer es sieht</dt>
+                <dd class="col-sm-8">Die Geschäftsstelle von <t t-out="res_company.name"/>. Nach der
+                    Bestätigung erscheinen Ihr Name, Ihre Funktion und Ihre Kontaktdaten (E-Mail,
+                    Telefon) in den Verbandsdaten, die die anderen Zugänge Ihres Verbands im Portal
+                    sehen.</dd>
+
+                <dt class="col-sm-4">Löschung</dt>
+                <dd class="col-sm-8">
+                    <!-- kjr_retention_days setzt controllers/signup.py
+                         (get_auth_signup_qcontext) mit derselben Auslegung wie
+                         der Lösch-Cron; 0 = keine automatische Löschung. -->
+                    <t t-if="kjr_retention_days">Bei Ablehnung nach <t t-out="kjr_retention_days"/> Tagen.</t>
+                    <t t-elif="kjr_retention_days == 0">Abgelehnte Registrierungen werden aufbewahrt, bis die Geschäftsstelle sie löscht.</t>
+                    <t t-else="">Bei Ablehnung nach der in der Datenschutzerklärung genannten Frist.</t>
+                    Nach einer Genehmigung bleibt der Nachweis, solange der Kontakt besteht; die
+                    übernommene Funktion bleibt Teil Ihrer Kontaktdaten, auch wenn der Nachweis
+                    gelöscht wird.
+                </dd>
+
+                <dt class="col-sm-4">Verantwortlich</dt>
+                <dd class="col-sm-8">
+                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.controller')"/><span t-if="kjr_dsw" t-out="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
+                </dd>
+            </dl>
+            <p class="mb-0 mt-2">Ausführlich steht das in der
+                <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>.</p>
+        </section>
+    </template>
+
+</odoo>

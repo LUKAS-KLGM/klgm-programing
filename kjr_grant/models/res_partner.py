@@ -143,6 +143,15 @@ class ResPartner(models.Model):
         'kjr.grant.application', 'partner_id', string='Zuschussanträge',
     )
     kjr_juleica_ids = fields.One2many('kjr.juleica', 'partner_id', string='Juleica-Karten')
+    # Vereinsregistrierungen dieser Person (models/kjr_affiliation_request.py).
+    # groups wie die ACL des Comodells (nur Sachbearbeiter und Leitung, Leitung
+    # über implied_ids): für alle anderen auch per RPC, fields_get und Export
+    # unsichtbar. Bewusst KEIN gespeichertes Statusfeld auf res.partner; das
+    # Portal liest den Status über _kjr_affiliation_portal_info.
+    kjr_affiliation_request_ids = fields.One2many(
+        'kjr.affiliation.request', 'partner_id', string='Vereinsregistrierungen',
+        groups='kjr_grant.group_kjr_reviewer',
+    )
     kjr_grant_count = fields.Integer(
         string='Anzahl Anträge', compute='_compute_kjr_grant_count',
     )
@@ -260,6 +269,71 @@ class ResPartner(models.Model):
             'domain': [('partner_id', '=', self.id)],
             'context': {'default_partner_id': self.id},
         }
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # VEREINSREGISTRIERUNG (siehe models/kjr_affiliation_request.py)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _kjr_grants_member_rights(self):
+        """True, wenn ein Konto auf diesem Partner Vereinsrechte hätte.
+
+        Derselbe Maßstab wie die Rechte selbst: controllers/website.py
+        (_allowed_member_domain) und die Record Rules in
+        security/kjr_grant_security.xml geben Rechte für JEDEN Mitgliedsverband im
+        Teilbaum des commercial partners (child_of), nicht nur für den commercial
+        partner selbst. Ein Dachverband ohne eigene Mitgliedschaft, unter dem
+        Mitgliedsorganisationen hängen, zählt also mit.
+
+        Privat (Unterstrich, nicht per RPC aufrufbar); sudo, weil Aufrufer im
+        Signup als Public-User laufen. Liefert nur Ja/Nein. active_test=False
+        ist bewusst strenger als die Rechte: ein archivierter Mitgliedsverband
+        kann reaktiviert werden, ein vorher entstandenes Konto hätte dann Rechte.
+        """
+        self.ensure_one()
+        commercial = self.sudo().commercial_partner_id
+        if not commercial:
+            return False
+        return bool(self.env['res.partner'].sudo().with_context(active_test=False).search_count(
+            [('is_kjr_member', '=', True), ('id', 'child_of', commercial.ids)], limit=1))
+
+    def _kjr_affiliation_portal_info(self):
+        """Status der Vereinszugehörigkeit für Portal-Hinweise; nur Text und Ja/Nein.
+
+        Privat (Unterstrich, nicht per RPC aufrufbar) und nur vom Controller mit
+        dem Partner der Session aufgerufen. sudo, weil Portalnutzer das Modell
+        kjr.affiliation.request nicht lesen dürfen.
+        """
+        self.ensure_one()
+        partner = self.sudo()
+        req = self.env['kjr.affiliation.request'].sudo().search(
+            [('partner_id', '=', partner.id)], order='date_requested desc, id desc', limit=1)
+        return {
+            'is_member': bool(partner.commercial_partner_id.is_kjr_member),
+            'state': req.state or 'none',
+            'requested_name': req.requested_name or '',
+            'target_name': req.target_partner_id.name or '',
+            'rejection_reason': (req.rejection_reason or '') if req.state == 'rejected' else '',
+        }
+
+    def signup_get_auth_param(self):
+        """Kein Registrierungslink in Mails an Kontakte unter einem Mitgliedsverband
+        (Maßstab: _kjr_grants_member_rights, also auch unter einem Dachverband
+        mit Mitgliedsorganisationen).
+
+        Kosmetik: Mails sollen keine Links enthalten, die später doch scheitern.
+        Aufrufer sind portal/models/mail_thread.py und portal/models/portal_mixin.py.
+        Der Zugriffslink mit access_token bleibt erhalten. Die VERBINDLICHE Sperre
+        ist res.users.signup (models/res_users.py): website_sale erzeugt Token ohne
+        diesen Weg (signup_prepare() + _get_signup_url() in der
+        Bestellbestätigung), ebenso Mailvorlagen mit object.signup_url.
+        """
+        res = super().signup_get_auth_param()
+        for partner in self:
+            params = res.get(partner.id)
+            if (params and 'auth_signup_token' in params
+                    and partner._kjr_grants_member_rights()):
+                params.pop('auth_signup_token')
+        return res
 
     def action_kjr_datenauskunft(self):
         """DSGVO Art. 15: Datenauskunft über die zu dieser Person/Organisation

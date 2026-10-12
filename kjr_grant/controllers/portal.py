@@ -137,6 +137,19 @@ VERBAND_MESSAGES = {
 
 class KjrPortalController(CustomerPortal):
 
+    def _prepare_portal_layout_values(self):
+        """Status der Vereinsregistrierung für den Hinweis auf /my.
+
+        Nur Text und Ja/Nein (res.partner._kjr_affiliation_portal_info), immer
+        für den Partner der Session. Interne Benutzer und der Public-User
+        bekommen den Schlüssel nicht; das Template fällt dann auf {} zurück.
+        """
+        values = super()._prepare_portal_layout_values()
+        user = request.env.user
+        if user.share and not user._is_public():
+            values['kjr_affiliation'] = user.partner_id._kjr_affiliation_portal_info()
+        return values
+
     def _prepare_home_portal_values(self, counters):
         values = super()._prepare_home_portal_values(counters)
         if 'kjr_grant_count' in counters:
@@ -614,6 +627,7 @@ class KjrPortalController(CustomerPortal):
             'errors': errors,
             'success': success,
             'warning': warning,
+            'affiliation': {},
         })
 
     def _render_verband_no_member(self):
@@ -641,6 +655,7 @@ class KjrPortalController(CustomerPortal):
             'errors': {},
             'success': None,
             'warning': None,
+            'affiliation': request.env.user.partner_id._kjr_affiliation_portal_info(),
         })
 
     @http.route(
@@ -686,6 +701,7 @@ class KjrPortalController(CustomerPortal):
           errors              dict {feldname: meldung}, Schlüssel 'global' für
                               formularübergreifende Meldungen.
           success / warning   optionale Meldungstexte (Klartext, kein HTML).
+          affiliation         dict (state, requested_name, target_name, rejection_reason, is_member); nur auf der Hinweisseite gefüllt, sonst {}.
 
         ACTIONS, die das Template sendet — genau diese vier, keine Synonyme:
           verband_save    Anschrift und Kontaktdaten des Verbands

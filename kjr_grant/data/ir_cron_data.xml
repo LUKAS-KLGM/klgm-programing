@@ -77,5 +77,18 @@
             <field name="active" eval="True"/>
         </record>
 
+        <!-- DSGVO: abgelehnte Vereinsregistrierungen samt Verlauf nach der Frist
+             aus kjr_grant.affiliation_rejected_retention_days löschen (0 = aus).
+             Genehmigte bleiben als Nachweis, offene bis zur Entscheidung. -->
+        <record id="cron_kjr_affiliation_purge_rejected" model="ir.cron">
+            <field name="name">KJR: Abgelehnte Vereinsregistrierungen löschen</field>
+            <field name="model_id" ref="model_kjr_affiliation_request"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_purge_rejected()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+
     </data>
 </odoo>

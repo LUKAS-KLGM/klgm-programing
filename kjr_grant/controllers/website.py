@@ -183,6 +183,22 @@ class KjrWebsiteController(http.Controller):
         kjr_members = request.env['res.partner'].sudo().search(
             self._allowed_member_domain(), order='name',
         )
+        if not kjr_members:
+            # Kein Mitgliedsverband zugeordnet (z. B. Vereinsregistrierung noch in
+            # Prüfung, abgelehnt oder Privatkonto): verständliche Hinweisseite
+            # statt eines Formulars mit leerer Verbandsauswahl. Gilt für GET und
+            # POST; die serverseitige Whitelist in _process_application bleibt
+            # unverändert die eigentliche Sperre.
+            company = request.env.company.sudo()
+            return request.render('kjr_grant.website_kjr_apply_no_member', {
+                'page_name': 'kjr_apply',
+                'kjr_affiliation': request.env.user.partner_id._kjr_affiliation_portal_info(),
+                'office': {
+                    'name': company.name or '',
+                    'phone': company.phone or '',
+                    'email': company.email or '',
+                },
+            })
         user_partner = request.env.user.partner_id
         preselected_member = request.env['res.partner'].sudo().search([
             ('is_kjr_member', '=', True),

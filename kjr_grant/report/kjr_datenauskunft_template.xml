@@ -56,6 +56,29 @@
                             </table>
                         </t>
 
+                        <t t-if="o.kjr_affiliation_request_ids">
+                            <h5 class="mt-4">Vereinsregistrierungen</h5>
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr><th>Beantragt am</th><th>Angegebener Verein</th><th>Funktion</th><th>Ort / Anschrift (Angabe)</th><th>Status</th><th>Entschieden am</th><th>Zugeordnete Organisation</th><th>Ablehnungsgrund</th></tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="o.kjr_affiliation_request_ids" t-as="ar">
+                                        <tr>
+                                            <td><span t-field="ar.date_requested" t-options='{"format":"dd.MM.yyyy"}'/></td>
+                                            <td><t t-out="ar.requested_name or '-'"/></td>
+                                            <td><t t-out="ar.requested_function or '-'"/></td>
+                                            <td><t t-out="ar.requested_place or '-'"/></td>
+                                            <td><t t-out="dict(ar._fields['state'].selection).get(ar.state)"/></td>
+                                            <td><span t-if="ar.date_decided" t-field="ar.date_decided" t-options='{"format":"dd.MM.yyyy"}'/><t t-else="">-</t></td>
+                                            <td><t t-out="ar.target_partner_id.name or '-'"/></td>
+                                            <td><t t-out="ar.rejection_reason or '-'"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </t>
+
                         <t t-if="o.kjr_grant_ids">
                             <h5 class="mt-4">Zuschussanträge (als Antragsteller-Organisation)</h5>
                             <table class="table table-sm table-bordered">
@@ -76,7 +99,7 @@
                             </table>
                         </t>
 
-                        <t t-if="not o.kjr_juleica_ids and not o.kjr_grant_ids">
+                        <t t-if="not o.kjr_juleica_ids and not o.kjr_grant_ids and not o.kjr_affiliation_request_ids">
                             <div class="alert alert-info">Es sind keine weiteren KJR-Bewegungsdaten zu dieser Person/Organisation gespeichert.</div>
                         </t>
 

@@ -102,6 +102,14 @@
             <field name="value"></field>
         </record>
 
+        <!-- DSGVO: abgelehnte Vereinsregistrierungen löschen nach N Tagen (0 = aus).
+             Cron cron_kjr_affiliation_purge_rejected, models/kjr_affiliation_request.py.
+             TODO(KJR): Frist bestätigen. TODO(DSGVO): durch die Datenschutzbeauftragte bestätigen lassen. -->
+        <record id="param_affiliation_rejected_retention_days" model="ir.config_parameter">
+            <field name="key">kjr_grant.affiliation_rejected_retention_days</field>
+            <field name="value">180</field>
+        </record>
+
         <!-- Von Hand ausloesbar unter Einstellungen ▸ Technisch ▸ Aktionen ▸
              Server-Aktionen. Der einzige Weg, der auf einer BEREITS installierten
              Instanz funktioniert: post_init_hook laeuft nur bei Neuinstallation,

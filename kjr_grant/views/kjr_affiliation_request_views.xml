@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vereinsregistrierungen (models/kjr_affiliation_request.py).
+         Genehmigen und Ablehnen laufen ausschließlich über die Assistenten;
+         Status und Zuordnung sind im Modell gegen direktes Schreiben gesperrt. -->
+
+    <record id="view_kjr_affiliation_request_search" model="ir.ui.view">
+        <field name="name">kjr.affiliation.request.search</field>
+        <field name="model">kjr.affiliation.request</field>
+        <field name="arch" type="xml">
+            <search string="Vereinsregistrierungen">
+                <field name="partner_id"/>
+                <field name="requested_name"/>
+                <filter string="Beantragt"  name="filter_requested" domain="[('state','=','requested')]"/>
+                <filter string="Genehmigt"  name="filter_approved"  domain="[('state','=','approved')]"/>
+                <filter string="Abgelehnt"  name="filter_rejected"  domain="[('state','=','rejected')]"/>
+                <separator/>
+                <filter string="Aus Registrierung" name="filter_signup" domain="[('origin','=','signup')]"/>
+                <filter string="Status" name="filter_group_state" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_kjr_affiliation_request_list" model="ir.ui.view">
+        <field name="name">kjr.affiliation.request.list</field>
+        <field name="model">kjr.affiliation.request</field>
+        <field name="arch" type="xml">
+            <list string="Vereinsregistrierungen">
+                <field name="date_requested"/>
+                <field name="partner_id"/>
+                <field name="partner_email"/>
+                <field name="requested_name"/>
+                <field name="requested_function"/>
+                <field name="target_partner_id" optional="show"/>
+                <field name="decided_by_id" optional="hide"/>
+                <field name="activity_ids" widget="list_activity"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'requested'"
+                       decoration-success="state == 'approved'"
+                       decoration-danger="state == 'rejected'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kjr_affiliation_request_form" model="ir.ui.view">
+        <field name="name">kjr.affiliation.request.form</field>
+        <field name="model">kjr.affiliation.request</field>
+        <field name="arch" type="xml">
+            <form string="Vereinsregistrierung">
+                <header>
+                    <button name="action_open_approve_wizard" string="Genehmigen" type="object"
+                            class="oe_highlight" invisible="state != 'requested'"
+                            groups="kjr_grant.group_kjr_reviewer"/>
+                    <button name="action_open_reject_wizard" string="Ablehnen" type="object"
+                            invisible="state != 'requested'"
+                            groups="kjr_grant.group_kjr_reviewer"/>
+                    <field name="state" widget="statusbar" statusbar_visible="requested,approved,rejected"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not partner_already_linked or state != 'requested'">
+                        Die Person ist bereits einer Organisation zugeordnet. Bitte prüfen und die
+                        Registrierung genehmigen oder ablehnen.
+                    </div>
+                    <field name="partner_already_linked" invisible="1"/>
+                    <group>
+                        <group string="Person">
+                            <field name="partner_id" readonly="id"/>
+                            <field name="user_id"/>
+                            <field name="partner_email"/>
+                        </group>
+                        <group string="Angaben bei der Registrierung">
+                            <field name="requested_name" readonly="state != 'requested'"/>
+                            <field name="requested_function" readonly="state != 'requested'"/>
+                            <field name="requested_place" readonly="state != 'requested'"/>
+                            <field name="date_requested"/>
+                            <field name="origin"/>
+                        </group>
+                    </group>
+                    <group string="Entscheidung" invisible="state == 'requested'">
+                        <field name="target_partner_id"/>
+                        <field name="target_is_member"/>
+                        <field name="date_decided"/>
+                        <field name="decided_by_id"/>
+                        <field name="rejection_reason" readonly="1" invisible="state != 'rejected'"/>
+                    </group>
+                    <group>
+                        <field name="company_id" groups="base.group_multi_company"
+                               readonly="state != 'requested'"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kjr_affiliation_request" model="ir.actions.act_window">
+        <field name="name">Vereinsregistrierungen</field>
+        <field name="res_model">kjr.affiliation.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_kjr_affiliation_request_search"/>
+        <field name="context">{'search_default_filter_requested': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Keine offenen Vereinsregistrierungen</p>
+            <p>Hier erscheinen Registrierungen, bei denen jemand angegeben hat, für einen Verein
+                oder Verband tätig zu sein.</p>
+        </field>
+    </record>
+
+    <!-- ── Assistent: Genehmigen ──────────────────────────────────────── -->
+    <record id="view_kjr_affiliation_approve_wizard_form" model="ir.ui.view">
+        <field name="name">kjr.affiliation.approve.wizard.form</field>
+        <field name="model">kjr.affiliation.approve.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Vereinszugehörigkeit genehmigen">
+                <div class="alert alert-info" role="status">
+                    Mit der Zuordnung übernimmt die Person die Anschrift der Organisation
+                    (Odoo-Standard für Ansprechpersonen). Die Organisation muss eine vollständige
+                    Anschrift haben.
+                </div>
+                <group>
+                    <group string="Angaben bei der Registrierung">
+                        <field name="request_id" invisible="1"/>
+                        <field name="partner_already_linked" invisible="1"/>
+                        <field name="partner_id"/>
+                        <field name="requested_name"/>
+                        <field name="requested_function"/>
+                        <field name="requested_place"/>
+                    </group>
+                    <group string="Zuordnung">
+                        <field name="mode" widget="radio"/>
+                        <field name="target_partner_id" invisible="mode != 'existing'"
+                               required="mode == 'existing'"
+                               options="{'no_create': True}"/>
+                        <field name="target_is_member" invisible="mode != 'existing' or not target_partner_id"/>
+                        <field name="new_name"   invisible="mode != 'new'" required="mode == 'new'"/>
+                        <field name="new_street" invisible="mode != 'new'" required="mode == 'new'"/>
+                        <field name="new_zip"    invisible="mode != 'new'" required="mode == 'new'"/>
+                        <field name="new_city"   invisible="mode != 'new'" required="mode == 'new'"/>
+                        <field name="new_email"  invisible="mode != 'new'"/>
+                        <field name="send_mail"/>
+                    </group>
+                </group>
+                <div class="alert alert-warning" role="alert"
+                     invisible="mode != 'existing' or not target_partner_id or target_is_member">
+                    Diese Organisation ist kein KJR-Mitgliedsverband. Die Person erhält dadurch keine
+                    Antrags- und Verbandsrechte.
+                </div>
+                <div class="alert alert-info" role="status" invisible="mode != 'new'">
+                    Die neue Organisation wird ohne KJR-Mitgliedschaft angelegt. Die Mitgliedschaft
+                    wird im Reiter KJR Verband gepflegt.
+                </div>
+                <footer>
+                    <button name="action_confirm" type="object" string="Genehmigen"
+                            class="oe_highlight" data-hotkey="q"/>
+                    <button string="Abbrechen" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Assistent: Ablehnen ────────────────────────────────────────── -->
+    <record id="view_kjr_affiliation_reject_wizard_form" model="ir.ui.view">
+        <field name="name">kjr.affiliation.reject.wizard.form</field>
+        <field name="model">kjr.affiliation.reject.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Vereinsregistrierung ablehnen">
+                <div class="alert alert-info" role="status">
+                    Die Person behält ihr Konto als persönliches Konto. Der Grund wird ihr in der
+                    E-Mail mitgeteilt und im Portal angezeigt.
+                </div>
+                <group>
+                    <field name="request_id" invisible="1"/>
+                    <field name="reason" placeholder="z. B. Bitte melden Sie sich mit dem Vorstand Ihres Vereins bei uns."/>
+                    <field name="send_mail"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Ablehnen"
+                            class="oe_highlight" data-hotkey="q"/>
+                    <button string="Abbrechen" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>
