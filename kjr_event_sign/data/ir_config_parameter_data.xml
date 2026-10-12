@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate="1": Vorgabewerte; von der Geschäftsstelle in den Einstellungen
+         (KJR Einwilligung) pflegbar und bei Modul-Updates nicht überschrieben.
+
+         Bewusst NICHT vorbelegt:
+         * kjr_event_sign.enabled: ohne den Parameter ist die Brücke AUS, auch
+           nach der automatischen Installation (Rollout-Sicherheit).
+         * kjr_event_sign.sender_user_id: der Absender ist eine Entscheidung der
+           Geschäftsstelle; ohne ihn gilt die verantwortliche Person der
+           Veranstaltung, sonst der Administrator. -->
+    <data noupdate="1">
+
+        <!-- Gültigkeit einer Unterschriftsanfrage in Tagen ab Versand. Sie endet
+             spätestens am Tag vor Beginn der Veranstaltung, frühestens morgen.
+             TODO(KJR): Frist mit der Geschäftsstelle abstimmen. -->
+        <record id="param_validity_days" model="ir.config_parameter">
+            <field name="key">kjr_event_sign.validity_days</field>
+            <field name="value">14</field>
+        </record>
+
+        <!-- Abstand der Erinnerungen von Odoo Sign in Tagen.
+             0 = keine Erinnerung durch Odoo Sign.
+             TODO(KJR): Intervall mit der Geschäftsstelle abstimmen. -->
+        <record id="param_reminder_days" model="ir.config_parameter">
+            <field name="key">kjr_event_sign.reminder_days</field>
+            <field name="value">3</field>
+        </record>
+
+    </data>
+</odoo>

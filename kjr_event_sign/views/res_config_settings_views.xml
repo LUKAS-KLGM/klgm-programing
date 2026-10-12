@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_config_settings_view_form_kjr_event_sign" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.kjr.event.sign</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="60"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="KJR Einwilligung" string="KJR Einwilligung"
+                     name="kjr_event_sign" groups="base.group_system">
+                    <block title="Einwilligung der Erziehungsberechtigten (Odoo Sign)"
+                           name="kjr_event_sign">
+                        <setting id="kjr_event_sign_enabled"
+                                 string="Einwilligung digital einholen"
+                                 help="Bei Veranstaltungen mit Einwilligungspflicht erhalten die Erziehungsberechtigten minderjähriger Online-Anmeldungen eine Unterschriftsanfrage. Die Anmeldung wird erst nach der Unterschrift bestätigt.">
+                            <field name="kjr_event_sign_enabled"/>
+                        </setting>
+                        <setting id="kjr_event_sign_template" string="Standardvorlage"
+                                 help="Leer = mitgelieferte Vorlage. An der Veranstaltung kann eine eigene Vorlage gewählt werden.">
+                            <field name="kjr_event_sign_template_id" options="{'no_create': True}"/>
+                            <div class="alert alert-warning mt-2 mb-0" role="alert"
+                                 invisible="not kjr_event_sign_template_warning">
+                                <field name="kjr_event_sign_template_warning" readonly="1"/>
+                            </div>
+                        </setting>
+                        <setting id="kjr_event_sign_sender" string="Absender"
+                                 help="Interner Benutzer mit E-Mail-Adresse. Leer = verantwortliche Person der Veranstaltung, sonst der Administrator.">
+                            <field name="kjr_event_sign_sender_id" options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="kjr_event_sign_timing" string="Fristen"
+                                 help="Gültigkeit endet spätestens am Tag vor Beginn. Erinnerung 0 = keine Erinnerung durch Odoo Sign.">
+                            <div class="row mt-2">
+                                <label for="kjr_event_sign_validity_days" class="col-lg-6 o_light_label"/>
+                                <field name="kjr_event_sign_validity_days" class="col-lg-2"/>
+                            </div>
+                            <div class="row">
+                                <label for="kjr_event_sign_reminder_days" class="col-lg-6 o_light_label"/>
+                                <field name="kjr_event_sign_reminder_days" class="col-lg-2"/>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

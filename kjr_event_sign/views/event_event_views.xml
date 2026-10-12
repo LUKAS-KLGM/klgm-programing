@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Veranstaltung: eigene Einwilligungsvorlage (Sign). Anker laut
+         Schnittstelle zu kjr_event: das Feld requires_parental_consent. -->
+    <record id="view_event_form_kjr_sign" model="ir.ui.view">
+        <field name="name">event.event.form.kjr.sign</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='requires_parental_consent']" position="after">
+                <!-- Nur für Sign-Benutzer: die Auswahl einer Vorlage braucht
+                     Leserechte auf sign.template. -->
+                <field name="kjr_consent_sign_template_id"
+                       groups="sign.group_sign_user"
+                       invisible="not requires_parental_consent"
+                       options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

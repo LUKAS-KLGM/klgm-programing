@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate="1": Die Geschäftsstelle darf die Kategorie umbenennen; ein
+         Modul-Update setzt sie nicht zurück. -->
+    <data noupdate="1">
+
+        <!-- Kennzeichnet Kontakte, die die Brücke für Erziehungsberechtigte NEU
+             angelegt hat (Unterzeichner der Einwilligung). Bestehende Kontakte
+             mit derselben E-Mail-Adresse werden wiederverwendet und nicht
+             gekennzeichnet.
+             TODO(KJR): Umgang mit diesen Kontakten im Löschkonzept festlegen
+             (Aufbewahrung, Anonymisierung). Technisch sind sie für alle internen
+             Benutzer sichtbar; eine Einschränkung bräuchte eine Zugriffsregel auf
+             res.partner und ist eine Kundenentscheidung. -->
+        <record id="partner_category_guardian" model="res.partner.category">
+            <field name="name">KJR Erziehungsberechtigte</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ERZEUGT von tools/einwilligung/build_einwilligung_pdf.py. NICHT VON HAND BEARBEITEN.
+    PDF und Feldpositionen stammen aus derselben Koordinatentabelle im Skript
+    (Millimeter auf A4, hier als Seitenanteile: posX = x/210, posY = y/297).
+
+    noupdate="1": Die Vorlage bleibt so, wie sie installiert wurde. Ein
+    geändertes Formular bekommt eine NEUE XML-ID (z. B. sign_template_consent_v2)
+    und wird in den Einstellungen als Standardvorlage gewählt; bereits
+    versendete Anfragen verweisen weiter auf die alte Vorlage.
+    TODO(KJR): Text des Formulars mit der Geschäftsstelle und der
+    Datenschutzbeauftragten abstimmen.
+-->
+<odoo>
+    <data noupdate="1">
+
+        <record id="sign_item_role_guardian" model="sign.item.role">
+            <field name="name">Erziehungsberechtigte/r</field>
+            <field name="change_authorized" eval="True"/>
+        </record>
+
+        <record id="attachment_consent_pdf" model="ir.attachment">
+            <field name="name">Einwilligung Erziehungsberechtigte.pdf</field>
+            <field name="datas" type="base64" file="kjr_event_sign/static/pdf/einwilligung_erziehungsberechtigte.pdf"/>
+            <field name="mimetype">application/pdf</field>
+        </record>
+
+        <record id="sign_template_consent" model="sign.template">
+            <field name="name">Einwilligung Erziehungsberechtigte (Standard)</field>
+            <field name="signature_request_validity" eval="14"/>
+            <field name="user_id" ref="base.user_admin"/>
+        </record>
+
+        <record id="document_consent" model="sign.document">
+            <field name="attachment_id" ref="attachment_consent_pdf"/>
+            <field name="template_id" ref="sign_template_consent"/>
+            <field name="sequence" eval="1"/>
+        </record>
+
+        <!-- Name des Kindes: x 20.0 mm, y 80.0 mm, 170.0 x 8.0 mm -->
+        <record id="item_child_name" model="sign.item">
+            <field name="document_id" ref="document_consent"/>
+            <field name="type_id" ref="sign.sign_item_type_text"/>
+            <field name="responsible_id" ref="sign_item_role_guardian"/>
+            <field name="required" eval="True"/>
+            <field name="name">Name des Kindes</field>
+            <field name="page" eval="1"/>
+            <field name="posX" eval="0.095"/>
+            <field name="posY" eval="0.269"/>
+            <field name="width" eval="0.810"/>
+            <field name="height" eval="0.027"/>
+        </record>
+
+        <!-- Veranstaltung: x 20.0 mm, y 98.0 mm, 170.0 x 8.0 mm -->
+        <record id="item_event" model="sign.item">
+            <field name="document_id" ref="document_consent"/>
+            <field name="type_id" ref="sign.sign_item_type_text"/>
+            <field name="responsible_id" ref="sign_item_role_guardian"/>
+            <field name="required" eval="True"/>
+            <field name="name">Veranstaltung</field>
+            <field name="page" eval="1"/>
+            <field name="posX" eval="0.095"/>
+            <field name="posY" eval="0.330"/>
+            <field name="width" eval="0.810"/>
+            <field name="height" eval="0.027"/>
+        </record>
+
+        <!-- Einwilligung: x 20.0 mm, y 114.0 mm, 6.0 x 6.0 mm -->
+        <record id="item_consent" model="sign.item">
+            <field name="document_id" ref="document_consent"/>
+            <field name="type_id" ref="sign.sign_item_type_checkbox"/>
+            <field name="responsible_id" ref="sign_item_role_guardian"/>
+            <field name="required" eval="True"/>
+            <field name="name">Einwilligung</field>
+            <field name="page" eval="1"/>
+            <field name="posX" eval="0.095"/>
+            <field name="posY" eval="0.384"/>
+            <field name="width" eval="0.029"/>
+            <field name="height" eval="0.020"/>
+        </record>
+
+        <!-- Name: x 20.0 mm, y 142.0 mm, 170.0 x 8.0 mm -->
+        <record id="item_guardian_name" model="sign.item">
+            <field name="document_id" ref="document_consent"/>
+            <field name="type_id" ref="sign.sign_item_type_name"/>
+            <field name="responsible_id" ref="sign_item_role_guardian"/>
+            <field name="required" eval="True"/>
+            <field name="name">Name</field>
+            <field name="page" eval="1"/>
+            <field name="posX" eval="0.095"/>
+            <field name="posY" eval="0.478"/>
+            <field name="width" eval="0.810"/>
+            <field name="height" eval="0.027"/>
+        </record>
+
+        <!-- Ort: x 20.0 mm, y 160.0 mm, 80.0 x 8.0 mm -->
+        <record id="item_place" model="sign.item">
+            <field name="document_id" ref="document_consent"/>
+            <field name="type_id" ref="sign.sign_item_type_text"/>
+            <field name="responsible_id" ref="sign_item_role_guardian"/>
+            <field name="required" eval="True"/>
+            <field name="name">Ort</field>
+            <field name="page" eval="1"/>
+            <field name="posX" eval="0.095"/>
+            <field name="posY" eval="0.539"/>
+            <field name="width" eval="0.381"/>
+            <field name="height" eval="0.027"/>
+        </record>
+
+        <!-- Datum: x 110.0 mm, y 160.0 mm, 80.0 x 8.0 mm -->
+        <record id="item_date" model="sign.item">
+            <field name="document_id" ref="document_consent"/>
+            <field name="type_id" ref="sign.sign_item_type_date"/>
+            <field name="responsible_id" ref="sign_item_role_guardian"/>
+            <field name="required" eval="True"/>
+            <field name="name">Datum</field>
+            <field name="page" eval="1"/>
+            <field name="posX" eval="0.524"/>
+            <field name="posY" eval="0.539"/>
+            <field name="width" eval="0.381"/>
+            <field name="height" eval="0.027"/>
+        </record>
+
+        <!-- Unterschrift: x 20.0 mm, y 178.0 mm, 100.0 x 25.0 mm -->
+        <record id="item_signature" model="sign.item">
+            <field name="document_id" ref="document_consent"/>
+            <field name="type_id" ref="sign.sign_item_type_signature"/>
+            <field name="responsible_id" ref="sign_item_role_guardian"/>
+            <field name="required" eval="True"/>
+            <field name="name">Unterschrift</field>
+            <field name="page" eval="1"/>
+            <field name="posX" eval="0.095"/>
+            <field name="posY" eval="0.599"/>
+            <field name="width" eval="0.476"/>
+            <field name="height" eval="0.084"/>
+        </record>
+
+    </data>
+</odoo>
