@@ -19,6 +19,28 @@
         </xpath>
     </template>
 
+    <!-- Einwilligung (kjr_event 19.0.5.9.0): Hinweis auf der Bestellbestaetigung,
+         wenn Anmeldungen der Bestellung auf die Einwilligung der
+         Erziehungsberechtigten warten. Ohne Adresse und ohne Namen.
+
+         Anker: div#order_name aus website_sale.confirmation, derselbe Anker, an
+         dem website_event_sale.event_confirmation die Veranstaltungskarten
+         einfuegt. Mit hoeherer Prioritaet angewendet steht der Hinweis direkt
+         unter der Bestellnummer und ueber den Karten. -->
+    <template id="confirmation_kjr_consent_hint"
+              inherit_id="website_sale.confirmation"
+              priority="20"
+              name="KJR: Hinweis Einwilligung auf der Bestellbestaetigung">
+        <xpath expr="//div[@id='order_name']" position="after">
+            <t t-set="held" t-value="order.order_line.registration_ids.filtered('kjr_consent_hold')"/>
+            <div t-if="held" class="alert alert-info o_kjr_consent_hint" role="status">
+                Für Teilnehmende unter 18 Jahren ist die Anmeldung erst verbindlich, wenn
+                die Einwilligung der Erziehungsberechtigten vorliegt. Die Bitte um digitale
+                Unterschrift senden wir per E-Mail.
+            </div>
+        </xpath>
+    </template>
+
     <!-- Titelbild des Kurses statt Produktbild (das Ticket-Produkt hat meist
          keins, dann erschien nur ein grauer Platzhalter). -->
     <template id="cart_summary_content_kjr_event_image"
