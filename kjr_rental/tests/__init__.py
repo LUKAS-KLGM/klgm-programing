@@ -2,3 +2,4 @@
 from . import test_rental
 from . import test_pricing
 from . import test_seed_data
+from . import test_scan

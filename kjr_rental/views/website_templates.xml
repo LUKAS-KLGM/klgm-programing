@@ -1086,4 +1086,20 @@
         </t>
     </template>
 
+    <!-- B51: QR-Ziel /kjr_rental/scan/<Barcode> für interne Benutzer ohne die Gruppe
+         "Sachbearbeiter Verleih" (Antwort mit Status 403). Portalbenutzer bekommen
+         weiterhin 404. -->
+    <template id="scan_no_access" name="KJR Verleih: Scan ohne Berechtigung">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-4 mb-5">
+                <div class="alert alert-warning" role="alert">
+                    <h1 class="h4">Keine Berechtigung für den Verleih-Scan</h1>
+                    <p class="mb-0">Für den Verleih-Scan fehlt Ihnen die Berechtigung
+                        „Sachbearbeiter Verleih“. Bitte an die Geschäftsstelle wenden.</p>
+                </div>
+                <a href="/odoo" class="btn btn-secondary">Zurück zu Odoo</a>
+            </div>
+        </t>
+    </template>
+
 </odoo>

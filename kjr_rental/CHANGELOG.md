@@ -1,5 +1,103 @@
 # Changelog – KJR Materialverleih
 
+## 19.0.5.7.0 (2026-10-12)
+
+### Neu
+- **Scannen per Handykamera im Verleih (B51).** Neuer Menüpunkt „KJR Verleih >
+  Scannen" (Client-Aktion `kjr_rental_scan`, OWL, Pfad `/odoo/verleih-scan`,
+  auch als Lesezeichen auf dem Handy). „Mit Kamera scannen" nutzt den
+  Kamera-Scanner aus Odoo-Community (`scanBarcode` aus
+  `@web/core/barcode/barcode_dialog`, BarcodeDetector-API bzw. ZXing) und
+  liest QR-Codes und Code128. Ein Handscanner oder die Handeingabe gehen ins
+  Eingabefeld (Enter). Angezeigt werden Name, Inventarnummer, Barcode und groß
+  „Gehört zurück nach: Lagerort · Lagerplatz" in der Farbe des Lagerorts, dazu
+  die reservierten und ausgegebenen Ausleihen des Gegenstands. Ohne
+  `stock`/`stock_barcode` und ohne Enterprise (ADR-1 bleibt gültig). Die Kamera
+  braucht HTTPS und die Kamerafreigabe im Browser bzw. in der Odoo-App.
+- **Rückgabe per Scan.** Im Modus „Rückgabe scannen" wird jedes gescannte
+  Stück der ausgegebenen Ausleihe zugeordnet: bei genau einer passenden
+  Ausleihe automatisch, sonst über die Auswahl in der Liste. Gezählt wird je
+  Position im neuen Feld „Zurück (Scan)" (`return_scanned_qty`, von Hand
+  korrigierbar, höchstens die Menge der Position). Neuer Button „Rückgabe
+  scannen" in der ausgegebenen Ausleihe öffnet die Scanansicht nur für diesen
+  Vorgang; am Artikel öffnet „Rückgabe zuordnen" die Scanansicht mit diesem
+  Gegenstand. Dabei wird der Gegenstand nur angezeigt und nicht automatisch
+  gezählt: zugeordnet wird erst per Scan oder per Klick auf „Rückgabe
+  zuordnen" bei der Ausleihe (sonst zählte jeder Neuaufbau der Ansicht, z. B.
+  nach „Ausleihe öffnen" und Zurück oder nach dem Neuladen, ein weiteres
+  Stück). Abgeschlossen wird die Rücknahme weiterhin über den bestehenden
+  Schritt „Rücknahme" (Checkliste, Rückgabevermerk, Kaution); die
+  Chatter-Notiz der Rückgabeprüfung nennt jetzt zusätzlich den Scan-Stand und
+  die nicht gescannten Stück. Der Scan ist Dokumentation, keine Sperre. Bei
+  „Ausgeben" wird ein alter Scan-Stand auf 0 gesetzt.
+- **QR-Code auf dem Inventaretikett (B51).** Zusätzlich zum Code128 trägt das
+  Etikett einen QR-Code (Kern-Route `/report/barcode` mit Typ `QR`,
+  Fehlerkorrektur M). Er enthält die Adresse `<web.base.url>/kjr_rental/scan/<Barcode>`:
+  die normale Kamera-App des Handys öffnet damit nach der Anmeldung direkt den
+  Artikel (neuer Controller, nur für die Gruppe „Sachbearbeiter Verleih",
+  Portalbenutzer bekommen 404, unbekannte Codes landen in der Scanansicht).
+  Interne Benutzer ohne diese Gruppe bekommen statt 404 eine kurze Seite
+  (Status 403): „Für den Verleih-Scan fehlt Ihnen die Berechtigung
+  ‚Sachbearbeiter Verleih'. Bitte an die Geschäftsstelle wenden." (Vorlage
+  `kjr_rental.scan_no_access`; die Route läuft dafür mit `website=True`).
+  Der Scanner im Backend erkennt dieselbe Adresse.
+- **Lagerort beim Zurückräumen sichtbar (B52).** Lagerorte haben eine Farbe
+  (`color`, `#RRGGBB`, geprüft) und einen „Hinweis zum Zurückräumen"; der
+  Artikel einen „Lagerplatz" (`storage_bin`, z. B. „Regal 3, Fach B"). Sichtbar
+  auf dem Etikett (Farbstreifen, „Gehört zurück nach"), im Artikelformular
+  (Hinweisbalken oben, Smart-Button „Offene Ausleihen"), in Artikelliste und
+  Kanban, in den Positionen der Ausleihe (Spalten „Farbe" und „Gehört zurück
+  nach") und in der Scanansicht. Neuer Suchfilter „Ohne Lagerort".
+- **Genaue Meldungen in der Scanansicht.** Ist die Scanansicht auf eine
+  Ausleihe beschränkt (Button „Rückgabe scannen"), nennt sie den Grund, wenn
+  nichts zugeordnet werden kann: „Der Gegenstand gehört nicht zur Ausleihe …",
+  „Die Ausleihe … ist nicht ausgegeben …" bzw. „Alle n Stück dieses
+  Gegenstands sind für … bereits gescannt." statt pauschal „keine ausgegebene
+  Ausleihe mit offener Rückgabe". Vom Artikel aus erscheint der Hinweis
+  „unten bei der Ausleihe ‚Rückgabe zuordnen' wählen" nur, wenn es diesen
+  Button unten auch gibt; sonst kommt ein klarer Hinweis (keine ausgegebene
+  Ausleihe bzw. alle ausgegebenen Stück schon gescannt).
+- **„Rückgabe zuordnen" am Artikel nur bei ausgegebenen Ausleihen.** Neues
+  Rechenfeld `issued_order_count` (Ausgegebene Ausleihen); bei einer nur
+  reservierten Ausleihe bleibt der Button ausgeblendet. Der Smart-Button
+  „Offene Ausleihen" zählt weiter reservierte und ausgegebene Ausleihen.
+
+- **Scanansicht barrierefrei und eindeutig beschriftet.** Die Rückmeldung nach
+  einem Scan steht in zwei dauerhaft vorhandenen Live-Bereichen (`role="status"`
+  für Erfolg/Info, `role="alert"` für Fehler/Warnungen); es wechselt nur der
+  Text, und beim Zuordnen wird die Meldung nicht mehr zwischendurch entfernt.
+  So sagt der Screenreader „… erfasst: n von m Stück zurück. Zurückräumen
+  nach: …" zuverlässig an. Vor jeder Suche wird die Meldung geleert, damit auch
+  eine gleichlautende Meldung erneut angesagt wird. Der Modus-Schalter heißt
+  jetzt „Rückgabe scannen" (zugänglicher Name „Modus: Rückgabe scannen") und
+  ist damit vom Button „Rückgabe zuordnen" der Ausleihen unterscheidbar. Die
+  Buttons je Ausleihe tragen den Namen der Ausleihe im zugänglichen Namen und
+  Tooltip („Rückgabe zuordnen: VL/…", „Ausleihe öffnen: VL/…").
+- **„Rücknahme abschließen" in der Scanansicht umbenannt** in „Ausleihe öffnen
+  und Rücknahme abschließen": der Button öffnet nur die Ausleihe, abgeschlossen
+  wird dort über „Rücknahme" (Checkliste, Rückgabevermerk, Kaution). Die
+  Meldung nach dem letzten Stück sagt jetzt ausdrücklich, dass die Rücknahme
+  damit noch nicht abgeschlossen ist.
+
+### Migration
+- `migrations/19.0.5.7.0/post-migration.py` legt die Lagerorte
+  **Spielewagen**, **Normaler Verleih** und **Reserveverleih** an, jeweils nur,
+  wenn es noch keinen gleichnamigen Lagerort gibt (Groß-/Kleinschreibung und
+  Leerzeichen egal, archivierte zählen mit). Vorhandene Lagerorte, auch die
+  auf der Produktion bereits doppelt vorhandenen, werden nicht geändert,
+  zusammengeführt oder gelöscht. Keine XML-ID, keine Seed-Daten:
+  Neuinstallationen bleiben White Label.
+
+### Hinweise zur Installation
+- Nach dem Upgrade unter „Konfiguration > Lager" Farben und Hinweise pflegen,
+  den Artikeln Lagerort und Lagerplatz zuordnen, fehlende Barcodes über
+  „Barcode erzeugen" vergeben und die Etiketten neu drucken (alte Etiketten
+  haben keinen QR-Code, der Code128 bleibt lesbar).
+- Doppelte Lagerorte aus der Produktion vorher zusammenlegen (Artikel
+  umhängen, Dublette archivieren); das Modul räumt hier bewusst nichts auf.
+- `web.base.url` muss auf die öffentliche HTTPS-Adresse zeigen, sonst führt der
+  QR-Code ins Leere (Wert wird beim Druck in den QR-Code geschrieben).
+
 ## 19.0.5.6.0 (2026-10-12)
 
 ### Geändert

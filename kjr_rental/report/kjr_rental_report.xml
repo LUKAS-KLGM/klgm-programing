@@ -45,31 +45,53 @@
                                 style="page-break-inside:avoid;">
                                 <td t-foreach="docs[row_start:row_start + 2]" t-as="o"
                                     style="width:50%; vertical-align:top; padding:2mm;">
-                                    <div style="border:1px solid #999; border-radius:2mm; padding:3mm; height:42mm; overflow:hidden;">
-                                        <div style="font-size:13pt; font-weight:bold; line-height:1.1;">
-                                            <span t-field="o.name"/>
-                                        </div>
-                                        <div style="font-size:9pt; color:#444; margin-top:1mm;">
-                                            Inv.-Nr.:
-                                            <span t-if="o.code" t-field="o.code"/>
-                                            <span t-else="">-</span>
-                                            <t t-if="o.location_id">
-                                                · <span t-field="o.location_id.name"/>
-                                            </t>
-                                        </div>
-                                        <!-- Barcode über den Kern-Endpunkt aus dem Modul 'web'
-                                             (ADR-1: keine Abhängigkeit zu 'stock').
-                                             humanreadable=1 druckt den Wert zusätzlich als
-                                             Klartext unter die Balken, damit er notfalls
-                                             abgetippt werden kann. Erzeugte Barcodes enthalten
-                                             nur A-Z, 0-9 und '-' und sind daher ohne Kodierung
-                                             als URL-Pfad verwendbar.
+                                    <!-- B52: Farbstreifen links = Farbe des Lagerorts; dazu
+                                         Lagerort und Lagerplatz in großer Schrift, damit beim
+                                         Zurückräumen ohne Nachschlagen klar ist, wohin das Teil
+                                         gehört. Ohne gepflegte Farbe bleibt der Streifen grau.
+                                         Die Farbe ist am Lagerort als #RRGGBB geprüft. -->
+                                    <div t-attf-style="border:1px solid #999; border-left:5mm solid #{o.location_id.color or '#bbbbbb'}; border-radius:2mm; padding:2.5mm 3mm; height:52mm; overflow:hidden;">
+                                        <table style="width:100%; table-layout:fixed; border-collapse:collapse;">
+                                            <tr>
+                                                <td style="vertical-align:top; padding:0;">
+                                                    <div style="font-size:13pt; font-weight:bold; line-height:1.1;">
+                                                        <span t-field="o.name"/>
+                                                    </div>
+                                                    <div style="font-size:9pt; color:#444; margin-top:1mm;">
+                                                        Inv.-Nr.:
+                                                        <span t-if="o.code" t-field="o.code"/>
+                                                        <span t-else="">-</span>
+                                                    </div>
+                                                    <div style="font-size:8pt; color:#444; margin-top:2mm; text-transform:uppercase;">
+                                                        Gehört zurück nach
+                                                    </div>
+                                                    <div style="font-size:12pt; font-weight:bold; line-height:1.15;">
+                                                        <span t-out="o.return_location_label"/>
+                                                    </div>
+                                                </td>
+                                                <!-- B51: QR-Code für die Handykamera. Er trägt die
+                                                     Adresse /kjr_rental/scan/<Barcode> (Feld
+                                                     label_qr_value) und kommt aus der Kern-Route
+                                                     /report/barcode mit Typ QR (Modul web, kein
+                                                     stock_barcode). -->
+                                                <td t-if="o.label_qr_src" style="width:24mm; vertical-align:top; padding:0; text-align:right;">
+                                                    <img t-att-src="o.label_qr_src"
+                                                         style="width:23mm; height:23mm;"
+                                                         t-att-alt="o.barcode"/>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <!-- Code128 zusätzlich: für Handscanner und mit Klartext
+                                             (humanreadable=1) zum Abtippen. ADR-1: Kern-Endpunkt
+                                             aus 'web', keine Abhängigkeit zu 'stock'. Erzeugte
+                                             Barcodes enthalten nur A-Z, 0-9 und '-' und sind daher
+                                             ohne Kodierung als URL-Pfad verwendbar.
                                              Ohne Wert lieferte der Endpunkt ein kaputtes Bild –
                                              deshalb der Hinweistext im t-else. -->
-                                        <div style="text-align:center; margin-top:2mm;">
+                                        <div style="text-align:center; margin-top:1.5mm;">
                                             <img t-if="o.barcode"
-                                                 t-attf-src="/report/barcode/Code128/#{o.barcode}?width=560&amp;height=110&amp;humanreadable=1"
-                                                 style="max-width:100%; height:auto;"
+                                                 t-attf-src="/report/barcode/Code128/#{o.barcode}?width=560&amp;height=90&amp;humanreadable=1"
+                                                 style="max-width:100%; height:13mm;"
                                                  t-att-alt="o.barcode"/>
                                             <div t-else=""
                                                  style="font-size:9pt; color:#a00; border:1px dashed #a00; padding:3mm; margin-top:2mm;">

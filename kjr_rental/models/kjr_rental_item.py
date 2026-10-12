@@ -2,9 +2,20 @@
 """Verleihartikel mit Bestand, Lager und Tarifen."""
 import re
 from datetime import date as date_cls
+from urllib.parse import quote, unquote, urlencode
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools.misc import format_date
+
+# B51: Pfad, den der QR-Code des Inventaretiketts trägt. Die normale
+# Handykamera (ohne Odoo-App) öffnet damit direkt den Artikel; der Scanner
+# im Backend erkennt denselben Pfad und liest den Barcode daraus.
+SCAN_URL_PATH = '/kjr_rental/scan/'
+# B52: Farbe eines Lagerorts als HTML-Hexwert (#RRGGBB), wie ihn das
+# Odoo-Farbfeld (widget="color") liefert. Geprüft, weil der Wert ungefiltert
+# in Inline-Styles von Etikett und Scanansicht landet.
+HEX_COLOR_RE = re.compile(r'^#[0-9a-fA-F]{6}$')
 
 # Preismodelle des Verleihs. Als Modulkonstante, damit Artikel und Auswertungen
 # dieselbe Auswahl verwenden; die Ausleihposition spiegelt das Feld ueber ein
@@ -45,7 +56,12 @@ class KjrRentalCategory(models.Model):
 
 
 class KjrRentalLocation(models.Model):
-    """Frei pflegbare Lagerorte (statt hartkodierter Auswahl)."""
+    """Frei pflegbare Lagerorte (statt hartkodierter Auswahl).
+
+    B52: Ein Lagerort ist der Bestand, zu dem ein Gegenstand gehört
+    (z. B. Spielewagen, normaler Verleih, Reserveverleih). Farbe und Hinweis
+    beantworten beim Zurückräumen die Frage "wohin gehört das Teil?".
+    """
     _name = 'kjr.rental.location'
     _description = 'Verleih-Lager'
     _order = 'sequence, name'
@@ -53,6 +69,84 @@ class KjrRentalLocation(models.Model):
     name = fields.Char(string='Bezeichnung', required=True)
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
+    color = fields.Char(
+        string='Farbe',
+        help='Erkennungsfarbe des Lagerorts, z. B. die Farbe des Klebebands oder '
+             'der Kisten im Regal. Erscheint als Farbstreifen auf dem '
+             'Inventaretikett, in der Artikelliste und in der Scanansicht, damit '
+             'beim Zurückräumen auf einen Blick klar ist, wohin ein Teil gehört.',
+    )
+    note = fields.Text(
+        string='Hinweis zum Zurückräumen',
+        help='Wo genau liegt dieser Lagerort, z. B. "Keller, Raum 2, linkes Regal". '
+             'Wird in der Scanansicht unter dem Lagerort angezeigt.',
+    )
+    item_count = fields.Integer(string='Artikel', compute='_compute_item_count')
+
+    def _compute_item_count(self):
+        data = self.env['kjr.rental.item']._read_group(
+            [('location_id', 'in', self.ids)], groupby=['location_id'],
+            aggregates=['__count'])
+        mapped = {loc.id: n for loc, n in data}
+        for rec in self:
+            rec.item_count = mapped.get(rec.id, 0)
+
+    @api.model
+    def _normalize_color(self, value):
+        """Leerwerte zu False, sonst Leerzeichen abschneiden und klein schreiben."""
+        if not value:
+            return False
+        return value.strip().lower() or False
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if 'color' in vals:
+                vals['color'] = self._normalize_color(vals['color'])
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if 'color' in vals:
+            vals = dict(vals, color=self._normalize_color(vals['color']))
+        return super().write(vals)
+
+    @api.constrains('color')
+    def _check_color(self):
+        for rec in self:
+            if rec.color and not HEX_COLOR_RE.match(rec.color):
+                raise ValidationError(_(
+                    'Die Farbe des Lagerorts "%(name)s" muss ein Farbwert im Format '
+                    '#RRGGBB sein (z. B. #1f77b4). Bitte die Farbe über das '
+                    'Farbfeld auswählen.', name=rec.name))
+
+    @api.model
+    def _name_key(self, name):
+        """Vergleichsschlüssel für "gleichnamig": Groß-/Kleinschreibung und
+        mehrfache Leerzeichen spielen keine Rolle."""
+        return ' '.join((name or '').split()).casefold()
+
+    @api.model
+    def _ensure_named(self, entries):
+        """Lagerorte anlegen, zu denen es noch KEINEN gleichnamigen Datensatz gibt.
+
+        entries: Liste von (Reihenfolge, Bezeichnung). Archivierte Lagerorte zählen
+        mit (active_test=False): wer einen Lagerort bewusst archiviert hat, bekommt
+        ihn nicht als Dublette zurück. Vorhandene Datensätze (auch bereits doppelt
+        vorhandene) werden weder geändert noch zusammengeführt noch gelöscht.
+        Gibt die neu angelegten Lagerorte zurück; ein zweiter Aufruf legt nichts an.
+        """
+        known = {
+            self._name_key(name)
+            for name in self.with_context(active_test=False).search([]).mapped('name')
+        }
+        created = self.browse()
+        for sequence, name in entries:
+            key = self._name_key(name)
+            if not key or key in known:
+                continue
+            created |= self.create({'name': name, 'sequence': sequence})
+            known.add(key)
+        return created
 
 
 class KjrRentalItem(models.Model):
@@ -76,8 +170,42 @@ class KjrRentalItem(models.Model):
     category_id = fields.Many2one(
         'kjr.rental.category', string='Kategorie', required=True, ondelete='restrict')
     location_id = fields.Many2one(
-        'kjr.rental.location', string='Lager', ondelete='set null')
+        'kjr.rental.location', string='Lager', ondelete='set null',
+        help='Bestand bzw. Lagerort, zu dem der Gegenstand gehört (z. B. Spielewagen, '
+             'normaler Verleih, Reserveverleih). Steht auf dem Etikett und wird beim '
+             'Scannen und in der Rücknahme angezeigt.')
     quantity_total = fields.Integer(string='Bestand gesamt', default=1)
+
+    # --- B52: Wohin gehört das Teil beim Zurückräumen? -------------------------
+    storage_bin = fields.Char(
+        string='Lagerplatz',
+        help='Genauer Platz innerhalb des Lagerorts, z. B. "Regal 3, Fach B" oder '
+             '"Kiste rot". Steht auf dem Etikett, in der Rücknahme und in der '
+             'Scanansicht.')
+    location_color = fields.Char(
+        related='location_id.color', string='Farbe Lagerort')
+    return_location_label = fields.Char(
+        string='Gehört zurück nach', compute='_compute_return_location_label',
+        help='Lagerort und Lagerplatz in einer Zeile, so wie sie auf dem Etikett '
+             'stehen.')
+
+    # --- B51: QR-Code und Scan -------------------------------------------------
+    label_qr_value = fields.Char(
+        string='Inhalt des QR-Codes', compute='_compute_label_qr',
+        help='Adresse, die der QR-Code auf dem Inventaretikett trägt. Die Kamera '
+             'eines Handys öffnet damit nach der Anmeldung direkt diesen Artikel; '
+             'der Scanner im Verleih erkennt die Adresse ebenfalls. Leer, solange '
+             'kein Barcode vergeben ist.')
+    label_qr_src = fields.Char(
+        string='QR-Code-Bild', compute='_compute_label_qr',
+        help='Bildadresse des QR-Codes für das Etikett (Odoo-Route /report/barcode).')
+    open_order_count = fields.Integer(
+        string='Offene Ausleihen', compute='_compute_open_order_count',
+        help='Reservierte und ausgegebene Ausleihen mit diesem Artikel.')
+    issued_order_count = fields.Integer(
+        string='Ausgegebene Ausleihen', compute='_compute_open_order_count',
+        help='Ausgegebene Ausleihen mit diesem Artikel. Nur ihnen kann eine Rückgabe '
+             'per Scan zugeordnet werden (Button "Rückgabe zuordnen").')
 
     # --- Preismodell -----------------------------------------------------------
     # Die echte Preisliste des Betreibers kennt mehr als den Tagespreis: Fahrzeuge werden
@@ -337,6 +465,199 @@ class KjrRentalItem(models.Model):
                 candidate = '%s-%d' % (base, counter)
             rec.barcode = candidate
         return True
+
+    # --- B52: Lagerort/Lagerplatz -------------------------------------------------
+    @api.depends('location_id.name', 'storage_bin')
+    def _compute_return_location_label(self):
+        for rec in self:
+            parts = [p for p in (rec.location_id.name, (rec.storage_bin or '').strip()) if p]
+            rec.return_location_label = ' · '.join(parts) if parts else _(
+                'Kein Lagerort hinterlegt')
+
+    # --- B51: QR-Code auf dem Etikett ----------------------------------------------
+    @api.depends('barcode')
+    def _compute_label_qr(self):
+        """QR-Code-Inhalt und Bildadresse.
+
+        Der QR-Code trägt eine Adresse statt des nackten Barcodes: die Kamera-App
+        jedes Handys erkennt QR-Codes und öffnet die Adresse; der Controller
+        /kjr_rental/scan/<code> leitet nach der Anmeldung auf den Artikel weiter.
+        Der Code128 bleibt zusätzlich auf dem Etikett (Handscanner, Klartext).
+        Das Bild kommt aus der Kern-Route /report/barcode des Moduls web, die den
+        Typ 'QR' unterstützt (ir.actions.report.barcode); kein stock_barcode.
+        """
+        for rec in self:
+            barcode = self._normalize_scan_value(rec.barcode)
+            if not barcode:
+                rec.label_qr_value = False
+                rec.label_qr_src = False
+                continue
+            base = (rec.get_base_url() or '').rstrip('/')
+            value = '%s%s%s' % (base, SCAN_URL_PATH, quote(barcode, safe=''))
+            rec.label_qr_value = value
+            # Abfrageparameter statt Pfadsegment: die Adresse im QR-Code enthält
+            # selbst "//" und "/", die im Pfad nicht unverändert ankämen.
+            # barLevel M verkraftet ca. 15 % Beschädigung (Etiketten im Lager).
+            rec.label_qr_src = '/report/barcode/?%s' % urlencode({
+                'barcode_type': 'QR',
+                'value': value,
+                'width': 300,
+                'height': 300,
+                'barLevel': 'M',
+            })
+
+    def _compute_open_order_count(self):
+        # Eine Gruppierung je Artikel und Status: jede Ausleihe hat genau einen
+        # Status, die Summe über die Status ist also die Zahl der Ausleihen.
+        data = self.env['kjr.rental.order.line']._read_group(
+            [('item_id', 'in', self.ids),
+             ('order_id.state', 'in', ('reserved', 'issued'))],
+            groupby=['item_id', 'order_id.state'], aggregates=['order_id:count_distinct'])
+        open_counts = {}
+        issued_counts = {}
+        for item, state, count in data:
+            open_counts[item.id] = open_counts.get(item.id, 0) + count
+            if state == 'issued':
+                issued_counts[item.id] = issued_counts.get(item.id, 0) + count
+        for rec in self:
+            rec.open_order_count = open_counts.get(rec.id, 0)
+            rec.issued_order_count = issued_counts.get(rec.id, 0)
+
+    def action_view_open_orders(self):
+        """Smart-Button: reservierte und ausgegebene Ausleihen dieses Artikels."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Ausleihen: %s', self.name),
+            'res_model': 'kjr.rental.order',
+            'view_mode': 'list,form',
+            'domain': [('line_ids.item_id', '=', self.id),
+                       ('state', 'in', ('reserved', 'issued'))],
+        }
+
+    # --- B51: Scannen (Kamera, Handscanner, Eingabe) --------------------------------
+    @api.model
+    def _scan_extract_code(self, raw):
+        """Gelesenen Wert auf den Barcode bzw. die Inventarnummer zurückführen.
+
+        Der QR-Code des Etiketts enthält eine Adresse (…/kjr_rental/scan/<code>);
+        Code128 und Handeingabe liefern den Code direkt.
+        """
+        value = (raw or '').strip()
+        if SCAN_URL_PATH in value:
+            value = value.split(SCAN_URL_PATH, 1)[1]
+            value = value.split('?', 1)[0].split('#', 1)[0].strip('/')
+            value = unquote(value).strip()
+        return value
+
+    @api.model
+    def _find_by_scan(self, raw):
+        """Artikel zu einem gescannten Wert: zuerst Barcode, dann Inventarnummer,
+        jeweils exakt und danach ohne Rücksicht auf Groß-/Kleinschreibung.
+        Ein leeres Recordset, wenn nichts passt oder der Wert nicht eindeutig ist."""
+        code = self._scan_extract_code(raw)
+        if not code:
+            return self.browse()
+        escaped = code.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+        for fname in ('barcode', 'code'):
+            for operator, value in (('=', code), ('=ilike', escaped)):
+                found = self.search([(fname, operator, value)], limit=2)
+                if len(found) == 1:
+                    return found
+        return self.browse()
+
+    def _scan_order_data(self, order_id=None):
+        """Offene Ausleihen dieses Artikels für die Scanansicht."""
+        self.ensure_one()
+        domain = [('item_id', '=', self.id),
+                  ('order_id.state', 'in', ('reserved', 'issued'))]
+        if order_id:
+            domain.append(('order_id', '=', order_id))
+        lines = self.env['kjr.rental.order.line'].search(domain)
+        state_labels = dict(self.env['kjr.rental.order']._fields['state']
+                            ._description_selection(self.env))
+        result = []
+        for order in lines.order_id.sorted(lambda o: (o.state != 'issued', o.date_to or o.date_from)):
+            order_lines = lines.filtered(lambda l, o=order: l.order_id == o)
+            quantity = sum(order_lines.mapped('quantity'))
+            scanned = sum(order_lines.mapped('return_scanned_qty'))
+            result.append({
+                'id': order.id,
+                'name': order.name,
+                'partner': order.partner_id.display_name,
+                'date_from': format_date(self.env, order.date_from),
+                'date_to': format_date(self.env, order.date_to),
+                'state': order.state,
+                'state_label': state_labels.get(order.state, order.state),
+                'quantity': quantity,
+                'scanned': scanned,
+                'can_return': order.state == 'issued' and scanned < quantity,
+                'order_scan_summary': order.return_scan_summary or '',
+                'order_scan_complete': order.return_scan_complete,
+            })
+        return result
+
+    def _scan_item_data(self):
+        """Artikelangaben für die Scanansicht (Name, Nummern, wohin zurückräumen)."""
+        self.ensure_one()
+        color = self.location_id.color
+        return {
+            'id': self.id,
+            'name': self.name,
+            'code': self.code or '',
+            'barcode': self.barcode or '',
+            'category': self.category_id.display_name or '',
+            'location': self.location_id.name or '',
+            'location_color': color if color and HEX_COLOR_RE.match(color) else '',
+            'location_note': self.location_id.note or '',
+            'storage_bin': self.storage_bin or '',
+            'return_location_label': self.return_location_label or '',
+            'quantity_total': self.quantity_total,
+        }
+
+    @api.model
+    def kjr_scan_lookup(self, raw=None, item_id=None, order_id=None):
+        """Einstieg der Client-Aktion "Scannen".
+
+        raw: gelesener Wert (QR-Adresse, Barcode, Inventarnummer);
+        item_id: alternativ ein bereits bekannter Artikel (Button am Artikel);
+        order_id: optional auf eine Ausleihe beschränken (Rücknahme aus dem Vorgang).
+        Gibt ein Wörterbuch für die Anzeige zurück; nichts wird geändert.
+        """
+        if item_id:
+            item = self.browse(int(item_id)).exists()
+        else:
+            item = self._find_by_scan(raw)
+        code = self._scan_extract_code(raw) if raw else ''
+        if not item:
+            return {
+                'found': False,
+                'code': code,
+                'message': _('Zum Code "%s" wurde kein Verleihartikel gefunden. Ist '
+                             'der Barcode am Artikel hinterlegt?', code) if code else
+                           _('Bitte einen Code scannen oder eingeben.'),
+            }
+        item.check_access('read')
+        order_id = int(order_id) if order_id else None
+        return {
+            'found': True,
+            'code': code,
+            'item': item._scan_item_data(),
+            'orders': item._scan_order_data(order_id=order_id),
+        }
+
+    def action_open_scan(self):
+        """Button am Artikel: Scanansicht mit diesem Artikel im Modus Rückgabe öffnen.
+        Der Artikel wird dort nur angezeigt; zugeordnet wird er erst per Scan oder per
+        Klick auf "Rückgabe zuordnen" bei der Ausleihe (kein automatisches Zählen beim
+        Öffnen, sonst zählte jeder Neuaufbau der Ansicht ein weiteres Stück)."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'kjr_rental_scan',
+            'name': _('Scannen'),
+            'context': {'kjr_scan_item_id': self.id, 'kjr_scan_mode': 'return'},
+        }
 
     # --- R3: Abschreibung (lineare Eigenberechnung, KEIN Enterprise account_asset) ---
     purchase_value = fields.Float(string='Anschaffungswert (€)', digits=(10, 2))

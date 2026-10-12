@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Materialverleih',
-    'version': '19.0.5.6.0',
+    'version': '19.0.5.7.0',
     'category': 'Custom/KJR',
     'summary': 'Verleih von Material (Fahrzeuge, Zelte, Technik, Sport, Küche, Spielgeräte) mit '
                'Bestand, Verfügbarkeitsprüfung, Mitgliedertarif, Kaution, Website-Anfrage & Vertrag',
@@ -29,6 +29,11 @@
         'web.assets_frontend': [
             'kjr_rental/static/src/css/rental.css',
             'kjr_rental/static/src/js/cart.js',
+        ],
+        # B51: Scanansicht im Backend (OWL-Client-Aktion "Scannen").
+        'web.assets_backend': [
+            'kjr_rental/static/src/scan/rental_scan_action.js',
+            'kjr_rental/static/src/scan/rental_scan_action.xml',
         ],
     },
     'installable': True,

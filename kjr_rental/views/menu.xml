@@ -2,6 +2,10 @@
 <odoo>
     <menuitem id="menu_kjr_rental_root" name="KJR Verleih" sequence="97"
               web_icon="kjr_rental,static/description/icon.png"/>
+    <!-- B51: Scannen per Handykamera/Handscanner, ganz oben für den Einsatz im Lager. -->
+    <menuitem id="menu_kjr_rental_scan" name="Scannen"
+              parent="menu_kjr_rental_root" action="action_kjr_rental_scan" sequence="5"
+              groups="kjr_rental.group_kjr_rental_user"/>
     <menuitem id="menu_kjr_rental_orders" name="Ausleihen"
               parent="menu_kjr_rental_root" action="action_kjr_rental_order" sequence="10"/>
     <menuitem id="menu_kjr_rental_items" name="Artikel"

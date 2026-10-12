@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="kjr_rental.RentalScan">
+        <div class="o_action o_kjr_rental_scan h-100 overflow-auto bg-view">
+            <div class="container py-3" style="max-width: 760px;">
+                <h2 class="mb-3"><i class="fa fa-qrcode me-2"/>Verleih scannen</h2>
+
+                <div t-if="orderId" class="alert alert-info" role="status">
+                    Rücknahme für Ausleihe <strong t-out="orderName"/>: jeder Scan
+                    zählt ein Stück dieser Ausleihe als zurück.
+                </div>
+
+                <!-- Modus-Schalter: eigener Name ("Rückgabe scannen"), damit er sich
+                     für Screenreader von den Buttons "Rückgabe zuordnen: <Ausleihe>"
+                     in der Liste unten unterscheidet. -->
+                <div class="btn-group w-100 mb-3" role="group" aria-label="Modus">
+                    <button type="button"
+                            t-att-class="'btn ' + (state.mode === 'show' ? 'btn-primary' : 'btn-outline-primary')"
+                            t-att-aria-pressed="state.mode === 'show' ? 'true' : 'false'"
+                            aria-label="Modus: Gegenstand anzeigen"
+                            t-on-click="() => this.setMode('show')">
+                        <i class="fa fa-search me-1" aria-hidden="true"/>Gegenstand anzeigen
+                    </button>
+                    <button type="button"
+                            t-att-class="'btn ' + (state.mode === 'return' ? 'btn-primary' : 'btn-outline-primary')"
+                            t-att-aria-pressed="state.mode === 'return' ? 'true' : 'false'"
+                            aria-label="Modus: Rückgabe scannen"
+                            t-on-click="() => this.setMode('return')">
+                        <i class="fa fa-undo me-1" aria-hidden="true"/>Rückgabe scannen
+                    </button>
+                </div>
+
+                <button t-if="state.cameraSupported" type="button"
+                        class="btn btn-primary btn-lg w-100 mb-3"
+                        t-att-disabled="state.busy"
+                        t-on-click="onClickCamera">
+                    <i class="fa fa-camera me-2"/>Mit Kamera scannen
+                </button>
+
+                <div class="input-group input-group-lg mb-3">
+                    <input t-ref="codeInput" type="text" class="form-control"
+                           t-model="state.code" t-on-keydown="onKeydown"
+                           autocomplete="off" autocapitalize="characters" spellcheck="false"
+                           aria-label="Barcode oder Inventarnummer"
+                           placeholder="Barcode, Inventarnummer oder Handscanner"/>
+                    <button type="button" class="btn btn-secondary"
+                            t-att-disabled="state.busy" t-on-click="onSubmit">
+                        Suchen
+                    </button>
+                </div>
+
+                <!-- Rückmeldung für den Scan ohne Blick aufs Display: zwei Live-Bereiche,
+                     die IMMER im DOM stehen (auch leer). Ein role=status/alert, der erst
+                     mit fertigem Text eingefügt wird, sagen Screenreader oft nicht an;
+                     deshalb wechselt hier nur der Inhalt. Erfolg/Info über role=status
+                     (höflich), Fehler/Warnungen über role=alert (sofort). Leer ohne
+                     Klasse, damit kein leerer Kasten sichtbar ist. -->
+                <div role="status" aria-live="polite" aria-atomic="true"
+                     t-att-class="statusFeedback ? 'alert alert-' + statusFeedback.type : ''">
+                    <t t-if="statusFeedback" t-out="statusFeedback.text"/>
+                </div>
+                <div role="alert" aria-live="assertive" aria-atomic="true"
+                     t-att-class="alertFeedback ? 'alert alert-' + alertFeedback.type : ''">
+                    <t t-if="alertFeedback" t-out="alertFeedback.text"/>
+                </div>
+
+                <div t-if="item" class="card mb-3">
+                    <div class="card-body">
+                        <h3 class="card-title mb-1" t-out="item.name"/>
+                        <div class="text-muted mb-3">
+                            <span t-if="item.code">Inv.-Nr. <t t-out="item.code"/></span>
+                            <span t-if="item.code and item.barcode"> · </span>
+                            <span t-if="item.barcode">Barcode <t t-out="item.barcode"/></span>
+                            <span t-if="item.category"> · <t t-out="item.category"/></span>
+                        </div>
+
+                        <!-- B52: Wohin gehört das Teil? Groß, mit Farbe des Lagerorts. -->
+                        <div class="p-3 mb-3 rounded bg-light" t-att-style="locationStyle(item)">
+                            <div class="small text-uppercase text-muted">Gehört zurück nach</div>
+                            <div class="fs-2 fw-bold" t-out="item.return_location_label"/>
+                            <div t-if="item.location_note" class="mt-1" t-out="item.location_note"/>
+                        </div>
+
+                        <button type="button" class="btn btn-outline-secondary" t-on-click="openItem">
+                            <i class="fa fa-external-link me-1"/>Artikel öffnen
+                        </button>
+                    </div>
+                </div>
+
+                <t t-if="item">
+                    <h4>Offene Ausleihen</h4>
+                    <p t-if="!state.result.orders.length" class="text-muted">
+                        Dieser Gegenstand ist derzeit weder reserviert noch ausgegeben.
+                    </p>
+                    <div t-foreach="state.result.orders" t-as="order" t-key="order.id"
+                         class="card mb-2">
+                        <div class="card-body py-2">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div>
+                                    <strong t-out="order.name"/>
+                                    <span class="badge ms-1"
+                                          t-att-class="order.state === 'issued' ? 'text-bg-warning' : 'text-bg-info'"
+                                          t-out="order.state_label"/>
+                                    <div class="small text-muted">
+                                        <t t-out="order.partner"/> ·
+                                        <t t-out="order.date_from"/> bis <t t-out="order.date_to"/>
+                                    </div>
+                                    <div t-if="order.state === 'issued'" class="small">
+                                        Dieser Gegenstand: <t t-out="order.scanned"/> von
+                                        <t t-out="order.quantity"/> Stück zurück
+                                        <t t-if="order.order_scan_summary">
+                                            · Ausleihe gesamt: <t t-out="order.order_scan_summary"/>
+                                        </t>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <!-- Name je Ausleihe (aria-label/title), damit die Buttons
+                                         in der Liste für Screenreader unterscheidbar sind. -->
+                                    <button t-if="order.can_return" type="button"
+                                            class="btn btn-primary"
+                                            t-att-disabled="state.busy"
+                                            t-att-aria-label="returnButtonLabel(order)"
+                                            t-att-title="returnButtonLabel(order)"
+                                            t-on-click="() => this.registerReturn(order)">
+                                        <i class="fa fa-undo me-1" aria-hidden="true"/>Rückgabe zuordnen
+                                    </button>
+                                    <!-- Öffnet nur die Ausleihe; abgeschlossen wird dort über
+                                         "Rücknahme" (Checkliste, Rückgabevermerk, Kaution).
+                                         Deshalb nicht "Rücknahme abschließen". -->
+                                    <button type="button"
+                                            t-att-class="'btn ' + (order.order_scan_complete ? 'btn-success' : 'btn-outline-secondary')"
+                                            t-att-aria-label="openOrderButtonLabel(order)"
+                                            t-att-title="openOrderButtonLabel(order)"
+                                            t-on-click="() => this.openOrder(order)">
+                                        <i class="fa fa-external-link me-1" aria-hidden="true"/>
+                                        <t t-if="order.order_scan_complete">Ausleihe öffnen und Rücknahme abschließen</t>
+                                        <t t-else="">Ausleihe öffnen</t>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+
+</templates>

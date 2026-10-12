@@ -164,6 +164,19 @@ class KjrRentalOrder(models.Model):
              'Rückgabe oder Nichtabholung).',
     )
 
+    # ------------------------------------------------------------------
+    # B51: Rückgabe per Scan
+    # ------------------------------------------------------------------
+    return_scan_used = fields.Boolean(
+        string='Rückgabe gescannt', compute='_compute_return_scan',
+        help='Mindestens ein Stück dieser Ausleihe wurde bei der Rücknahme gescannt.')
+    return_scan_complete = fields.Boolean(
+        string='Alle Positionen gescannt', compute='_compute_return_scan',
+        help='Jede Position ist in voller Menge per Scan als zurückgegeben erfasst.')
+    return_scan_summary = fields.Char(
+        string='Scan-Stand', compute='_compute_return_scan',
+        help='Wie viele Stück bei der Rücknahme bereits gescannt wurden.')
+
     # DSGVO: Merker für die Anonymisierung nach Ablauf der Aufbewahrungsfrist
     # (siehe _cron_anonymize_expired). Gleiches Muster wie kjr.grant.participant:
     # der Merker macht den Lauf idempotent, damit ein zweiter Durchlauf einen
@@ -195,6 +208,18 @@ class KjrRentalOrder(models.Model):
                 rec.is_member = rec.is_member
                 continue
             rec.is_member = bool(rec.partner_id.is_kjr_member)
+
+    @api.depends('line_ids.quantity', 'line_ids.return_scanned_qty')
+    def _compute_return_scan(self):
+        for rec in self:
+            total = sum(rec.line_ids.mapped('quantity'))
+            scanned = sum(rec.line_ids.mapped('return_scanned_qty'))
+            rec.return_scan_used = scanned > 0
+            rec.return_scan_complete = bool(rec.line_ids) and all(
+                line.return_scanned_qty >= line.quantity for line in rec.line_ids)
+            rec.return_scan_summary = _(
+                '%(scanned)d von %(total)d Stück gescannt',
+                scanned=scanned, total=total) if rec.line_ids else False
 
     @api.depends('date_from', 'date_to')
     def _compute_rental_days(self):
@@ -295,6 +320,9 @@ class KjrRentalOrder(models.Model):
                 raise UserError(_('Nur reservierte Ausleihen können ausgegeben werden.'))
             rec._check_availability()
             rec.state = 'issued'
+            # B51: Scan-Stand einer früheren Ausgabe (z. B. nach "Zurück auf
+            # Anfrage") gilt für diese Ausgabe nicht mehr.
+            rec.line_ids.filtered('return_scanned_qty').write({'return_scanned_qty': 0})
 
     def _return_findings(self):
         """Abweichungen der Rücknahme als Liste von Klartexten (leer = alles in Ordnung)."""
@@ -355,6 +383,97 @@ class KjrRentalOrder(models.Model):
             'clean': _('ja') if self.return_checked_clean else _('nein'),
             'damage': _('ja') if self.return_damage else _('nein'),
             'note': note or _('-'),
+        } + self._return_scan_message()
+
+    def _return_scan_message(self):
+        """B51: Scan-Stand der Rücknahme für die Chatter-Notiz (leer ohne Scan).
+
+        Reine Dokumentation, keine Sperre: auch Teile ohne Etikett müssen
+        zurückgenommen werden können. Fehlmengen nennt die Notiz je Artikel."""
+        self.ensure_one()
+        if not self.return_scan_used:
+            return Markup('')
+        missing = [
+            '%s (%d)' % (line.item_id.name, line.quantity - line.return_scanned_qty)
+            for line in self.line_ids
+            if line.return_scanned_qty < line.quantity
+        ]
+        return Markup(_(
+            '<p>Per Scan erfasst: %(summary)s. Nicht gescannt: %(missing)s</p>'
+        )) % {
+            'summary': self.return_scan_summary,
+            'missing': ', '.join(missing) if missing else _('nichts'),
+        }
+
+    def action_open_return_scan(self):
+        """Button "Rückgabe scannen": Scanansicht auf diese Ausleihe beschränkt."""
+        self.ensure_one()
+        if self.state != 'issued':
+            raise UserError(_('Nur ausgegebene Ausleihen können per Scan '
+                              'zurückgenommen werden.'))
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'kjr_rental_scan',
+            'name': _('Rückgabe scannen: %s', self.name),
+            'context': {
+                'kjr_scan_order_id': self.id,
+                'kjr_scan_order_name': self.name,
+                'kjr_scan_mode': 'return',
+            },
+        }
+
+    def kjr_scan_register_return(self, item_id, quantity=1):
+        """B51: Gescanntes Stück der Rücknahme dieser Ausleihe zuordnen.
+
+        Nutzt den bestehenden Rücknahmeablauf: der Scan zählt nur mit, wie viele
+        Stück je Position zurück sind. Abgeschlossen wird die Rücknahme weiterhin
+        über "Rücknahme" (action_return) mit Checkliste und Rückgabevermerk.
+        Gibt ein Wörterbuch für die Scanansicht zurück; erwartbare Fälle (falscher
+        Status, Artikel nicht in der Ausleihe, schon alles gescannt) kommen als
+        Meldung zurück statt als Fehlerdialog, damit im Lager weitergescannt
+        werden kann.
+        """
+        self.ensure_one()
+        item = self.env['kjr.rental.item'].browse(int(item_id)).exists()
+        quantity = max(int(quantity or 1), 1)
+        if self.state != 'issued':
+            return {'ok': False, 'message': _(
+                'Die Ausleihe %s ist nicht ausgegeben; eine Rückgabe kann nur für '
+                'ausgegebene Ausleihen erfasst werden.', self.name)}
+        lines = self.line_ids.filtered(lambda l: l.item_id == item)
+        if not item or not lines:
+            return {'ok': False, 'message': _(
+                'Der Artikel gehört nicht zur Ausleihe %s.', self.name)}
+        open_lines = lines.filtered(lambda l: l.return_scanned_qty < l.quantity)
+        if not open_lines:
+            return {'ok': False, 'message': _(
+                'Alle %(qty)d Stück von "%(item)s" sind für %(order)s bereits als '
+                'zurückgegeben gescannt.',
+                qty=sum(lines.mapped('quantity')), item=item.name, order=self.name)}
+        remaining = quantity
+        for line in open_lines:
+            take = min(remaining, line.quantity - line.return_scanned_qty)
+            line.return_scanned_qty += take
+            remaining -= take
+            if not remaining:
+                break
+        scanned = sum(lines.mapped('return_scanned_qty'))
+        total = sum(lines.mapped('quantity'))
+        message = _('"%(item)s" für %(order)s erfasst: %(scanned)d von %(total)d Stück '
+                    'zurück. Zurückräumen nach: %(location)s.',
+                    item=item.name, order=self.name, scanned=scanned, total=total,
+                    location=item.return_location_label)
+        if self.return_scan_complete:
+            # Der Scan schließt nichts ab: ausdrücklich sagen, dass die Rücknahme
+            # noch in der Ausleihe über "Rücknahme" abgeschlossen werden muss.
+            message += ' ' + _('Alle Positionen sind gescannt. Abgeschlossen ist die '
+                               'Rücknahme damit noch nicht: bitte die Ausleihe öffnen, '
+                               'Zubehör und Zustand prüfen und über „Rücknahme“ abschließen.')
+        return {
+            'ok': True,
+            'message': message,
+            'order_complete': self.return_scan_complete,
+            'not_taken': remaining,
         }
 
     def action_return(self):
@@ -954,6 +1073,24 @@ class KjrRentalOrderLine(models.Model):
     currency_id = fields.Many2one(related='order_id.currency_id')
     subtotal = fields.Monetary(string='Zwischensumme', compute='_compute_subtotal', store=True)
     deposit_subtotal = fields.Monetary(string='Kaution', compute='_compute_subtotal', store=True)
+    # B51/B52: Rücknahme. Gezählt wird je Position, wie viele Stück per Scan
+    # (oder von Hand korrigiert) zurück sind; Lagerort und Lagerplatz zeigen, wohin
+    # das Teil zurückgeräumt wird.
+    return_scanned_qty = fields.Integer(
+        string='Zurück (Scan)', default=0, copy=False,
+        help='Bei der Rücknahme gescannte Stück dieser Position. Zählt mit jedem '
+             'Scan in der Scanansicht hoch und kann hier von Hand korrigiert werden. '
+             'Dokumentation, keine Sperre: abgeschlossen wird die Rücknahme über '
+             '"Rücknahme".')
+    item_code = fields.Char(related='item_id.code', string='Inventarnummer')
+    item_location_id = fields.Many2one(
+        related='item_id.location_id', string='Lagerort')
+    item_location_color = fields.Char(
+        related='item_id.location_id.color', string='Farbe Lagerort')
+    item_storage_bin = fields.Char(related='item_id.storage_bin', string='Lagerplatz')
+    return_location_label = fields.Char(
+        related='item_id.return_location_label', string='Gehört zurück nach')
+
     # R2: Live-Verfügbarkeit im Zeitraum (today/Reservierungs-abhängig => NICHT store)
     available_in_period = fields.Integer(
         string='Verfügbar im Zeitraum', compute='_compute_available_in_period', store=False)
@@ -1152,3 +1289,12 @@ class KjrRentalOrderLine(models.Model):
         for rec in self:
             if rec.quantity <= 0:
                 raise ValidationError(_('Die Menge muss größer als 0 sein.'))
+
+    @api.constrains('quantity', 'return_scanned_qty')
+    def _check_return_scanned_qty(self):
+        for rec in self:
+            if rec.return_scanned_qty < 0 or rec.return_scanned_qty > rec.quantity:
+                raise ValidationError(_(
+                    'Bei "%(item)s" können höchstens %(qty)d Stück als zurück '
+                    'gescannt sein (Menge der Position).',
+                    item=rec.item_id.name, qty=rec.quantity))
