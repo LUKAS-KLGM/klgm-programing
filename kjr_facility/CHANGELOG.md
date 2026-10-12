@@ -1,5 +1,26 @@
 # Changelog — kjr_facility
 
+## 19.0.7.4.0 (2026-10-12)
+
+### Technisch
+- Neue Erweiterungsstelle `_send_contract()`: `action_confirm` verschickt den
+  Buchungsvertrag jetzt über diese Methode. Ohne Erweiterung unverändert (Mail mit
+  PDF-Anhang). Genutzt vom Brückenmodul `kjr_facility_sign` (Vertrag digital
+  unterschreiben mit Odoo Sign).
+
+## 19.0.7.3.2 (2026-10-11)
+
+### Geändert
+- Einrichtungsseite auf dem Handy: zusätzlicher Knopf „Buchung anfragen“ direkt unter
+  Überschrift und Kurzbeschreibung (nur unterhalb lg). Vorher rutschte die
+  Eckdaten-Karte mit dem Knopf unter die lange Beschreibung.
+
+## 19.0.7.3.1 (2026-10-11)
+
+### Geändert
+- Anfrageformular: Die Ausfüllhinweise im Datenschutzblock („legt der Veranstalter fest
+  und trägt sie hier ein“) sehen nur noch interne Benutzer und nur, solange der Wert fehlt.
+
 ## 19.0.7.3.0 (2026-10-11)
 
 ### Geändert

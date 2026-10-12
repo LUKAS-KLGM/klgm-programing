@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 """Tests der Einrichtungsbuchung: Doppelbelegung, Kapazität, Beträge, Betreuung."""
+from unittest.mock import patch
+
+from odoo import fields
 from odoo.tests.common import TransactionCase
 from odoo.tests import tagged
 from odoo.exceptions import ValidationError
@@ -199,3 +202,29 @@ class TestKjrFacilityBooking(TransactionCase):
         self.assertEqual(b.meal_option, 'full',
                          'Die gebuchte Leistung bleibt dokumentiert.')
         self.assertFalse(b.facility_offers_catering)
+
+    # ── Vertragsversand über die Erweiterungsstelle _send_contract (19.0.7.4.0) ──
+    # kjr_facility_sign ersetzt den Versand bei eingeschalteter digitaler
+    # Unterschrift. Ohne Erweiterung (bzw. ausgeschaltet) bleibt es bei der Mail
+    # mit PDF-Anhang.
+
+    def test_confirm_sends_contract_via_hook(self):
+        """action_confirm verschickt den Vertrag genau einmal über _send_contract."""
+        booking = self._booking(contact_email='gruppe.test@example.com')
+        Booking = type(self.env['kjr.facility.booking'])
+        with patch.object(Booking, '_send_contract', autospec=True) as send_contract:
+            booking.action_confirm()
+        self.assertEqual(send_contract.call_count, 1)
+        self.assertEqual(booking.state, 'confirmed')
+
+    def test_confirm_contract_mail_default(self):
+        """Standard: Vertragsmail in der Warteschlange, Versanddatum heute."""
+        booking = self._booking(contact_email='gruppe.test@example.com')
+        booking.action_confirm()
+        mails = self.env['mail.mail'].sudo().search([
+            ('model', '=', 'kjr.facility.booking'),
+            ('res_id', '=', booking.id),
+            ('subject', '=like', 'Buchungsvertrag %s%%' % booking.name),
+        ])
+        self.assertEqual(len(mails), 1, 'Die Vertragsmail muss in der Warteschlange liegen.')
+        self.assertEqual(booking.contract_sent_date, fields.Date.today())

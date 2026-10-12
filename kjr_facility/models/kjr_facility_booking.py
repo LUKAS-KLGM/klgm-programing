@@ -929,13 +929,24 @@ class KjrFacilityBooking(models.Model):
                 _('Reservierungsbestaetigung_%s.pdf') % (rec.name or '').replace('/', '-'),
             )
 
+    def _send_contract(self):
+        """Vertrag an den Mieter schicken (Erweiterungsstelle).
+
+        Standard: Mail mit PDF-Anhang (mail_template_booking_contract).
+        kjr_facility_sign ersetzt das bei eingeschalteter digitaler Unterschrift
+        durch eine Unterschriftsanfrage.
+        """
+        self.ensure_one()
+        self._send_template('kjr_facility.mail_template_booking_contract')
+
     def action_confirm(self):
         for rec in self:
             if rec.state not in ('draft', 'reserved'):
                 raise UserError(_('Nur Anfragen oder Reservierungen können gebucht werden.'))
             rec.state = 'confirmed'
-            # F2: Vertrag automatisch zuschicken (mail.template mit PDF-Anhang).
-            rec._send_template('kjr_facility.mail_template_booking_contract')
+            # F2: Vertrag automatisch zuschicken (Standard: Mail mit PDF-Anhang;
+            # Erweiterungsstelle _send_contract, z. B. kjr_facility_sign).
+            rec._send_contract()
             rec.contract_sent_date = fields.Date.today()
             # F3: Vertrags-PDF deterministisch am Datensatz ablegen.
             rec._store_document(

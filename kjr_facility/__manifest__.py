@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Einrichtungsbuchung',
-    'version': '19.0.7.3.2',
+    'version': '19.0.7.4.0',
     'category': 'Custom/KJR',
     'summary': 'Belegungs- und Buchungsverwaltung für Jugendhäuser und Zeltplätze: '
                'Tarife, Verpflegung, Doppelbelegungsprüfung, Rechnung, Website & Portal',
