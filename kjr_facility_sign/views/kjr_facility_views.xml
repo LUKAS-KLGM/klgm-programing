@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_kjr_facility_form_kjr_facility_sign" model="ir.ui.view">
+        <field name="name">kjr.facility.form.kjr.facility.sign</field>
+        <field name="model">kjr.facility</field>
+        <field name="inherit_id" ref="kjr_facility.view_kjr_facility_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='invoice_auto_post']" position="after">
+                <field name="kjr_sign_disabled"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

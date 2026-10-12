@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Eigene Rolle: Odoo Sign kennt nur sign.sign_item_role_default
+             (sign/data/sign_data.xml), keine Kunden-/Mieterrolle. -->
+        <record id="sign_item_role_tenant" model="sign.item.role">
+            <field name="name">Mieter/in</field>
+            <field name="sequence">20</field>
+        </record>
+    </data>
+</odoo>

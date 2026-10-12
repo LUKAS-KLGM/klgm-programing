@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Kennzeichnet NUR Kontakte, die die Brücke als Unterzeichner neu anlegt.
+             TODO(KJR): Aufbewahrung/Anonymisierung im Löschkonzept festlegen. -->
+        <record id="partner_category_signer" model="res.partner.category">
+            <field name="name">KJR Vertragsunterzeichner (Einrichtungen)</field>
+        </record>
+    </data>
+</odoo>

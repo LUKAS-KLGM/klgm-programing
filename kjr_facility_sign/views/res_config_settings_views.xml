@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Eigene App-Seite "KJR Einrichtungen" (kjr_facility hat keine eigene
+         Einstellungsseite; das Icon kommt aus kjr_facility). Erhält
+         kjr_facility später eine, den Block dorthin verschieben. -->
+    <record id="res_config_settings_view_form_kjr_facility_sign" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.kjr.facility.sign</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="61"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="KJR Einrichtungen" string="KJR Einrichtungen"
+                     name="kjr_facility" groups="base.group_system">
+                    <block title="KJR Einrichtungen: Vertrag digital unterschreiben"
+                           name="kjr_facility_sign">
+                        <setting id="kjr_facility_sign_enabled"
+                                 string="Vertrag digital unterschreiben"
+                                 help="Beim verbindlichen Buchen erhält der Mieter eine Unterschriftsanfrage statt der Vertragsmail. Pro Einrichtung abschaltbar (Einrichtung, Gruppe Zeiten &amp; Rechnung).">
+                            <field name="kjr_facility_sign_enabled"/>
+                        </setting>
+                        <setting id="kjr_facility_sign_sender" string="Absender"
+                                 help="Interner Benutzer mit E-Mail-Adresse. Leer = verantwortliche Person der Einrichtung. Nicht deaktivieren, solange Anfragen offen sind.">
+                            <field name="kjr_facility_sign_sender_id" options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="kjr_facility_sign_timing" string="Fristen"
+                                 help="Gültigkeit endet spätestens am Tag vor der Anreise. Erinnerung 0 = keine Erinnerung durch Odoo Sign.">
+                            <div class="row mt-2">
+                                <label for="kjr_facility_sign_validity_days" class="col-lg-6 o_light_label"/>
+                                <field name="kjr_facility_sign_validity_days" class="col-lg-2"/>
+                            </div>
+                            <div class="row">
+                                <label for="kjr_facility_sign_reminder_days" class="col-lg-6 o_light_label"/>
+                                <field name="kjr_facility_sign_reminder_days" class="col-lg-2"/>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

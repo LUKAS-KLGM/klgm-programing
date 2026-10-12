@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Portal-Detailseite der Buchung: Hinweis und Link zur Unterschrift.
+         Der Controller reicht die Buchung aus _document_check_access als
+         with_user(SUPERUSER_ID); deren env.user ist also NICHT der Betrachter.
+         Geprüft wird daher gegen request.env.user (angemeldeter Portalbenutzer):
+         nur der Unterzeichner selbst bekommt einen Link. -->
+    <template id="portal_booking_detail_kjr_facility_sign"
+              inherit_id="kjr_facility.portal_booking_detail"
+              name="Buchungsdetail: Vertragsunterschrift">
+        <xpath expr="//a[contains(@t-attf-href, '/vertrag')]/.." position="after">
+            <div class="alert alert-warning mt-3 mb-0" role="status"
+                 t-if="booking.kjr_sign_state == 'sent'">
+                <i class="fa fa-pencil me-1" aria-hidden="true"/>Der Buchungsvertrag wartet auf Ihre Unterschrift.
+                <t t-set="kjr_sign_url" t-value="booking._kjr_sign_portal_url_for(request.env.user)"/>
+                <t t-if="kjr_sign_url">
+                    <a t-att-href="kjr_sign_url" class="btn btn-primary btn-sm ms-2">Jetzt unterschreiben</a>
+                </t>
+                <t t-else="">
+                    <br/><small>Den Link zur Unterschrift haben wir an die hinterlegte E-Mail-Adresse geschickt.</small>
+                </t>
+            </div>
+            <div class="alert alert-success mt-3 mb-0" role="status"
+                 t-if="booking.contract_signed and booking.contract_signed_source == 'digital'">
+                <i class="fa fa-check me-1" aria-hidden="true"/>Vertrag digital unterschrieben am
+                <span t-field="booking.contract_signed_date"/>.
+            </div>
+        </xpath>
+    </template>
+
+</odoo>

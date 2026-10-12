@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_kjr_booking_form_kjr_facility_sign" model="ir.ui.view">
+        <field name="name">kjr.facility.booking.form.kjr.facility.sign</field>
+        <field name="model">kjr.facility.booking</field>
+        <field name="inherit_id" ref="kjr_facility.view_kjr_booking_form"/>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_print_contract']" position="before">
+                <field name="kjr_sign_available" invisible="1"/>
+                <button name="action_kjr_sign_request_send" string="Unterschrift anfordern"
+                        type="object" groups="kjr_facility.group_kjr_facility_user"
+                        invisible="not kjr_sign_available or contract_signed or kjr_sign_state != 'none' or state not in ('confirmed', 'deposit', 'checked_in')"/>
+                <button name="action_kjr_sign_request_resend" string="Unterschrift erneut anfordern"
+                        type="object" groups="kjr_facility.group_kjr_facility_user"
+                        invisible="not kjr_sign_available or contract_signed or kjr_sign_state not in ('sent', 'refused', 'expired', 'canceled') or state not in ('confirmed', 'deposit', 'checked_in')"
+                        confirm="Eine offene Anfrage wird storniert und eine neue verschickt. Fortfahren?"/>
+                <button name="action_kjr_sign_request_cancel" string="Unterschriftsanfrage stornieren"
+                        type="object" groups="kjr_facility.group_kjr_facility_user"
+                        invisible="kjr_sign_state != 'sent'"
+                        confirm="Unterschriftsanfrage wirklich stornieren? Der Mieter kann dann nicht mehr digital unterschreiben."/>
+                <button name="action_kjr_contract_paper" string="Vertrag liegt unterschrieben vor (Papier)"
+                        type="object" groups="kjr_facility.group_kjr_facility_user"
+                        invisible="contract_signed or state in ('draft', 'reserved', 'cancelled')"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <field name="kjr_sign_request_id" invisible="1" groups="sign.group_sign_user"/>
+                <button type="object" name="action_kjr_open_sign_request" class="oe_stat_button"
+                        icon="fa-pencil" groups="sign.group_sign_user"
+                        invisible="not kjr_sign_request_id">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Unterschrift</span>
+                    </div>
+                </button>
+            </xpath>
+            <xpath expr="//field[@name='contract_signed']" position="after">
+                <field name="contract_signed_date" invisible="not contract_signed"/>
+                <field name="contract_signed_source" invisible="not contract_signed"/>
+                <field name="kjr_sign_state" widget="badge"
+                       invisible="kjr_sign_state == 'none' or (contract_signed and kjr_sign_state != 'signed')"
+                       decoration-warning="kjr_sign_state == 'sent'"
+                       decoration-success="kjr_sign_state == 'signed'"
+                       decoration-danger="kjr_sign_state in ('refused', 'expired')"
+                       decoration-muted="kjr_sign_state == 'canceled'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_kjr_booking_search_kjr_facility_sign" model="ir.ui.view">
+        <field name="name">kjr.facility.booking.search.kjr.facility.sign</field>
+        <field name="model">kjr.facility.booking</field>
+        <field name="inherit_id" ref="kjr_facility.view_kjr_booking_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='payment_open']" position="after">
+                <filter string="Unterschrift ausstehend" name="kjr_sign_pending"
+                        domain="[('kjr_sign_state', '=', 'sent')]"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
