@@ -195,7 +195,8 @@ Voraussetzung: Brücke eingeschaltet, Absender gesetzt, Testveranstaltung mit
    markierung Häkchen/Eltern-E-Mail beim Geburtsdatum; nur Komfort).
 7. Sign-Mail und Signierseite mit `partner.lang = de_DE` deutsch.
 8. `_kjr_purge_registration_copies` (Anonymisierung) entfernt Sign-Anhänge an
-   der Anmeldung, archiviert die Anfragen.
+   der Anmeldung, archiviert unterschriebene Anfragen und löscht seit
+   `kjr_event_sign` 19.0.1.1.0 alle nie unterschriebenen (siehe 8).
 
 ## 5. Bei der Integrationsprüfung geändert
 
@@ -381,6 +382,143 @@ Voraussetzung: freie Registrierung an, mindestens ein Mitgliedsverband
 ```
 git add kjr_grant docs/DEPLOY-einwilligung-sign-2026-10.md
 git commit -m "kjr_grant: Registrierung als Privatperson oder Verein, Vereinszuordnung erst nach Genehmigung der Geschaeftsstelle (19.0.16.0.0)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01DADPMh1FPygpdim3LS8ECw"
+```
+
+## 8. Vorbefüllte Einwilligung und eindeutige Beschriftungen (`kjr_event` 19.0.5.10.0, `kjr_event_sign` 19.0.1.1.0)
+
+Anlass: Auf der Produktion (Stand `ceec800`) stand im Sign-Dokument im Feld
+„Name" der Name des Kindes, und Eltern trugen im Anmeldedialog im Feld
+„Erziehungsberechtigte/r" den Namen des Kindes ein.
+
+Kurz:
+- Anmeldedialog: „Name des Kindes / Teilnehmer/in" (Kernfeld „Name", nur die
+  Beschriftung per Template-Override, Fragetitel in der Datenbank
+  unverändert), „Geburtsdatum (Kind)", „Name der/des Erziehungsberechtigten",
+  „E-Mail der/des Erziehungsberechtigten". Im Verfahren „digitale
+  Unterschrift" ist der Name der/des Erziehungsberechtigten für Minderjährige
+  Pflicht (Fehlercode `kjr_guardian_name_missing`).
+- Sign: neue Vorlage v2 „Einwilligung Erziehungsberechtigte
+  (vorausgefüllt)". Name des Kindes, Veranstaltung mit Zeitraum und Name der/des
+  Erziehungsberechtigten kommen schreibgeschützt aus der Anmeldung; Eltern
+  setzen Haken, Ort, Unterschrift. v1 bleibt installiert (versendete Anfragen
+  verweisen darauf) und heißt jetzt „Einwilligung Erziehungsberechtigte (alt,
+  ohne Vorbefüllung)" (nur wenn sie noch „… (Standard)" hieß); nicht mehr
+  auswählen.
+- Anmeldedialog: „Name des Kindes / Teilnehmer/in" wird beim ersten Ticket
+  nicht mehr mit dem Namen des angemeldeten Kontos bzw. Website-Besuchers
+  (meist ein Elternteil) vorbefüllt.
+- Unterzeichner-Kontakt nur noch bei passender E-Mail UND passendem Namen
+  wiederverwendet, sonst neuer Kontakt mit dem Namen der Eltern; nie ein
+  Kontakt mit dem Namen des Kindes.
+- Gemeldeter Fall „erziehungsberechtigter ist name des kindes": Steht im Feld
+  der Eltern der Name des Kindes, weist die Website das ab
+  (`kjr_guardian_name_is_child`), und die Brücke verschickt mit v2 keine
+  Anfrage (Fehlermerker, Aktivität „Unterschriftsanfrage konnte nicht
+  versendet werden"). Betrifft Bestandsanmeldungen von `ceec800` bei „Erneut
+  senden", Adresskorrektur und Cron-Retry: Namen der Eltern an der Anmeldung
+  korrigieren, dann „Erneut senden".
+- Ändern sich bei offener v2-Anfrage Name des Kindes, Name der Eltern oder
+  Name/Termine der Veranstaltung, wird die Anfrage storniert und neu
+  versendet (Registrierungstheke: nur Storno und Aktivität „Unterschriftsanfrage
+  neu senden"). Hinweis: Die Eltern erhalten dann eine zweite Sign-Mail.
+- Vorbefüllung nur für die eigene Anfrage der Anmeldung
+  (`sign.request.item._get_auto_field_value`); eine fremde Anfrage mit
+  `reference_doc` auf eine Anmeldung bekommt keine Werte. Restrisiko: Wer
+  eine Anfrage in Sign öffnen darf, sieht die gespeicherten Namen von Kind
+  und Eltern, deshalb Sign-Rechte nur an die Betreuungsgruppe vergeben.
+  Anfragen nicht über den Sign-Assistenten („Senden"/„Jetzt unterschreiben")
+  aus der Vorlage v2 verschicken, sondern über „Unterschrift anfordern" an
+  der Anmeldung; sonst bleiben die drei Felder leer.
+- Anonymisierung (K6): Mit v2 trägt jede Anfrage schon beim Anlegen die
+  Namen von Kind und Eltern. Nie unterschriebene Anfragen (auch frühere aus
+  „Erneut senden"/Adresswechsel) werden bei der Anonymisierung GELÖSCHT,
+  unterschriebene bleiben archiviert. Bis dahin bleiben stornierte Anfragen
+  mit den Namen in Sign sichtbar.
+
+### 8.1 Upgrade (Server-Kopie, nach Snapshot)
+```
+odoo -d <db> -u kjr_event,kjr_event_sign --stop-after-init
+```
+- Im Log erwarten: `KJR Einwilligung (Sign): Standardvorlage <v2-id>
+  (Parameter: set|kept), <n> Veranstaltung(en) von Vorlage <v1-id> auf <v2-id>
+  umgestellt.` und `Vorlage <v1-id> (v1) umbenannt.` `kept` bedeutet: in den Einstellungen war eine eigene Vorlage
+  gewählt, sie bleibt.
+- Odoo-Dienst neu starten (geändertes Asset `kjr_consent_fields.js`),
+  Browser-Cache leeren.
+- Tests:
+  ```
+  odoo -d <testdb> --test-tags /kjr_event,/kjr_event_sign --stop-after-init
+  ```
+
+### 8.2 Prüfen auf der Server-Kopie
+1. Sign > Vorlagen: „… (vorausgefüllt)" öffnen; v1 heißt „… (alt, ohne
+   Vorbefüllung)", keine Vorlage trägt mehr „Standard" im Namen. Drei Felder als
+   „schreibgeschützt" (Read-only), Lage passend zum PDF. Einstellungen >
+   „KJR Einwilligung": Standardvorlage ist v2 (oder die eigene).
+2. Anmeldedialog einer Veranstaltung mit Einwilligungspflicht: Beschriftungen
+   wie oben; Geburtsdatum < 18: Stern am Namen der Eltern, Absenden ohne
+   Namen blockiert der Browser; per Entwicklerwerkzeug `required` entfernen:
+   Fehlermeldung „Bitte geben Sie den Namen der/des Erziehungsberechtigten
+   an.", nichts angelegt.
+3. Minderjährige Anmeldung mit Namen und E-Mail der Eltern: Sign-Mail an die
+   Eltern mit Anrede des Eltern-Namens (nicht des Kindes); im Dokument Kind,
+   „<Veranstaltung>, TT.MM.JJJJ bis TT.MM.JJJJ" und Eltern-Name
+   vorbefüllt und nicht änderbar; Haken, Ort, Unterschrift, Datum automatisch.
+   Unterschreiben -> Anmeldung registriert. Im fertigen PDF stehen alle Werte.
+4. Angemeldet als Elternteil mit Kundenkonto (gleicher Name wie im Formular):
+   Anfrage erscheint unter „Mein Konto" > „Signaturanfragen".
+5. Backend: Anmeldung ohne Namen der Eltern -> „Unterschrift anfordern" ->
+   Meldung „fehlgeschlagen", Aktivität; Namen nachtragen, „Erneut senden" ->
+   Anfrage mit v2.
+6. Eine vor dem Update versendete v1-Anfrage lässt sich weiter unterschreiben
+   (Felder wie bisher von Hand).
+7. Logs auf personenbezogene Daten prüfen (erwartet: nur IDs, Zähler).
+8. Anmeldedialog, Verfahren „digitale Unterschrift", minderjährig: im Feld
+   „Name der/des Erziehungsberechtigten" denselben Namen wie bei „Name des
+   Kindes / Teilnehmer/in" eintragen -> der Browser markiert beide Felder;
+   per Entwicklerwerkzeug umgangen -> Hinweis „Die Namen bei „Name des
+   Kindes / Teilnehmer/in“ und „Name der/des Erziehungsberechtigten“ sind
+   gleich. Bitte prüfen Sie beide Angaben.", nichts angelegt.
+   Zusätzlich angemeldet (Portal- oder Backend-Konto) den Anmeldedialog
+   öffnen -> „Name des Kindes / Teilnehmer/in" beim ersten Ticket ist LEER
+   (nicht mehr mit dem Kontonamen vorbefüllt), E-Mail ist vorbefüllt.
+9. Backend: Bestandsanmeldung mit Kindernamen im Feld der Eltern ->
+   „Erneut senden" -> fehlgeschlagen, Aktivität, keine neue Anfrage; Namen
+   korrigieren, „Erneut senden" -> Anfrage an den Eltern-Kontakt.
+10. Auf einer Kopie: Anonymisierung einer Anmeldung mit stornierter und
+    offener Anfrage laufen lassen -> beide Anfragen gelöscht; eine
+    unterschriebene bleibt archiviert.
+11. Offene v2-Anfrage, dann im Backend den Namen der Eltern (oder des
+    Kindes, oder die Termine der Veranstaltung) berichtigen -> alte Anfrage
+    storniert („… Angaben der Anmeldung geändert."), neue Anfrage mit den
+    berichtigten Angaben an die Eltern. Als Registrierungstheke geändert ->
+    nur Storno und Aktivität „Unterschriftsanfrage neu senden".
+12. Per RPC (z. B. Entwicklerkonsole) als Benutzer/in ohne Systemrechte
+    `kjr_sign_request_id` einer Anmeldung setzen -> Zugriffsfehler „… kann
+    nicht von Hand gesetzt werden".
+
+### 8.3 Offen
+- TODO(KJR): Text der Vorlage v2 mit Geschäftsstelle und
+  Datenschutzbeauftragter abstimmen (wie bei v1).
+- Ist ein Elternteil angemeldet (Website-Login), füllt Odoo das Kernfeld
+  „Name des Kindes / Teilnehmer/in" des ersten Teilnehmers mit dem Namen des
+  Kontos vor (`default_first_attendee`, website_event). Die neue Beschriftung
+  macht das sichtbar; das Vorbelegen selbst ist unverändert (Entscheidung, ob
+  es abgeschaltet werden soll).
+
+### 8.4 Commit-Vorschlag (NICHT ausgeführt)
+```
+git add kjr_event
+git commit -m "kjr_event: Eindeutige Beschriftungen im Anmeldedialog, Name der Erziehungsberechtigten Pflicht im Verfahren Unterschrift (19.0.5.10.0)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01DADPMh1FPygpdim3LS8ECw"
+
+git add kjr_event_sign tools/einwilligung docs/DEPLOY-einwilligung-sign-2026-10.md
+git commit -m "kjr_event_sign: Vorbefuellte Einwilligung v2, Unterzeichner nie der Kind-Kontakt (19.0.1.1.0)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01DADPMh1FPygpdim3LS8ECw"
