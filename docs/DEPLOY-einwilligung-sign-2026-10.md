@@ -10,6 +10,7 @@ Stand 2026-10-12, Repo `klgm-programing`, Branch `feat/esign-einwilligung-2026-1
 | `kjr_rental` | 19.0.5.5.1 -> 19.0.5.6.0 | Update (keine Migration nötig) |
 | `kjr_website_antispam` | neu 19.0.1.0.0 | Installation (`auto_install` False) |
 | `kjr_event_sign` | neu 19.0.1.0.0 | Installation (`auto_install` True, greift aber beim Update nicht) |
+| `kjr_grant` | 19.0.15.7.0 -> 19.0.16.0.0 | Update, Migration `migrations/19.0.16.0.0/post-migration.py` (Registrierung Verein/Privatperson, Abschnitt 7) |
 
 Statisch geprüft (lokal, ohne Odoo/Postgres): `py_compile` 138 Dateien OK,
 `xmllint --noout` 78 Dateien OK, JS-Syntax der zwei Interactions OK (JavaScriptCore,
@@ -257,3 +258,130 @@ Claude-Session: https://claude.ai/code/session_01DADPMh1FPygpdim3LS8ECw"
 Hinweis: Die Icons `kjr_event_sign/static/description/icon.png` und
 `kjr_website_antispam/static/description/icon.png` gehen mit den jeweiligen
 Modul-Commits mit.
+
+## 7. Registrierung Verein/Privatperson (`kjr_grant` 19.0.16.0.0)
+
+Kundenwunsch: Wer sich für einen Verein registriert, wird erst nach
+**vorheriger Genehmigung** durch die Geschäftsstelle dem Verband zugeordnet.
+Privatpersonen registrieren sich wie bisher ohne Prüfung.
+
+Kurzbeschreibung:
+- `/web/signup` (ohne Token) fragt „als Privatperson“ / „für einen Verein /
+  Verband“ ab. Bei Verein: Vereinsname Pflicht (2-120 Zeichen, keine URLs),
+  Funktion und Ort freiwillig, Datenschutzhinweis Art. 13 direkt darunter.
+- Das Konto ist sofort nutzbar, hängt aber NICHT unter dem Verband
+  (`parent_id` leer). Es entsteht eine Vereinsregistrierung
+  (`kjr.affiliation.request`, Status „beantragt“) mit Aktivität für die
+  Geschäftsstelle. Erst „Genehmigen“ (Assistent: bestehende Organisation
+  wählen oder neu anlegen) setzt `parent_id`; damit greifen Antrags-,
+  Verbands- und Mitgliedspreisrechte. „Ablehnen“ mit optionalem Grund.
+- Sperre gegen Umgehung: Signup-Token für Kontakte unter einem
+  Mitgliedsverband ohne Benutzer (Benachrichtigungs-Links, Shop-Bestätigung)
+  führen nicht mehr zu einem Verbandskonto (`res.users.signup`). Portal-
+  Einladungen der Geschäftsstelle und Passwort-Reset funktionieren weiter.
+- Portal: Statushinweis auf „Mein Konto“, „Mein Verband“ und
+  `/service/antrag-stellen` (Hinweisseite statt leerer Verbandsauswahl).
+
+### 7.1 Upgrade (Server-Kopie, nach Snapshot aus Abschnitt 1)
+```
+odoo -d <db> -u kjr_grant --stop-after-init
+```
+- Neue Abhängigkeit `auth_signup` ist über `website` bereits installiert,
+  es wird also kein weiteres Modul nachinstalliert.
+- Im Log erwarten: `Migration 19.0.16.0.0: <n> Bestandskonto(en) als
+  genehmigt übernommen.` Aktive Portalkonten unter Mitgliedsverbänden (auch
+  unter einem Dachverband mit Mitgliedsorganisationen) bekommen einen
+  Nachweis „genehmigt“, Herkunft „Bestandsübernahme“. Bestehende Rechte
+  ändern sich dadurch nicht. Im Log stehen nur Zähler.
+- Migrationsregel: Odoo führt `migrations/19.0.16.0.0` aus, weil installiert
+  (19.0.15.7.0) < Ordner <= Manifest (19.0.16.0.0). Liegt die Instanz noch
+  unter 19.0.15.7.0, läuft `19.0.15.7.0` vorher mit.
+- Danach Odoo-Dienst neu starten (neues Asset
+  `kjr_grant/static/src/interactions/kjr_signup_club.js`), Browser-Cache
+  leeren.
+- Tests:
+  ```
+  odoo -d <testdb> --test-tags /kjr_grant --stop-after-init
+  ```
+  (darin `test_affiliation.py`, TransactionCase, und
+  `test_affiliation_signup_http.py`, HttpCase gegen `/web/signup`).
+
+### 7.2 Einstellungen
+- **Freie Registrierung**: Website > Konfiguration > Einstellungen >
+  „Kundenkonto“ auf „Freie Registrierung“ (`website.auth_signup_uninvited
+  = b2c`). Mit `kjr_event_shop`/`website_sale` ist das bereits gesetzt, sonst
+  liefert `/web/signup` 404. Der alte Parameter `auth_signup.allow_uninvited`
+  wird von Odoo 19 nicht gelesen.
+- **Zuständige Person** für neue Vereinsregistrierungen (optional):
+  Systemparameter `kjr_grant.affiliation_responsible_user_id` = Benutzer-ID
+  eines aktiven internen Sachbearbeiters. Leer: erste Person der Gruppe
+  „Sachbearbeiter“, sonst Aktivität ohne Zuweisung (Warnung im Log).
+- **Löschfrist** abgelehnter Registrierungen: Systemparameter
+  `kjr_grant.affiliation_rejected_retention_days` (Vorgabe 180, 0 = aus;
+  TODO(KJR)/TODO(DSGVO) bestätigen). Cron „KJR: Abgelehnte
+  Vereinsregistrierungen löschen“ (täglich, aktiv). Die Frist erscheint
+  automatisch im Datenschutzhinweis des Formulars.
+- **Verantwortliche Stelle** im Datenschutzhinweis: Systemparameter
+  `kjr.privacy.controller` (Einstellungen, „KJR Datenschutzangaben“). Leer =
+  sichtbarer Warnhinweis „Angabe folgt“ im Formular. Vor Go-live füllen.
+- **Mailvorlagen** „Vereinsregistrierung genehmigt/abgelehnt“
+  (`kjr_grant.mail_template_affiliation_approved` / `_rejected`) Text mit der
+  Geschäftsstelle abstimmen; Firmenname kommt aus der Firma.
+- **Rechte**: Menü KJR > Verbände > Vereinsregistrierungen sehen nur
+  Sachbearbeiter und Administrator (KJR). Kontakte interner Benutzer kann nur
+  zuordnen, wer zusätzlich Kontaktrechte hat.
+
+### 7.3 Testplan Server-Kopie
+Voraussetzung: freie Registrierung an, mindestens ein Mitgliedsverband
+(`is_kjr_member`), Test-Postfächer, ein Sachbearbeiter-Benutzer.
+
+1. **Privatperson**: `/web/signup` im privaten Fenster, „als Privatperson“.
+   Erwartet: Konto angelegt und angemeldet, keine Vereinsregistrierung,
+   kein Hinweis auf Mein Konto, `/service/antrag-stellen` zeigt die
+   Hinweisseite.
+2. **Verein, Pflichtfelder**: „für einen Verein“ ohne Namen bzw. mit einem
+   Zeichen bzw. mit `www.` im Namen absenden. Erwartet: je eigene Meldung,
+   Formular behält Art und Eingaben, kein Konto angelegt.
+3. **Verein, gültig** (z. B. „SV Teststadt“, Funktion „Jugendleitung“):
+   Erwartet: Konto sofort nutzbar, `parent_id` leer; Vereinsregistrierung
+   „beantragt“, Herkunft „Registrierung“, Aktivität beim Sachbearbeiter.
+   Portal: Hinweis „in Prüfung“ auf Mein Konto, Mein Verband und
+   Zuschussantrag; KEIN Zugriff auf Verbandsdaten, keine Mitgliedspreise.
+4. **Genehmigen** (bestehender Mitgliedsverband): Assistent schlägt den
+   Verband bei gleichem Namen vor. Erwartet: Person unter dem Verband,
+   Funktion übernommen (wenn leer), USt-IdNr. der Person nicht zum Verband
+   übertragen, Mail „genehmigt“; Portal zeigt Mein Verband, Zuschussantrag
+   mit vorausgewähltem Verband. Adresswache: hat die Person eine Anschrift
+   und der Verband keine vollständige (Straße, PLZ, Ort), bricht die
+   Genehmigung mit Hinweis ab; Verbandsanschrift pflegen, erneut genehmigen.
+5. **Genehmigen mit Neuanlage**: ohne vollständige Anschrift (Straße, PLZ,
+   Ort) abgewiesen; mit Anschrift neue Organisation, Person darunter.
+   Hinweis: neue Organisation ist noch kein Mitgliedsverband, Rechte erst
+   nach Setzen von `is_kjr_member`.
+6. **Ablehnen** mit Grund: Mail mit Grund, Portal zeigt Ablehnung mit Grund,
+   Konto bleibt Privatkonto. Status/Zuordnung im Formular nicht direkt
+   änderbar; Vereinsangaben nach der Entscheidung gesperrt.
+7. **Token-Sperre**: an einen Kontakt (ohne Benutzer) unter einem
+   Mitgliedsverband eine Benachrichtigung bzw. Shop-Bestellbestätigung mit
+   Registrierungslink auslösen. Erwartet: Mail ohne Registrierungstoken bzw.
+   beim Aufruf des Links Meldung „Für diese Adresse richtet die
+   Geschäftsstelle den Zugang ein“, kein Konto. Gegenprobe: Portal-Einladung
+   durch die Geschäftsstelle und „Passwort zurücksetzen“ funktionieren.
+8. **Bestandskonten**: ein vor dem Update bestehender Verbandszugang hat einen
+   Nachweis „genehmigt / Bestandsübernahme“ und unveränderte Rechte.
+9. **Datenauskunft** (Art. 15) einer Testperson enthält die
+   Vereinsregistrierung. Lösch-Cron mit Frist 0 bzw. kurzer Frist manuell
+   auslösen: nur abgelehnte, abgelaufene Registrierungen verschwinden.
+10. **Ohne JavaScript**: Vereinsblock erscheint nach Serverfehler mit „club“
+    wieder; Prüfung greift serverseitig.
+11. Logs während 1-9 auf personenbezogene Daten prüfen (erwartet: nur IDs,
+    Zähler, Fehlerklassen).
+
+### 7.4 Commit-Vorschlag (NICHT ausgeführt)
+```
+git add kjr_grant docs/DEPLOY-einwilligung-sign-2026-10.md
+git commit -m "kjr_grant: Registrierung als Privatperson oder Verein, Vereinszuordnung erst nach Genehmigung der Geschaeftsstelle (19.0.16.0.0)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01DADPMh1FPygpdim3LS8ECw"
+```
