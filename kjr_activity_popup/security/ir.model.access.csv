@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_kjr_activity_popup_mark_system,kjr.activity.popup.mark system,model_kjr_activity_popup_mark,base.group_system,1,1,1,1

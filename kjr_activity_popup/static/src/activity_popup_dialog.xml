@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="kjr_activity_popup.Dialog">
+        <Dialog title="title" size="'lg'" contentClass="'o_kjr_activity_popup'" technical="false">
+            <p class="o_kjr_ap_intro">
+                Diese Aufgaben und Aktivitäten sind heute fällig oder überfällig.
+            </p>
+            <ul class="list-unstyled mb-0 o_kjr_ap_list" role="list">
+                <li t-foreach="state.items" t-as="item" t-key="item.key"
+                    class="o_kjr_ap_item rounded border p-3 mb-3"
+                    t-att-aria-labelledby="titleId(item)"
+                    t-att-class="item.state === 'overdue' ? 'o_kjr_ap_overdue border-danger' : 'o_kjr_ap_today border-warning'">
+                    <div class="d-flex align-items-start gap-3">
+                        <i t-att-class="iconClass(item)" class="o_kjr_ap_icon mt-1" role="img" aria-hidden="true"/>
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="o_kjr_ap_title fw-bold text-break" t-att-id="titleId(item)" t-out="item.title"/>
+                            <div class="o_kjr_ap_meta">
+                                <span t-out="item.type_name"/>
+                                <t t-if="item.record_name">
+                                    <span class="mx-1">·</span>
+                                    <span t-if="item.model_name" t-out="item.model_name + ': '"/>
+                                    <span class="fw-semibold text-break" t-out="item.record_name"/>
+                                </t>
+                            </div>
+                            <div class="o_kjr_ap_due mt-1">
+                                <span class="badge o_kjr_ap_badge"
+                                      t-att-class="item.state === 'overdue' ? 'text-bg-danger' : 'text-bg-warning'"
+                                      t-out="dueLabel(item)"/>
+                                <span class="ms-2">Fällig: <t t-out="item.deadline"/></span>
+                            </div>
+                            <div t-if="item.note" class="o_kjr_ap_note mt-2 text-break" t-out="item.note"/>
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                <button type="button" class="btn btn-lg btn-primary"
+                                        t-att-disabled="state.busy[item.key]"
+                                        t-att-aria-label="buttonLabel('open', item)"
+                                        t-on-click="() => this.onOpen(item)">
+                                    <i class="fa fa-external-link me-2" aria-hidden="true"/>Öffnen
+                                </button>
+                                <button t-if="item.can_done" type="button" class="btn btn-lg btn-success"
+                                        t-att-disabled="state.busy[item.key]"
+                                        t-att-aria-label="buttonLabel('done', item)"
+                                        t-on-click="() => this.onDone(item)">
+                                    <i class="fa fa-check me-2" aria-hidden="true"/>Erledigt
+                                </button>
+                                <button type="button" class="btn btn-lg btn-secondary"
+                                        t-att-disabled="state.busy[item.key]"
+                                        t-att-aria-label="buttonLabel('snooze', item)"
+                                        t-on-click="() => this.onSnooze(item)">
+                                    <i class="fa fa-clock-o me-2" aria-hidden="true"/><t t-out="snoozeLabel"/>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+            <p t-if="props.more" class="o_kjr_ap_more mt-2 mb-0">
+                <t t-if="props.more === 1">Eine weitere Erinnerung folgt beim nächsten Popup.</t>
+                <t t-else="">Weitere <t t-out="props.more"/> Erinnerungen folgen beim nächsten Popup.</t>
+            </p>
+            <t t-set-slot="footer">
+                <button type="button" class="btn btn-lg btn-primary" t-on-click="() => this.props.close()">
+                    Schließen
+                </button>
+                <button type="button" class="btn btn-lg btn-secondary" t-on-click="() => this.onSnoozeAll()">
+                    <i class="fa fa-clock-o me-2" aria-hidden="true"/><t t-out="snoozeAllLabel"/>
+                </button>
+                <button type="button" class="btn btn-lg btn-link" t-on-click="() => this.onShowAll()">
+                    Alle meine Aktivitäten
+                </button>
+            </t>
+        </Dialog>
+    </t>
+
+</templates>

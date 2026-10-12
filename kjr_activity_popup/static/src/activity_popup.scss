@@ -1,0 +1,44 @@
+// Gut lesbar auch mit Brille: deutlich größere Schrift als im übrigen Backend,
+// kräftige Kontraste über die Bootstrap-/Odoo-Farbvariablen (hell und dunkel).
+.o_kjr_activity_popup {
+    font-size: 1.25rem;
+    line-height: 1.5;
+
+    .modal-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+    }
+
+    .o_kjr_ap_intro {
+        font-size: 1.25rem;
+    }
+
+    .o_kjr_ap_item {
+        border-width: 2px !important;
+        border-left-width: 8px !important;
+    }
+
+    .o_kjr_ap_icon {
+        font-size: 2rem;
+        width: 2.5rem;
+        text-align: center;
+    }
+
+    .o_kjr_ap_title {
+        font-size: 1.5rem;
+    }
+
+    .o_kjr_ap_badge {
+        font-size: 1.05rem;
+        padding: 0.4em 0.7em;
+    }
+
+    .o_kjr_ap_note {
+        white-space: pre-line;
+        color: var(--bs-secondary-color);
+    }
+
+    .btn-lg {
+        font-size: 1.15rem;
+    }
+}
