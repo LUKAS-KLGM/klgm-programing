@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Generator fuer die Modul-Icons der sechs KJR-Module.
+"""Generator fuer die Modul-Icons der acht KJR-Module.
 
 ZWECK
     Jedes Odoo-Modul zeigt in der Apps-Uebersicht die Datei
     ``<modul>/static/description/icon.png`` (fest verdrahtet in
     ``odoo/modules/module.py``, ``get_module_icon``: ohne Manifest-Key ``icon``
     sucht Odoo genau diesen Pfad). Diese Datei ist das Erste, was ein Kunde von
-    den Modulen sieht. Dieses Skript zeichnet die sechs Icons aus Code, damit sie
+    den Modulen sieht. Dieses Skript zeichnet die acht Icons aus Code, damit sie
     als Familie zusammenpassen und jederzeit identisch reproduzierbar sind:
     gleicher Aufbau, gleiche Farben, gleiche Kantenlaenge, je Modul ein eigenes
     Motiv.
 
 EINZIGE ICON-QUELLE
-    Dieses Skript ist die einzige Quelle der sechs Icons. Es darf daneben KEINE
+    Dieses Skript ist die einzige Quelle der acht Icons. Es darf daneben KEINE
     zweite Icon-Quelle geben, also auch keine gepflegte ``icon.svg`` neben dem
     PNG: zwei Quellen laufen auseinander, und der naechste Bearbeiter pflegt
     verlaesslich die falsche. Die drei fruehen ``static/description/icon.svg``
@@ -24,7 +24,7 @@ EINZIGE ICON-QUELLE
     naechste Lauf ueberschreibt das wieder, und ``--check`` meldet es vorher.
 
 HINWEIS ZUM VERSIONIEREN
-    Die sechs PNG-Dateien sind das Ergebnis dieses Skripts und werden trotzdem
+    Die acht PNG-Dateien sind das Ergebnis dieses Skripts und werden trotzdem
     mitversioniert, weil Odoo sie zur Laufzeit braucht und beim Build niemand
     Pillow aufruft.
     Zusaetzlich gilt: Der App-Menue-Icon der Module mit eigenem Wurzelmenue
@@ -40,7 +40,7 @@ HINWEIS ZUM VERSIONIEREN
 
 AUFRUF
     python3 tools/icons/build_icons.py
-        Schreibt die sechs PNGs an ihren Platz und prueft sie anschliessend.
+        Schreibt die acht PNGs an ihren Platz und prueft sie anschliessend.
     python3 tools/icons/build_icons.py --preview /pfad/zum/ordner
         Schreibt zusaetzlich je Icon eine 32x32-Kontrolldatei in den Ordner.
         Damit laesst sich pruefen, ob das Motiv auch klein noch erkennbar ist.
@@ -48,7 +48,7 @@ AUFRUF
         gehoeren nicht in die Versionierung.
     python3 tools/icons/build_icons.py --check
         Prueft nur und schreibt keine Modul-PNGs. ``--preview`` laesst sich damit
-        kombinieren: dann entstehen die Kontrolldateien, ohne dass die sechs
+        kombinieren: dann entstehen die Kontrolldateien, ohne dass die acht
         Dateien im Repo angefasst werden.
 
     Geprueft wird dabei: Vorhandensein, Modus RGBA, Kantenlaenge, paarweise
@@ -77,7 +77,7 @@ FARBEN
     facility.css`` faerbt Kartentitel und Primaerknopf mit #1B3A6B und den Hover
     mit #E8952E, ``kjr_rental/static/src/css/rental.css`` nutzt #1B3A6B als
     Rueckfallwert hinter ``--bs-primary``, ``kjr_rental/static/src/img/
-    verleih.svg`` zeichnet in #E8952E, und die Slogan-Zeile aller sechs
+    verleih.svg`` zeichnet in #E8952E, und die Slogan-Zeile der vorhandenen
     ``index.html`` steht in #1a4f8a. Das Icon neben einer navyblauen Portalseite
     muss dieselbe Farbe tragen, sonst behaupten zwei Dateien gleichzeitig, die
     Marke zu sein.
@@ -88,8 +88,8 @@ FARBEN
     ``static/src/img/`` (#45B49F, #6599CD, #f2a900) - die gehoeren nicht zu
     diesem Werkzeug und sind eigenes Arbeitspaket.
 
-GESTALTUNGSREGELN (fuer alle sechs gleich, damit sie als Familie lesbar sind)
-    - Abgerundetes Quadrat als Flaeche, bei allen sechs in der Grundfarbe.
+GESTALTUNGSREGELN (fuer alle acht gleich, damit sie als Familie lesbar sind)
+    - Abgerundetes Quadrat als Flaeche, bei allen acht in der Grundfarbe.
       Keine Farbvariation zwischen den Modulen: unterschieden werden die Icons
       allein durch das Motiv.
     - Darauf ein einziges, kraeftiges Motiv in Weiss. Nebenformen werden als
@@ -122,7 +122,7 @@ import sys
 from PIL import Image, ImageDraw
 
 # --- Palette ----------------------------------------------------------------
-GRUND = (0x1B, 0x3A, 0x6B, 0xFF)    # Navy, Flaeche aller sechs Icons
+GRUND = (0x1B, 0x3A, 0x6B, 0xFF)    # Navy, Flaeche aller acht Icons
 MOTIV = (0xFF, 0xFF, 0xFF, 0xFF)    # Weiss, traegt die Form
 AKZENT = (0xE8, 0x95, 0x2E, 0xFF)   # Orange, hoechstens ein Detail je Icon
 
@@ -197,7 +197,7 @@ def platte():
     Grundfarbton mit Alpha 0 waere hier wirkungslos: Pillow rechnet beim
     Verkleinern mit vormultipliziertem Alpha, der Farbwert im durchsichtigen
     Bereich geht also nicht in die Mischung ein. Nachgeprueft mit Pillow 11.3.0:
-    alle sechs Motive sind mit (grund, 0) und mit (0, 0, 0, 0) pixelgleich, und
+    alle acht Motive sind mit (grund, 0) und mit (0, 0, 0, 0) pixelgleich, und
     das Eckpixel der fertigen Datei ist in beiden Faellen (0, 0, 0, 0). Einen
     dunklen Saum an der Rundung gibt es damit nicht; wer einmal doch einen
     sieht, muss ihn woanders suchen.
@@ -210,7 +210,7 @@ def platte():
 
 
 # ---------------------------------------------------------------------------
-# Die sechs Motive. Je Modul genau ein Gegenstand, keine Collage.
+# Die acht Motive. Je Modul genau ein Gegenstand, keine Collage.
 # ---------------------------------------------------------------------------
 def motiv_grant(d):
     """Zuschussverwaltung: Dokument mit Siegel und Haken."""
@@ -330,10 +330,87 @@ def motiv_kommja(d):
     kreis(d, 0.500, 0.400, 0.108, GRUND)
 
 
-# Reihenfolge und Zuordnung. Alle sechs tragen dieselbe Grundfarbe; die
+
+def motiv_event_sign(d):
+    """Bruecke zwischen Veranstaltung und E-Signatur: Kalenderblatt und
+    unterschriebenes Blatt, verbunden.
+
+    Aufbau nach Vorbild ``motiv_facility_grant``: oben links der Gegenstand des
+    einen Traegermoduls (verkleinertes Kalenderblatt aus ``motiv_event``, hier
+    OHNE die orange Kopfleiste, weil der einzige Akzent der Verbindungsbalken
+    ist), unten rechts der Gegenstand der Signatur (Blatt mit Unterschriftszug
+    und Unterschriftslinie), dazwischen derselbe Balken wie bei der Bruecke
+    Einrichtung/Zuschuss.
+    """
+    # Verbindungsbalken zuerst, in doppelter Lage wie bei motiv_facility_grant
+    # (aussen Grundfarbe, innen Akzent); Kalender und Blatt liegen darueber.
+    # Die untere Flanke des Akzents liegt an der rechten Kalenderkante
+    # (x = 0.455) bei y = 0.507, also oberhalb der geraden Unterkante des
+    # Kalenderblatts (y = 0.560 minus Rundung 0.035 = 0.525): es tritt kein
+    # Keil unter der Ecke hervor.
+    weg = [(0.390, 0.430), (0.620, 0.520)]
+    strich(d, weg, 0.140, GRUND)
+    strich(d, weg, 0.096, AKZENT)
+    # Kalenderblatt oben links: zwei Aufhaenger, Blatt, Falzkante, Tagesraster
+    rrect(d, 0.195, 0.120, 0.245, 0.235, 0.025, MOTIV)
+    rrect(d, 0.345, 0.120, 0.395, 0.235, 0.025, MOTIV)
+    rrect(d, 0.135, 0.175, 0.455, 0.560, 0.035, MOTIV)
+    rect(d, 0.135, 0.265, 0.455, 0.295, GRUND)
+    for sx in (0.180, 0.263, 0.346):
+        for sy in (0.340, 0.430):
+            rrect(d, sx, sy, sx + 0.065, sy + 0.065, 0.015, GRUND)
+    # Blatt unten rechts, gleiche Lage wie das Dokument in motiv_facility_grant
+    rrect(d, 0.535, 0.460, 0.880, 0.865, 0.030, MOTIV)
+    # Eine Textzeile, darunter der Unterschriftszug und die Linie, alles als
+    # Ausschnitt in der Grundfarbe (11,3:1 gegen das Blatt)
+    rrect(d, 0.590, 0.530, 0.825, 0.575, 0.022, GRUND)
+    strich(d, [(0.595, 0.720), (0.640, 0.650), (0.672, 0.730), (0.712, 0.655),
+               (0.745, 0.725), (0.800, 0.665)], 0.036, GRUND)
+    rrect(d, 0.590, 0.770, 0.825, 0.800, 0.015, GRUND)
+
+
+def _schildrand(schritte=16):
+    """Umriss eines Wappenschilds als Punktliste (oben gerade, unten spitz).
+
+    Die beiden unteren Flanken sind quadratische Bezierkurven, damit das Schild
+    bauchig wirkt und nicht wie ein Fuenfeck.
+    """
+    oben = [(0.200, 0.215), (0.500, 0.125), (0.800, 0.215)]
+
+    def bezier(p0, p1, p2):
+        return [((1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t ** 2 * p2[0],
+                 (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t ** 2 * p2[1])
+                for t in (i / float(schritte) for i in range(schritte + 1))]
+
+    rechts = bezier((0.800, 0.215), (0.800, 0.700), (0.500, 0.885))
+    links = bezier((0.500, 0.885), (0.200, 0.700), (0.200, 0.215))
+    return oben + rechts[1:] + links[1:-1]
+
+
+def motiv_website_antispam(d):
+    """Spam-Schutz fuer Website-Formulare: Schild mit Haekchen.
+
+    Das Haekchen liegt doppelt: erst breit in der Grundfarbe als Ausschnitt im
+    weissen Schild, darauf schmal im Akzent. Die Grundfarbe bleibt beidseits
+    als Fuge von (0.110 - 0.050) / 2 = 0.030 stehen und trennt das Orange vom
+    Weiss (Orange auf Weiss waere nur 2,4:1). Bei 32 Pixeln traegt das
+    ausgeschnittene Haekchen die Form, der Akzent ist Zugabe.
+    """
+    poly(d, _schildrand(), MOTIV)
+    haken = [(0.345, 0.505), (0.460, 0.620), (0.665, 0.395)]
+    strich(d, haken, 0.110, GRUND)
+    strich(d, haken, 0.050, AKZENT)
+
+
+# Reihenfolge und Zuordnung. Alle acht tragen dieselbe Grundfarbe; die
 # frueheren zwei Toene (#714B67 / #5E3F56) hatten 1,25:1 zueinander und waren
 # am Icon nicht auseinanderzuhalten. Unterschieden werden die Kacheln durch das
 # Motiv.
+# kjr_event_shop steht bewusst NICHT in der Liste: sein icon.png ist heute eine
+# unveraenderte Kopie des kjr_event-Icons und waere damit nicht paarweise
+# verschieden. Ein eigenes Motiv hiesse, das Icon neu zu zeichnen und die
+# Modulversion anzuheben (siehe HINWEIS ZUM VERSIONIEREN oben).
+# TODO(KJR): Entscheidung offen.
 ICONS = (
     ("kjr_grant", motiv_grant),
     ("kjr_event", motiv_event),
@@ -341,6 +418,8 @@ ICONS = (
     ("kjr_rental", motiv_rental),
     ("kjr_facility_grant", motiv_facility_grant),
     ("kjr_kommja", motiv_kommja),
+    ("kjr_event_sign", motiv_event_sign),
+    ("kjr_website_antispam", motiv_website_antispam),
 )
 
 
@@ -366,18 +445,36 @@ def vorschau_schreiben(ordner, modul, bild):
         os.path.join(ordner, "%s_32_lupe.png" % modul), "PNG")
 
 
+def _pixelgleich(pfad, bild):
+    """True, wenn die Datei existiert und dieselben Pixel wie ``bild`` traegt."""
+    if not os.path.exists(pfad):
+        return False
+    with Image.open(pfad) as vorhanden:
+        return (vorhanden.mode == bild.mode and vorhanden.size == bild.size
+                and vorhanden.tobytes() == bild.tobytes())
+
+
 def bauen(schreiben=True, vorschau=None):
-    """Die sechs Icons zeichnen. Gibt die Liste der geschriebenen Pfade zurueck.
+    """Die acht Icons zeichnen. Gibt die Liste der geschriebenen Pfade zurueck.
+
+    Eine Datei, die schon pixelgleich zum Skript ist, wird nicht angefasst und
+    erscheint nicht in der Liste.
 
     ``schreiben=False`` laesst die Dateien im Repo unangetastet. Die Vorschau
     haengt bewusst nicht am Schreiben: ``--check --preview`` soll die
-    Sichtpruefung wiederholen koennen, ohne die sechs Repo-Dateien anzufassen.
+    Sichtpruefung wiederholen koennen, ohne die acht Repo-Dateien anzufassen.
     """
     pfade = []
     for modul, motiv in ICONS:
         bild = zeichne(motiv)
         if schreiben:
             pfad = ziel(modul)
+            if _pixelgleich(pfad, bild):
+                # Bereits aktuell: Datei NICHT neu schreiben. Sonst koennten
+                # abweichende Pillow-/zlib-Versionen andere PNG-Bytes bei
+                # gleichen Pixeln erzeugen, und die Versionierung zeigte eine
+                # Aenderung an Modulen, an denen niemand etwas getan hat.
+                continue
             os.makedirs(os.path.dirname(pfad), exist_ok=True)
             bild.save(pfad, "PNG", optimize=True)
             pfade.append(pfad)
@@ -405,12 +502,12 @@ def kontrast(a, b):
 
 
 def pruefen():
-    """Die sechs Dateien gegen Skript und Palette pruefen.
+    """Die acht Dateien gegen Skript und Palette pruefen.
 
     Geprueft wird in dieser Reihenfolge:
     1. die Kontrastwerte der Palette gegen KONTRAST_MINDEST,
     2. Vorhandensein, Modus RGBA und Kantenlaenge je Datei,
-    3. paarweise Verschiedenheit der sechs Dateien,
+    3. paarweise Verschiedenheit der acht Dateien,
     4. ob jede Datei noch pixelgleich zu dem ist, was dieses Skript zeichnet.
 
     Punkt 4 ist der Grund, warum es diese Funktion gibt. Format, Groesse und
@@ -463,7 +560,7 @@ def pruefen():
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(description="Modul-Icons der sechs KJR-Module erzeugen.")
+    p = argparse.ArgumentParser(description="Modul-Icons der acht KJR-Module erzeugen.")
     p.add_argument("--preview", metavar="ORDNER",
                    help="zusaetzlich 32x32-Kontrolldateien in diesen Ordner schreiben; "
                         "mit --check kombinierbar")
