@@ -8,7 +8,7 @@ from markupsafe import Markup
 from odoo import http, _
 from odoo.http import request
 from odoo.addons.portal.controllers.portal import CustomerPortal, pager as portal_pager
-from odoo.exceptions import AccessError, MissingError
+from odoo.exceptions import AccessError, MissingError, UserError
 from odoo.tools import email_normalize, is_html_empty
 
 _logger = logging.getLogger(__name__)
@@ -838,6 +838,27 @@ class KjrRentalWebsite(http.Controller):
 
         errors = {}
         values = dict(post)
+        # Spam-Schutz über den Standard-Hook (reCAPTCHA/Turnstile, falls
+        # eingerichtet, und kjr_website_antispam, falls installiert; ohne diese
+        # Module ein No-op). Das Formular trägt data-captcha="kjr_spielmobil",
+        # damit die Frontend-Interactions Token bzw. Widget einfügen.
+        # ValidationError erbt von UserError. Die übrigen Prüfungen laufen
+        # trotzdem weiter, damit alle Fehler auf einmal angezeigt werden.
+        try:
+            request.env['ir.http']._verify_request_recaptcha_token('kjr_spielmobil')
+        except UserError:
+            # Bewusst KEINE Aufforderung zum Neuladen: Diese Antwort ist die
+            # Antwort auf den POST. F5 schickte den alten POST mit altem
+            # Token/Honeypot erneut (Schleife), ein GET verlöre alle Eingaben.
+            # Das neu gerenderte Formular ist vorbelegt und bekommt von der
+            # Interaction ein frisches Token, erneutes Absenden genügt. Das
+            # Token hat aber wieder die Mindestzeit von kjr_website_antispam
+            # (Standard 2 s ab dem Laden): Wer sofort erneut absendet, würde
+            # wieder abgewiesen. Daher der Hinweis, kurz zu warten.
+            errors['captcha'] = _(
+                'Die Sicherheitsprüfung ist fehlgeschlagen. Bitte prüfen Sie Ihre '
+                'Angaben, warten Sie einen Moment und senden Sie das Formular '
+                'dann erneut ab.')
         if not item:
             # Verständliche Meldung statt Serverfehler, wenn der Seed-Artikel fehlt.
             errors['item'] = _(

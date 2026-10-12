@@ -830,9 +830,18 @@
                             <div class="card shadow-sm">
                                 <div class="card-body">
                                     <h2 class="h5 mb-3">Spielmobil anfragen</h2>
-                                    <t t-if="errors">
+                                    <!-- Sicherheitsprüfung (Spam-Schutz/Captcha, Schlüssel 'captcha')
+                                         als eigene Meldung oberhalb des Formulars; die Feldfehler
+                                         folgen wie bisher als Liste, ohne die Captcha-Meldung zu
+                                         wiederholen. -->
+                                    <div t-if="errors and errors.get('captcha')" class="alert alert-danger" role="alert">
+                                        <t t-esc="errors.get('captcha')"/>
+                                    </div>
+                                    <t t-if="errors and (len(errors) &gt; 1 or 'captcha' not in errors)">
                                         <div class="alert alert-danger" role="alert"><ul class="mb-0">
-                                            <t t-foreach="errors.values()" t-as="err"><li><t t-esc="err"/></li></t>
+                                            <t t-foreach="errors.items()" t-as="err_item">
+                                                <li t-if="err_item[0] != 'captcha'"><t t-esc="err_item[1]"/></li>
+                                            </t>
                                         </ul></div>
                                     </t>
                                     <t t-if="not item">
@@ -846,7 +855,11 @@
                                         <t t-if="not is_public_user">
                                             <t t-call="kjr_rental.rental_tariff_notice"/>
                                         </t>
-                                        <form method="post" action="/service/spielmobil">
+                                        <!-- data-captcha: Aktion für den Spam-Schutz (kjr_website_antispam) und,
+                                             falls eingerichtet, Turnstile/reCAPTCHA. Der Controller prüft dieselbe
+                                             Aktion 'kjr_spielmobil'. Das Formular braucht dafür seinen
+                                             button[type=submit]. -->
+                                        <form method="post" action="/service/spielmobil" data-captcha="kjr_spielmobil">
                                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                             <div class="mb-3">
                                                 <label class="form-label fw-bold" for="kjr_sm_person">Ansprechpartner/in *</label>

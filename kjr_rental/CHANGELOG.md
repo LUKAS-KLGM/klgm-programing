@@ -1,5 +1,54 @@
 # Changelog – KJR Materialverleih
 
+## 19.0.5.6.0 (2026-10-12)
+
+### Geändert
+- **Spam-Schutz für die Spielmobil-Anfrage.** Der POST-Zweig von
+  `/service/spielmobil` ruft jetzt den Odoo-Standard-Hook
+  `ir.http._verify_request_recaptcha_token('kjr_spielmobil')` auf. Schlägt die
+  Prüfung fehl (`UserError`, dazu zählt auch `ValidationError`), erscheint oben
+  im Formular die Meldung „Die Sicherheitsprüfung ist fehlgeschlagen. Bitte
+  prüfen Sie Ihre Angaben, warten Sie einen Moment und senden Sie das
+  Formular dann erneut ab."; die übrigen
+  Feldprüfungen laufen wie bisher und das Formular wird mit allen Fehlern und
+  den eingegebenen Werten neu angezeigt. Es wird nichts angelegt. Die Meldung
+  fordert bewusst NICHT zum Neuladen auf (Abweichung vom Wortlaut der
+  Spezifikation 4.2): Die Seite ist die Antwort auf den POST, F5 schickte den
+  alten POST mit altem Token erneut, ein Neuaufruf verlöre alle Eingaben. Das
+  neu gerenderte Formular bekommt ein frisches Token und kann erneut
+  abgesendet werden. Weil für das frische Token wieder die Mindestzeit von
+  `kjr_website_antispam` gilt (Standard 2 s ab dem Laden), bittet die Meldung
+  darum, einen Moment zu warten; sofortiges erneutes Absenden würde sonst
+  wieder als `too_fast` abgewiesen.
+- Das Formular trägt `data-captcha="kjr_spielmobil"`. Damit fügt
+  `kjr_website_antispam` (Honeypot und Zeittoken) bzw. ein eingerichtetes
+  Turnstile/reCAPTCHA seine Felder ein.
+- Die Feldfehler stehen weiter als Liste über dem Formular; die Captcha-Meldung
+  steht als eigener Hinweis davor und wird in der Liste nicht wiederholt.
+
+### Hinweise zur Installation
+- **Keine neue Modulabhängigkeit.** Ohne `kjr_website_antispam` und ohne
+  Captcha-Schlüssel ist der Hook ein No-op, die Seite verhält sich wie bisher.
+- Den eigentlichen Schutz liefert `kjr_website_antispam` (Installation mit
+  `-i kjr_website_antispam`, zuerst im Modus `log`; siehe dessen README.md).
+- **reCAPTCHA- oder Turnstile-Schlüssel erst setzen, nachdem die
+  Spielmobil-Seite damit getestet wurde.** Mit gesetztem Secret wird jede
+  Anfrage ohne gültiges Captcha-Token abgewiesen.
+
+## 19.0.5.5.1 (2026-10-11)
+
+### Behoben
+- **Warenkorb-Anfrage verlor den Zeitraum.** Die Datumsfelder gehörten zum
+  Warenkorb-Formular, „Anfrage absenden" zu einem zweiten Formular mit
+  versteckten Datumskopien, die erst nach „Aktualisieren" befüllt waren. Wer
+  die Daten eintrug und direkt absendete, bekam „Bitte gültigen Zeitraum
+  (JJJJ-MM-TT) angeben". Jetzt ist es ein Formular: Absenden geht an
+  `/service/verleih/checkout`, Aktualisieren und Entfernen posten per
+  `formaction` (`formnovalidate`) an den Warenkorb. Der Checkout übernimmt in
+  der Tabelle geänderte Mengen. Die Datumsfelder sind Pflicht, der Browser
+  meldet fehlende Daten vor dem Absenden. (Eintrag nachgetragen, die
+  Auslieferung war ohne CHANGELOG-Zeile erfolgt.)
+
 ## 19.0.5.5.0 (2026-10-11)
 
 ### Geändert
