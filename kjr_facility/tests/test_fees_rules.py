@@ -206,3 +206,28 @@ class TestKjrFacilityRequestForm(HttpCase):
         self.facility.allow_guest_request = True
         html = self.url_open(self.url).text
         self.assertIn('data-captcha="kjr_facility_request"', html)
+
+    def test_betraege_deutsch_formatiert(self):
+        """Gebührenhinweis und Kostenvorschau: „1.240,00 €" mit geschütztem
+        Leerzeichen vor dem €, nie „1240.00 €"."""
+        lang = self.env['res.lang']._activate_lang('de_DE')
+        websites = self.env['website'].search([])
+        for website in websites:
+            website.language_ids |= lang
+        websites.write({'default_lang_id': lang.id})
+        self.facility.final_cleaning_fee = 1240.0
+        self.authenticate('rf_portal', 'rf_portal_pw_1')
+        html = self.url_open(self.url).text
+        self.assertIn('1.240,00</span>\N{NO-BREAK SPACE}€', html)
+        self.assertIn('2,00</span>\N{NO-BREAK SPACE}€', html)
+        self.assertNotIn('1240.00', html)
+        check_in = fields.Date.today() + timedelta(days=30)
+        response = self.url_open(self.url, data={
+            'csrf_token': self._csrf(html), 'kjr_preview': '1',
+            'check_in': check_in.isoformat(),
+            'check_out': (check_in + timedelta(days=2)).isoformat(),
+            'participant_count': '10', 'contact_person': 'RF Vorschau',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('1.240,00</span>\N{NO-BREAK SPACE}€', response.text)
+        self.assertNotRegex(response.text, r'\d\.\d\d €')
