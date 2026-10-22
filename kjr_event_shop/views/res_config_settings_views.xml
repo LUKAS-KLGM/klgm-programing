@@ -42,10 +42,10 @@
         <field name="model">event.event</field>
         <field name="inherit_id" ref="kjr_event.view_event_form_kjr"/>
         <field name="arch" type="xml">
-            <field name="seats_taken" position="after">
+            <xpath expr="//field[@name='kjr_seats_min_reached']" position="before">
                 <field name="kjr_seats_reserved_unpaid"/>
                 <field name="kjr_seats_overbooked" invisible="1"/>
-            </field>
+            </xpath>
             <xpath expr="//page[@name='kjr']/group[1]" position="after">
                 <div class="alert alert-warning" role="alert" invisible="not kjr_seats_overbooked">
                     Mehr Plätze vergeben als vorhanden: bestätigte Anmeldungen und Plätze, die
