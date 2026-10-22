@@ -1,5 +1,29 @@
 # Changelog — kjr_facility
 
+## 19.0.7.5.0 (2026-10-22)
+
+Umsetzung Termin 13.10.2026.
+
+### Neu
+- **Endreinigung und Kurbeitrag je Einrichtung** (`final_cleaning_fee`,
+  `visitor_tax_per_person_night`, `visitor_tax_exempt_age`). Ein Betrag am
+  Tarif (> 0) geht vor. Kostenvorschau, Formularhinweise, Buchung und Rechnung
+  rechnen damit. Werte sind leer (0), sie liefert der Betreiber. Nachgetragene
+  Beträge ändern bestehende Buchungen nicht stillschweigend.
+- **Buchungsvorlauf im Formular:** Anreisefeld mit `min`/`max` aus
+  `max_advance_months` (Standard 18); die serverseitige Prüfung bleibt.
+- **Anfrage ohne Konto** als Schalter je Einrichtung (`allow_guest_request`,
+  Standard aus = bisheriges Verhalten). Bei Anfrage ohne Konto sind Name,
+  Anschrift, E-Mail und Telefon Pflicht; es entsteht ein neuer, als ungeprüft
+  gekennzeichneter Kontakt; Spam-Schutz über den Standard-Hook
+  (`kjr_facility_request`); Bestätigung auf der Seite.
+
+### Geändert
+- Systemtexte: Gendern mit Doppelpunkt (Teilnehmende/Betreuende,
+  Ansprechpartner:in, Mieter:in, Datenschutzbeauftragte:r).
+- Tests: Dubletten-Schlüssel (Wort + Nummer seit 16d9b05) und zeitabhängiger
+  Automatik-Test angepasst.
+
 ## 19.0.7.4.0 (2026-10-12)
 
 ### Technisch

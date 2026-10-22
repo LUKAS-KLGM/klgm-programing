@@ -92,7 +92,7 @@ class KjrFacilityBooking(models.Model):
     # F2: Bisher gab es nur die Betreuerzahl sowie E-Mail/Telefon, aber keinen Namen
     # der verantwortlichen Ansprechperson — im Website-Termin bemängelt.
     contact_person = fields.Char(
-        string='Ansprechpartner/in',
+        string='Ansprechpartner:in',
         help='Name der verantwortlichen Ansprechperson der Gruppe (Anmeldung, Rückfragen, '
              'Schlüsselübergabe).')
     contact_email = fields.Char(string='E-Mail')
@@ -104,8 +104,8 @@ class KjrFacilityBooking(models.Model):
     nights = fields.Integer(string='Nächte', compute='_compute_nights', store=True)
 
     # ── Belegung ─────────────────────────────────────────────────────────────
-    participant_count = fields.Integer(string='Teilnehmer', default=0, tracking=True)
-    leader_count = fields.Integer(string='Betreuer', default=0)
+    participant_count = fields.Integer(string='Teilnehmende', default=0, tracking=True)
+    leader_count = fields.Integer(string='Betreuende', default=0)
     supervision_ok = fields.Boolean(string='Betreuung ausreichend', compute='_compute_supervision')
     # F2: Belegungsregeln der Einrichtung (Mindestbelegung/-aufenthalt, Zielgruppe).
     is_organized_group = fields.Boolean(
@@ -126,8 +126,9 @@ class KjrFacilityBooking(models.Model):
     visitor_tax_exempt_count = fields.Integer(
         string='Zusätzlich vom Kurbeitrag befreit', default=0,
         help='Anzahl der TEILNEHMENDEN, für die zusätzlich kein Kurbeitrag '
-             'anfällt: Einwohnerinnen und Einwohner der Standortgemeinde, Kinder unter '
-             '7 Jahren sowie Schwerbehinderte. ACHTUNG: Betreuerinnen und Betreuer '
+             'anfällt: Einwohner:innen der Standortgemeinde, Teilnehmende unter der '
+             'an der Einrichtung hinterlegten Altersgrenze sowie Schwerbehinderte. '
+             'ACHTUNG: Betreuer:innen '
              '(Feld „Betreuer") sind nach der Satzungslage ohnehin befreit und gehen '
              'gar nicht erst in die Berechnung ein. Sie dürfen hier NICHT noch einmal '
              'eingetragen werden, sonst wird doppelt abgezogen. '
@@ -471,7 +472,8 @@ class KjrFacilityBooking(models.Model):
         Begleitpersonen vom Kurbeitrag BEFREIT; sie gehen deshalb gar nicht erst in die
         Grundmenge ein (``leader_count`` wird bewusst nicht addiert).
         ``visitor_tax_exempt_count`` erfasst ausschließlich ZUSÄTZLICH befreite
-        Teilnehmende (Einwohner der Standortgemeinde, Kinder unter 7 Jahren,
+        Teilnehmende (Einwohner:innen der Standortgemeinde, Teilnehmende unter der
+        Altersgrenze der Einrichtung,
         Schwerbehinderte) — Betreuende dort erneut einzutragen wäre ein doppelter
         Abzug (siehe Hilfetext des Feldes). Das Ergebnis wird nie negativ.
         """
@@ -480,7 +482,7 @@ class KjrFacilityBooking(models.Model):
 
     @api.depends(
         'nights', 'check_in', 'check_out', 'participant_count',
-        'visitor_tax_exempt_count', 'meal_option', 'tariff_id',
+        'visitor_tax_exempt_count', 'meal_option', 'tariff_id', 'facility_id',
         'tariff_id.price_per_person_night', 'tariff_id.price_flat_per_night',
         'tariff_id.weekday_price_per_person_night', 'tariff_id.weekday_min_nights',
         'tariff_id.visitor_tax_per_person_night', 'tariff_id.final_cleaning_fee',
@@ -507,13 +509,23 @@ class KjrFacilityBooking(models.Model):
             meals = nights * pax * meal_rate
             equipment = nights * sum(rec.equipment_ids.mapped('price_per_day'))
             # F2: Endreinigung fällt EINMALIG je Buchung an (nicht je Nacht/Person).
-            cleaning = (t.final_cleaning_fee or 0.0) if (t and nights > 0) else 0.0
+            # Betrag aus Tarif, ersatzweise aus der Einrichtung (_fee_rates).
+            # Bewusst hängen die Beträge der EINRICHTUNG nicht in @api.depends:
+            # ein später nachgetragener Betrag soll bestehende (auch fakturierte)
+            # Buchungen nicht stillschweigend ändern, sondern erst greifen, wenn
+            # die Buchung angelegt oder ihr Zeitraum, ihre Personen oder ihr
+            # Tarif geändert werden.
+            rates = rec.facility_id._fee_rates(t) if rec.facility_id else {
+                'cleaning': (t.final_cleaning_fee or 0.0) if t else 0.0,
+                'visitor_tax': (t.visitor_tax_per_person_night or 0.0) if t else 0.0,
+            }
+            cleaning = rates['cleaning'] if nights > 0 else 0.0
             # F2: Kurbeitrag je beitragspflichtiger Person und Nacht.
             # Bemessungsgrundlage siehe _visitor_tax_person_count(): Betreuende sind
             # satzungsgemäß befreit und zählen nicht mit, visitor_tax_exempt_count
             # zieht zusätzlich befreite Teilnehmende ab (nie negativ).
             liable_persons = rec._visitor_tax_person_count()
-            visitor_tax = nights * liable_persons * (t.visitor_tax_per_person_night or 0.0) if t else 0.0
+            visitor_tax = nights * liable_persons * rates['visitor_tax']
             rec.amount_accommodation = accommodation
             rec.amount_meals = meals
             rec.amount_equipment = equipment
@@ -675,7 +687,7 @@ class KjrFacilityBooking(models.Model):
     def _check_counts(self):
         for rec in self:
             if rec.participant_count < 0 or rec.leader_count < 0:
-                raise ValidationError(_('Teilnehmer-/Betreuerzahlen dürfen nicht negativ sein.'))
+                raise ValidationError(_('Die Zahl der Teilnehmenden und Betreuenden darf nicht negativ sein.'))
 
     @api.constrains('participant_count', 'facility_id', 'room_ids', 'bed_count')
     def _check_capacity(self):
@@ -978,7 +990,7 @@ class KjrFacilityBooking(models.Model):
         if self.invoice_id:
             return self.action_view_invoice()
         if not self.partner_id:
-            raise UserError(_('Bitte einen Mieter/eine Gruppe angeben.'))
+            raise UserError(_('Bitte eine:n Mieter:in bzw. eine Gruppe angeben.'))
         if self.amount_total <= 0:
             raise UserError(_('Es gibt nichts zu berechnen (Betrag ist 0). Bitte Tarif/Zeitraum prüfen.'))
         tax = self.tariff_id.tax_id

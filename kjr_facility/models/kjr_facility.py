@@ -4,6 +4,8 @@ import logging
 import re
 from collections import defaultdict
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
@@ -40,8 +42,8 @@ class KjrFacility(models.Model):
     image_1920 = fields.Image(string='Bild', max_width=1920, max_height=1920)
     capacity = fields.Integer(string='Max. Personen', default=0)
     supervision_ratio = fields.Integer(
-        string='Betreuungsschlüssel (TN je Betreuer)', default=6,
-        help='Empfohlene Betreuung: 1 Betreuer je N Teilnehmer.',
+        string='Betreuungsschlüssel (Teilnehmende je Betreuer:in)', default=6,
+        help='Empfohlene Betreuung: 1 Betreuer:in je N Teilnehmende.',
     )
     street = fields.Char(string='Straße')
     zip = fields.Char(string='PLZ')
@@ -109,6 +111,37 @@ class KjrFacility(models.Model):
              'Hinweis: Der Schalter wirkt NICHT rückwirkend. Bereits erfasste '
              'Buchungen behalten ihre berechneten Verpflegungsbeträge, damit sich '
              'fakturierte Vorgänge nicht nachträglich ändern.')
+    # Termin 13.10.2026: Endreinigung und Kurbeitrag je Einrichtung. Die Beträge
+    # liefert der Betreiber (Chrissy); bewusst ohne Vorbelegung, 0 = keine Position.
+    # Ein am Tarif gepflegter Betrag (> 0) hat Vorrang, damit eine Tarifgruppe
+    # abweichen kann; sonst gilt der Betrag der Einrichtung. Siehe
+    # kjr.facility.booking._final_cleaning_rate / _visitor_tax_rate.
+    final_cleaning_fee = fields.Float(
+        string='Endreinigung pauschal (€)', digits=(8, 2), default=0.0,
+        help='Pauschale für die Endreinigung, EINMALIG je Buchung (nicht pro Nacht, '
+             'nicht pro Person). 0 = keine Endreinigungspauschale. Ist am Tarif ein '
+             'eigener Betrag gepflegt, gilt der Tarif.')
+    visitor_tax_per_person_night = fields.Float(
+        string='Kurbeitrag p. P./Nacht (€)', digits=(8, 2), default=0.0,
+        help='Kurbeitrag der Standortgemeinde je teilnehmender Person und Nacht. '
+             'Betreuende sind befreit und werden nicht mitgerechnet. 0 = kein '
+             'Kurbeitrag. Ist am Tarif ein eigener Betrag gepflegt, gilt der Tarif.')
+    visitor_tax_exempt_age = fields.Integer(
+        string='Kurbeitragsfrei unter (Jahren)', default=0,
+        help='Teilnehmende UNTER diesem Alter sind nach der Satzung der Gemeinde vom '
+             'Kurbeitrag befreit (z. B. 7 = bis zum 7. Geburtstag). Der Wert erscheint '
+             'im Anfrageformular als Hinweis, welche Teilnehmenden die Gruppe als '
+             'befreit angeben kann. 0 = keine Altersbefreiung.')
+    # Termin 13.10.2026 / Korrektur 14.10.: Ob Anfragen ohne Konto möglich sein
+    # sollen, ist für das Tagungshaus noch offen. Deshalb nur als Schalter, Standard
+    # aus = bisheriges Verhalten (Anmeldung erforderlich).
+    allow_guest_request = fields.Boolean(
+        string='Anfrage ohne Konto erlauben', default=False,
+        help='Aus (Standard): Für eine Anfrage über die Website muss man angemeldet '
+             'sein. An: Die Anfrage geht auch ohne Konto; dann sind Name, Anschrift, '
+             'E-Mail und Telefon Pflicht, und das System legt dafür einen neuen, als '
+             'ungeprüft gekennzeichneten Kontakt an. Die Buchung erscheint dann nicht '
+             'in einem Kundenkonto.')
     room_ids = fields.One2many('kjr.facility.room', 'facility_id', string='Räume')
     equipment_ids = fields.One2many('kjr.facility.equipment', 'facility_id', string='Ausstattung')
     bed_total = fields.Integer(string='Betten gesamt', compute='_compute_bed_total')
@@ -149,7 +182,32 @@ class KjrFacility(models.Model):
         for rec in self:
             rec.booking_count = mapped.get(rec.id, 0)
 
-    @api.constrains('max_advance_months', 'min_persons', 'min_nights', 'capacity')
+    def _latest_check_in(self, today=None):
+        """Spätestes zulässiges Anreisedatum laut Buchungsvorlauf, None = unbegrenzt."""
+        self.ensure_one()
+        if not self.max_advance_months:
+            return None
+        today = today or fields.Date.context_today(self)
+        return today + relativedelta(months=self.max_advance_months)
+
+    def _fee_rates(self, tariff=None):
+        """Endreinigung und Kurbeitrag, die für eine Buchung mit diesem Tarif gelten.
+
+        Ein am Tarif gepflegter Betrag (> 0) geht vor, sonst gilt der Betrag der
+        Einrichtung. Eine Quelle für Buchung, Kostenvorschau und Formular.
+        """
+        self.ensure_one()
+        tariff = tariff or self.env['kjr.facility.tariff']
+        return {
+            'cleaning': (tariff.final_cleaning_fee or 0.0) or (self.final_cleaning_fee or 0.0),
+            'visitor_tax': ((tariff.visitor_tax_per_person_night or 0.0)
+                            or (self.visitor_tax_per_person_night or 0.0)),
+            'exempt_age': self.visitor_tax_exempt_age or 0,
+        }
+
+    @api.constrains('max_advance_months', 'min_persons', 'min_nights', 'capacity',
+                    'final_cleaning_fee', 'visitor_tax_per_person_night',
+                    'visitor_tax_exempt_age')
     def _check_booking_rules(self):
         """Buchungsregeln dürfen nie negativ sein — 0 ist der Aus-Schalter."""
         for rec in self:
@@ -163,6 +221,13 @@ class KjrFacility(models.Model):
             if rec.min_nights < 0:
                 raise ValidationError(_(
                     'Der Mindestaufenthalt darf nicht negativ sein (0 = keine Prüfung).'))
+            if rec.final_cleaning_fee < 0 or rec.visitor_tax_per_person_night < 0:
+                raise ValidationError(_(
+                    'Endreinigung und Kurbeitrag dürfen nicht negativ sein (0 = keine Position).'))
+            if rec.visitor_tax_exempt_age < 0:
+                raise ValidationError(_(
+                    'Das Alter für die Befreiung vom Kurbeitrag darf nicht negativ sein '
+                    '(0 = keine Altersbefreiung).'))
             if rec.capacity and rec.min_persons > rec.capacity:
                 raise ValidationError(_(
                     'Die Mindestbelegung (%(min)s) ist größer als die maximale '

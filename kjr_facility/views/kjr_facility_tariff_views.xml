@@ -67,11 +67,14 @@
                         </group>
                     </group>
                     <div class="alert alert-info" role="alert">
-                        Der Kurbeitrag (je Person und Nacht) wird nur auf die Teilnehmenden
-                        berechnet. Betreuende sind als Begleitpersonen befreit und werden
-                        automatisch nicht mitgerechnet. Zusätzlich abgezogen wird die in der
-                        Buchung erfasste Anzahl weiterer befreiter Teilnehmender (Einwohner
-                        der Standortgemeinde, Kinder unter 7 Jahren, Schwerbehinderte).
+                        Kurbeitrag und Endreinigung werden in der Regel an der Einrichtung
+                        gepflegt. Ein hier eingetragener Betrag (größer 0) gilt stattdessen
+                        für diese Tarifgruppe. Der Kurbeitrag (je Person und Nacht) wird nur
+                        auf die Teilnehmenden berechnet. Betreuende sind als Begleitpersonen
+                        befreit und werden automatisch nicht mitgerechnet. Zusätzlich
+                        abgezogen wird die in der Buchung erfasste Anzahl weiterer befreiter
+                        Teilnehmender (Einwohner:innen der Standortgemeinde, Teilnehmende
+                        unter der Altersgrenze der Einrichtung, Schwerbehinderte).
                         Betreuende dort bitte NICHT erneut eintragen. Die Endreinigung fällt
                         einmalig je Buchung an, nicht pro Nacht.
                     </div>

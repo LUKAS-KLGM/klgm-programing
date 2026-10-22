@@ -108,7 +108,8 @@
         </t>
     </template>
 
-    <!-- ── Buchungsanfrage (Login erforderlich) ───────────────────────── -->
+    <!-- ── Buchungsanfrage (Login erforderlich, außer die Einrichtung erlaubt
+         „Anfrage ohne Konto“: dann is_guest und zusätzliche Pflichtfelder) ── -->
     <template id="website_facility_request" name="KJR Buchungsanfrage">
         <t t-call="website.layout">
             <div id="wrap" class="container mt-4 mb-5">
@@ -139,45 +140,52 @@
                 </t>
 
                 <!-- Zusatzpositionen aus dem Tarif (keine Beträge im Template hartkodiert) -->
-                <t t-if="tariff and (tariff.final_cleaning_fee or tariff.visitor_tax_per_person_night)">
+                <!-- Beträge aus fees (kjr.facility._fee_rates): Tarif vor Einrichtung. -->
+                <t t-if="fees.get('cleaning') or fees.get('visitor_tax')">
                     <div class="alert alert-info">
                         <strong>Diese Positionen kommen zur Unterkunft<t t-if="facility.offers_catering"> und Verpflegung</t> hinzu</strong>
                         <ul class="mb-0 mt-2">
-                            <li t-if="tariff.final_cleaning_fee">
+                            <li t-if="fees.get('cleaning')">
                                 <strong>Endreinigung:</strong>
-                                <t t-esc="'%.2f €' % tariff.final_cleaning_fee"/> einmalig je Aufenthalt.
+                                <t t-esc="'%.2f €' % fees['cleaning']"/> einmalig je Aufenthalt.
                             </li>
-                            <li t-if="tariff.visitor_tax_per_person_night">
+                            <li t-if="fees.get('visitor_tax')">
                                 <strong>Kurbeitrag:</strong>
-                                <t t-esc="'%.2f €' % tariff.visitor_tax_per_person_night"/> pro
+                                <t t-esc="'%.2f €' % fees['visitor_tax']"/> pro
                                 teilnehmender Person und Nacht. Den Beitrag führen wir an die Gemeinde ab.
                                 Ihre Betreuungspersonen sind als Begleitpersonen befreit. Sie rechnen wir
                                 automatisch heraus, Sie müssen dafür nichts angeben. Sind darüber hinaus
-                                einzelne Teilnehmende befreit (z. B. Einwohnerinnen und Einwohner der
-                                Standortgemeinde, Kinder unter 7 Jahren, Schwerbehinderte), tragen Sie
+                                einzelne Teilnehmende befreit (z. B. Einwohner:innen der
+                                Standortgemeinde<t t-if="fees.get('exempt_age')">, Teilnehmende unter
+                                <t t-esc="fees['exempt_age']"/> Jahren</t>, Schwerbehinderte), tragen Sie
                                 deren Anzahl unten ein.
                             </li>
                         </ul>
                     </div>
                 </t>
 
-                <form method="post" t-attf-action="/service/einrichtung/#{facility.id}/anfrage">
+                <!-- data-captcha: Spam-Schutz (kjr_website_antispam bzw. reCAPTCHA/Turnstile),
+                     geprüft wird nur bei Anfragen ohne Konto. -->
+                <form method="post" t-attf-action="/service/einrichtung/#{facility.id}/anfrage"
+                      data-captcha="kjr_facility_request">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Anreise *</label>
                             <input type="date" name="check_in"
                                    t-attf-class="form-control#{' is-invalid' if errors.get('check_in') else ''}"
+                                   t-att-min="date_min" t-att-max="date_max"
                                    t-att-value="values.get('check_in','')" required="required"/>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Abreise *</label>
                             <input type="date" name="check_out"
                                    t-attf-class="form-control#{' is-invalid' if errors.get('check_out') else ''}"
+                                   t-att-min="date_out_min" t-att-max="date_out_max"
                                    t-att-value="values.get('check_out','')" required="required"/>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Ansprechpartner/in *</label>
+                            <label class="form-label fw-bold">Ansprechpartner:in *</label>
                             <input type="text" name="contact_person"
                                    t-attf-class="form-control#{' is-invalid' if errors.get('contact_person') else ''}"
                                    t-att-value="values.get('contact_person','')" required="required"/>
@@ -202,7 +210,7 @@
                             <input type="number" name="leader_count" class="form-control" min="0"
                                    t-att-value="values.get('leader_count','')"/>
                             <div class="form-text">Anzahl der volljährigen Begleitpersonen, nicht zu
-                                verwechseln mit der Ansprechpartnerin bzw. dem Ansprechpartner oben.</div>
+                                verwechseln mit der Ansprechperson oben.</div>
                         </div>
                         <!-- Verpflegung nur zur Auswahl stellen, wenn die Einrichtung sie
                              auch erbringt (kjr.facility.offers_catering). Sonst stünden im
@@ -233,7 +241,7 @@
                                     und Zubereitung organisiert die Gruppe selbst.</div>
                             </div>
                         </t>
-                        <t t-if="tariff and tariff.visitor_tax_per_person_night">
+                        <t t-if="fees.get('visitor_tax')">
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Weitere vom Kurbeitrag befreite
                                     Teilnehmende (Anzahl)</label>
@@ -241,23 +249,50 @@
                                        t-attf-class="form-control#{' is-invalid' if errors.get('visitor_tax_exempt_count') else ''}"
                                        t-att-value="values.get('visitor_tax_exempt_count','')"/>
                                 <div class="form-text">Anzahl der <strong>Teilnehmenden</strong>, die nach
-                                    der Satzung der Gemeinde vom Beitrag befreit sind (Einwohnerinnen und
-                                    Einwohner der Standortgemeinde, Kinder unter 7 Jahren, Schwerbehinderte).
+                                    der Satzung der Gemeinde vom Beitrag befreit sind (Einwohner:innen der
+                                    Standortgemeinde<t t-if="fees.get('exempt_age')">, Teilnehmende unter
+                                    <t t-esc="fees['exempt_age']"/> Jahren</t>, Schwerbehinderte).
                                     Ihre Betreuungspersonen bitte <strong>nicht</strong> mitzählen. Sie sind
                                     ohnehin befreit und werden automatisch herausgerechnet. Im Zweifel leer
                                     lassen. Wir prüfen das gemeinsam mit Ihnen.</div>
                             </div>
                         </t>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">E-Mail</label>
-                            <input type="email" name="contact_email" class="form-control"
+                            <label t-attf-class="form-label#{' fw-bold' if is_guest else ''}">E-Mail<t t-if="is_guest"> *</t></label>
+                            <input type="email" name="contact_email"
+                                   t-attf-class="form-control#{' is-invalid' if errors.get('contact_email') else ''}"
+                                   t-att-required="'required' if is_guest else None"
                                    t-att-value="values.get('contact_email','')"/>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Telefon</label>
-                            <input type="tel" name="contact_phone" class="form-control"
+                            <label t-attf-class="form-label#{' fw-bold' if is_guest else ''}">Telefon<t t-if="is_guest"> *</t></label>
+                            <input type="tel" name="contact_phone"
+                                   t-attf-class="form-control#{' is-invalid' if errors.get('contact_phone') else ''}"
+                                   t-att-required="'required' if is_guest else None"
                                    t-att-value="values.get('contact_phone','')"/>
                         </div>
+                        <!-- Anfrage ohne Konto: Anschrift ist Pflicht, weil kein Kundenkonto
+                             mit hinterlegter Anschrift existiert. -->
+                        <t t-if="is_guest">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Straße und Hausnummer *</label>
+                                <input type="text" name="street" required="required"
+                                       t-attf-class="form-control#{' is-invalid' if errors.get('street') else ''}"
+                                       t-att-value="values.get('street','')"/>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label fw-bold">PLZ *</label>
+                                <input type="text" name="zip" required="required"
+                                       t-attf-class="form-control#{' is-invalid' if errors.get('zip') else ''}"
+                                       t-att-value="values.get('zip','')"/>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold">Ort *</label>
+                                <input type="text" name="city" required="required"
+                                       t-attf-class="form-control#{' is-invalid' if errors.get('city') else ''}"
+                                       t-att-value="values.get('city','')"/>
+                            </div>
+                        </t>
                         <t t-if="facility.requires_organized_group">
                             <div class="col-12 mb-3">
                                 <div class="form-check">
@@ -394,7 +429,7 @@
                         <dl class="row small mb-0">
                             <dt class="col-sm-4">Was wir speichern</dt>
                             <dd class="col-sm-8">An- und Abreisedatum, den Namen der
-                                Ansprechpartnerin bzw. des Ansprechpartners, die
+                                Ansprechperson<t t-if="is_guest"> und ihre Anschrift</t>, die
                                 Gruppenbezeichnung, die Anzahl der Teilnehmenden und
                                 Betreuenden,<t t-if="facility.offers_catering"> die gewünschte
                                 Verpflegung,</t> E-Mail-Adresse,
@@ -427,7 +462,7 @@
                                     verantwortlichen Stelle.</span>
                             </dd>
 
-                            <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
+                            <dt class="col-sm-4">Datenschutzbeauftragte:r</dt>
                             <dd class="col-sm-8">
                                 <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                                 <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
@@ -468,6 +503,26 @@
                     </button>
                     <a t-attf-href="/service/einrichtung/#{facility.id}" class="btn btn-outline-secondary btn-lg">Abbrechen</a>
                 </form>
+            </div>
+        </t>
+    </template>
+
+    <!-- Bestätigung nach einer Anfrage ohne Konto (kein Kundenkonto, in das
+         weitergeleitet werden könnte). Gleicher Aufbau wie die Bestätigung der
+         Spielmobil-Anfrage im Verleih. -->
+    <template id="website_facility_request_thanks" name="KJR Buchungsanfrage: Bestätigung">
+        <t t-call="website.layout">
+            <div id="wrap" class="container mt-4 mb-5">
+                <h1 class="mb-3">Buchungsanfrage: <t t-esc="facility.name"/></h1>
+                <div class="alert alert-success" role="alert">
+                    <h2 class="h5 alert-heading">Vielen Dank für Ihre Anfrage.</h2>
+                    <p class="mb-0">
+                        Ihre Anfrage ist unter der Nummer <strong t-esc="booking.name"/> eingegangen.
+                        Die Geschäftsstelle prüft den Zeitraum und meldet sich bei Ihnen.
+                        Diese Bestätigung ist noch keine Zusage.
+                    </p>
+                </div>
+                <a t-attf-href="/service/einrichtung/#{facility.id}" class="btn btn-outline-secondary">Zurück zur Einrichtung</a>
             </div>
         </t>
     </template>
@@ -569,7 +624,7 @@
                                 <dt class="col-4">Einrichtung</dt><dd class="col-8"><t t-esc="booking.facility_id.name"/></dd>
                                 <dt class="col-4">Anreise</dt><dd class="col-8"><span t-field="booking.check_in" t-options='{"widget":"date"}'/></dd>
                                 <dt class="col-4">Abreise</dt><dd class="col-8"><span t-field="booking.check_out" t-options='{"widget":"date"}'/></dd>
-                                <dt class="col-4">Personen</dt><dd class="col-8"><t t-esc="booking.participant_count"/> (+ <t t-esc="booking.leader_count"/> Betreuer)</dd>
+                                <dt class="col-4">Personen</dt><dd class="col-8"><t t-esc="booking.participant_count"/> (+ <t t-esc="booking.leader_count"/> Betreuende)</dd>
                                 <dt class="col-4">Verpflegung</dt><dd class="col-8"><t t-esc="dict(booking._fields['meal_option'].selection).get(booking.meal_option)"/></dd>
                                 <dt class="col-4">Gesamt (brutto)</dt><dd class="col-8"><t t-esc="'%.2f €' % booking.amount_total"/></dd>
                                 <dt class="col-4">Status</dt><dd class="col-8"><span class="badge text-bg-secondary"><t t-esc="dict(booking._fields['state'].selection).get(booking.state)"/></span></dd>
