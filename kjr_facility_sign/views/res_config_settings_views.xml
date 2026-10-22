@@ -17,7 +17,7 @@
                            name="kjr_facility_sign">
                         <setting id="kjr_facility_sign_enabled"
                                  string="Vertrag digital unterschreiben"
-                                 help="Beim verbindlichen Buchen erhält der Mieter eine Unterschriftsanfrage statt der Vertragsmail. Pro Einrichtung abschaltbar (Einrichtung, Gruppe Zeiten &amp; Rechnung).">
+                                 help="Beim verbindlichen Buchen erhält die:der Mieter:in eine Unterschriftsanfrage statt der Vertragsmail. Pro Einrichtung abschaltbar (Einrichtung, Gruppe Zeiten &amp; Rechnung).">
                             <field name="kjr_facility_sign_enabled"/>
                         </setting>
                         <setting id="kjr_facility_sign_sender" string="Absender"
