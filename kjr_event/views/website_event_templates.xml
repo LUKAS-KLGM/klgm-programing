@@ -30,9 +30,6 @@
                  t-att-data-kjr-event-start="event.date_begin and event.date_begin.date().isoformat()"
                  t-att-data-kjr-consent-mode="event.kjr_consent_mode"
                  t-att-data-kjr-counter="counter">
-                <div class="col-12">
-                    <h6 class="mb-0">Teilnehmer:in</h6>
-                </div>
                 <div class="col-md-4">
                     <label t-attf-for="#{counter}-kjr_gender" class="form-label">Geschlecht<span class="ms-1" aria-hidden="true">*</span></label>
                     <select class="form-select" required="required"
@@ -205,6 +202,12 @@
               name="KJR Anmeldung: Fragen je Teilnehmer:in">
         <xpath expr="//t[@t-foreach='event.specific_question_ids']" position="attributes">
             <attribute name="t-foreach">event.specific_question_ids.filtered(lambda q: q.question_type == 'name')</attribute>
+        </xpath>
+        <!-- Prüfbericht 22.10.2026: die Blocküberschrift "Teilnehmer:in" steht
+             VOR dem Namensfeld; Geschlecht, Geburtsdatum usw. folgen direkt
+             darunter im KJR-Block. -->
+        <xpath expr="//div[@t-if='event.specific_question_ids']/div[hasclass('row')]" position="before">
+            <h6 class="mt-3 mb-0">Teilnehmer:in</h6>
         </xpath>
     </template>
 
@@ -380,7 +383,7 @@
                             verantwortlichen Stelle.</span>
                     </dd>
 
-                    <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
+                    <dt class="col-sm-4">Datenschutzbeauftragte:r</dt>
                     <dd class="col-sm-8">
                         <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                         <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>

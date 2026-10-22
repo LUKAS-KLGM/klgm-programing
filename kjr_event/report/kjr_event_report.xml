@@ -37,7 +37,7 @@
                         </p>
                         <t t-if="o.event_is_juleica and o.juleica_issued">
                             <div class="alert alert-success mt-3">
-                                Die Jugendleiter/innen-Card (Juleica) wurde ausgestellt
+                                Die Jugendleiter:innen-Card (Juleica) wurde ausgestellt
                                 <t t-if="o.juleica_valid_until">und ist gültig bis
                                     <span t-field="o.juleica_valid_until" t-options='{"format":"dd.MM.yyyy"}'/></t>.
                             </div>

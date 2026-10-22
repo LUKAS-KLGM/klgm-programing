@@ -15,10 +15,13 @@
             <field name="value">0</field>
         </record>
         <!-- Entscheidung 13.10.2026: Rechnung automatisch. Erzeugt beim
-             Bestätigen des Auftrags, gebucht nur mit kjr_event.invoice_auto_post. -->
+             Bestätigen des Auftrags, gebucht nur mit kjr_event.invoice_auto_post.
+             Ausgeliefert AUS (Rollout-Grundsatz: kein Bestandskunde erzeugt nach
+             einem Update ungefragt Rechnungen); beim Go-live in den Einstellungen
+             einschalten. -->
         <record id="param_invoice_on_confirm" model="ir.config_parameter">
             <field name="key">kjr_event_shop.invoice_on_confirm</field>
-            <field name="value">1</field>
+            <field name="value">0</field>
         </record>
 
         <record id="cron_kjr_payment_reminder" model="ir.cron">

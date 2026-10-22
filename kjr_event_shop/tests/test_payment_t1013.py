@@ -58,6 +58,8 @@ class TestKjrPaymentT1013(TransactionCase):
         self.assertEqual(reg.state, 'open')
 
     def test_invoice_on_confirm(self):
+        # Ausgeliefert AUS (Opt-in), hier eingeschaltet.
+        self.Params.set_param('kjr_event_shop.invoice_on_confirm', '1')
         order, _reg = self._order()
         order.action_confirm()
         self.assertEqual(len(order.invoice_ids), 1)
@@ -107,6 +109,8 @@ class TestKjrPaymentT1013(TransactionCase):
         self.assertEqual(order.state, 'cancel')
         self.assertEqual(reg.state, 'cancel')
         self.assertFalse(waiting.kjr_is_waitlist, 'Warteliste rückt nach')
+        # Nachrücker:in mit unbezahltem Auftrag bleibt unbestätigt.
+        self.assertEqual(waiting.state, 'draft')
 
     def test_paid_order_not_reminded(self):
         order, _reg = self._order()
@@ -119,3 +123,56 @@ class TestKjrPaymentT1013(TransactionCase):
         cron = self.env.ref('kjr_event_shop.cron_kjr_payment_reminder')
         self.assertFalse(cron.active)
         self.assertEqual(self.env['sale.order']._cron_kjr_payment_reminder(), (0, 0))
+
+    def test_invoice_on_confirm_off_by_default(self):
+        self.Params.search([('key', '=', 'kjr_event_shop.invoice_on_confirm')]).unlink()
+        order, _reg = self._order()
+        order.action_confirm()
+        self.assertFalse(order.invoice_ids)
+
+    def test_manual_confirmed_special_case_not_reminded(self):
+        """Major: von Hand bestätigte Anmeldung bekommt weder Erinnerung noch Storno."""
+        order, reg = self._order()
+        order.write({'state': 'sent'})
+        reg.action_confirm()
+        self.assertEqual(reg.state, 'open')
+        order.write({'kjr_payment_requested_date': fields.Datetime.now() - timedelta(days=30),
+                     'kjr_payment_reminder_date': fields.Datetime.now() - timedelta(days=30)})
+        self.Params.set_param('kjr_event_shop.payment_reminder_days', '7')
+        self.Params.set_param('kjr_event_shop.payment_release_days', '5')
+        self.assertEqual(self.env['sale.order']._cron_kjr_payment_reminder(), (0, 0))
+        self.assertEqual(order.state, 'sent')
+        self.assertEqual(reg.state, 'open')
+
+    def test_unpaid_order_reserves_seat(self):
+        """Major: unbezahlte, abgeschlossene Bestellung hält den Platz frei."""
+        self.assertEqual(self.event._kjr_free_seats(), 1)
+        order, reg = self._order()
+        self.assertEqual(self.event._kjr_free_seats(), 1, 'Warenkorb reserviert nichts')
+        order.write({'state': 'sent'})
+        self.assertEqual(reg.state, 'draft')
+        self.assertEqual(self.event._kjr_free_seats(), 0)
+        # Nächste Bestellung landet auf der Warteliste.
+        _order2, second = self._order(name='Zweite')
+        self.assertTrue(second.kjr_is_waitlist)
+        # Zahlung geht ein, die Veranstaltung ist dann voll: ohne Fehler.
+        order.action_confirm()
+        self.assertEqual(reg.state, 'open')
+
+    def test_release_promotes_exactly_released_seats(self):
+        self.event.seats_max = 2
+        order, _reg = self._order()
+        order.write({'state': 'sent'})
+        _o2, w1 = self._order(name='W1', kjr_is_waitlist=True)
+        _o3, w2 = self._order(name='W2', kjr_is_waitlist=True)
+        order._kjr_release_unpaid()
+        promoted = (w1 | w2).filtered(lambda r: not r.kjr_is_waitlist)
+        self.assertEqual(len(promoted), 1, 'nur so viele, wie freigegeben wurden')
+
+    def test_fee_tax_setting_change_recomputes_open_orders(self):
+        order, _reg = self._order()
+        tax = self.env['account.tax'].create({
+            'name': '0 % Teilnahme (Neuberechnung)', 'amount': 0.0, 'type_tax_use': 'sale'})
+        settings = self.env['res.config.settings'].create({'kjr_event_fee_tax_id': tax.id})
+        settings.set_values()
+        self.assertEqual(order.order_line.tax_ids, tax)

@@ -952,6 +952,15 @@ class EventRegistration(models.Model):
             # Noch nicht gespeicherte Anmeldungen (NewId) haben keine Position.
             rec.kjr_waitlist_position = positions.get(rec._origin.id, 0) if rec.kjr_is_waitlist else 0
 
+    def _kjr_promote_keeps_draft(self):
+        """True, wenn eine nachrückende Anmeldung unbestätigt bleiben muss.
+
+        kjr_event: nie (die Einwilligungs-Sperre hat einen eigenen Zweig).
+        kjr_event_shop: solange der Auftrag unbezahlt ist.
+        """
+        self.ensure_one()
+        return False
+
     def action_kjr_promote_waitlist(self):
         """Rückt die gewählte Wartelisten-Anmeldung auf einen freien Platz nach.
 
@@ -974,6 +983,18 @@ class EventRegistration(models.Model):
                     'Für "%s" ist derzeit kein regulärer Platz frei. Bitte zuerst einen Platz '
                     'freigeben (Anmeldung absagen) oder die maximale Teilnehmerzahl erhöhen.',
                     rec.event_id.name))
+            if not rec.kjr_consent_hold and rec._kjr_promote_keeps_draft():
+                # Nachrücken ohne Bestätigung (kjr_event_shop: Auftrag noch
+                # unbezahlt). Nur die Warteliste verlassen; bestätigt wird erst
+                # mit dem Zahlungseingang (Auftrag bestätigen). Keine Zusage-Mail.
+                rec.write({'kjr_is_waitlist': False})
+                rec._kjr_consent_note(_(
+                    'Von der Warteliste nachgerückt. Bestätigt wird nach Zahlungseingang.'))
+                rec._kjr_consent_activity(
+                    _('Nachgerückt: zur Zahlung auffordern'),
+                    _('Die Anmeldung ist von der Warteliste nachgerückt und wird nach '
+                      'Zahlungseingang bestätigt. Bitte die Person zur Zahlung auffordern.'))
+                continue
             if rec.kjr_consent_hold:
                 # Einwilligungs-Sperre: vorbehaltlich nachrücken. Nur die
                 # Warteliste verlassen, der Status bleibt unbestätigt und es geht
@@ -1374,7 +1395,8 @@ class EventRegistration(models.Model):
             or self.env.ref('base.de', raise_if_not_found=False)
         return {
             'name': name,
-            'email': email_normalize(email) or (email or '').strip() or False,
+            # Nur normalisierte Adressen übernehmen (Prüfbericht 22.10.).
+            'email': email_normalize(email or '') or False,
             'phone': (phone or '').strip() or False,
             'street': street.strip(),
             'zip': zip_code.strip(),
@@ -1384,30 +1406,43 @@ class EventRegistration(models.Model):
 
     @api.model
     def _kjr_find_or_create_invoice_partner(self, values):
-        """Vorhandenen Kontakt wiederverwenden oder neu anlegen.
+        """Rechnungskontakt anlegen oder (eng begrenzt) wiederverwenden.
 
-        Wiederverwendet wird nur ein Kontakt, bei dem Name, E-Mail und die
-        ganze Anschrift übereinstimmen. Bewusst so eng: die Online-Anmeldung
-        ist öffentlich; ein Abgleich nur über die E-Mail würde einer fremden
-        Person den Kontakt (und im Shop dessen Anschrift) einer anderen Person
-        zuordnen.
+        Rückgabe: ``(partner, created)``.
+
+        Datenschutz vor Dublettenvermeidung (Prüfbericht 22.10.2026): Die
+        Online-Anmeldung ist öffentlich. Bei Gastbuchungen (öffentlicher
+        Website-Benutzer) wird deshalb IMMER ein neuer Kontakt angelegt; ein
+        Abgleich würde einer fremden Person den Kontakt (und im Shop dessen
+        Anschriften) einer anderen Person zuordnen.
+
+        Wiederverwendet wird nur für angemeldete Benutzer:innen bzw. interne
+        Aufrufe, und nur bei exakter Übereinstimmung (Leerraum und
+        Groß-/Kleinschreibung egal, KEINE Platzhalter wie ``%``) von Name,
+        normalisierter E-Mail, Straße, PLZ und Ort, nie ein Kontakt mit
+        Benutzerkonto oder eine Firma. Am gefundenen Kontakt wird nichts
+        geschrieben.
         """
         Partner = self.env['res.partner'].sudo()
-        domain = [
-            ('name', '=ilike', values['name']),
-            ('street', '=ilike', values['street']),
-            ('zip', '=', values['zip']),
-            ('city', '=ilike', values['city']),
-            ('type', '=', 'contact'),
-        ]
-        domain.append(('email', '=ilike', values['email']) if values.get('email')
-                      else ('email', '=', False))
-        partner = Partner.search(domain, limit=1)
-        if partner:
-            if values.get('phone') and not partner.phone:
-                partner.phone = values['phone']
-            return partner
-        return Partner.create(values)
+        email = email_normalize(values.get('email') or '')
+        if email and not self.env.user._is_public():
+            norm = lambda value: ' '.join((value or '').split()).casefold()  # noqa: E731
+            company = self.env.company
+            candidates = Partner.search([
+                ('email_normalized', '=', email),
+                ('zip', '=', values['zip']),
+                ('type', '=', 'contact'),
+                ('is_company', '=', False),
+                ('user_ids', '=', False),
+                ('company_id', 'in', [False, company.id]),
+            ], limit=50)
+            partner = candidates.filtered(
+                lambda p: norm(p.name) == norm(values['name'])
+                and norm(p.street) == norm(values['street'])
+                and norm(p.city) == norm(values['city']))[:1]
+            if partner:
+                return partner, False
+        return Partner.create(values), True
 
     def _kjr_apply_invoice_partner(self):
         """Setzt den Rechnungskontakt (und, falls leer, den Kontakt der Anmeldung).
@@ -1415,8 +1450,11 @@ class EventRegistration(models.Model):
         Wirft nie: ein Fehler beim Anlegen des Kontakts darf die Anmeldung
         nicht kippen (eigener Savepoint, vor dem try geöffnet, Begründung in
         _kjr_auto_invoice). kjr_event_shop erweitert die Methode und überträgt
-        den Kontakt auf den Auftrag.
+        einen NEU angelegten Kontakt auf den Warenkorb.
+
+        Rückgabe: die in diesem Aufruf neu angelegten Kontakte (Recordset).
         """
+        created_partners = self.env['res.partner']
         for rec in self:
             values = rec._kjr_invoice_partner_values()
             if not values:
@@ -1424,15 +1462,17 @@ class EventRegistration(models.Model):
             savepoint = self.env.cr.savepoint()
             try:
                 with savepoint:
-                    partner = self._kjr_find_or_create_invoice_partner(values)
+                    partner, created = self._kjr_find_or_create_invoice_partner(values)
                     vals = {'kjr_invoice_partner_id': partner.id}
                     if not rec.sudo().partner_id:
                         vals['partner_id'] = partner.id
                     rec.sudo().write(vals)
+                    if created:
+                        created_partners |= partner
             except Exception:  # noqa: BLE001 - die Anmeldung hat Vorrang
                 _logger.exception(
                     'KJR-Anmeldung %s: Rechnungskontakt konnte nicht angelegt werden.', rec.id)
-        return True
+        return created_partners
 
     def _kjr_billing_partner(self):
         """Kontakt für die Schulungsrechnung: Rechnungskontakt, sonst Kontakt."""

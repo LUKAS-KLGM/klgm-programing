@@ -8,6 +8,12 @@
         <field name="model">res.config.settings</field>
         <field name="inherit_id" ref="kjr_event.res_config_settings_view_form_kjr_event"/>
         <field name="arch" type="xml">
+            <xpath expr="//setting[@id='kjr_event_fee_tax']" position="inside">
+                <div class="text-muted small mt-1">
+                    Beim Speichern einer geänderten Steuer werden offene Warenkörbe und
+                    Angebote neu besteuert; bestätigte Aufträge und Rechnungen bleiben.
+                </div>
+            </xpath>
             <xpath expr="//block[@name='kjr_event_payment']" position="inside">
                 <setting id="kjr_event_shop_invoice_on_confirm" string="Rechnung automatisch"
                          help="Beim Bestätigen des Auftrags (nach Zahlungseingang) entsteht die Rechnung. Versendet wird nichts.">

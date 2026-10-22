@@ -441,6 +441,12 @@ class KjrWebsiteEventController(WebsiteEventController):
         event_sudo = event.sudo()
         if not event_sudo.event_registrations_started:
             return KJR_ERROR_NOT_STARTED
+        indexes = self._kjr_form_registration_indexes(post)
+        if any(not self._kjr_is_form_counter(index) for index in indexes):
+            # Index, den das Formular nie erzeugt ('0-name', '01-name-5',
+            # 'x-email'): der Kern legte dafür eine ungeprüfte Anmeldung an.
+            # Fail-closed, unabhängig vom Einwilligungsverfahren.
+            return KJR_ERROR_REQUIRED_MISSING
         counters = self._kjr_form_counters(post)
         if not counters:
             return None
@@ -481,17 +487,28 @@ class KjrWebsiteEventController(WebsiteEventController):
         return None
 
     def _kjr_prepare_contact_post(self, event, post):
-        """Setzt E-Mail und Telefon der Anmeldung aus dem passenden Block.
+        """Setzt E-Mail und Telefon der Anmeldung aus dem geprüften Block.
 
         Die Kernfragen E-Mail/Telefon werden je Teilnehmer:in nicht mehr
-        angezeigt. Damit die Anmeldung (Bestätigung, Teilnehmerliste) trotzdem
-        E-Mail und Telefon trägt, schreibt diese Methode sie als Kernfelder
-        ``<n>-email``/``<n>-phone`` in den POST (``_process_attendees_form``
-        übernimmt zweiteilige Schlüssel erlaubter Felder unmittelbar):
-        unter 18 die Angaben der Erziehungsberechtigten, sonst die der
-        Teilnehmer:in. Bereits gesendete Werte (ältere Formulare) bleiben.
+        angezeigt. E-Mail und Telefon der Anmeldung (Bestätigung,
+        Teilnehmerliste) kommen deshalb als Kernfelder ``<n>-email``/
+        ``<n>-phone`` in den POST (``_process_attendees_form`` übernimmt
+        zweiteilige Schlüssel erlaubter Felder unmittelbar): unter 18 die
+        Angaben der Erziehungsberechtigten, sonst die der Teilnehmer:in.
+
+        Prüfbericht 22.10.2026: gesendete ``<n>-email``/``<n>-phone`` sowie
+        dreiteilige E-Mail-/Telefon-Antworten werden IMMER durch die geprüften
+        Werte ersetzt bzw. entfernt (gespeichert wird nur, was
+        ``_kjr_form_precheck`` geprüft hat), und ``<n>-partner_id`` /
+        ``<n>-event_id`` aus dem öffentlichen POST werden verworfen.
         """
         event_sudo = event.sudo()
+        for key in list(post):
+            parts = key.split('-')
+            if len(parts) == 2 and parts[1] in ('partner_id', 'event_id', 'email', 'phone'):
+                post.pop(key)
+            elif len(parts) == 3 and parts[1] in ('email', 'phone'):
+                post.pop(key)
         for counter in self._kjr_form_counters(post):
             prefix = '%d-' % counter
             birthdate = self._kjr_parse_birthdate(post.get(prefix + 'birthdate'))
@@ -502,9 +519,10 @@ class KjrWebsiteEventController(WebsiteEventController):
             else:
                 email = post.get(prefix + 'guardian_email')
                 phone = post.get(prefix + 'guardian_phone')
-            if email and not post.get(prefix + 'email'):
-                post[prefix + 'email'] = (email_normalize(email) or email).strip()
-            if phone and not post.get(prefix + 'phone'):
+            email = email_normalize(email or '')
+            if email:
+                post[prefix + 'email'] = email
+            if phone and str(phone).strip():
                 post[prefix + 'phone'] = str(phone).strip()
         return post
 

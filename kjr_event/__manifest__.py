@@ -7,7 +7,7 @@
                'Weiterbildungen: Altersgruppen mit Alterskulanz, Postleitzahlen, Anmeldung ab, '
                'Anmeldeformular Teilnehmer:in/Erziehungsberechtigte, Einwilligung Minderjähriger, '
                'Notfallkontakt, Teilnahmebescheinigung, Website-Dokumente-Block, '
-               'Treffpunkt/Wichtig/Webseite, Mindestanzahl Teilnehmer, '
+               'Treffpunkt/Wichtig/Webseite, Mindestanzahl Teilnehmer:innen, '
                'Einwilligungs-Sperre bis zur Einwilligung der Erziehungsberechtigten',
     'author': 'KLGM UG (haftungsbeschränkt)',
     'website': 'https://www.klgm-consulting.de',

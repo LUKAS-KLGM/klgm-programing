@@ -69,7 +69,7 @@ class EventEvent(models.Model):
              'vorgeben).')
     # E13 – Mindestanzahl Teilnehmer (Parität zum Altsystem; Odoo kennt nativ nur ein Maximum)
     kjr_seats_min = fields.Integer(
-        string='Mindestanzahl Teilnehmer',
+        string='Mindestanzahl Teilnehmer:innen',
         help='0 = keine Mindestanzahl. Odoo hat serienmäßig nur ein Sitzplatz-Maximum '
              '(seats_max). Dieses Feld ergänzt eine Mindestanzahl, unterhalb derer die '
              'Durchführung zu prüfen ist, z. B. um zu entscheiden, ob eine Fahrt bei zu '

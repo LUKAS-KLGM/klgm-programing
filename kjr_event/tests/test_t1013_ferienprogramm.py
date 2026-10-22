@@ -286,3 +286,61 @@ class TestKjrT1013(TransactionCase):
     def test_event_types(self):
         keys = [k for k, _l in self.Event._fields['kjr_event_type'].selection]
         self.assertEqual(keys, ['ferienprogramm', 'training'])
+
+    # ------------------------------------------------------------------
+    # Prüfbericht 22.10.2026
+    # ------------------------------------------------------------------
+    def test_public_guest_always_gets_new_contact(self):
+        """Blocker: Gastbuchung übernimmt nie einen vorhandenen Kontakt."""
+        first = self._reg()
+        first._kjr_apply_invoice_partner()
+        public = self.env.ref('base.public_user')
+        second = self._reg(name='Max Muster')
+        second.with_user(public).sudo()._kjr_apply_invoice_partner()
+        self.assertTrue(second.kjr_invoice_partner_id)
+        self.assertNotEqual(first.kjr_invoice_partner_id, second.kjr_invoice_partner_id)
+
+    def test_wildcards_never_match(self):
+        """Blocker: '%' in Name/Straße/Ort/E-Mail trifft keinen fremden Kontakt."""
+        victim = self.env['res.partner'].create({
+            'name': 'Erika Opfer', 'email': 'erika@example.com', 'street': 'Geheimweg 7',
+            'zip': '87527', 'city': 'Sonthofen'})
+        reg = self._reg(guardian_name='%', kjr_street='%', kjr_city='%',
+                        guardian_email='%@example.com')
+        reg._kjr_apply_invoice_partner()
+        self.assertNotEqual(reg.kjr_invoice_partner_id, victim)
+
+    def test_contact_with_login_never_reused(self):
+        user = self.env['res.users'].create({
+            'name': 'Eva Muster', 'login': 'eva.t1013@example.com', 'email': 'eva@example.com'})
+        user.partner_id.write({'street': 'Bahnhofstraße 1', 'zip': '87527', 'city': 'Sonthofen'})
+        reg = self._reg()
+        reg._kjr_apply_invoice_partner()
+        self.assertNotEqual(reg.kjr_invoice_partner_id, user.partner_id)
+
+    def test_found_contact_is_not_written(self):
+        first = self._reg(guardian_phone=False)
+        first._kjr_apply_invoice_partner()
+        partner = first.kjr_invoice_partner_id
+        second = self._reg(name='Max Muster', guardian_phone='0999')
+        second._kjr_apply_invoice_partner()
+        self.assertEqual(second.kjr_invoice_partner_id, partner)
+        self.assertFalse(partner.phone)
+
+    def test_irregular_index_rejected(self):
+        """Major: irregulärer Index umgeht die Pflichtprüfung nicht (Verfahren 'none')."""
+        self.assertEqual(self.event.kjr_consent_mode, 'none')
+        post = self._post(**{'01-name-1': 'Unbekannt', '01-event_ticket_id': '0'})
+        self.assertEqual(self._ctl('_kjr_form_precheck', self.event, post), 'kjr_required_missing')
+        self.assertEqual(self._ctl('_kjr_form_precheck', self.event, {'0-name': 'X'}),
+                         'kjr_required_missing')
+
+    def test_contact_post_overrides_sent_values(self):
+        post = self._post(**{'1-email': '%', '1-phone': '1', '1-email-2': 'x@y.de',
+                             '1-partner_id': '1', '1-event_id': '1'})
+        mapped = self._ctl('_kjr_prepare_contact_post', self.event, post)
+        self.assertEqual(mapped['1-email'], 'eva@example.com')
+        self.assertEqual(mapped['1-phone'], '0831 123')
+        self.assertNotIn('1-email-2', mapped)
+        self.assertNotIn('1-partner_id', mapped)
+        self.assertNotIn('1-event_id', mapped)

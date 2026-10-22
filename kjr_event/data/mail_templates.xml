@@ -36,7 +36,7 @@
             <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
             <field name="body_html" type="html">
                 <div style="margin:0px;padding:0px;font-size:13px;">
-                    <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
+                    <p t-if="object.is_minor">Guten Tag,</p><p t-else="">Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
                     <p>vielen Dank für die Anmeldung zur Veranstaltung
                         <strong><t t-out="object.event_id.name or ''"/></strong>.</p>
                     <p t-if="object.event_id.date_begin">Beginn:
@@ -101,7 +101,7 @@
             <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
             <field name="body_html" type="html">
                 <div style="margin:0px;padding:0px;font-size:13px;">
-                    <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
+                    <p t-if="object.is_minor">Guten Tag,</p><p t-else="">Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
                     <p>bald geht es los mit <strong><t t-out="object.event_id.name or ''"/></strong>.</p>
                     <p>Bitte denken Sie an: wetterfeste Kleidung, feste Schuhe, Verpflegung,
                         persönliche Medikamente und die unterschriebene Einwilligung.</p>
@@ -121,7 +121,7 @@
             <field name="email_to">{{ object.email or (object.partner_id.email or '') }}</field>
             <field name="body_html" type="html">
                 <div style="margin:0px;padding:0px;font-size:13px;">
-                    <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
+                    <p t-if="object.is_minor">Guten Tag,</p><p t-else="">Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
                     <p>leider müssen wir die Veranstaltung
                         <strong><t t-out="object.event_id.name or ''"/></strong> absagen
                         bzw. Ihre Anmeldung kann nicht berücksichtigt werden.</p>
@@ -143,7 +143,7 @@
             <field name="report_template_ids" eval="[(6, 0, [ref('kjr_event.action_report_participation')])]"/>
             <field name="body_html" type="html">
                 <div style="margin:0px;padding:0px;font-size:13px;">
-                    <p>Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
+                    <p t-if="object.is_minor">Guten Tag,</p><p t-else="">Hallo <t t-out="object.name or object.partner_id.name or ''"/>,</p>
                     <p>im Anhang finden Sie Ihre Bescheinigung zur Veranstaltung
                         <strong><t t-out="object.event_id.name or ''"/></strong>.</p>
                     <p t-if="object.event_is_juleica and object.juleica_issued">

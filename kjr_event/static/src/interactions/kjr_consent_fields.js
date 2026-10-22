@@ -103,7 +103,11 @@ export class KjrConsentFields extends Interaction {
     onSameAddressChange(ev) {
         const container = ev.currentTarget.closest(".o_kjr_attendee_fields");
         if (container) {
-            this.updateAddress(container, !container.querySelector(".o_kjr_guardian_block.d-none"));
+            // Sichtbarkeit des Blocks aus dem Alter ableiten (dieselbe Regel wie
+            // updateFields), nicht aus den Anschriftsfeldern selbst.
+            const birth = container.querySelector("input[name$='-birthdate']");
+            const age = birth ? ageAt(birth.value, container.dataset.kjrEventStart) : null;
+            this.updateAddress(container, !(age !== null && age >= 18));
         }
     }
 

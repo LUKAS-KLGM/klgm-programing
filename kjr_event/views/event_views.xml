@@ -24,7 +24,7 @@
                  Notiz (und Ticketanweisungen/Badge), der KJR-Reiter
                  "Dokumente" die Downloads auf der Veranstaltungsseite. -->
             <page name="event_notes" position="attributes">
-                <attribute name="string">Interne Notizen</attribute>
+                <attribute name="string">Interne Notizen und Ticket-Hinweise</attribute>
             </page>
             <notebook position="inside">
                 <page string="KJR" name="kjr">

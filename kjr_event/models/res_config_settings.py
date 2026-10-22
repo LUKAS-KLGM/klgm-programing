@@ -34,4 +34,5 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='kjr_event.fee_tax_id',
         domain=[('type_tax_use', '=', 'sale')],
         help='Steuer für Anmeldungen zu KJR-Veranstaltungen (Ticket im Shop und '
-             'Schulungsrechnung). Leer = Steuer des Produkts.')
+             'Schulungsrechnung). Leer = Steuer des Produkts (beim Ticketprodukt '
+             'meist 19 %), deshalb bitte setzen. Die Wahl trifft die Steuerberatung.')
