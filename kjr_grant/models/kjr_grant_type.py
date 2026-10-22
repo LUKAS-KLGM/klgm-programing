@@ -25,7 +25,7 @@ class KjrGrantType(models.Model):
         ('4_3',  '§ 4.3  Außerschulische Jugendbildung'),
         ('4_4',  '§ 4.4  Jugendleiterschulung'),
         ('4_5',  '§ 4.5  Internationale Jugendarbeit'),
-        ('4_6',  '§ 4.6  Geräte & Materialien'),
+        ('4_6',  '§ 4.6  Geräte und Materialien'),
         ('4_7',  '§ 4.7  Gruppenstarthilfe'),
         ('4_8a', '§ 4.8a Großveranstaltung (>100 TN)'),
         ('4_8b', '§ 4.8b Traditionelle Veranstaltung'),
@@ -103,6 +103,17 @@ class KjrGrantType(models.Model):
     max_amount = fields.Float(
         string='Höchstfördersumme (€)', digits=(8, 2), required=True, default=0.0,
     )
+    max_amount_per_year = fields.Float(
+        string='Höchstbetrag pro Jahr und Verband (€)', digits=(8, 2), default=0.0,
+        help='Summe, die ein Verband im Maßnahmenjahr nach dieser Förderart höchstens '
+             'erhält, über alle eingereichten, in Prüfung befindlichen, bewilligten und '
+             'ausgezahlten Anträge (Zuschussrichtlinie: § 4.5 „max. 700 € pro Jahr“, '
+             '§ 4.6 „jährliche Höchstfördersumme 300 €“, § 4.8a „max. 400 € jährlich“). '
+             'Gezählt wird in der Reihenfolge des Eingangs: Der später eingereichte '
+             'Antrag erhält nur noch den Rest. Fassungen mit gleicher Regelgruppe '
+             'zählen zusammen. 0 = keine Jahresgrenze (es gilt nur der Höchstbetrag '
+             'je Antrag).',
+    )
     max_per_year = fields.Integer(
         string='Max. Anträge/Kalenderjahr', default=0,
         help='0 = unbegrenzt.',
@@ -156,7 +167,9 @@ class KjrGrantType(models.Model):
     jl_max_with_juleica = fields.Float(string='JL-Schulung mit Juleica max. (€)', digits=(8, 2), default=0.0)
     allow_private_account = fields.Boolean(
         string='Auszahlung auf Privatkonto erlaubt', default=False,
-        help='Nur § 4.4 Jugendleiterschulung.',
+        help='Der Zuschuss darf auf ein privates Bankkonto gehen (Richtlinie § 3.2: '
+             'Jugendleiterschulung § 4.4; § 4.9: Konto der delegierten Person). '
+             'Den Antrag stellt trotzdem immer der Verband.',
     )
     # Pflichtdokumente
     requires_tn_list = fields.Boolean(string='Teilnehmerliste Pflicht', default=True)

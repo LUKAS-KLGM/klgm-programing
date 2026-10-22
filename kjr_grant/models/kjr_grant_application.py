@@ -398,6 +398,12 @@ class KjrGrantApplication(models.Model):
         string='Begründung Abweichung',
         help='Pflichtfeld wenn bewilligter Betrag vom berechneten abweicht.',
     )
+    year_cap_info = fields.Char(
+        string='Höchstbetrag pro Jahr', compute='_compute_year_cap_info',
+        help='Nur bei Förderarten mit Höchstbetrag pro Jahr und Verband: wie viel '
+             'durch frühere Anträge desselben Verbands im Maßnahmenjahr schon '
+             'gebunden ist und was für diesen Antrag noch bleibt.',
+    )
     budget_info = fields.Char(
         string='Budget-Status', compute='_compute_budget_info',
         help='Verbleibendes Jahresbudget der Förderart (Live-Anzeige für die Bewilligung).',
@@ -607,10 +613,131 @@ class KjrGrantApplication(models.Model):
         'cost_total', 'cost_referees', 'cost_materials', 'cost_transport',
         'cost_jl_fees', 'deficit',
         'delegate_transport_mode', 'delegate_km_one_way', 'delegate_passenger_count',
+        # Jahreshöchstbetrag je Verband: Reihenfolge und Zuordnung der Anträge.
+        'grant_type_id.max_amount_per_year', 'grant_type_id.rule_group',
+        'partner_id', 'measure_year', 'state', 'date_submitted',
     )
     def _compute_grant(self):
+        # Nach Eingang sortiert: Innerhalb eines Laufs sieht ein später
+        # eingereichter Antrag die schon neu berechneten Beträge der früheren.
+        for rec in self.sorted(lambda r: r._year_cap_sort_key()):
+            amount = rec._calculate_grant()
+            cap = rec._year_cap_remaining()
+            if cap is not None and amount > cap:
+                amount = math.ceil(cap) if cap > 0 else 0.0
+            rec.grant_calculated = amount
+
+    # ── Höchstbetrag pro Jahr und Verband (§ 4.5, § 4.6, § 4.8a) ─────────────
+    # Die Richtlinie deckelt einige Förderarten nicht je Antrag, sondern je Jahr
+    # („max. 700 € pro Jahr“, „jährliche Höchstfördersumme 300 €“, „max. 400 €
+    # jährlich“). Gezählt werden alle Anträge desselben Verbands im selben
+    # Maßnahmenjahr nach derselben Förderart (bzw. Regelgruppe), die eingereicht,
+    # in Prüfung, bewilligt oder ausgezahlt sind. Damit das Ergebnis nicht von der
+    # Berechnungsreihenfolge abhängt, zählt ein Antrag nur die Anträge, die VOR
+    # ihm eingegangen sind (Eingangsdatum, dann ID). Ein Entwurf zählt alle.
+    _YEAR_CAP_STATES = ('submitted', 'in_review', 'approved', 'paid')
+
+    def _year_cap_sort_key(self):
+        """Eingangsreihenfolge. Entwürfe zuletzt; eingereichte Anträge ohne
+        Eingangsdatum (z. B. Altdaten) gelten als früh eingegangen."""
+        self.ensure_one()
+        if self.state not in self._YEAR_CAP_STATES:
+            return (1, date.max, self.id or 0)
+        return (0, self.date_submitted or date.min, self.id or 0)
+
+    def _year_cap_type_ids(self):
+        t = self.grant_type_id
+        if t.rule_group:
+            return self.env['kjr.grant.type'].sudo().with_context(active_test=False).search([
+                ('rule_group', '=', t.rule_group),
+            ]).ids
+        return t.ids
+
+    def _year_cap_used(self):
+        """Summe der vorher eingegangenen Anträge desselben Verbands im Jahr.
+
+        Rückgabe None, wenn für die Förderart keine Jahresgrenze gilt.
+        sudo: Die Summe braucht alle Anträge des Verbands, auch solche, die die
+        angemeldete Person selbst nicht sehen darf; ausgegeben wird nur der Betrag."""
+        self.ensure_one()
+        t = self.grant_type_id
+        if not t or not t.max_amount_per_year or not self.partner_id or not self.measure_year:
+            return None
+        domain = [
+            ('partner_id', '=', self.partner_id.id),
+            ('grant_type_id', 'in', self._year_cap_type_ids()),
+            ('measure_year', '=', self.measure_year),
+            ('state', 'in', list(self._YEAR_CAP_STATES)),
+        ]
+        if self.id:
+            domain.append(('id', '!=', self.id))
+        own_key = self._year_cap_sort_key()
+        used = 0.0
+        for other in self.sudo().search(domain):
+            if other._year_cap_sort_key() >= own_key:
+                continue
+            if other.state in ('approved', 'paid') and other.grant_approved:
+                used += other.grant_approved
+            else:
+                used += other.grant_calculated
+        return used
+
+    def _year_cap_remaining(self):
+        self.ensure_one()
+        used = self._year_cap_used()
+        if used is None:
+            return None
+        return max(self.grant_type_id.max_amount_per_year - used, 0.0)
+
+    @api.depends(
+        'grant_type_id', 'grant_type_id.max_amount_per_year', 'partner_id',
+        'measure_year', 'state', 'date_submitted', 'grant_calculated',
+    )
+    def _compute_year_cap_info(self):
         for rec in self:
-            rec.grant_calculated = rec._calculate_grant()
+            used = rec._year_cap_used()
+            if used is None:
+                rec.year_cap_info = False
+                continue
+            cap = rec.grant_type_id.max_amount_per_year
+            remaining = max(cap - used, 0.0)
+            text = _(
+                'Höchstbetrag pro Jahr und Verband: %(cap)s €. Durch frühere Anträge '
+                'in %(year)d bereits gebunden: %(used)s €, verbleibend: %(rem)s €.',
+                cap=rec._fmt_eur(cap), year=rec.measure_year,
+                used=rec._fmt_eur(used), rem=rec._fmt_eur(remaining),
+            )
+            if remaining <= 0:
+                text += ' ' + _('Für diesen Antrag ist kein Zuschuss mehr möglich.')
+            elif rec.grant_calculated >= remaining:
+                text += ' ' + _('Der berechnete Zuschuss ist auf den Rest gekappt.')
+            rec.year_cap_info = text
+
+    @staticmethod
+    def _fmt_eur(value):
+        return ('%.2f' % (value or 0.0)).replace('.', ',')
+
+    def _recompute_year_cap(self):
+        """Berechnet den Zuschuss neu, damit Anträge, die seit der letzten
+        Berechnung eingegangen oder bewilligt wurden, berücksichtigt sind."""
+        capped = self.filtered(lambda r: r.grant_type_id.max_amount_per_year)
+        if capped:
+            self.env.add_to_compute(self._fields['grant_calculated'], capped)
+            capped.flush_recordset(['grant_calculated'])
+
+    def _check_year_cap(self):
+        """Sperrt das Einreichen, wenn die Jahresgrenze schon ausgeschöpft ist."""
+        self.ensure_one()
+        remaining = self._year_cap_remaining()
+        if remaining is not None and remaining <= 0:
+            raise UserError(_(
+                'Der Höchstbetrag pro Jahr und Verband von %(cap)s € für „%(type)s“ '
+                'ist für „%(partner)s“ in %(year)d bereits ausgeschöpft. Ein weiterer '
+                'Antrag nach dieser Förderart ist in diesem Jahr nicht möglich.',
+                cap=self._fmt_eur(self.grant_type_id.max_amount_per_year),
+                type=self.grant_type_id.name, partner=self.partner_id.name,
+                year=self.measure_year,
+            ))
 
     def _day_rate_grant(self, t, tn, days, leaders, leaders_juleica):
         """Tagessatz-Berechnung (TN × Tage × Satz) inkl. anerkannter Gruppenleitungen.
@@ -701,7 +828,7 @@ class KjrGrantApplication(models.Model):
         elif t.code == '4_5':
             calculated = self._day_rate_grant(t, tn, days, leaders, leaders_juleica)
 
-        # ── §4.6 Geräte & Materialien ─────────────────────────────────────────
+        # ── §4.6 Geräte und Materialien ───────────────────────────────────────
         elif t.code == '4_6':
             if t.material_pct > 0 and self.cost_materials > 0:
                 calculated = min(
@@ -1422,6 +1549,8 @@ class KjrGrantApplication(models.Model):
                 raise UserError(_('Nur Entwürfe können eingereicht werden.'))
             rec._check_completeness()
             rec._check_yearly_limit()
+            rec._recompute_year_cap()
+            rec._check_year_cap()
             rec._workflow_write({
                 'state': 'submitted', 'date_submitted': fields.Date.today(),
             })
@@ -1486,6 +1615,9 @@ class KjrGrantApplication(models.Model):
                     ))
             if not rec.grant_type_id.allow_private_account and not rec.payment_iban:
                 raise UserError(_('IBAN fehlt. Bitte vor Bewilligung angeben.'))
+            # Jahreshöchstbetrag: zwischen Eingang und Bewilligung können frühere
+            # Anträge bewilligt (oder abgelehnt) worden sein.
+            rec._recompute_year_cap()
             if not rec.grant_approved:
                 rec.grant_approved = rec.grant_calculated
             if rec.grant_approved != rec.grant_calculated and not rec.grant_override_reason:

@@ -395,6 +395,8 @@
                             <group>
                                 <group string="Berechnung">
                                     <field name="grant_calculated" readonly="1"/>
+                                    <field name="year_cap_info" readonly="1"
+                                           invisible="not year_cap_info"/>
                                     <field name="payout_year" readonly="1"
                                            invisible="not payout_year"/>
                                     <field name="payout_schedule_info" readonly="1"

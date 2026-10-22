@@ -1,5 +1,33 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.18.0.1 (2026-10-22)
+
+### Neu
+- **Höchstbetrag pro Jahr und Verband** (`max_amount_per_year` an der
+  Förderart). Die Zuschussrichtlinie (Fassung ab 01.12.2022) nennt für § 4.5
+  „max. 700 € pro Jahr“, für § 4.6 „jährliche Höchstfördersumme 300 €“ und für
+  § 4.8a „max. 400 € jährlich“; bisher wurde nur je Antrag gekappt. Gezählt
+  werden alle eingereichten, in Prüfung befindlichen, bewilligten und
+  ausgezahlten Anträge desselben Verbands im Maßnahmenjahr (Fassungen mit
+  gleicher Regelgruppe zusammen), in der Reihenfolge des Eingangs. Der
+  berechnete Zuschuss wird auf den Rest gekappt; ist nichts mehr übrig, lässt
+  sich der Antrag nicht einreichen. Vor Einreichen und Bewilligen wird neu
+  berechnet. Hinweis im Backend (Reiter „Zuschuss“) und in der Antragsansicht
+  im Portal. Migration setzt die drei Werte nur, wenn das Feld leer ist.
+
+### Geändert
+- Hilfeseite: Spalte „Höchstbetrag“ mit „pro Jahr“ bzw. „je Antrag“ und
+  deutschem Dezimalkomma; Abschnitt 1 unterscheidet Zugang (Privatperson) und
+  Bankkonto; bei Privatkonto-Förderarten steht, dass der Verband den Antrag
+  trotzdem stellt.
+- Antragsformular: Hinweis Bankverbindung nennt alle Förderarten mit
+  Privatkonto-Freigabe aus den Stammdaten (bisher nur § 4.4, § 4.9 fehlte).
+  Die website-spezifische Kopie des Formulars auf der Kundeninstanz ist
+  archiviert und wird nicht ausgeliefert; die Vorlage aus dem Modul wirkt.
+- Sprache: „bei/von <Träger>“ ohne Artikel ersetzt (Startseite, Formular,
+  Hilfe, Datenschutzhinweise, Registrierung); Kommas in den Beschreibungen
+  § 4.2 und § 4.6 (Migration); Code-Bezeichnung „§ 4.6 Geräte und Materialien“.
+
 ## 19.0.18.0.0 (2026-10-22)
 
 Umsetzung aus dem Termin am 13.10.2026 (Entscheidungen 4 und 5, Prüfleitfaden Kapitel 4).

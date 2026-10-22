@@ -41,7 +41,8 @@
                 <field name="rate_per_tn_day" string="€/TN/Tag"/>
                 <field name="rate_per_tn_single" string="€/TN (einmalig)"/>
                 <field name="max_amount" string="Max. (€)"/>
-                <field name="max_per_year" string="Max./Jahr"/>
+                <field name="max_amount_per_year" string="Max. pro Jahr (€)" optional="show"/>
+                <field name="max_per_year" string="Max. Anträge/Jahr"/>
                 <field name="juleica_bonus"/>
                 <!-- Richtlinienfassung: nur bei Bedarf einblenden, damit die
                      Standardliste für den Alltag schlank bleibt. -->
@@ -75,6 +76,7 @@
                             <field name="rate_per_tn_day"/>
                             <field name="rate_per_tn_single"/>
                             <field name="max_amount"/>
+                            <field name="max_amount_per_year"/>
                             <field name="max_cofinancing_pct"/>
                             <field name="max_per_year"/>
                             <field name="year_limit_group"/>

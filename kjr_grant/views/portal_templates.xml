@@ -1189,7 +1189,7 @@
                      Verbands per ID nicht. Fuer /my/verband gibt es bisher
                      keinen Test. -->
                 <dt class="col-sm-4">Wer sie sehen kann</dt>
-                <dd class="col-sm-8">Die Geschäftsstelle von <t t-out="res_company.name"/> und
+                <dd class="col-sm-8">Die Geschäftsstelle (<t t-out="res_company.name"/>) und
                     die Personen, die Mitgliederverwaltung, Vollversammlung und
                     Zuschussanträge bearbeiten. Über Ihren Portalzugang sehen Sie die Daten
                     Ihres eigenen Verbands; Daten anderer Mitgliedsverbände sind für Sie
@@ -1328,7 +1328,7 @@
                     die Bankverbindung der Auszahlung.</dd>
 
                 <dt class="col-sm-4">Wer sie sehen kann</dt>
-                <dd class="col-sm-8">Die Geschäftsstelle von <t t-out="res_company.name"/> und
+                <dd class="col-sm-8">Die Geschäftsstelle (<t t-out="res_company.name"/>) und
                     die Personen, die Zuschussanträge prüfen und abrechnen. Über Ihren
                     Portalzugang sehen Sie Ihre eigenen Anträge.
                     <span class="d-block mt-1">Technischer Betrieb der Website:
@@ -1469,6 +1469,10 @@
                                             <t t-else="">Ausstehend</t>
                                         </dd>
                                     </dl>
+                                    <p t-if="grant.year_cap_info and grant.state in ('draft', 'submitted', 'in_review')"
+                                       class="small text-muted mt-2 mb-0">
+                                        <t t-esc="grant.year_cap_info"/>
+                                    </p>
                                 </div>
                             </div>
                             <t t-if="grant.state == 'rejected' and grant.rejection_reason">
@@ -1624,7 +1628,7 @@
                     <div class="col-lg-8 text-center">
                         <h1 class="mb-3">Zuschussantrag stellen</h1>
                         <p class="lead text-muted mb-4">
-                            Digitaler Zuschussantrag bei <t t-out="res_company.name"/>.
+                            <t t-out="res_company.name"/>: Zuschussantrag digital stellen.
                             Melden Sie sich an oder registrieren Sie sich, um einen Antrag zu stellen.
                         </p>
                     </div>
@@ -1752,7 +1756,7 @@
                 </nav>
                 <h1 class="mb-2">Zuschussantrag stellen</h1>
                 <p class="text-muted mb-3">
-                    Antrag bei <t t-out="res_company.name"/>. Felder mit * sind Pflichtfelder.
+                    <t t-out="res_company.name"/>: Antrag auf Zuschuss. Felder mit * sind Pflichtfelder.
                 </p>
 
                 <!-- Einstieg in die Hilfeseite — bewusst vor dem Formular, damit
@@ -2059,7 +2063,11 @@
                         <div class="card-body">
                             <div class="alert alert-info">
                                 Nur Organisationskonto. Bitte exakten Namen angeben.
-                                Ausnahme: Bei der Jugendleiterschulung (§ 4.4) ist ein Privatkonto möglich.
+                                <t t-set="private_types" t-value="grant_types.filtered('allow_private_account') if grant_types else []"/>
+                                <t t-if="private_types">
+                                    Ausnahme: Bei <t t-foreach="private_types" t-as="pt"><t t-esc="pt.name"/><t t-if="not pt_last">, </t></t>
+                                    ist auch ein Privatkonto möglich. Den Antrag stellt trotzdem der Verband.
+                                </t>
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
@@ -2827,9 +2835,12 @@
                                     und geben eine Telefonnummer an.
                                 </li>
                                 <li>
-                                    <strong>Als Privatperson:</strong> Das Konto ist keinem Verein
+                                    <strong>Als Privatperson:</strong> Der Zugang ist keinem Verein
                                     zugeordnet. Zuschussanträge stellen die Mitgliedsverbände; mit einem
-                                    privaten Konto ist kein Antrag möglich.
+                                    privaten Zugang ist kein Antrag möglich. Das gilt auch für die
+                                    Jugendleiterschulung und die Delegiertenförderung: Den Antrag stellt
+                                    der Verband, nur die Auszahlung darf dort auf ein privates Bankkonto
+                                    gehen (siehe Punkt 3).
                                 </li>
                             </ul>
                             <p>
@@ -2911,7 +2922,17 @@
                                         <t t-else="">-</t>
                                     </td>
                                     <td class="text-nowrap">
-                                        <t t-if="gt.max_amount"><t t-esc="'%.2f €' % gt.max_amount"/></t>
+                                        <!-- Jahresgrenze (max_amount_per_year) und Grenze je Antrag
+                                             (max_amount). Sind beide gleich, genügt die Jahresangabe. -->
+                                        <t t-if="gt.max_amount_per_year">
+                                            <div><t t-esc="('%.2f €' % gt.max_amount_per_year).replace('.', ',')"/> pro Jahr</div>
+                                            <div t-if="gt.max_amount and gt.max_amount &lt; gt.max_amount_per_year" class="small text-muted">
+                                                höchstens <t t-esc="('%.2f €' % gt.max_amount).replace('.', ',')"/> je Antrag
+                                            </div>
+                                        </t>
+                                        <t t-elif="gt.max_amount">
+                                            <t t-esc="('%.2f €' % gt.max_amount).replace('.', ',')"/> je Antrag
+                                        </t>
                                         <t t-else="">-</t>
                                     </td>
                                     <td class="small">
@@ -2940,7 +2961,14 @@
                                                 </t>
                                             </div>
                                         </t>
-                                        <div t-if="gt.allow_private_account">Auszahlung auch auf ein Privatkonto möglich</div>
+                                        <div t-if="gt.max_amount_per_year">
+                                            Der Höchstbetrag pro Jahr gilt je Verband für alle Anträge
+                                            dieser Förderart im selben Jahr zusammen
+                                        </div>
+                                        <div t-if="gt.allow_private_account">
+                                            Auszahlung auch auf ein Privatkonto möglich (den Antrag
+                                            stellt trotzdem der Verband)
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>
@@ -3165,8 +3193,8 @@
                     <h2 class="h4">10. Zuschussrichtlinien</h2>
                     <t t-if="apply_settings and apply_settings['guidelines_document_url']">
                         <p>
-                            Grundlage jedes Antrags sind die Zuschussrichtlinien von
-                            <t t-out="res_company.name"/>. Bitte lesen Sie sie vor dem
+                            Grundlage jedes Antrags sind die Zuschussrichtlinien
+                            (<t t-out="res_company.name"/>). Bitte lesen Sie sie vor dem
                             Antrag; am Ende des Formulars bestätigen Sie, dass Sie sie
                             gelesen haben.
                         </p>
@@ -3176,8 +3204,8 @@
                         </p>
                     </t>
                     <p t-else="">
-                        Grundlage jedes Antrags sind die Zuschussrichtlinien von
-                        <t t-out="res_company.name"/>. Die aktuelle Fassung sendet Ihnen
+                        Grundlage jedes Antrags sind die Zuschussrichtlinien
+                        (<t t-out="res_company.name"/>). Die aktuelle Fassung sendet Ihnen
                         die Geschäftsstelle gerne zu<t t-if="res_company.phone or res_company.email">:</t><t t-else="">.</t>
                         <t t-if="res_company.phone">Tel. <t t-out="res_company.phone"/></t>
                         <t t-if="res_company.phone and res_company.email"> · </t>
