@@ -104,8 +104,12 @@ class TestKjrFacilityRoomDuplicates(TransactionCase):
 
     # ── Vergleichsschlüssel ──────────────────────────────────────────────────
     def test_schluessel_ist_die_fuehrende_zimmernummer(self):
-        """Die Zimmernummer am Namensanfang ist der Schlüssel."""
-        self.assertEqual(self.Facility._room_compare_key('Zimmer 12'), '12')
+        """Raumwort und Zimmernummer am Namensanfang sind der Schlüssel
+        (seit 16d9b05: Wort UND Nummer, damit „Zimmer 3“ und „Schlafsaal 3“ keine
+        Dublette sind)."""
+        self.assertEqual(self.Facility._room_compare_key('Zimmer 12'), 'zimmer 12')
+        self.assertNotEqual(self.Facility._room_compare_key('Zimmer 3'),
+                            self.Facility._room_compare_key('Schlafsaal 3'))
 
     def test_schluessel_ignoriert_den_klammerzusatz(self):
         """„Zimmer 12" und „Zimmer 12 (1. OG)" sind dieselbe Sache."""
@@ -138,7 +142,7 @@ class TestKjrFacilityRoomDuplicates(TransactionCase):
         befunde = self.haus._find_duplicate_rooms()
         self.assertEqual(len(befunde), 1)
         _einrichtung, schluessel, aktiv, archiviert = befunde[0]
-        self.assertEqual(schluessel, '12')
+        self.assertEqual(schluessel, 'zimmer 12')
         self.assertEqual(len(aktiv), 2)
         self.assertFalse(archiviert)
 

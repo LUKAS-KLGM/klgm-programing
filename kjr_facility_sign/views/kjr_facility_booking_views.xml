@@ -19,7 +19,7 @@
                 <button name="action_kjr_sign_request_cancel" string="Unterschriftsanfrage stornieren"
                         type="object" groups="kjr_facility.group_kjr_facility_user"
                         invisible="kjr_sign_state != 'sent'"
-                        confirm="Unterschriftsanfrage wirklich stornieren? Der Mieter kann dann nicht mehr digital unterschreiben."/>
+                        confirm="Unterschriftsanfrage wirklich stornieren? Mieter:innen können dann nicht mehr digital unterschreiben."/>
                 <button name="action_kjr_contract_paper" string="Vertrag liegt unterschrieben vor (Papier)"
                         type="object" groups="kjr_facility.group_kjr_facility_user"
                         invisible="contract_signed or state in ('draft', 'reserved', 'cancelled')"/>

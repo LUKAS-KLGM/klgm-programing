@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Brücke: Einrichtungen ↔ E-Signatur',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Custom/KJR',
     'summary': 'Buchungsvertrag der Einrichtungsbuchung digital unterschreiben (Odoo Sign).',
     'description': """
 Brücke zwischen kjr_facility (Community) und sign (Enterprise).
-Beim verbindlichen Buchen erhält der Mieter statt der Vertragsmail eine
+Beim verbindlichen Buchen erhält die:der Mieter:in statt der Vertragsmail eine
 Unterschriftsanfrage. Die Unterschrift markiert den Vertrag als unterschrieben.
 Standard AUS: wirksam erst, wenn in den Einstellungen eingeschaltet.
 Benötigt kjr_facility >= 19.0.7.4.0 (Erweiterungsstelle _send_contract).

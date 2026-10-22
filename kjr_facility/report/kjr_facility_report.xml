@@ -48,7 +48,7 @@
                                     (<t t-esc="o.nights"/> Nächte)
                                 </td>
                             </tr>
-                            <tr><td>Teilnehmer / Betreuer</td><td><t t-esc="o.participant_count"/> / <t t-esc="o.leader_count"/></td></tr>
+                            <tr><td>Teilnehmende / Betreuende</td><td><t t-esc="o.participant_count"/> / <t t-esc="o.leader_count"/></td></tr>
                             <tr><td>Tarif</td><td><t t-esc="o.tariff_id.name or '-'"/></td></tr>
                             <!-- Verpflegung: Bei Einrichtungen ohne Verpflegungsangebot
                                  (kjr.facility.offers_catering) ist die Selbstverpflegung eine
@@ -104,7 +104,7 @@
                         <div class="row mt-5">
                             <div class="col-6">
                                 <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px;">
-                                    <small>Mieter / Gruppe (Datum, Unterschrift)</small>
+                                    <small>Mieter:in / Gruppe (Datum, Unterschrift)</small>
                                 </div>
                             </div>
                             <div class="col-6 text-end">
@@ -152,13 +152,13 @@
                         <table class="table table-sm table-bordered">
                             <tr><td>Einrichtung</td><td><t t-esc="o.facility_id.name"/></td></tr>
                             <tr>
-                                <td>Gruppe / Mieter</td>
+                                <td>Gruppe / Mieter:in</td>
                                 <td>
                                     <t t-esc="o.partner_id.name"/>
                                     <t t-if="o.group_name"> (<t t-esc="o.group_name"/>)</t>
                                 </td>
                             </tr>
-                            <tr t-if="o.contact_person"><td>Ansprechpartner/in</td><td><t t-esc="o.contact_person"/></td></tr>
+                            <tr t-if="o.contact_person"><td>Ansprechpartner:in</td><td><t t-esc="o.contact_person"/></td></tr>
                             <tr>
                                 <td>Zeitraum</td>
                                 <td>
@@ -168,7 +168,7 @@
                                     (<t t-esc="o.nights"/> Nächte)
                                 </td>
                             </tr>
-                            <tr><td>Teilnehmer / Betreuer</td><td><t t-esc="o.participant_count"/> / <t t-esc="o.leader_count"/></td></tr>
+                            <tr><td>Teilnehmende / Betreuende</td><td><t t-esc="o.participant_count"/> / <t t-esc="o.leader_count"/></td></tr>
                             <tr t-if="o.room_ids"><td>Räume</td><td><t t-esc="', '.join(o.room_ids.mapped('name'))"/></td></tr>
                         </table>
 

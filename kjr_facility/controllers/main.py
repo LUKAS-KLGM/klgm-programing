@@ -3,13 +3,15 @@
 import base64
 import logging
 from datetime import date as date_cls
+from urllib.parse import quote
 
 from dateutil.relativedelta import relativedelta
 
 from odoo import http, _
 from odoo.http import request
 from odoo.addons.portal.controllers.portal import CustomerPortal, pager as portal_pager
-from odoo.exceptions import AccessError, MissingError
+from odoo.exceptions import AccessError, MissingError, UserError
+from odoo.tools import email_normalize
 
 _logger = logging.getLogger(__name__)
 ITEMS_PER_PAGE = 10
@@ -229,11 +231,21 @@ class KjrFacilityWebsite(http.Controller):
         Die Schlüssel des Fehler-Dicts entsprechen den Feldnamen im Formular, damit das
         Template das betroffene Feld markieren kann."""
         errors = {}
-        for fname, label in (('check_in', _('Anreise')), ('check_out', _('Abreise')),
-                             ('participant_count', _('Teilnehmerzahl')),
-                             ('contact_person', _('Ansprechpartner/in'))):
+        required = [('check_in', _('Anreise')), ('check_out', _('Abreise')),
+                    ('participant_count', _('Anzahl der Teilnehmenden')),
+                    ('contact_person', _('Ansprechpartner:in'))]
+        if self._is_guest_request():
+            # Anfrage ohne Konto: ohne Anschrift, E-Mail und Telefon kann die
+            # Geschäftsstelle weder antworten noch eine Rechnung stellen.
+            required += [('street', _('Straße und Hausnummer')), ('zip', _('PLZ')),
+                         ('city', _('Ort')), ('contact_email', _('E-Mail')),
+                         ('contact_phone', _('Telefon'))]
+        for fname, label in required:
             if not str(post.get(fname) or '').strip():
                 errors[fname] = _('%s ist ein Pflichtfeld.') % label
+        if (self._is_guest_request() and str(post.get('contact_email') or '').strip()
+                and not email_normalize(post.get('contact_email'))):
+            errors['contact_email'] = _('Bitte geben Sie eine gültige E-Mail-Adresse an.')
 
         check_in = self._to_date(post.get('check_in'))
         check_out = self._to_date(post.get('check_out'))
@@ -259,7 +271,7 @@ class KjrFacilityWebsite(http.Controller):
             # B2: Der Buchungsvorlauf ist im Backend nur ein weicher Hinweis (die
             # Geschäftsstelle muss Ausnahmen erfassen können) — im öffentlichen
             # Formular wird er dagegen hart durchgesetzt. 0 = unbegrenzt.
-            latest = today + relativedelta(months=facility.max_advance_months)
+            latest = facility._latest_check_in(today)
             if check_in > latest:
                 errors['check_in'] = _(
                     'Wir nehmen Anfragen für %(fac)s höchstens %(m)d Monate im Voraus '
@@ -364,12 +376,23 @@ class KjrFacilityWebsite(http.Controller):
         # Denselben Tarif wie die spätere Buchung ansetzen, sonst weicht die
         # Kostenvorschau von dem ab, was der Verband anschließend bekommt.
         tariff = self._website_tariff(facility, self._request_partner())
+        today = date_cls.today()
+        latest = facility._latest_check_in(today)
         return request.render('kjr_facility.website_facility_request', {
             'facility': facility,
             'page_name': 'kjr_facilities',
             'errors': errors,
             'values': values,
             'tariff': tariff,
+            # Endreinigung/Kurbeitrag: Tarif vor Einrichtung (kjr.facility._fee_rates).
+            'fees': facility._fee_rates(tariff),
+            # Datumsgrenzen fürs Formular (min/max am Eingabefeld). Die harte
+            # Prüfung bleibt serverseitig in _validate_facility_request.
+            'date_min': today.isoformat(),
+            'date_max': latest.isoformat() if latest else False,
+            'date_out_min': (today + relativedelta(days=1)).isoformat(),
+            'date_out_max': (latest + relativedelta(days=1)).isoformat() if latest else False,
+            'is_guest': self._is_guest_request(),
             'preview': self._facility_request_preview(facility, tariff, values),
             'preview_requested': preview_requested,
             # Tarif vorhanden, aber ohne gepflegten Übernachtungssatz: Die Vorschau
@@ -383,16 +406,50 @@ class KjrFacilityWebsite(http.Controller):
     # ANFRAGEFORMULAR — Route
     # ══════════════════════════════════════════════════════════════════════════
 
-    # HINWEIS (offene Produktentscheidung): Die Anfrage setzt bewusst einen Login
-    # voraus (auth='user'), damit die Buchung einem Partner zugeordnet und im Portal
-    # nachverfolgt werden kann. Ob Anfragen auch ohne Konto möglich sein sollen, ist
-    # mit dem Betreiber noch zu klären — bis dahin NICHT auf auth='public' umstellen.
-    @http.route('/service/einrichtung/<int:facility_id>/anfrage', type='http', auth='user',
+    @staticmethod
+    def _is_guest_request():
+        """Anfrage eines nicht angemeldeten Besuchers?"""
+        return request.env.user._is_public()
+
+    def _guest_partner(self, post):
+        """Neuen, als ungeprüft gekennzeichneten Kontakt für eine Anfrage ohne Konto.
+
+        Wie bei der Spielmobil-Anfrage im Verleih wird NIE ein bestehender Kontakt
+        über die E-Mail-Adresse gesucht: der Absender hat sie nicht nachgewiesen,
+        sonst könnte jeder eine Anfrage auf den Namen eines Verbands stellen.
+        Dubletten führt die Geschäftsstelle bei Bedarf zusammen.
+        """
+        name = (post.get('contact_person') or '').strip()
+        group = (post.get('group_name') or '').strip()
+        return request.env['res.partner'].sudo().create({
+            'name': _('%s (ungeprüfte Website-Anfrage)') % name,
+            'street': (post.get('street') or '').strip(),
+            'zip': (post.get('zip') or '').strip(),
+            'city': (post.get('city') or '').strip(),
+            'email': email_normalize(post.get('contact_email') or '') or False,
+            'phone': (post.get('contact_phone') or '').strip(),
+            'comment': _(
+                'Automatisch angelegt aus einer Einrichtungsanfrage ohne Konto%(g)s.\n'
+                'Name, Anschrift, E-Mail und Telefon sind ungeprüft. Bitte vor einer '
+                'Zusage prüfen und den Kontakt gegebenenfalls mit einem bestehenden '
+                'Datensatz zusammenführen.') % {
+                    'g': (' (%s)' % group) if group else ''},
+        })
+
+    # Konto-Pflicht: Standard bleibt die Anmeldung (Entscheidung 13.10.2026). Je
+    # Einrichtung kann "Anfrage ohne Konto erlauben" (kjr.facility.allow_guest_request)
+    # gesetzt werden; für das Tagungshaus ist das noch offen (Korrektur 14.10.).
+    # Deshalb auth='public' mit eigener Prüfung: ohne den Schalter landet ein nicht
+    # angemeldeter Besucher wie bisher auf der Anmeldeseite.
+    @http.route('/service/einrichtung/<int:facility_id>/anfrage', type='http', auth='public',
                 website=True, methods=['GET', 'POST'])
     def facility_request(self, facility_id, **post):
         facility = request.env['kjr.facility'].sudo().browse(facility_id)
         if not facility.exists() or not facility.website_published:
             return request.redirect('/service/einrichtungen')
+        if self._is_guest_request() and not facility.allow_guest_request:
+            return request.redirect('/web/login?redirect=%s' % quote(
+                '/service/einrichtung/%d/anfrage' % facility.id, safe=''))
 
         if request.httprequest.method == 'POST':
             # Eingaben für das erneute Rendern aufheben — niemand soll das Formular
@@ -405,10 +462,21 @@ class KjrFacilityWebsite(http.Controller):
                 return self._render_facility_request(facility, values, {}, preview_requested=True)
 
             errors, check_in, check_out = self._validate_facility_request(facility, post)
+            is_guest = self._is_guest_request()
+            if is_guest:
+                # Spam-Schutz nur für Anfragen ohne Konto (Standard-Hook, mit
+                # kjr_website_antispam Honeypot und Zeittoken, sonst ohne Wirkung).
+                try:
+                    request.env['ir.http']._verify_request_recaptcha_token('kjr_facility_request')
+                except UserError:
+                    errors['captcha'] = _(
+                        'Die Sicherheitsprüfung ist fehlgeschlagen. Bitte prüfen Sie Ihre '
+                        'Angaben, warten Sie einen Moment und senden Sie das Formular '
+                        'dann erneut ab.')
             if errors:
                 return self._render_facility_request(facility, values, errors)
 
-            partner = self._request_partner()
+            partner = self._guest_partner(post) if is_guest else self._request_partner()
             # @api.onchange feuert hier nicht — alle Werte explizit setzen.
             # tariff_id wird aus dem Mitgliedskennzeichen abgeleitet (siehe
             # _website_tariff). Ohne Tarif blieben sämtliche Beträge auf 0,00 € —
@@ -420,8 +488,10 @@ class KjrFacilityWebsite(http.Controller):
                 'tariff_id': self._website_tariff(facility, partner).id or False,
                 'group_name': post.get('group_name', '').strip(),
                 'contact_person': post.get('contact_person', '').strip(),
-                'contact_email': post.get('contact_email') or request.env.user.email,
-                'contact_phone': post.get('contact_phone') or request.env.user.partner_id.phone,
+                'contact_email': (post.get('contact_email') or '').strip() or (
+                    False if is_guest else request.env.user.email),
+                'contact_phone': (post.get('contact_phone') or '').strip() or (
+                    False if is_guest else request.env.user.partner_id.phone),
                 'check_in': check_in,
                 'check_out': check_out,
                 'participant_count': self._to_int(post.get('participant_count')),
@@ -433,8 +503,15 @@ class KjrFacilityWebsite(http.Controller):
                 'meal_option': self._meal_option_for(facility, post.get('meal_option')),
                 'note': post.get('note', '').strip(),
             })
+            if is_guest:
+                # Ohne Konto gibt es kein Kundenkonto: Bestätigung auf der Seite.
+                return request.render('kjr_facility.website_facility_request_thanks', {
+                    'facility': facility, 'booking': booking, 'page_name': 'kjr_facilities',
+                })
             return request.redirect('/my/einrichtungsbuchungen/%d' % booking.id)
 
+        if self._is_guest_request():
+            return self._render_facility_request(facility, {'meal_option': 'none'}, {})
         return self._render_facility_request(facility, {
             'contact_person': request.env.user.partner_id.name or '',
             'contact_email': request.env.user.email or '',

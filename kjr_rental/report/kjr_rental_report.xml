@@ -121,7 +121,7 @@
                         <hr/>
                         <h4 class="text-center mb-4">Verleihvertrag <t t-esc="o.name"/></h4>
                         <p>
-                            Entleiher: <strong><t t-esc="o.partner_id.name"/></strong><br/>
+                            Entleiher:in: <strong><t t-esc="o.partner_id.name"/></strong><br/>
                             Zeitraum:
                             <span t-field="o.date_from" t-options='{"format":"dd.MM.yyyy"}'/> bis
                             <span t-field="o.date_to" t-options='{"format":"dd.MM.yyyy"}'/>
@@ -188,13 +188,13 @@
                             </tfoot>
                         </table>
                         <p class="small text-muted mt-3">
-                            Der Entleiher haftet für Beschädigung/Verlust. Die Kaution wird bei
+                            Entleiher:innen haften für Beschädigung/Verlust. Die Kaution wird bei
                             ordnungsgemäßer Rückgabe erstattet. Rückgabe spätestens am vereinbarten Datum.<br/>
                             Die oben ausgewiesene Summe versteht sich ohne Umsatzsteuer; ob und in
                             welcher Höhe Umsatzsteuer hinzukommt, ergibt sich aus der Rechnung.
                         </p>
                         <div class="row mt-5">
-                            <div class="col-6"><div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px;"><small>Entleiher (Datum, Unterschrift)</small></div></div>
+                            <div class="col-6"><div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px;"><small>Entleiher:in (Datum, Unterschrift)</small></div></div>
                             <div class="col-6 text-end"><div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px; margin-left:auto;"><small><span t-field="o.company_id.name"/></small></div></div>
                         </div>
                     </div>

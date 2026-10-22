@@ -94,6 +94,15 @@ class TestKjrFacilityBooking(TransactionCase):
         Param = self.env['ir.config_parameter'].sudo()
         Param.search([('key', '=', Booking._AUTOMATION_ACTIVE_FROM)]).unlink()
         legacy = self._booking()
+        # create_date ist die Startzeit der Testtransaktion (mit Mikrosekunden),
+        # der Aktivierungszeitpunkt die sekundengenaue Uhrzeit. Fallen beide in
+        # dieselbe Sekunde, galt der Altbestand als "neu" und der Test schlug je
+        # nach Laufzeit fehl. Der Altbestand liegt deshalb eindeutig davor.
+        self.env.flush_all()
+        self.env.cr.execute(
+            "UPDATE kjr_facility_booking SET create_date = create_date - interval '1 minute' "
+            "WHERE id = %s", (legacy.id,))
+        legacy.invalidate_recordset(['create_date'])
         self.assertTrue(Booking._automation_active_from(),
                         'Der erste Lauf muss den Aktivierungszeitpunkt setzen.')
         self.assertNotIn(legacy, Booking._automation_search([('id', '=', legacy.id)]))

@@ -63,7 +63,7 @@ class KjrRentalOrder(models.Model):
         default=lambda self: self.env.company,
     )
     currency_id = fields.Many2one(related='company_id.currency_id')
-    partner_id = fields.Many2one('res.partner', string='Entleiher', required=True, ondelete='restrict', tracking=True)
+    partner_id = fields.Many2one('res.partner', string='Entleiher:in', required=True, ondelete='restrict', tracking=True)
     contact_email = fields.Char(string='E-Mail')
     contact_phone = fields.Char(string='Telefon')
     # R2: Mitgliedstarif wird aus dem Kontakt abgeleitet, statt ihn bei jeder
@@ -207,6 +207,10 @@ class KjrRentalOrder(models.Model):
                 # Selbstzuweisung, damit im Loop JEDEM Record ein Wert zugewiesen ist.
                 rec.is_member = rec.is_member
                 continue
+            # Seit 19.0.5.8.0 nur noch wirksam, wenn ein Artikel ausdrücklich einen
+            # Mitgliedstarif hat (has_member_price, Standard aus; die Migration hat
+            # ihn an allen Artikeln abgeschaltet). Sonst gilt price_for(True) ==
+            # Standardpreis.
             rec.is_member = bool(rec.partner_id.is_kjr_member)
 
     @api.depends('line_ids.quantity', 'line_ids.return_scanned_qty')
@@ -273,8 +277,8 @@ class KjrRentalOrder(models.Model):
             if order.usage_terms_accepted:
                 # Bestätigung mit Zeitstempel im Chatter festhalten (Nachweischarakter).
                 order.message_post(
-                    body=_('Der Entleiher hat die Nutzungshinweise beim Absenden der '
-                           'Anfrage bestätigt.'),
+                    body=_('Die Nutzungshinweise wurden beim Absenden der Anfrage '
+                           'bestätigt.'),
                     subtype_xmlid='mail.mt_note')
         return orders
 

@@ -17,7 +17,7 @@ class ResConfigSettings(models.TransientModel):
 
     kjr_facility_sign_enabled = fields.Boolean(
         string='Vertrag digital unterschreiben', config_parameter=PARAM_ENABLED,
-        help='Ein: Beim verbindlichen Buchen erhält der Mieter statt der Vertragsmail eine '
+        help='Ein: Beim verbindlichen Buchen erhält die mietende Gruppe statt der Vertragsmail eine '
              'Unterschriftsanfrage (Odoo Sign). Aus: Vertrag wie bisher als PDF per Mail.')
     kjr_facility_sign_sender_id = fields.Many2one(
         'res.users', string='Absender der Unterschriftsanfragen',

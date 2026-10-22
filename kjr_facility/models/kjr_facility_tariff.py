@@ -64,21 +64,25 @@ class KjrFacilityTariff(models.Model):
     # welche Befreiungen die Satzung der Standortgemeinde tatsaechlich vorsieht.
     visitor_tax_per_person_night = fields.Float(
         string='Kurbeitrag p. P./Nacht (€)', digits=(8, 2),
-        help='Kurbeitrag: kommunaler Gästebeitrag je Person und Übernachtung, je '
-             'Einrichtung zu pflegen. '
+        help='Kurbeitrag: kommunaler Gästebeitrag je Person und Übernachtung. In der '
+             'Regel an der Einrichtung gepflegt; ein Betrag hier (größer 0) gilt '
+             'stattdessen für diese Tarifgruppe. '
              'ACHTUNG zur Berechnung: Der Beitrag fällt NICHT pauschal für '
              'alle Gäste an. Berechnet wird er nur auf die Teilnehmenden. '
              'Betreuende und Begleitpersonen sind als solche befreit und gehen gar '
              'nicht erst in die Grundmenge ein. Im Buchungsfeld "Zusätzlich vom '
              'Kurbeitrag befreit" werden ausschließlich die WEITEREN Befreiungen '
              'unter den Teilnehmenden erfasst (nach bisheriger Praxis z. B. '
-             'Einwohnerinnen und Einwohner der Standortgemeinde, kleine Kinder, '
-             'Schwerbehinderte); Betreuende dort NICHT mitzählen, sonst werden sie '
+             'Einwohner:innen der Standortgemeinde, Teilnehmende unter der '
+             'Altersgrenze der Einrichtung, Schwerbehinderte); Betreuende dort NICHT '
+             'mitzählen, sonst werden sie '
              'doppelt abgezogen. '
              '0 = es wird kein Kurbeitrag berechnet.')
     final_cleaning_fee = fields.Float(
         string='Endreinigung (einmalig, €)', digits=(8, 2),
-        help='Pauschale für die Endreinigung. Sie wird EINMALIG je Buchung berechnet, '
+        help='Pauschale für die Endreinigung. In der Regel an der Einrichtung '
+             'gepflegt; ein Betrag hier (größer 0) gilt stattdessen für diese '
+             'Tarifgruppe. Sie wird EINMALIG je Buchung berechnet, '
              'NICHT pro Nacht und NICHT pro Person. Bisher wurde die Endreinigung über '
              'die Ausstattung (Preis/Tag) abgebildet und dadurch pro Nacht vervielfacht; '
              'genau dafür gibt es dieses eigene Feld. 0 = keine Endreinigungspauschale.')

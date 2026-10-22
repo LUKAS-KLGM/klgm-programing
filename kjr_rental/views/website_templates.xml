@@ -86,8 +86,7 @@
          KjrRentalWebsite._item_price_info:
            None -> am Artikel nicht gepflegt; „0,00 €" wäre hier eine falsche
                    Preisauskunft, deshalb „auf Anfrage".
-           0,00 -> gepflegt und ausdrücklich kostenlos (möglich nur beim
-                   Mitgliedstarif, weil der Standardbetrag dafür gepflegt sein muss).
+           0,00 -> gepflegt und ausdrücklich kostenlos.
            > 0  -> Betrag mit seiner Einheit. -->
     <template id="rental_price_amount" name="KJR Verleih: einzelner Betrag">
         <t t-if="amount is None">
@@ -108,15 +107,10 @@
                 <span t-esc="pinfo['statement']"/>
             </t>
             <t t-else="">
-                Standard:
-                <t t-set="amount" t-value="pinfo.get('standard')"/>
+                Preis:
+                <t t-set="amount" t-value="pinfo.get('own') if pinfo.get('own') is not None else pinfo.get('standard')"/>
                 <t t-set="amount_unit" t-value="pinfo.get('unit')"/>
                 <t t-call="kjr_rental.rental_price_amount"/>
-                <t t-if="pinfo.get('has_member') and pinfo.get('member') is not None">
-                    · Mitglied:
-                    <t t-set="amount" t-value="pinfo['member']"/>
-                    <t t-call="kjr_rental.rental_price_amount"/>
-                </t>
             </t>
         </div>
         <!-- Kilometersatz als EIGENE Angabe neben der Grundgebühr: zwei Beträge mit
@@ -125,30 +119,9 @@
              es stand nur die Grundgebühr da. -->
         <div t-if="pinfo.get('kind') == 'km' and pinfo.get('km_standard') is not None" class="small">
             Kilometersatz:
-            <t t-set="amount" t-value="pinfo['km_standard']"/>
+            <t t-set="amount" t-value="pinfo['km_own'] if pinfo.get('km_own') is not None else pinfo['km_standard']"/>
             <t t-set="amount_unit" t-value="pinfo.get('km_unit')"/>
             <t t-call="kjr_rental.rental_price_amount"/>
-            <t t-if="pinfo.get('has_member') and pinfo.get('km_member') is not None">
-                · Mitglied:
-                <t t-set="amount" t-value="pinfo['km_member']"/>
-                <t t-call="kjr_rental.rental_price_amount"/>
-            </t>
-        </div>
-        <div t-if="not is_public_user and pinfo.get('own') is not None" class="small mt-1">
-            <span t-attf-class="badge #{'text-bg-success' if is_member else 'text-bg-secondary'}">
-                Ihr Tarif:
-                <t t-set="amount" t-value="pinfo['own']"/>
-                <t t-set="amount_unit" t-value="pinfo.get('unit')"/>
-                <t t-call="kjr_rental.rental_price_amount"/>
-            </span>
-        </div>
-        <div t-if="not is_public_user and pinfo.get('km_own') is not None" class="small mt-1">
-            <span t-attf-class="badge #{'text-bg-success' if is_member else 'text-bg-secondary'}">
-                Ihr Kilometersatz:
-                <t t-set="amount" t-value="pinfo['km_own']"/>
-                <t t-set="amount_unit" t-value="pinfo.get('km_unit')"/>
-                <t t-call="kjr_rental.rental_price_amount"/>
-            </span>
         </div>
         <div t-if="pinfo.get('km_notice')" class="small text-muted">
             <i class="fa fa-info-circle me-1" aria-hidden="true"/>Die Endabrechnung erfolgt
@@ -156,51 +129,24 @@
         </div>
     </template>
 
-    <!-- Die drei Preisspalten (Standard / Mitglied / Ihr Tarif) für Warenkorb und
-         Direktanfrage. Bewusst als eigener Block: beide Tabellen haben dieselben
-         Spalten, eine doppelte Pflege wäre die Quelle der nächsten falschen
+    <!-- Preisspalte für Warenkorb und Direktanfrage. Bis 19.0.5.7.0 waren es drei
+         Spalten (Standard / Mitglied / Ihr Tarif). Mitgliedspreise gibt es beim
+         Betreiber nicht (Rückmeldung vom 14.10.2026), deshalb steht hier nur noch der
+         Betrag, der für die angemeldete Organisation gilt ('own', ersatzweise der
+         Standardbetrag). Bewusst als eigener Block: beide Tabellen haben dieselbe
+         Spalte, eine doppelte Pflege wäre die Quelle der nächsten falschen
          Preisauskunft. -->
     <template id="rental_price_cells" name="KJR Verleih: Preisspalten">
-        <!-- Der Kilometersatz steht INNERHALB der bestehenden Zelle: eine eigene
-             Spalte müsste in jedem Tabellenkopf ergänzt werden und bliebe bei allen
-             anderen Preismodellen leer. So bleibt die Spaltenzahl stabil und die
-             beiden Beträge bleiben trotzdem getrennt. -->
+        <!-- Der Kilometersatz steht INNERHALB der Zelle, getrennt von der
+             Grundgebühr: zwei Beträge mit verschiedenen Einheiten. -->
         <td>
-            <t t-set="amount" t-value="pinfo.get('standard')"/>
+            <t t-set="amount" t-value="pinfo.get('own') if pinfo.get('own') is not None else pinfo.get('standard')"/>
             <t t-set="amount_unit" t-value="pinfo.get('unit')"/>
             <t t-call="kjr_rental.rental_price_amount"/>
-            <div t-if="pinfo.get('km_standard') is not None" class="small">
+            <t t-set="km_amount" t-value="pinfo.get('km_own') if pinfo.get('km_own') is not None else pinfo.get('km_standard')"/>
+            <div t-if="km_amount is not None" class="small">
                 Kilometersatz:
-                <t t-set="amount" t-value="pinfo['km_standard']"/>
-                <t t-set="amount_unit" t-value="pinfo.get('km_unit')"/>
-                <t t-call="kjr_rental.rental_price_amount"/>
-            </div>
-        </td>
-        <td>
-            <t t-if="pinfo.get('has_member') and pinfo.get('member') is not None">
-                <t t-set="amount" t-value="pinfo['member']"/>
-                <t t-set="amount_unit" t-value="pinfo.get('unit')"/>
-                <t t-call="kjr_rental.rental_price_amount"/>
-            </t>
-            <span t-else="" class="text-muted">-</span>
-            <div t-if="pinfo.get('has_member') and pinfo.get('km_member') is not None" class="small">
-                Kilometersatz:
-                <t t-set="amount" t-value="pinfo['km_member']"/>
-                <t t-set="amount_unit" t-value="pinfo.get('km_unit')"/>
-                <t t-call="kjr_rental.rental_price_amount"/>
-            </div>
-        </td>
-        <td>
-            <span t-if="pinfo.get('own') is not None"
-                  t-attf-class="badge #{'text-bg-success' if is_member else 'text-bg-secondary'}">
-                <t t-set="amount" t-value="pinfo['own']"/>
-                <t t-set="amount_unit" t-value="pinfo.get('unit')"/>
-                <t t-call="kjr_rental.rental_price_amount"/>
-            </span>
-            <span t-else="" class="text-muted">auf Anfrage</span>
-            <div t-if="pinfo.get('km_own') is not None" class="small">
-                Kilometersatz:
-                <t t-set="amount" t-value="pinfo['km_own']"/>
+                <t t-set="amount" t-value="km_amount"/>
                 <t t-set="amount_unit" t-value="pinfo.get('km_unit')"/>
                 <t t-call="kjr_rental.rental_price_amount"/>
             </div>
@@ -225,22 +171,6 @@
         </div>
     </template>
 
-    <!-- Hinweis, welcher Tarif für die angemeldete Organisation gilt. -->
-    <template id="rental_tariff_notice" name="KJR Verleih: geltender Tarif">
-        <div t-if="is_member" class="alert alert-success" role="status">
-            <i class="fa fa-check-circle me-2" aria-hidden="true"/>
-            Für <strong t-esc="partner.name"/> gilt der <strong>Mitgliedstarif</strong>
-            (Mitgliedsverband von <t t-esc="res_company.name"/>).
-        </div>
-        <div t-else="" class="alert alert-info" role="status">
-            <i class="fa fa-info-circle me-2" aria-hidden="true"/>
-            Für <strong t-esc="partner.name"/> gilt der <strong>Standardtarif</strong>.
-            Ist Ihre Organisation Mitgliedsverband von <t t-esc="res_company.name"/>?
-            Dann melden Sie sich bitte bei der Geschäftsstelle. Der Mitgliedstarif wird
-            dann für künftige Anfragen hinterlegt.
-        </div>
-    </template>
-
     <!-- ── Öffentlich: Katalog ────────────────────────────────────────── -->
     <template id="website_rental_catalog" name="KJR Verleih">
         <t t-call="website.layout">
@@ -252,7 +182,26 @@
                         <span class="badge text-bg-primary" id="kjr_cart_count" t-esc="cart_count or 0"/>
                     </a>
                 </div>
-                <p class="text-muted mb-4">Material für eure Jugendarbeit. Mitgliedsverbände zahlen vergünstigte Tarife.</p>
+                <p class="text-muted mb-4">Material für Ihre Jugendarbeit.</p>
+                <!-- Kategorie-Filter (Termin 13.10.2026): schlichte Nav-Pills aus
+                     Bootstrap, kein eigenes CSS. Nur Kategorien mit veröffentlichten
+                     Artikeln, in der Reihenfolge aus dem Backend; "Alle" ist Standard. -->
+                <nav t-if="len(filter_categories) &gt; 1" aria-label="Kategorien filtern" class="mb-3">
+                    <ul class="nav nav-pills flex-wrap gap-1">
+                        <li class="nav-item">
+                            <a href="/service/verleih" t-attf-class="nav-link#{'' if selected_category else ' active'}"
+                               t-att-aria-current="None if selected_category else 'page'">Alle</a>
+                        </li>
+                        <t t-foreach="filter_categories" t-as="fcat">
+                            <li class="nav-item">
+                                <a t-attf-href="/service/verleih?kategorie=#{fcat.id}"
+                                   t-attf-class="nav-link#{' active' if selected_category == fcat else ''}"
+                                   t-att-aria-current="'page' if selected_category == fcat else None"
+                                   t-esc="fcat.name"/>
+                            </li>
+                        </t>
+                    </ul>
+                </nav>
                 <t t-call="kjr_rental.rental_pricing_hint"/>
 
                 <!-- Nutzungsberechtigung, Tarife und Umsatzsteuer -->
@@ -268,32 +217,19 @@
                             ist bei jeder Anfrage der Zweck der Nutzung anzugeben. Über die Ausleihe
                             entscheidet die Geschäftsstelle; eine Anfrage ist noch keine Zusage.
                         </p>
-                        <h2 class="h5 mb-3">Mitglieds- und Standardtarif</h2>
-                        <p class="mb-3">
-                            Mitgliedsverbände von <t t-esc="res_company.name"/> erhalten den
-                            vergünstigten Mitgliedstarif.
-                            Maßgeblich ist das bei Ihrer Organisation hinterlegte
-                            Mitgliedskennzeichen; alle übrigen Ausleihen erfolgen zum Standardtarif.
-                            Beide Tarife sind unten je Artikel angegeben.
-                            <t t-if="is_public_user">
-                                Nach der Anmeldung wird Ihnen der für Sie geltende Tarif angezeigt.
-                            </t>
-                        </p>
-                        <t t-if="not is_public_user">
-                            <t t-call="kjr_rental.rental_tariff_notice"/>
-                        </t>
-                        <h2 class="h5 mb-3">Hinweis zur Umsatzsteuer</h2>
-                        <!-- TODO Betreiber: Die umsatzsteuerliche Einordnung des Materialverleihs
-                             (Betrieb gewerblicher Art / § 2b UStG) ist laut Projektunterlagen
-                             noch nicht abschließend geklärt. Solange bewusst OHNE Steuersatz und
-                             ohne Aussage „netto/brutto" formuliert. Nach Klärung mit der
-                             Steuerberatung hier den endgültigen Text einsetzen. -->
+                        <!-- Preishinweis: bewusst neutral, weil die Umsatzsteuer im
+                             Verleih noch nicht geklärt ist (Termin 13.10.2026). Der Text ist
+                             über den Systemparameter kjr_rental.price_notice änderbar; ist er
+                             leer, gilt der Standardtext unten. Bis 19.0.5.7.0 stand hier ein
+                             eigener Umsatzsteuerhinweis, der einem zweiten Hinweis auf der
+                             Seite widersprach, und ein Absatz zum Mitgliedstarif (den es
+                             beim Betreiber nicht gibt). -->
+                        <h2 class="h5 mb-3">Hinweis zu den Preisen</h2>
+                        <t t-set="kjr_price_notice" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr_rental.price_notice')"/>
                         <p class="mb-0 text-muted small">
-                            Die angegebenen Beträge sind Orientierungswerte für die Anfrage. Ob und in
-                            welchem Umfang auf die Verleihentgelte Umsatzsteuer entfällt, wird derzeit
-                            geklärt. Eine gegebenenfalls anfallende Umsatzsteuer weisen wir auf der
-                            Rechnung gesondert aus. Verbindlich ist stets die Rechnung der
-                            Geschäftsstelle.
+                            <t t-if="kjr_price_notice" t-esc="kjr_price_notice"/>
+                            <t t-else="">Die angegebenen Beträge sind Orientierungswerte für die
+                            Anfrage. Verbindlich ist die Rechnung der Geschäftsstelle.</t>
                         </p>
                     </div>
                 </div>
@@ -364,12 +300,9 @@
                                             <t t-esc="item.name"/>
                                         </h3>
                                         <p class="card-text text-muted small"><t t-esc="item.description"/></p>
+                                        <div t-if="item.warning_note" class="alert alert-warning small py-2 mb-2" role="note"><strong>Warnhinweis:</strong> <t t-esc="item.warning_note"/></div>
                                         <!-- Preisaussage kommt aus price_info (Controller) und
-                                             richtet sich nach dem Preismodell des Artikels.
-                                             Der Mitgliedstarif wird nur genannt, wenn er am
-                                             Artikel auch aktiviert ist – ein gepflegter, aber
-                                             deaktivierter Mitgliedspreis wäre eine Zusage, die
-                                             die Rechnung nicht einhält. -->
+                                             richtet sich nach dem Preismodell des Artikels. -->
                                         <t t-set="pinfo" t-value="price_info.get(item.id) or {}"/>
                                         <t t-call="kjr_rental.rental_price_block"/>
                                         <!-- Kaution nur nennen, wenn sie gepflegt ist:
@@ -436,12 +369,11 @@
             </p>
             <dl class="row small mb-0">
                 <dt class="col-sm-4">Was wir speichern</dt>
-                <dd class="col-sm-8">Ihren Namen bzw. den der Ansprechpartnerin oder des
-                    Ansprechpartners, E-Mail-Adresse und Telefonnummer, den gewünschten
+                <dd class="col-sm-8">Ihren Namen bzw. den der Ansprechperson, E-Mail-Adresse und Telefonnummer, den gewünschten
                     Zeitraum, die angefragten Artikel, den Zweck der Nutzung, Ihre
                     Anmerkungen und, falls abgefragt, die Bestätigung der
                     Nutzungshinweise. Beim Spielmobil zusätzlich die Gemeinde, den
-                    Wunschtermin, den Einsatzort und die erwartete Teilnehmerzahl.
+                    Wunschtermin, den Einsatzort und die erwartete Zahl der Teilnehmenden.
                     <span class="d-block mt-1">Angaben zu einzelnen Teilnehmenden fragen
                         wir hier bewusst nicht ab, sondern nur die erwartete Anzahl.</span>
                 </dd>
@@ -467,7 +399,7 @@
                         verantwortlichen Stelle.</span>
                 </dd>
 
-                <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
+                <dt class="col-sm-4">Datenschutzbeauftragte:r</dt>
                 <dd class="col-sm-8">
                     <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
@@ -516,7 +448,6 @@
                     </div>
                 </t>
                 <t t-if="lines">
-                    <t t-call="kjr_rental.rental_tariff_notice"/>
                     <t t-call="kjr_rental.rental_pricing_hint"/>
                     <!-- EIN Formular fuer Warenkorb und Anfrage. Vorher waren es zwei:
                          die sichtbaren Datumsfelder gehoerten zum Warenkorb-Formular,
@@ -549,8 +480,7 @@
                                      steht je Artikel am Betrag, weil sie vom Preismodell
                                      abhängt (Tag, Nacht, Stück, Kilometer, Staffel). -->
                                 <thead><tr>
-                                    <th>Artikel</th><th>Standard</th><th>Mitglied</th>
-                                    <th>Ihr Tarif</th>
+                                    <th>Artikel</th><th>Preis</th>
                                     <th style="width:120px">Menge</th><th>Verfügbar im Zeitraum</th><th/>
                                 </tr></thead>
                                 <tbody>
@@ -559,6 +489,7 @@
                                         <tr>
                                             <td>
                                                 <i t-if="l['item'].icon" t-attf-class="fa #{l['item'].icon} me-1" aria-hidden="true"/><t t-esc="l['item'].name"/>
+                                                <div t-if="l['item'].warning_note" class="alert alert-warning small py-1 px-2 mt-1 mb-0" role="note"><strong>Warnhinweis:</strong> <t t-esc="l['item'].warning_note"/></div>
                                                 <div t-if="pinfo.get('km_notice')" class="small text-muted">
                                                     Endabrechnung nach gefahrenen Kilometern.
                                                 </div>
@@ -625,7 +556,6 @@
                         <t t-foreach="errors.values()" t-as="err"><li><t t-esc="err"/></li></t>
                     </ul></div>
                 </t>
-                <t t-call="kjr_rental.rental_tariff_notice"/>
                 <t t-call="kjr_rental.rental_pricing_hint"/>
                 <form method="post" action="/service/verleih/anfrage">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
@@ -651,13 +581,14 @@
                     <div class="table-responsive">
                         <table class="table">
                             <!-- Einheit am Betrag statt in der Überschrift – siehe Warenkorb. -->
-                            <thead><tr><th>Artikel</th><th>Standard</th><th>Mitglied</th><th>Ihr Tarif</th><th style="width:120px">Menge</th></tr></thead>
+                            <thead><tr><th>Artikel</th><th>Preis</th><th style="width:120px">Menge</th></tr></thead>
                             <tbody>
                                 <t t-foreach="items" t-as="item">
                                     <t t-set="pinfo" t-value="price_info.get(item.id) or {}"/>
                                     <tr>
                                         <td>
                                             <i t-if="item.icon" t-attf-class="fa #{item.icon} me-1" aria-hidden="true"/><t t-esc="item.name"/>
+                                            <div t-if="item.warning_note" class="alert alert-warning small py-1 px-2 mt-1 mb-0" role="note"><strong>Warnhinweis:</strong> <t t-esc="item.warning_note"/></div>
                                             <div t-if="pinfo.get('km_notice')" class="small text-muted">
                                                 Endabrechnung nach gefahrenen Kilometern.
                                             </div>
@@ -775,14 +706,8 @@
                                 <t t-set="pinfo" t-value="price_info.get(item.id) or {}"/>
                                 <ul class="list-unstyled">
                                     <li t-if="pinfo.get('standard') is not None">
-                                        Standardtarif:
+                                        Preis:
                                         <t t-set="amount" t-value="pinfo['standard']"/>
-                                        <t t-set="amount_unit" t-value="pinfo.get('unit')"/>
-                                        <t t-call="kjr_rental.rental_price_amount"/>
-                                    </li>
-                                    <li t-if="pinfo.get('has_member') and pinfo.get('member') is not None">
-                                        Mitgliedstarif:
-                                        <t t-set="amount" t-value="pinfo['member']"/>
                                         <t t-set="amount_unit" t-value="pinfo.get('unit')"/>
                                         <t t-call="kjr_rental.rental_price_amount"/>
                                     </li>
@@ -792,24 +717,19 @@
                                         <t t-set="amount_unit" t-value="pinfo.get('km_unit')"/>
                                         <t t-call="kjr_rental.rental_price_amount"/>
                                     </li>
-                                    <li t-if="pinfo.get('has_member') and pinfo.get('km_member') is not None">
-                                        Kilometersatz für Mitglieder:
-                                        <t t-set="amount" t-value="pinfo['km_member']"/>
-                                        <t t-set="amount_unit" t-value="pinfo.get('km_unit')"/>
-                                        <t t-call="kjr_rental.rental_price_amount"/>
-                                    </li>
                                     <li t-if="(pinfo.get('deposit') or 0) &gt; 0">Kaution: <strong t-esc="'%.2f €' % pinfo['deposit']"/></li>
                                 </ul>
                                 <p t-if="pinfo.get('km_notice')" class="text-muted small">
                                     <i class="fa fa-info-circle me-1" aria-hidden="true"/>Die Endabrechnung
                                     erfolgt nach den tatsächlich gefahrenen Kilometern.
                                 </p>
-                                <!-- TODO Betreiber: Steuerhinweis nach abschließender Klärung der
-                                     umsatzsteuerlichen Einordnung ersetzen (siehe Katalogseite). -->
+                                <!-- Gleicher Preishinweis wie auf der Katalogseite
+                                     (Systemparameter kjr_rental.price_notice). -->
+                                <t t-set="kjr_price_notice" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr_rental.price_notice')"/>
                                 <p class="text-muted small">
-                                    Die Beträge sind Orientierungswerte für die Anfrage. Ob und in welchem
-                                    Umfang Umsatzsteuer entfällt, wird derzeit geklärt und auf der Rechnung
-                                    gesondert ausgewiesen. Verbindlich ist die Rechnung der Geschäftsstelle.
+                                    <t t-if="kjr_price_notice" t-esc="kjr_price_notice"/>
+                                    <t t-else="">Die angegebenen Beträge sind Orientierungswerte für die
+                                    Anfrage. Verbindlich ist die Rechnung der Geschäftsstelle.</t>
                                 </p>
                             </t>
                             <t t-else="">
@@ -852,9 +772,6 @@
                                         </div>
                                     </t>
                                     <t t-if="item">
-                                        <t t-if="not is_public_user">
-                                            <t t-call="kjr_rental.rental_tariff_notice"/>
-                                        </t>
                                         <!-- data-captcha: Aktion für den Spam-Schutz (kjr_website_antispam) und,
                                              falls eingerichtet, Turnstile/reCAPTCHA. Der Controller prüft dieselbe
                                              Aktion 'kjr_spielmobil'. Das Formular braucht dafür seinen
@@ -862,7 +779,7 @@
                                         <form method="post" action="/service/spielmobil" data-captcha="kjr_spielmobil">
                                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                             <div class="mb-3">
-                                                <label class="form-label fw-bold" for="kjr_sm_person">Ansprechpartner/in *</label>
+                                                <label class="form-label fw-bold" for="kjr_sm_person">Ansprechpartner:in *</label>
                                                 <input type="text" id="kjr_sm_person" name="contact_person" class="form-control"
                                                        required="required" t-att-value="values.get('contact_person','')"/>
                                             </div>
@@ -897,7 +814,7 @@
                                                        placeholder="Ort, Straße bzw. Platz"/>
                                             </div>
                                             <div class="mb-3">
-                                                <label class="form-label fw-bold" for="kjr_sm_participants">Erwartete Teilnehmerzahl *</label>
+                                                <label class="form-label fw-bold" for="kjr_sm_participants">Erwartete Zahl der Teilnehmenden *</label>
                                                 <input type="number" min="1" id="kjr_sm_participants" name="participants" class="form-control"
                                                        required="required" t-att-value="values.get('participants','')"/>
                                             </div>

@@ -67,6 +67,16 @@
                             <!-- F-Verpflegung: steuert, ob Verpflegung überhaupt
                                  gewählt werden kann (Backend, Website, Vertrag). -->
                             <field name="offers_catering"/>
+                            <!-- Termin 13.10.2026: Anfrage ohne Konto nur als Schalter
+                                 (für das Tagungshaus noch offen). -->
+                            <field name="allow_guest_request"/>
+                        </group>
+                        <!-- Termin 13.10.2026: Beträge je Einrichtung, liefert der
+                             Betreiber. Ein Betrag am Tarif geht vor. -->
+                        <group string="Endreinigung und Kurbeitrag" name="fees">
+                            <field name="final_cleaning_fee"/>
+                            <field name="visitor_tax_per_person_night"/>
+                            <field name="visitor_tax_exempt_age"/>
                         </group>
                     </group>
                     <field name="description_short" placeholder="Kurzbeschreibung für die Liste/Website"/>

@@ -19,7 +19,7 @@
                 <filter string="Schaden festgestellt" name="return_damage" domain="[('return_damage','=',True)]"/>
                 <separator/>
                 <filter string="Status" name="group_state" context="{'group_by':'state'}"/>
-                <filter string="Entleiher" name="group_partner" context="{'group_by':'partner_id'}"/>
+                <filter string="Entleiher:in" name="group_partner" context="{'group_by':'partner_id'}"/>
                 <filter string="Zahlungsstatus" name="group_payment" context="{'group_by':'invoice_payment_state'}"/>
                 <filter string="Kautionsstatus" name="group_deposit" context="{'group_by':'deposit_state'}"/>
             </search>
@@ -87,9 +87,9 @@
                     </div>
                     <div class="oe_title"><label for="name"/><h1><field name="name" readonly="1"/></h1></div>
                     <group>
-                        <group string="Entleiher">
+                        <group string="Entleiher:in">
                             <field name="partner_id" readonly="state not in ('draft','reserved')"/>
-                            <field name="is_member" readonly="state not in ('draft','reserved')"/>
+                            <field name="is_member" readonly="state not in ('draft','reserved')" groups="base.group_no_one"/>
                             <field name="contact_email"/>
                             <field name="contact_phone"/>
                         </group>

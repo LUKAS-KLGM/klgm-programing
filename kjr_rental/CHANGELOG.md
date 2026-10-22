@@ -1,5 +1,41 @@
 # Changelog – KJR Materialverleih
 
+## 19.0.5.8.0 (2026-10-22)
+
+Umsetzung Termin 13.10.2026.
+
+### Geändert
+- **Beispielartikel entfernt.** Die sechs Beispielartikel (9-Sitzer Bus,
+  Gruppenzelt, PA-Anlage, Sportgeräte-Set, Feldküche, Großspielgeräte) sind aus
+  den Stammdaten raus. `migrations/19.0.5.8.0` löscht sie auf Bestandsinstanzen
+  (nur über die XML-ID, nur mit unverändertem Namen; mit Ausleihe/Inventur
+  archiviert statt gelöscht). Das Spielmobil bleibt.
+- **Kein Mitgliedstarif mehr auf der Website.** Preisblock, Warenkorb,
+  Direktanfrage und Spielmobil zeigen nur noch einen Preis (Spalte „Preis“),
+  der Tarifhinweis „Mitglieds-/Standardtarif“ entfällt. Die Migration nimmt den
+  Satz zu vergünstigten Mitgliedstarifen aus einem im Website-Editor angelegten
+  Infotext. Backend: `has_member_price` steht standardmäßig auf aus, die
+  Mitgliedsfelder sind nur im Entwicklermodus sichtbar. Die Website rechnet und
+  legt Vorgänge immer zum Standardtarif an (`_partner_is_member` = False); die
+  Migration schaltet `has_member_price` an allen Artikeln ab (auch archiviert).
+  Der Mitgliedstarif der Einrichtungen bleibt unberührt.
+- **Neutraler Preishinweis statt widersprüchlicher USt-Hinweise.** Standardtext
+  „Orientierungswerte … verbindlich ist die Rechnung“, änderbar über den
+  Systemparameter `kjr_rental.price_notice`. Der zweite, widersprechende
+  USt-Hinweis im Infotext entfällt per Migration.
+- Systemtexte: Anrede „Sie“, Gendern mit Doppelpunkt (Entleiher:in,
+  Ansprechpartner:in, Datenschutzbeauftragte:r).
+
+### Neu
+- **Kategorien in fester Reihenfolge und als Filter.** Reihenfolge per Ziehgriff
+  (Verleih > Konfiguration > Kategorien), Filterleiste über dem Katalog
+  (Nav-Pills, nur Kategorien mit veröffentlichten Artikeln, „Alle“ als
+  Standard, `?kategorie=<id>`).
+- **Warnhinweis je Artikel** (`warning_note`), sichtbar im Katalog, im
+  Warenkorb und in der Direktanfrage.
+- Werkzeug `tools/rental_cleanup/bereinige_dubletten.py` für doppelte
+  Kategorien/Lagerorte (Dry-Run als Standard).
+
 ## 19.0.5.7.0 (2026-10-12)
 
 ### Neu
