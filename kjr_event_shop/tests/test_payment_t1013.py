@@ -86,7 +86,9 @@ class TestKjrPaymentT1013(TransactionCase):
     def test_reminder_once_then_release_and_waitlist(self):
         order, reg = self._order()
         order.write({'state': 'sent'})
-        _order2, waiting = self._order(name='Wartend')
+        # Unbezahlte Anmeldungen belegen keinen Platz (Kern); die Warteliste
+        # entsteht über bestätigte Plätze. Hier direkt als Wartelistenplatz.
+        _order2, waiting = self._order(name='Wartend', kjr_is_waitlist=True)
         self.assertTrue(waiting.kjr_is_waitlist)
         self.Params.set_param('kjr_event_shop.payment_reminder_days', '7')
         self.Params.set_param('kjr_event_shop.payment_release_days', '5')

@@ -41,10 +41,11 @@ class EventRegistrationPayment(models.Model):
     def _kjr_apply_invoice_partner(self):
         """Rechnungskontakt zusätzlich an den Auftrag (Warenkorb) übertragen.
 
-        Nur solange der Auftrag ein Warenkorb ist. Anonymer Warenkorb (Gast):
-        Kunde UND Rechnungsadresse werden der Rechnungskontakt; der Checkout
-        fragt die Anschrift dann nicht erneut ab (website_sale prüft nur die
-        Vollständigkeit). Angemeldete Benutzer:innen behalten ihren Kontakt als
+        Nur solange der Auftrag ein Warenkorb ist. Gastbuchung: Kunde UND
+        Rechnungsadresse werden der Rechnungskontakt (statt des Kontakts mit
+        Name der Teilnehmer:in und E-Mail ohne Anschrift); der Checkout fragt
+        die Anschrift dann nicht erneut ab (website_sale prüft nur die
+        Vollständigkeit). Kund:innen mit Konto behalten ihren Kontakt als
         Kunde, nur die Rechnungsadresse wechselt.
         """
         res = super()._kjr_apply_invoice_partner()
@@ -55,7 +56,14 @@ class EventRegistrationPayment(models.Model):
                 continue
             try:
                 with self.env.cr.savepoint():
-                    if order._is_anonymous_cart():
+                    # Gast: Warenkorb des öffentlichen Kontakts (wie
+                    # website_sale._is_anonymous_cart, ohne Request) oder der
+                    # Kontakt, den website_event_sale aus Name und E-Mail der
+                    # Anmeldung angelegt hat (ohne Konto, ohne Anschrift).
+                    customer = order.partner_id
+                    public = order.website_id.user_id.partner_id
+                    if (public and customer == public) or (
+                            not customer.user_ids and not customer.street):
                         order.partner_id = partner
                     order.partner_invoice_id = partner
             except Exception:  # noqa: BLE001 - die Anmeldung hat Vorrang
