@@ -346,8 +346,7 @@ class KjrRentalWebsite(http.Controller):
         by_cat = request.env['kjr.rental.item'].sudo()._group_by_category(items)
         # Filterleiste (Termin 13.10.2026): nur Kategorien mit veröffentlichten
         # Artikeln, "Alle" als Standard. Serverseitig über ?kategorie=<id>, damit der
-        # Filter ohne JavaScript funktioniert und verlinkbar ist. Unbekannte oder
-        # leere Kategorien fallen still auf "Alle" zurück.
+        # Filter ohne JavaScript funktioniert und verlinkbar ist.
         filter_categories = [cat for cat in by_cat if cat]
         selected_category = None
         try:
@@ -360,6 +359,12 @@ class KjrRentalWebsite(http.Controller):
                 items = by_cat[cat]
                 by_cat = {cat: by_cat[cat]}
                 break
+        if 'kategorie' in kw and not selected_category:
+            # Leerer, ungültiger oder veralteter Parameter (z. B. eine bereinigte
+            # Dubletten-Kategorie oder eine Kategorie ohne veröffentlichte Artikel):
+            # auf die Gesamtliste umleiten. Adresse und markierter Reiter „Alle"
+            # passen dann zusammen, statt unter ?kategorie=… still alles zu zeigen.
+            return request.redirect('/service/verleih', code=302)
         is_public_user = request.env.user._is_public()
         partner = self._website_partner() if not is_public_user else None
         is_member = self._partner_is_member(partner)

@@ -130,3 +130,53 @@ class TestKjrRentalCatalogPage(HttpCase):
         html = self.url_open('/service/verleih?kategorie=%d' % cat_empty.id).text
         self.assertNotIn('RF Leer', html)
         self.assertIn('RF Spätartikel', html)
+
+
+@tagged('post_install', '-at_install')
+class TestKjrRentalCatalogFormat(HttpCase):
+    """Deutsches Betragsformat und sauberer Rückfall des Kategorie-Filters."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        lang = cls.env['res.lang']._activate_lang('de_DE')
+        websites = cls.env['website'].search([])
+        for website in websites:
+            website.language_ids |= lang
+        websites.write({'default_lang_id': lang.id})
+        Category = cls.env['kjr.rental.category']
+        cls.cat_a = Category.create({'name': 'RF Format A', 'sequence': -950})
+        cls.cat_b = Category.create({'name': 'RF Format B', 'sequence': -940})
+        Item = cls.env['kjr.rental.item']
+        Item.create({'name': 'RF Großzelt', 'category_id': cls.cat_a.id,
+                     'price_per_day': 1234.5, 'website_published': True})
+        Item.create({'name': 'RF Bierbank', 'category_id': cls.cat_b.id,
+                     'price_per_day': 5.0, 'website_published': True})
+
+    def test_betraege_deutsch_formatiert(self):
+        """„1.234,50 €" mit geschütztem Leerzeichen vor dem €, nie „1234.50 €"."""
+        html = self.url_open('/service/verleih').text
+        self.assertIn('1.234,50</span>\N{NO-BREAK SPACE}€', html)
+        self.assertIn('5,00</span>\N{NO-BREAK SPACE}€', html)
+        self.assertNotIn('1234.50', html)
+        self.assertNotIn('5.00 €', html)
+        # Firmenname ohne Artikel-Problem (white-label, „von Kreisjugendring …").
+        self.assertNotIn('Mitgliedsverbände von', html)
+        self.assertIn('an unsere Mitgliedsverbände', html)
+
+    def test_ungueltige_kategorie_faellt_auf_alle_zurueck(self):
+        """Leere, nicht numerische und unbekannte Kategorien leiten auf die
+        Gesamtliste um; markiert ist dann der Reiter „Alle"."""
+        unbekannt = self.cat_b.id + 100000
+        for wert in ('', 'abc', str(unbekannt)):
+            response = self.url_open('/service/verleih?kategorie=%s' % wert)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.url.endswith('/service/verleih'), response.url)
+            self.assertIn('RF Großzelt', response.text)
+            self.assertIn('RF Bierbank', response.text)
+            self.assertRegex(response.text, r'class="nav-link active"[^>]*aria-current="page"[^>]*>Alle</a>')
+        # Gültiger Filter: kein Umweg, Reiter der Kategorie markiert.
+        response = self.url_open('/service/verleih?kategorie=%d' % self.cat_b.id)
+        self.assertIn('kategorie=%d' % self.cat_b.id, response.url)
+        self.assertNotIn('RF Großzelt', response.text)
+        self.assertRegex(response.text, r'class="nav-link active"[^>]*aria-current="page"[^>]*>RF Format B</a>')

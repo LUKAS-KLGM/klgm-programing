@@ -147,11 +147,11 @@
                         <ul class="mb-0 mt-2">
                             <li t-if="fees.get('cleaning')">
                                 <strong>Endreinigung:</strong>
-                                <t t-esc="'%.2f €' % fees['cleaning']"/> einmalig je Aufenthalt.
+                                <t t-out="fees['cleaning']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/> einmalig je Aufenthalt.
                             </li>
                             <li t-if="fees.get('visitor_tax')">
                                 <strong>Kurbeitrag:</strong>
-                                <t t-esc="'%.2f €' % fees['visitor_tax']"/> pro
+                                <t t-out="fees['visitor_tax']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/> pro
                                 teilnehmender Person und Nacht. Den Beitrag führen wir an die Gemeinde ab.
                                 Ihre Betreuungspersonen sind als Begleitpersonen befreit. Sie rechnen wir
                                 automatisch heraus, Sie müssen dafür nichts angeben. Sind darüber hinaus
@@ -336,17 +336,17 @@
                                         <tr>
                                             <td>Unterkunft (<t t-esc="preview.get('nights')"/> Nächte,
                                                 <t t-esc="preview.get('participant_count')"/> Teilnehmende)</td>
-                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('accommodation')"/></td>
+                                            <td class="text-end"><t t-out="preview.get('accommodation')" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/></td>
                                         </tr>
                                         <!-- Ohne Verpflegungsangebot ist der Betrag 0,00 € und
                                              die Zeile entfällt (siehe _meal_option_for). -->
                                         <tr t-if="preview.get('meals')">
                                             <td>Verpflegung</td>
-                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('meals')"/></td>
+                                            <td class="text-end"><t t-out="preview.get('meals')" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/></td>
                                         </tr>
                                         <tr t-if="preview.get('cleaning')">
                                             <td>Endreinigung (einmalig)</td>
-                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('cleaning')"/></td>
+                                            <td class="text-end"><t t-out="preview.get('cleaning')" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/></td>
                                         </tr>
                                         <!-- Befund 7/14: Diese Spalte traegt den Gesamtbetrag.
                                              "(je Person und Nacht)" behauptete einen Satz je
@@ -354,15 +354,15 @@
                                              Preisblock weiter oben, der den echten Satz nennt. -->
                                         <tr t-if="preview.get('visitor_tax')">
                                             <td>Kurbeitrag</td>
-                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('visitor_tax')"/></td>
+                                            <td class="text-end"><t t-out="preview.get('visitor_tax')" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/></td>
                                         </tr>
                                         <tr t-if="preview.get('tax')">
                                             <td>zzgl. Umsatzsteuer</td>
-                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('tax')"/></td>
+                                            <td class="text-end"><t t-out="preview.get('tax')" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/></td>
                                         </tr>
                                         <tr class="fw-bold border-top">
                                             <td>Gesamt (brutto)</td>
-                                            <td class="text-end"><t t-esc="'%.2f €' % preview.get('total')"/></td>
+                                            <td class="text-end"><t t-out="preview.get('total')" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/></td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -451,8 +451,8 @@
                                 wir ausschließlich mit Anzahlen und führen ihn an die Gemeinde ab.</dd>
 
                             <dt class="col-sm-4">Wer sie sehen kann</dt>
-                            <dd class="col-sm-8">Die Geschäftsstelle von
-                                <t t-out="res_company.name"/> und die Personen, die die
+                            <dd class="col-sm-8">Die Geschäftsstelle
+                                (<t t-out="res_company.name"/>) und die Personen, die die
                                 Einrichtung und die Abrechnung betreuen.
                                 <span class="d-block mt-1">Technischer Betrieb der Website:
                                     <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.operator')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
@@ -632,7 +632,7 @@
                                 <dt class="col-4">Abreise</dt><dd class="col-8"><span t-field="booking.check_out" t-options='{"widget":"date"}'/></dd>
                                 <dt class="col-4">Personen</dt><dd class="col-8"><t t-esc="booking.participant_count"/> (+ <t t-esc="booking.leader_count"/> Betreuende)</dd>
                                 <dt class="col-4">Verpflegung</dt><dd class="col-8"><t t-esc="dict(booking._fields['meal_option'].selection).get(booking.meal_option)"/></dd>
-                                <dt class="col-4">Gesamt (brutto)</dt><dd class="col-8"><t t-esc="'%.2f €' % booking.amount_total"/></dd>
+                                <dt class="col-4">Gesamt (brutto)</dt><dd class="col-8"><t t-out="booking.amount_total" t-options="{'widget': 'monetary', 'display_currency': booking.currency_id}"/></dd>
                                 <dt class="col-4">Status</dt><dd class="col-8"><span class="badge text-bg-secondary"><t t-esc="dict(booking._fields['state'].selection).get(booking.state)"/></span></dd>
                                 <dt class="col-4">Zahlung</dt><dd class="col-8"><span class="badge text-bg-secondary"><t t-esc="dict(booking._fields['payment_status'].selection).get(booking.payment_status)"/></span></dd>
                             </dl>

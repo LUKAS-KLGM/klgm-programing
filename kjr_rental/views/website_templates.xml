@@ -63,7 +63,7 @@
             <div id="kjr_purpose_help" class="form-text">
                 Der Verleih ist an Zwecke der Kinder- und Jugendarbeit nach dem SGB VIII
                 (Kinder- und Jugendhilfe) gebunden. Bitte beschreiben Sie kurz die Maßnahme
-                oder Veranstaltung, für die das Material eingesetzt wird. Daraus ergibt sich
+                oder Veranstaltung, für die <t t-out="purpose_object or 'das Material'"/> eingesetzt wird. Daraus ergibt sich
                 die Nutzungsberechtigung.
             </div>
         </div>
@@ -93,7 +93,7 @@
             <span class="text-muted">auf Anfrage</span>
         </t>
         <t t-elif="amount &gt; 0">
-            <strong t-esc="'%.2f €' % amount"/><t t-if="amount_unit"> <t t-esc="amount_unit"/></t>
+            <strong t-out="amount" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/><t t-if="amount_unit"> <t t-esc="amount_unit"/></t>
         </t>
         <t t-else="">
             <strong>kostenlos</strong>
@@ -209,8 +209,8 @@
                     <div class="card-body">
                         <h2 class="h5 mb-3">Wer darf ausleihen?</h2>
                         <p class="mb-3">
-                            Der Materialverleih richtet sich an die Mitgliedsverbände von
-                            <t t-esc="res_company.name"/> sowie an Jugendgruppen, Gemeinden, Schulen und
+                            Der Materialverleih richtet sich an unsere Mitgliedsverbände sowie an
+                            Jugendgruppen, Gemeinden, Schulen und
                             Einrichtungen der Kinder- und Jugendarbeit im Einzugsgebiet. Voraussetzung ist,
                             dass das Material für
                             Zwecke der Kinder- und Jugendarbeit nach dem SGB VIII eingesetzt wird. Deshalb
@@ -309,7 +309,7 @@
                                              „Kaution: 0,00 €" liest sich als „keine
                                              Kaution" und wäre bei ungepflegten
                                              Stammdaten eine falsche Zusage. -->
-                                        <div t-if="(pinfo.get('deposit') or 0) &gt; 0" class="small text-muted">Kaution: <t t-esc="'%.2f €' % pinfo['deposit']"/></div>
+                                        <div t-if="(pinfo.get('deposit') or 0) &gt; 0" class="small text-muted">Kaution: <t t-out="pinfo['deposit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/></div>
                                         <div t-if="not is_public_user" class="input-group input-group-sm mt-2">
                                             <label class="visually-hidden" t-attf-for="kjr_qty_#{item.id}">Menge für <t t-esc="item.name"/></label>
                                             <input type="number" min="1" value="1" class="form-control kjr-cart-qty" t-attf-id="kjr_qty_#{item.id}"/>
@@ -385,7 +385,7 @@
                     zurückzunehmen, für Rückfragen sowie für Rechnung und Zahlung.</dd>
 
                 <dt class="col-sm-4">Wer sie sehen kann</dt>
-                <dd class="col-sm-8">Die Geschäftsstelle von <t t-esc="res_company.name"/>
+                <dd class="col-sm-8">Die Geschäftsstelle (<t t-esc="res_company.name"/>)
                     und die Personen, die den Verleih und die Abrechnung betreuen.
                     <span class="d-block mt-1">Technischer Betrieb der Website:
                         <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.operator')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
@@ -652,7 +652,7 @@
                                  t-attf-alt="Foto: #{item.name}"
                                  width="960" height="640" loading="lazy"/>
                             <p class="lead">
-                                Das Spielmobil von <t t-esc="res_company.name"/> bringt Spiel- und
+                                Unser Spielmobil bringt Spiel- und
                                 Bewegungsangebote direkt in die Gemeinden und Ortsteile.
                             </p>
                             <!-- Adressatenkreis bewusst eng: Das Spielmobil ist ausdruecklich
@@ -717,7 +717,7 @@
                                         <t t-set="amount_unit" t-value="pinfo.get('km_unit')"/>
                                         <t t-call="kjr_rental.rental_price_amount"/>
                                     </li>
-                                    <li t-if="(pinfo.get('deposit') or 0) &gt; 0">Kaution: <strong t-esc="'%.2f €' % pinfo['deposit']"/></li>
+                                    <li t-if="(pinfo.get('deposit') or 0) &gt; 0">Kaution: <strong t-out="pinfo['deposit']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/></li>
                                 </ul>
                                 <p t-if="pinfo.get('km_notice')" class="text-muted small">
                                     <i class="fa fa-info-circle me-1" aria-hidden="true"/>Die Endabrechnung
@@ -767,8 +767,7 @@
                                     <t t-if="not item">
                                         <div class="alert alert-warning" role="alert">
                                             Das Spielmobil ist derzeit nicht für Online-Anfragen hinterlegt.
-                                            Bitte wenden Sie sich direkt an die Geschäftsstelle
-                                            von <t t-esc="res_company.name"/>.
+                                            Bitte wenden Sie sich direkt an unsere Geschäftsstelle.
                                         </div>
                                     </t>
                                     <t t-if="item">
@@ -818,7 +817,9 @@
                                                 <input type="number" min="1" id="kjr_sm_participants" name="participants" class="form-control"
                                                        required="required" t-att-value="values.get('participants','')"/>
                                             </div>
-                                            <t t-call="kjr_rental.rental_purpose_field"/>
+                                            <t t-call="kjr_rental.rental_purpose_field">
+                                                <t t-set="purpose_object" t-value="'das Spielmobil'"/>
+                                            </t>
                                             <div class="mb-3">
                                                 <label class="form-label" for="kjr_sm_note">Anmerkungen</label>
                                                 <textarea id="kjr_sm_note" name="note" class="form-control" rows="2" t-esc="values.get('note','')"/>
@@ -880,7 +881,7 @@
                                     <td><a t-att-href="o.access_url"><t t-esc="o.name"/></a></td>
                                     <td><span t-field="o.date_from" t-options='{"widget":"date"}'/></td>
                                     <td><span t-field="o.date_to" t-options='{"widget":"date"}'/></td>
-                                    <td><t t-esc="'%.2f €' % o.amount_total"/></td>
+                                    <td><t t-out="o.amount_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td>
                                     <td><span class="badge text-bg-secondary"><t t-esc="dict(o._fields['state'].selection).get(o.state)"/></span></td>
                                 </tr>
                             </t>
@@ -918,7 +919,7 @@
                 <div class="card-body">
                     <dl class="row mb-0">
                         <dt class="col-4">Zeitraum</dt><dd class="col-8"><span t-field="order.date_from" t-options='{"widget":"date"}'/> bis <span t-field="order.date_to" t-options='{"widget":"date"}'/> (<t t-esc="order.rental_days"/> Tage)</dd>
-                        <dt class="col-4">Gebühr</dt><dd class="col-8"><t t-esc="'%.2f €' % order.amount_total"/></dd>
+                        <dt class="col-4">Gebühr</dt><dd class="col-8"><t t-out="order.amount_total" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/></dd>
                         <dt class="col-4">Status</dt><dd class="col-8"><span class="badge text-bg-secondary"><t t-esc="dict(order._fields['state'].selection).get(order.state)"/></span></dd>
                         <!-- Die Gebührenrechnung ist der EINZIGE Beleg, den das System zum
                              Vorgang erzeugt (kjr.rental.order.invoice_id). Sie stand bisher
@@ -945,7 +946,7 @@
                         <h5 class="h6">Kaution</h5>
                         <dl class="row mb-0">
                             <dt class="col-4">Betrag</dt>
-                            <dd class="col-8"><t t-esc="'%.2f €' % order.deposit_total"/></dd>
+                            <dd class="col-8"><t t-out="order.deposit_total" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/></dd>
                             <dt class="col-4">Stand</dt>
                             <dd class="col-8">
                                 <span t-attf-class="badge #{'text-bg-success' if order.deposit_state == 'refunded' else ('text-bg-warning' if order.deposit_state == 'withheld' else 'text-bg-secondary')}"
@@ -982,17 +983,17 @@
                                     <td><t t-esc="line.item_id.name"/></td>
                                     <td><t t-esc="line.quantity"/></td>
                                     <td>
-                                        <t t-esc="'%.2f €' % line.price_unit_effective"/>
+                                        <t t-out="line.price_unit_effective" t-options="{'widget': 'monetary', 'display_currency': line.currency_id}"/>
                                         <!-- price_base_unit_label statt price_unit_label:
                                              Letzteres beschreibt beim Kilometermodell ZWEI
                                              Beträge („Grundgebühr … zuzüglich Kilometerpreis")
                                              und taugt nicht als Einheit dieser einen Zahl. -->
                                         <div t-if="line.item_id.price_base_unit_label" class="small text-muted"><t t-esc="line.item_id.price_base_unit_label"/></div>
                                         <div t-if="line.pricing_model == 'per_km'" class="small text-muted">
-                                            zuzüglich <t t-esc="'%.2f €' % line.price_per_km"/> je gefahrenem Kilometer
+                                            zuzüglich <t t-out="line.price_per_km" t-options="{'widget': 'monetary', 'display_currency': line.currency_id}"/> je gefahrenem Kilometer
                                         </div>
                                     </td>
-                                    <td><t t-esc="'%.2f €' % line.subtotal"/></td>
+                                    <td><t t-out="line.subtotal" t-options="{'widget': 'monetary', 'display_currency': line.currency_id}"/></td>
                                 </tr>
                             </t>
                         </tbody>

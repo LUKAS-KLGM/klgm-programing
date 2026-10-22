@@ -155,10 +155,10 @@
                                                  Betrag, der noch steigen wird. -->
                                             <div t-if="line.pricing_model == 'per_km'" class="small text-muted">
                                                 Zusätzlich wird nach gefahrenen Kilometern abgerechnet
-                                                (<t t-esc="'%.2f €' % line.price_per_km"/> je km).
+                                                (<t t-out="line.price_per_km" t-options="{'widget': 'monetary', 'display_currency': line.currency_id}"/> je km).
                                                 <t t-if="line.distance_km">
                                                     Erfasst: <t t-esc="'%.1f' % line.distance_km"/> km
-                                                    = <t t-esc="'%.2f €' % (line.price_per_km * line.distance_km)"/>.
+                                                    = <t t-out="line.price_per_km * line.distance_km" t-options="{'widget': 'monetary', 'display_currency': line.currency_id}"/>.
                                                 </t>
                                                 <t t-else="">
                                                     Der Kilometerstand wird bei der Rückgabe abgelesen; die
@@ -169,13 +169,13 @@
                                         <td class="text-end"><t t-esc="line.quantity"/></td>
                                         <td class="text-end"><t t-esc="line.billable_units"/></td>
                                         <td class="text-end">
-                                            <t t-esc="'%.2f €' % line.price_unit_effective"/>
+                                            <t t-out="line.price_unit_effective" t-options="{'widget': 'monetary', 'display_currency': line.currency_id}"/>
                                             <div t-if="line.item_id.price_base_unit_label" class="small text-muted">
                                                 <t t-esc="line.item_id.price_base_unit_label"/>
                                             </div>
                                         </td>
-                                        <td class="text-end"><t t-esc="'%.2f €' % line.subtotal"/></td>
-                                        <td class="text-end"><t t-esc="'%.2f €' % line.deposit_subtotal"/></td>
+                                        <td class="text-end"><t t-out="line.subtotal" t-options="{'widget': 'monetary', 'display_currency': line.currency_id}"/></td>
+                                        <td class="text-end"><t t-out="line.deposit_subtotal" t-options="{'widget': 'monetary', 'display_currency': line.currency_id}"/></td>
                                     </tr>
                                 </t>
                             </tbody>
@@ -184,7 +184,7 @@
                                      Deshalb muss hier stehen, worauf sich die Summe bezieht: Die
                                      Zeilenpreise sind ohne Umsatzsteuer erfasst; welcher Satz
                                      hinzukommt, entscheidet erst die Rechnung. -->
-                                <tr class="fw-bold"><td colspan="4">Summe (ohne Umsatzsteuer)</td><td class="text-end"><t t-esc="'%.2f €' % o.amount_total"/></td><td class="text-end"><t t-esc="'%.2f €' % o.deposit_total"/></td></tr>
+                                <tr class="fw-bold"><td colspan="4">Summe (ohne Umsatzsteuer)</td><td class="text-end"><t t-out="o.amount_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td><td class="text-end"><t t-out="o.deposit_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td></tr>
                             </tfoot>
                         </table>
                         <p class="small text-muted mt-3">

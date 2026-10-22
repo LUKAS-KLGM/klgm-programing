@@ -1,5 +1,18 @@
 # Changelog — kjr_facility
 
+## 19.0.7.5.2 (2026-10-22)
+
+### Behoben
+- **Beträge im deutschen Format.** Kostenvorschau, Gebührenhinweis
+  (Endreinigung, Kurbeitrag), Buchungsbestätigung im Portal und Vertrag (PDF)
+  zeigten „360.00 €". Alle Beträge laufen jetzt über das Odoo-Widget
+  `monetary`: „360,00 €" mit Tausenderpunkt und geschütztem Leerzeichen vor „€".
+  Die Mailvorlagen (noupdate) sind unverändert.
+- **Datenschutzhinweis:** „Die Geschäftsstelle von <Firmenname>" lautet jetzt
+  „Die Geschäftsstelle (<Firmenname>)" (kein Artikel-Problem, white-label).
+- Hinweis: Live überdeckt eine Editor-Kopie der Einrichtungsliste den Modulcode
+  (`tools/website_fixes/reset_facility_list_copy.py`, README Befund C).
+
 ## 19.0.7.5.0 (2026-10-22)
 
 Umsetzung Termin 13.10.2026.

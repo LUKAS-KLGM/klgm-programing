@@ -1,5 +1,22 @@
 # Changelog – KJR Materialverleih
 
+## 19.0.5.8.1 (2026-10-22)
+
+### Behoben
+- **Beträge im deutschen Format.** Verleihseite, Spielmobil, Warenkorb,
+  Direktanfrage, Portal und Vertrag (PDF) zeigten „5.00 €". Alle Beträge laufen
+  jetzt über das Odoo-Widget `monetary` (Sprache der Seite, Tausenderpunkt,
+  geschütztes Leerzeichen vor „€", damit das Zeichen auf dem Handy nicht allein
+  umbricht): „1.234,50 €".
+- **Grammatik ohne Artikel-Problem.** „Mitgliedsverbände von Kreisjugendring …",
+  „Das Spielmobil von …" und „Geschäftsstelle von …" sind umformuliert
+  („unsere Mitgliedsverbände", „Unser Spielmobil", „Geschäftsstelle (Name)");
+  der Firmenname bleibt white-label aus `res.company`. Der Hilfetext zu „Zweck
+  der Nutzung" spricht im Spielmobil-Formular vom Spielmobil statt vom Material.
+- **Kategorie-Filter:** `?kategorie=` mit leerem, ungültigem oder veraltetem
+  Wert (z. B. bereinigte Dubletten-Kategorie) leitet auf `/service/verleih` um;
+  Adresse und markierter Reiter „Alle" passen zusammen.
+
 ## 19.0.5.8.0 (2026-10-22)
 
 Umsetzung Termin 13.10.2026.

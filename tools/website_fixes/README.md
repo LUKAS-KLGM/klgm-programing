@@ -173,3 +173,79 @@ zweiter Lauf (Abbruch „schon umgestellt“), Startseite über HTTP gerendert:
 Fuß mit Links Kontakt, Impressum, Datenschutzerklärung, Cookie-Richtlinien,
 Barrierefreiheit, beiden Suchfeldern und Logo; keine Anschriften, keine
 Seitenübersicht. Auf der Produktion NICHT ausgeführt.
+
+## Befund C: Editor-Kopie der Einrichtungsliste überdeckt den Modulcode
+
+**Symptom:** `/service/einrichtungen` zeigt beim Zeltplatz „40 Betten“ (Symbol
+Bett) statt „40 Plätze“, die Detailseite sagt richtig „40 Plätze“. Änderungen
+am Modul-Template `kjr_facility.website_facility_list` kommen auf der Seite
+nicht an.
+
+**Ursache:** Live gibt es neben der Modul-Ansicht (ir_ui_view 3714, ohne
+Website) eine website-spezifische Kopie (ir_ui_view 4332, `website_id=3`,
+angelegt 27.06.2026 von admin). Odoo rendert für die Website immer die Kopie.
+Beim Modul-Update gleicht Odoo eine Kopie nur ab, solange sie unverändert ist
+(`ir.ui.view._load_records_write`). Diese Kopie ist geändert und bleibt deshalb
+auf dem Modulstand vom August stehen.
+
+**Lesender Vergleich vom 22.10.2026:** Die Kopie entspricht dem Modulstand
+d51edc5 (16.08.2026) mit **einer Ausnahme**: Der Einleitungssatz wurde im
+Editor ersetzt durch „Der Kreisjugendring Oberallgäu verfügt über ein
+Jugendtagungshaus in Diepolz für insgesamt 42 Personen und einen
+Jugendzeltplatz am Niedersonthofener See für bis zu 40 Personen.“ Das ist eine
+erkennbare Inhaltsänderung. Das Skript löscht die Kopie deshalb im normalen
+Schreiblauf **nicht**, es meldet nur.
+
+**Werkzeug:** `reset_facility_list_copy.py` (Odoo-Shell-Skript).
+
+1. Snapshot anlegen (wie Befund A, Schritt 1).
+2. Probelauf: `odoo-bin shell -c odoo.conf -d <db> --no-http < reset_facility_list_copy.py`.
+   Ausgabe: alle website-spezifischen Kopien von `kjr_*`-Ansichten, danach je
+   Sprachfassung der Kopie entweder „entspricht Modulstand …“ oder die
+   Unterschiede zur Modul-Ansicht (`-` Modul, `+` Kopie). Jede `+`-Zeile ist
+   markiert: `[alter Modulstand]` (stand früher so im Modul) oder
+   `[NICHT aus dem Modul: Inhaltsänderung im Editor]`.
+3. Schreiblauf: `KJR_FIX_WRITE=1 …`. Gelöscht wird nur eine Kopie, die einem
+   bekannten Modulstand entspricht (alle Sprachen), keine erbenden Ansichten
+   und keine Seite hat. Vorher wird sie als JSON gesichert
+   (`backup_ir_ui_view_<id>_<zeit>.json` im aktuellen Verzeichnis oder in
+   `KJR_FIX_BACKUP_DIR`).
+4. **Für die Live-Kopie 4332:** Mit dem KJR klären, ob der Einleitungssatz
+   bleiben soll. Er nennt feste Zahlen (42/40 Personen), die bei Änderungen der
+   Einrichtungen veralten; das Modul zeigt bewusst einen neutralen Satz und
+   rendert die Zahlen aus den Stammdaten. Nach Zustimmung:
+   `KJR_FIX_WRITE=1 KJR_FIX_FORCE=1 …` (sichert und löscht trotz
+   Inhaltsänderung). Soll der Satz erhalten bleiben, danach im Website-Editor
+   den Einleitungssatz neu eintragen; das legt wieder eine Kopie an, aber auf
+   dem aktuellen Modulstand. Künftige Code-Änderungen an der Liste brauchen
+   dann erneut diesen Ablauf.
+5. Prüfen: `/service/einrichtungen` im privaten Fenster; der Zeltplatz zeigt
+   „40 Plätze“ mit Personen-Symbol.
+
+**Rückweg:** Snapshot oder
+`KJR_FIX_RESTORE=<backup.json> KJR_FIX_WRITE=1 odoo-bin shell … < reset_facility_list_copy.py`
+(spielt die Kopie mit derselben ID und allen Sprachfassungen zurück).
+
+**Getestet** am 22.10.2026 auf einer Kopie der Produktionsdatenbank:
+Probelauf und Schreiblauf (Kopie 4332 bleibt, Meldung der Inhaltsänderung),
+`KJR_FIX_FORCE=1` (Sicherung + Löschung), `KJR_FIX_RESTORE` (Probelauf rollt
+zurück, Schreiblauf stellt die Kopie bytegleich wieder her), unbedenklicher
+Fall (Kopie = Modul-Ansicht → gesichert und gelöscht). Auf Prod NICHT
+ausgeführt.
+
+**Weitere website-spezifische Kopien von `kjr_*`-Ansichten auf Prod (lesend,
+22.10.2026):**
+
+| ID | Key | aktiv | Bewertung |
+|----|-----|-------|-----------|
+| 4332 | `kjr_facility.website_facility_list` | ja | siehe oben, überdeckt den Modulcode |
+| 4334 | `kjr_grant.website_kjr_apply` | **nein** | Editor-Kopie vom 27.06. (admin), weicht vom Modul ab, ist aber archiviert und wird nicht gerendert. Kein Handlungsbedarf; bei Bedarf mit `KJR_FIX_KEY=kjr_grant.website_kjr_apply` prüfen. Nicht reaktivieren. |
+| 4724 | `kjr_event.event_description_full_kjr_meeting_info` | ja | von Odoo automatisch angelegte Erb-Kopie unter der Editor-Kopie 4476 (`website_event.event_description_full`), identisch mit dem Modul, wird beim Update mitgezogen |
+| 4725 | `kjr_event.opt_event_kjr_documents_block` | ja | wie 4724 |
+| 4726 | `kjr_event.event_description_full_kjr_documents` | ja | wie 4724 |
+| 4787 | `kjr_event.event_description_full_kjr_location` | ja | wie 4724 |
+
+Hinweis zu 4476: Die Veranstaltungsseite selbst (`website_event.event_description_full`)
+ist eine Editor-Kopie des Odoo-Standards. Die kjr_event-Erweiterungen hängen
+sich korrekt daran, Änderungen am Odoo-Standard-Template kommen dort aber nicht
+mehr an.
