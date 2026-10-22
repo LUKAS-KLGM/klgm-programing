@@ -228,7 +228,7 @@ class EventEvent(models.Model):
         * Nie unterschriebene Anfragen (offen, storniert, abgelaufen,
           abgelehnt) werden nach dem Storno GELÖSCHT. Seit der Vorlage v2
           (19.0.1.1.0) trägt jede Anfrage schon beim Anlegen den Namen des
-          Kindes und den Namen der/des Erziehungsberechtigten
+          Kindes und den Namen der Erziehungsberechtigten
           (sign.request.item.value der vorbefüllten Felder); als archivierter
           Rest überdauerten sie die Anonymisierung. Odoo Sign verbietet nur
           das Löschen unterschriebener Anfragen (``_unlink_if_not_signed``);

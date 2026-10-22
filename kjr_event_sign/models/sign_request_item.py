@@ -14,7 +14,7 @@ Das Leserecht an ``reference_doc`` prüft Odoo Sign dabei nicht. Ohne diese
 Sperre könnte jede Person mit Sign-Rechten (``sign.group_sign_user`` darf
 Anfragen anlegen) eine Anfrage mit ``reference_doc = event.registration,<id>``
 und sich selbst als Unterzeichner/in anlegen und so den feldgeschützten Namen
-der/des Erziehungsberechtigten (``guardian_name``, KJR_SENSITIVE_DATA_GROUP)
+der Erziehungsberechtigten (``guardian_name``, KJR_SENSITIVE_DATA_GROUP)
 oder den Namen des Kindes jeder Anmeldung lesen.
 
 Regel: Für Feldtypen auf dem Modell ``event.registration`` liefert die

@@ -84,7 +84,7 @@
         </field>
     </record>
 
-    <!-- KJR-Teilnehmerliste (Menü "KJR-Teilnehmer/innen" aus kjr_event).
+    <!-- KJR-Teilnehmerliste (Menü "KJR-Teilnehmer:innen" aus kjr_event).
          Anker ist bewusst nur das Wurzelelement, damit Änderungen an den
          Spalten in kjr_event diese Erweiterung nicht brechen. -->
     <record id="view_kjr_registration_list_kjr_sign" model="ir.ui.view">

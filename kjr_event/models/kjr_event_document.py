@@ -582,7 +582,7 @@ class EventRegistrationAutomation(models.Model):
             if not reg.event_id.training_product_id:
                 skipped_product |= reg
                 continue
-            if not reg.partner_id:
+            if not reg._kjr_billing_partner():
                 skipped_partner |= reg
                 continue
             candidates |= reg

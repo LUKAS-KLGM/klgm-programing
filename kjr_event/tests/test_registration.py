@@ -42,7 +42,7 @@ class TestKjrEventRegistration(TransactionCase):
         self.assertTrue(reg.age_out_of_range)
 
     def test_consent_missing_for_minor(self):
-        """Minderjährige/r ohne Einwilligung → Einwilligung fehlt; mit Einwilligung nicht."""
+        """Minderjährige ohne Einwilligung → Einwilligung fehlt; mit Einwilligung nicht."""
         reg = self._reg(birthdate='2010-01-01')
         self.assertTrue(reg.consent_missing)
         reg.parental_consent = True
@@ -60,7 +60,8 @@ class TestKjrEventRegistration(TransactionCase):
             'name': 'Juleica-Grundkurs',
             'date_begin': '2026-08-01 09:00:00',
             'date_end': '2026-08-03 17:00:00',
-            'kjr_event_type': 'juleica_course',
+            'kjr_event_type': 'training',
+            'is_juleica_course': True,
         })
         self.assertTrue(course.is_juleica_course)
         reg = self.env['event.registration'].create({

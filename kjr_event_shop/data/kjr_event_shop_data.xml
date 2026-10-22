@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 19.0.2.2.0 (Termin 13.10.2026): Zahlungserinnerung und Platzfreigabe.
+         noupdate="1": Fristen, Cron-Zustand und Mailtext pflegt die
+         Geschäftsstelle. Auslieferungszustand AUS: Fristen 0 und Cron inaktiv,
+         bis zum Start geht nichts automatisch hinaus. Texte und Zeitpunkte
+         werden in einem eigenen Termin mit dem KJR festgelegt. -->
+    <data noupdate="1">
+        <record id="param_payment_reminder_days" model="ir.config_parameter">
+            <field name="key">kjr_event_shop.payment_reminder_days</field>
+            <field name="value">0</field>
+        </record>
+        <record id="param_payment_release_days" model="ir.config_parameter">
+            <field name="key">kjr_event_shop.payment_release_days</field>
+            <field name="value">0</field>
+        </record>
+        <!-- Entscheidung 13.10.2026: Rechnung automatisch. Erzeugt beim
+             Bestätigen des Auftrags, gebucht nur mit kjr_event.invoice_auto_post. -->
+        <record id="param_invoice_on_confirm" model="ir.config_parameter">
+            <field name="key">kjr_event_shop.invoice_on_confirm</field>
+            <field name="value">1</field>
+        </record>
+
+        <record id="cron_kjr_payment_reminder" model="ir.cron">
+            <field name="name">KJR Veranstaltung: Zahlungserinnerung und Platzfreigabe</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_kjr_payment_reminder()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="False"/>
+        </record>
+
+        <record id="mail_template_payment_reminder" model="mail.template">
+            <field name="name">KJR: Zahlungserinnerung Veranstaltung</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="subject">Zahlungserinnerung: {{ object.name }}</field>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="partner_to">{{ object.partner_id.id }}</field>
+            <field name="body_html" type="html">
+                <div style="margin:0px;padding:0px;font-size:13px;">
+                    <p>Hallo <t t-out="object.partner_id.name or ''"/>,</p>
+                    <p>für Ihre Anmeldung
+                        <t t-foreach="object.order_line.filtered('event_id')" t-as="line">
+                            <strong t-out="line.event_id.name"/><t t-if="not line_last">, </t>
+                        </t>
+                        (Referenz <strong t-out="object.name"/>) haben wir bisher keinen
+                        Zahlungseingang über <t t-out="format_amount(object.amount_total, object.currency_id)"/> festgestellt.</p>
+                    <p>Die Anmeldung ist erst nach Zahlungseingang bestätigt. Bitte überweisen Sie
+                        den Betrag mit der Referenz <strong t-out="object.name"/> als Verwendungszweck<t t-if="object.kjr_payment_release_date"> bis
+                        <t t-out="format_date(object.kjr_payment_release_date)"/></t>. Geht bis dahin keine
+                        Zahlung ein, wird der Platz freigegeben und die Anmeldung storniert.</p>
+                    <p>Haben Sie bereits bezahlt, betrachten Sie diese E-Mail bitte als gegenstandslos.</p>
+                    <p>Mit freundlichen Grüßen<br/><t t-out="object.company_id.name"/></p>
+                </div>
+            </field>
+            <field name="lang">{{ object.partner_id.lang or 'de_DE' }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+    </data>
+</odoo>

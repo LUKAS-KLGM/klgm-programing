@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- 19.0.2.2.0 (Termin 13.10.2026): Zahlungsablauf im Block "Zahlung" der
+         Einstellungen KJR Veranstaltungen (kjr_event). -->
+    <record id="res_config_settings_view_form_kjr_event_shop" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.kjr.event.shop</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="kjr_event.res_config_settings_view_form_kjr_event"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='kjr_event_payment']" position="inside">
+                <setting id="kjr_event_shop_invoice_on_confirm" string="Rechnung automatisch"
+                         help="Beim Bestätigen des Auftrags (nach Zahlungseingang) entsteht die Rechnung. Versendet wird nichts.">
+                    <field name="kjr_event_shop_invoice_on_confirm"/>
+                </setting>
+                <setting id="kjr_event_shop_payment_timing" string="Zahlungserinnerung und Platzfreigabe"
+                         help="Genau eine Erinnerung, danach wird der Platz freigegeben und die Warteliste rückt nach. 0 = aus. Zusätzlich muss die geplante Aktion „KJR Veranstaltung: Zahlungserinnerung und Platzfreigabe“ aktiv sein.">
+                    <div class="row mt-2">
+                        <label for="kjr_event_shop_payment_reminder_days" class="col-lg-6 o_light_label"/>
+                        <field name="kjr_event_shop_payment_reminder_days" class="col-lg-2"/>
+                    </div>
+                    <div class="row">
+                        <label for="kjr_event_shop_payment_release_days" class="col-lg-6 o_light_label"/>
+                        <field name="kjr_event_shop_payment_release_days" class="col-lg-2"/>
+                    </div>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Auftrag: Zahlungsfrist sichtbar (Reiter "Weitere Informationen"). -->
+    <record id="view_order_form_kjr_payment" model="ir.ui.view">
+        <field name="name">sale.order.form.kjr.payment</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='other_information']//group[@name='sale_info']" position="inside">
+                <field name="kjr_payment_requested_date" invisible="not kjr_payment_requested_date"/>
+                <field name="kjr_payment_reminder_date" invisible="not kjr_payment_reminder_date"/>
+                <field name="kjr_payment_release_date" invisible="not kjr_payment_release_date"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

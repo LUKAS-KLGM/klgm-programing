@@ -13,12 +13,25 @@ from odoo.addons.website_event.controllers.main import WebsiteEventController
 _logger = logging.getLogger(__name__)
 
 
-# Felder, die im Anmeldeformular je Teilnehmer/in erfasst werden können.
+# Felder, die im Anmeldeformular je Teilnehmer:in erfasst werden können.
+# 19.0.5.11.0 (Termin 13.10.2026): Anschrift, Medikamente/Allergien,
+# Notfalltelefon und Anschrift der Erziehungsberechtigten. "Ernährung"
+# (dietary_*) steht nicht mehr im Formular; die Felder bleiben lesbar, damit
+# ein alter, noch offener Dialog nichts verliert.
 KJR_VALUE_FIELDS = (
     'birthdate', 'guardian_name', 'guardian_phone', 'guardian_email',
-    'emergency_contact', 'dietary_requirements', 'dietary_note', 'notes',
-    'kjr_gender',
+    'emergency_contact', 'kjr_emergency_phone', 'dietary_requirements', 'dietary_note',
+    'notes', 'kjr_gender', 'kjr_street', 'kjr_zip', 'kjr_city', 'kjr_medical_note',
+    'guardian_street', 'guardian_zip', 'guardian_city',
 )
+# Angaben der Erziehungsberechtigten: nur bei Minderjährigen gespeichert
+# (Datenminimierung), bei gleicher Anschrift ohne eigene Anschrift.
+KJR_GUARDIAN_FIELDS = ('guardian_name', 'guardian_phone', 'guardian_email',
+                       'guardian_street', 'guardian_zip', 'guardian_city')
+KJR_GUARDIAN_ADDRESS_FIELDS = ('guardian_street', 'guardian_zip', 'guardian_city')
+# Bestätigungen, einmal je Formular (Feldnamen ohne Bindestrich, siehe
+# views/website_event_templates.xml, registration_attendee_details_kjr_confirmations).
+KJR_CONFIRMATION_FIELDS = ('kjr_privacy_accepted', 'kjr_terms_accepted', 'kjr_data_confirmed')
 
 # Fehlercodes der Einwilligungs-Vorprüfung (19.0.5.9.0). Sie werden wie die
 # Kerncodes über ?registration_error_code=... an die Anmeldeseite gegeben und
@@ -28,7 +41,7 @@ KJR_ERROR_BIRTHDATE_MISSING = 'kjr_birthdate_missing'
 KJR_ERROR_CONSENT_MISSING = 'kjr_consent_missing'
 KJR_ERROR_GUARDIAN_EMAIL_MISSING = 'kjr_guardian_email_missing'
 # 19.0.5.10.0: im Verfahren 'sign' übernimmt die Einwilligung (Odoo Sign,
-# Vorlage v2 von kjr_event_sign) den Namen der/des Erziehungsberechtigten
+# Vorlage v2 von kjr_event_sign) den Namen der Erziehungsberechtigten
 # schreibgeschützt aus der Anmeldung. Fehlt er, könnten die Eltern ihn im
 # Formular nicht nachtragen.
 KJR_ERROR_GUARDIAN_NAME_MISSING = 'kjr_guardian_name_missing'
@@ -36,6 +49,14 @@ KJR_ERROR_GUARDIAN_NAME_MISSING = 'kjr_guardian_name_missing'
 # (gemeldeter Fall). Die Einwilligung trüge sonst den Kindernamen als
 # unterschreibende Person.
 KJR_ERROR_GUARDIAN_NAME_IS_CHILD = 'kjr_guardian_name_is_child'
+# 19.0.5.11.0: Anmeldeformular neu (Termin 13.10.2026).
+KJR_ERROR_REQUIRED_MISSING = 'kjr_required_missing'
+KJR_ERROR_GUARDIAN_MISSING = 'kjr_guardian_missing'
+KJR_ERROR_CONTACT_MISSING = 'kjr_contact_missing'
+KJR_ERROR_CONFIRMATIONS_MISSING = 'kjr_confirmations_missing'
+KJR_ERROR_AGE_OUT_OF_RANGE = 'kjr_age_out_of_range'
+KJR_ERROR_ZIP_NOT_ALLOWED = 'kjr_zip_not_allowed'
+KJR_ERROR_NOT_STARTED = 'kjr_registration_not_started'
 
 # Auswahlfelder unter KJR_VALUE_FIELDS. Ihr Wert kommt aus einem <select> des
 # öffentlichen Formulars und wird deshalb VOR dem Schreiben gegen den
@@ -149,12 +170,12 @@ class KjrWebsiteEventController(WebsiteEventController):
         return value in {key for key, _label in (info.get('selection') or [])}
 
     def _kjr_extract_attendee_values(self, registrations):
-        """Sammelt die KJR-Felder je Teilnehmer/in aus den geposteten Formulardaten.
+        """Sammelt die KJR-Felder je Teilnehmer:in aus den geposteten Formulardaten.
 
         Das Frontend liefert die Felder unter ``<counter>-<feldname>`` (z. B. ``1-birthdate``).
         Rückgabe: Liste von Tupeln ``(counter, werte)`` in Formularreihenfolge.
         """
-        # Anzahl Teilnehmer/innen anhand der Standardfelder bestimmen.
+        # Anzahl Teilnehmer:innen anhand der Standardfelder bestimmen.
         counters = sorted({
             int(key.split('-', 1)[0])
             for key in registrations
@@ -177,7 +198,7 @@ class KjrWebsiteEventController(WebsiteEventController):
                     # oder eingeschleuste Inhalte tragen).
                     _logger.warning(
                         'Unbekannter Auswahlwert im oeffentlichen Anmeldeformular '
-                        'fuer Feld %s (Teilnehmer/in %d) verworfen.', field, counter)
+                        'fuer Feld %s (Teilnehmer:in %d) verworfen.', field, counter)
                     continue
                 if field == 'guardian_email':
                     # Adresse für die Unterschriftsanfrage: normalisiert
@@ -187,14 +208,41 @@ class KjrWebsiteEventController(WebsiteEventController):
                     if not value:
                         _logger.info(
                             'Ungueltige E-Mail der Erziehungsberechtigten im oeffentlichen '
-                            'Anmeldeformular verworfen (Teilnehmer/in %d).', counter)
+                            'Anmeldeformular verworfen (Teilnehmer:in %d).', counter)
                         continue
                 values[field] = value
+            if prefix + 'guardian_same_address' in registrations or values.get('guardian_name'):
+                values['guardian_same_address'] = _truthy(
+                    registrations.get(prefix + 'guardian_same_address'))
+                if values['guardian_same_address']:
+                    for field in KJR_GUARDIAN_ADDRESS_FIELDS:
+                        values.pop(field, None)
             consent_key = prefix + 'parental_consent'
             if consent_key in registrations:
                 values['parental_consent'] = _truthy(registrations[consent_key])
+            confirmations = {field: True for field in KJR_CONFIRMATION_FIELDS
+                             if _truthy(registrations.get(field))}
+            if confirmations:
+                values.update(confirmations)
+                # Keine elektronische Unterschrift (Entscheidung 13.10.2026):
+                # der Pflicht-Haken zu den Teilnahmebedingungen enthält die
+                # Einwilligung der Erziehungsberechtigten in die Teilnahme
+                # (Beschriftung im Formular). Im Verfahren 'sign' verwirft
+                # _kjr_apply_consent_mode den Wert wieder.
+                if confirmations.get('kjr_terms_accepted'):
+                    values.setdefault('parental_consent', True)
             result.append((counter, values))
         return result
+
+    def _kjr_drop_adult_guardian_values(self, event, kjr_values):
+        """Angaben der Erziehungsberechtigten nur bei Minderjährigen speichern."""
+        for _counter, values in kjr_values:
+            age = event.sudo()._kjr_age_at_begin(values.get('birthdate')) \
+                if values.get('birthdate') else None
+            if age is not None and age >= 18:
+                for field in KJR_GUARDIAN_FIELDS + ('guardian_same_address',):
+                    values.pop(field, None)
+        return kjr_values
 
     def _kjr_extract_attendee_match_values(self, registrations):
         """Sammelt je Zähler die Kernfelder, an denen die Anmeldung wiedererkannt wird.
@@ -303,7 +351,7 @@ class KjrWebsiteEventController(WebsiteEventController):
         """Prüft das Formular VOR dem Anlegen; Rückgabe: Fehlercode oder None.
 
         Nur bei Veranstaltungen mit Einwilligungsverfahren ('checkbox' oder
-        'sign'). Je Teilnehmer/in:
+        'sign'). Je Teilnehmer:in:
 
         * Geburtsdatum fehlt oder ist ungültig: ``kjr_birthdate_missing``
           (ohne Geburtsdatum lässt sich nicht entscheiden, ob eine Einwilligung
@@ -348,7 +396,10 @@ class KjrWebsiteEventController(WebsiteEventController):
             if age is None or age >= 18:
                 continue
             if mode == 'checkbox':
-                if not _truthy(post.get(prefix + 'parental_consent')):
+                # 19.0.5.11.0: der Pflicht-Haken zu den Teilnahmebedingungen
+                # enthält die Einwilligung (keine elektronische Unterschrift).
+                if not (_truthy(post.get(prefix + 'parental_consent'))
+                        or _truthy(post.get('kjr_terms_accepted'))):
                     return KJR_ERROR_CONSENT_MISSING
             else:
                 guardian = email_normalize(post.get(prefix + 'guardian_email') or '')
@@ -362,6 +413,100 @@ class KjrWebsiteEventController(WebsiteEventController):
                 if child_name and guardian_name == child_name:
                     return KJR_ERROR_GUARDIAN_NAME_IS_CHILD
         return None
+
+    @staticmethod
+    def _kjr_parse_birthdate(raw):
+        try:
+            return fields.Date.to_date(raw) if raw else None
+        except (TypeError, ValueError):
+            return None
+
+    def _kjr_form_precheck(self, event, post):
+        """Prüft das neue Anmeldeformular VOR dem Anlegen (19.0.5.11.0).
+
+        Rückgabe: Fehlercode oder None. Maßgeblich ist dieser Server; das
+        Formular-Skript blendet nur ein und aus. Je Teilnehmer:in:
+
+        * Geschlecht (gültiger Wert), Geburtsdatum, Anschrift,
+          Medikamente/Allergien und Notfallkontakt (Name, Telefon) Pflicht;
+        * unter 18 am Beginntag: Name, gültige E-Mail und Telefon der
+          Erziehungsberechtigten, bei abweichender Anschrift auch diese;
+        * ab 18: E-Mail und Telefon der Teilnehmer:in (ersatzweise die Angaben
+          aus dem Block Erziehungsberechtigte, falls das Skript nicht lief);
+        * Mindest-/Höchstalter mit Alterskulanz, wenn die Altersgruppe
+          erzwungen wird; zugelassene Postleitzahl.
+
+        Einmal je Formular: "Anmeldung ab" erreicht und die drei Haken.
+        """
+        event_sudo = event.sudo()
+        if not event_sudo.event_registrations_started:
+            return KJR_ERROR_NOT_STARTED
+        counters = self._kjr_form_counters(post)
+        if not counters:
+            return None
+        if not all(_truthy(post.get(field)) for field in KJR_CONFIRMATION_FIELDS):
+            return KJR_ERROR_CONFIRMATIONS_MISSING
+        text = lambda key: ' '.join(str(post.get(key) or '').split())  # noqa: E731
+        for counter in counters:
+            prefix = '%d-' % counter
+            birthdate = self._kjr_parse_birthdate(post.get(prefix + 'birthdate'))
+            if not birthdate:
+                return KJR_ERROR_BIRTHDATE_MISSING
+            gender = post.get(prefix + 'kjr_gender')
+            if not gender or not self._kjr_valid_selection_value('kjr_gender', gender):
+                return KJR_ERROR_REQUIRED_MISSING
+            if not all(text(prefix + field) for field in (
+                    'kjr_street', 'kjr_zip', 'kjr_city', 'kjr_medical_note',
+                    'emergency_contact', 'kjr_emergency_phone')):
+                return KJR_ERROR_REQUIRED_MISSING
+            age = event_sudo._kjr_age_at_begin(birthdate)
+            if age is not None and age < 18:
+                if not (text(prefix + 'guardian_name')
+                        and email_normalize(post.get(prefix + 'guardian_email') or '')
+                        and text(prefix + 'guardian_phone')):
+                    return KJR_ERROR_GUARDIAN_MISSING
+                if not _truthy(post.get(prefix + 'guardian_same_address')) and not all(
+                        text(prefix + field) for field in KJR_GUARDIAN_ADDRESS_FIELDS):
+                    return KJR_ERROR_GUARDIAN_MISSING
+            else:
+                email = post.get(prefix + 'kjr_participant_email') \
+                    or post.get(prefix + 'guardian_email') or ''
+                phone = text(prefix + 'kjr_participant_phone') or text(prefix + 'guardian_phone')
+                if not email_normalize(email) or not phone:
+                    return KJR_ERROR_CONTACT_MISSING
+            if event_sudo.kjr_enforce_age_range and event_sudo._kjr_age_check(birthdate):
+                return KJR_ERROR_AGE_OUT_OF_RANGE
+            if not event_sudo._kjr_zip_allowed(text(prefix + 'kjr_zip')):
+                return KJR_ERROR_ZIP_NOT_ALLOWED
+        return None
+
+    def _kjr_prepare_contact_post(self, event, post):
+        """Setzt E-Mail und Telefon der Anmeldung aus dem passenden Block.
+
+        Die Kernfragen E-Mail/Telefon werden je Teilnehmer:in nicht mehr
+        angezeigt. Damit die Anmeldung (Bestätigung, Teilnehmerliste) trotzdem
+        E-Mail und Telefon trägt, schreibt diese Methode sie als Kernfelder
+        ``<n>-email``/``<n>-phone`` in den POST (``_process_attendees_form``
+        übernimmt zweiteilige Schlüssel erlaubter Felder unmittelbar):
+        unter 18 die Angaben der Erziehungsberechtigten, sonst die der
+        Teilnehmer:in. Bereits gesendete Werte (ältere Formulare) bleiben.
+        """
+        event_sudo = event.sudo()
+        for counter in self._kjr_form_counters(post):
+            prefix = '%d-' % counter
+            birthdate = self._kjr_parse_birthdate(post.get(prefix + 'birthdate'))
+            age = event_sudo._kjr_age_at_begin(birthdate) if birthdate else None
+            if age is not None and age >= 18:
+                email = post.get(prefix + 'kjr_participant_email') or post.get(prefix + 'guardian_email')
+                phone = post.get(prefix + 'kjr_participant_phone') or post.get(prefix + 'guardian_phone')
+            else:
+                email = post.get(prefix + 'guardian_email')
+                phone = post.get(prefix + 'guardian_phone')
+            if email and not post.get(prefix + 'email'):
+                post[prefix + 'email'] = (email_normalize(email) or email).strip()
+            if phone and not post.get(prefix + 'phone'):
+                post[prefix + 'phone'] = str(phone).strip()
+        return post
 
     def _kjr_apply_consent_mode(self, kjr_values, mode):
         """Passt die Formularwerte an das Einwilligungsverfahren an (in place).
@@ -479,6 +624,8 @@ class KjrWebsiteEventController(WebsiteEventController):
                 continue
             assigned.add(found.id)
             found.write(values)
+            # Rechnungs-/Kontaktpartner mit Anschrift (19.0.5.11.0). Wirft nie.
+            found._kjr_apply_invoice_partner()
         return candidates
 
     def _create_attendees_from_registration_post(self, event, registration_data):
@@ -547,15 +694,17 @@ class KjrWebsiteEventController(WebsiteEventController):
             return request.redirect(
                 '/event/%s/register?registration_error_code=recaptcha_failed' % event.id)
 
-        code = self._kjr_consent_precheck(event, post)
+        code = self._kjr_form_precheck(event, post) or self._kjr_consent_precheck(event, post)
         if code:
             return request.redirect(
                 '/event/%s/register?registration_error_code=%s' % (event.id, code))
 
+        post = self._kjr_prepare_contact_post(event, dict(post))
         mode = event.sudo().kjr_consent_mode
         # Roh-Post sichern, bevor die Standardverarbeitung läuft.
         kjr_values = self._kjr_apply_consent_mode(
-            self._kjr_extract_attendee_values(post), mode)
+            self._kjr_drop_adult_guardian_values(
+                event, self._kjr_extract_attendee_values(post)), mode)
         match_values = self._kjr_extract_attendee_match_values(post)
 
         if mode == 'sign':

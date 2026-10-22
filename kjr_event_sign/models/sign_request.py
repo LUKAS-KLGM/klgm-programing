@@ -20,7 +20,7 @@ An der Anmeldung wäre es für jede Person lesbar, die die Anmeldung lesen darf
 (etwa die Registrierungstheke), und umginge den Feldschutz der
 Erziehungsberechtigten-Daten in kjr_event (KJR_SENSITIVE_DATA_GROUP). Der
 _sign-Hook entfernt diese Kopien deshalb wieder. Den Nachweis hält die
-sign.request selbst (Smart-Button nur für Sign-Benutzer/innen).
+sign.request selbst (Smart-Button nur für Sign-Benutzer:innen).
 """
 import logging
 

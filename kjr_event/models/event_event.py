@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """KJR-spezifische Erweiterung der Veranstaltung (Ferienprogramm, Schulungen)."""
 import logging
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 
 from markupsafe import Markup
 
@@ -20,14 +21,52 @@ class EventEvent(models.Model):
     _inherit = 'event.event'
 
     is_kjr = fields.Boolean(string='KJR-Veranstaltung')
+    # Termin 13.10.2026 / Theresa 15.10.: nur noch zwei Einordnungen. Die
+    # früheren Werte juleica_course, rescue_course und other werden per
+    # Migration (migrations/19.0.5.11.0/pre-migration.py) auf 'training'
+    # umgeschlüsselt. Ob eine Aus- und Weiterbildung eine Juleica-Ausbildung
+    # ist, steht seitdem im eigenen Haken is_juleica_course.
     kjr_event_type = fields.Selection([
         ('ferienprogramm', 'Ferienprogramm'),
-        ('juleica_course', 'Juleica-Schulung'),
-        ('rescue_course', 'Rettungsschwimmer-Kurs'),
-        ('other', 'Sonstige'),
-    ], string='KJR-Art')
+        ('training', 'Aus- und Weiterbildungen'),
+    ], string='Einordnung')
     kjr_min_age = fields.Integer(string='Mindestalter', help='0 = keine Prüfung.')
     kjr_max_age = fields.Integer(string='Höchstalter', help='0 = keine Obergrenze.')
+    # Termin 13.10.2026: Alterskulanz je Veranstaltung (typisch 6 Wochen bis 3
+    # Monate), ohne Anfrage-Knopf. Wirkt beim Mindestalter nach vorn (die
+    # Person darf das Mindestalter bis zu so viele Tage NACH Beginn erreichen)
+    # und beim Höchstalter nach hinten (sie darf es bis zu so viele Tage VOR
+    # Beginn überschritten haben). Das gespeicherte Alter (kjr_age) bleibt das
+    # Alter am Beginntag; die Kulanz verschiebt nur die Prüfung.
+    kjr_age_tolerance_days = fields.Integer(
+        string='Alterskulanz (Tage)',
+        help='Wie viele Tage beim Mindest- und Höchstalter zugunsten der '
+             'Teilnehmer:innen nachgesehen werden, z. B. 42 (6 Wochen) bis 90 '
+             '(3 Monate). 0 = keine Kulanz.')
+    # Termin 13.10.2026: zugelassene Postleitzahlen. Geprüft wird die PLZ der
+    # Anschrift der Teilnehmer:in im Anmeldeformular.
+    kjr_zip_restricted = fields.Boolean(
+        string='Nur zugelassene Postleitzahlen',
+        help='Ein: Online-Anmeldungen sind nur mit einer Postleitzahl der '
+             'Teilnehmer:in aus der Standardliste (Einstellungen → KJR '
+             'Veranstaltungen) oder aus den zusätzlichen Postleitzahlen dieser '
+             'Veranstaltung möglich. Sind beide Listen leer, gibt es keine '
+             'Einschränkung.')
+    kjr_zip_extra = fields.Text(
+        string='Zusätzliche Postleitzahlen',
+        help='Weitere zugelassene Postleitzahlen nur für diese Veranstaltung, '
+             'getrennt durch Komma, Leerzeichen oder Zeilenumbruch.')
+    # Termin 13.10.2026: veröffentlichen ohne Anmeldung. Bis zu diesem
+    # Zeitpunkt ist die Seite sichtbar, angemeldet werden kann noch nicht.
+    # Technisch über das Kernfeld start_sale_datetime (siehe
+    # _compute_start_sale_date): der Kern zeigt dann statt des Anmeldeknopfs
+    # den Hinweis "Anmeldung ab ..." und rechnet event_registrations_open.
+    kjr_registration_start = fields.Datetime(
+        string='Anmeldung ab',
+        help='Vor diesem Zeitpunkt ist die Veranstaltung auf der Website '
+             'sichtbar, statt des Anmeldeknopfs steht "Anmeldung ab <Datum>". '
+             'Leer = Anmeldung sofort möglich (sofern Tickets nichts anderes '
+             'vorgeben).')
     # E13 – Mindestanzahl Teilnehmer (Parität zum Altsystem; Odoo kennt nativ nur ein Maximum)
     kjr_seats_min = fields.Integer(
         string='Mindestanzahl Teilnehmer',
@@ -72,7 +111,13 @@ class EventEvent(models.Model):
         help='Bei Maßnahmen für Minderjährige: Einwilligung der Erziehungsberechtigten ist Pflicht. '
              'Erfassung auf der Website am besten über Veranstaltungs-Fragen (event.question) abbilden.',
     )
-    is_juleica_course = fields.Boolean(string='Juleica-Ausbildung', compute='_compute_is_juleica', store=True)
+    # Seit 19.0.5.11.0 ein eigener Haken (vorher aus kjr_event_type ==
+    # 'juleica_course' berechnet). Die Spalte bleibt beim Update erhalten,
+    # Bestandsveranstaltungen behalten ihren Wert.
+    is_juleica_course = fields.Boolean(
+        string='Juleica-Ausbildung',
+        help='Aus- und Weiterbildung, die zur Juleica führt: Teilnahmebescheinigung '
+             'als Schulungsnachweis, Juleica-Ausstellung an der Anmeldung.')
 
     # Einwilligung per digitaler Unterschrift (19.0.5.9.0): Verfahren, mit dem die
     # Einwilligung der Erziehungsberechtigten bei der Online-Anmeldung eingeholt
@@ -209,10 +254,91 @@ class EventEvent(models.Model):
         start = self.date_begin.date()
         return start.year - bd.year - ((start.month, start.day) < (bd.month, bd.day))
 
-    @api.depends('kjr_event_type')
-    def _compute_is_juleica(self):
-        for rec in self:
-            rec.is_juleica_course = rec.kjr_event_type == 'juleica_course'
+    # ------------------------------------------------------------------
+    # Alterskulanz, Postleitzahlen, Anmeldung ab (Termin 13.10.2026)
+    # ------------------------------------------------------------------
+    def _kjr_age_at(self, birthdate, day):
+        """Alter in vollen Jahren an einem Stichtag (Date)."""
+        bd = fields.Date.to_date(birthdate)
+        return day.year - bd.year - ((day.month, day.day) < (bd.month, bd.day))
+
+    def _kjr_age_check(self, birthdate):
+        """Prüft das Geburtsdatum gegen Mindest-/Höchstalter mit Alterskulanz.
+
+        Rückgabe: None (passt oder nicht prüfbar), 'too_young' oder 'too_old'.
+        Mindestalter: erreicht bis Beginntag + Kulanz. Höchstalter: noch nicht
+        überschritten am Beginntag - Kulanz. Einzige Stelle der Prüfung für
+        Formular, Hinweis "Außerhalb Altersgruppe" und die harte Prüfung.
+        """
+        self.ensure_one()
+        if not birthdate or not self.date_begin:
+            return None
+        start = self.date_begin.date()
+        tolerance = timedelta(days=max(self.kjr_age_tolerance_days or 0, 0))
+        if self.kjr_min_age and self._kjr_age_at(birthdate, start + tolerance) < self.kjr_min_age:
+            return 'too_young'
+        if self.kjr_max_age and self._kjr_age_at(birthdate, start - tolerance) > self.kjr_max_age:
+            return 'too_old'
+        return None
+
+    @api.model
+    def _kjr_parse_zips(self, text):
+        """Postleitzahlen aus einem Freitext (Komma, Leerzeichen, Zeilen)."""
+        return {part for part in re.split(r'[\s,;]+', text or '') if part}
+
+    @api.model
+    def _kjr_default_zips(self):
+        """Globale Standardliste (Systemparameter kjr_event.allowed_zips)."""
+        return self._kjr_parse_zips(
+            self.env['ir.config_parameter'].sudo().get_param('kjr_event.allowed_zips', ''))
+
+    def _kjr_allowed_zips(self):
+        """Zugelassene PLZ dieser Veranstaltung oder None (= keine Einschränkung)."""
+        self.ensure_one()
+        if not self.kjr_zip_restricted:
+            return None
+        allowed = self._kjr_default_zips() | self._kjr_parse_zips(self.kjr_zip_extra)
+        return allowed or None
+
+    def _kjr_zip_allowed(self, zip_code):
+        self.ensure_one()
+        allowed = self._kjr_allowed_zips()
+        if allowed is None:
+            return True
+        return (zip_code or '').strip().replace(' ', '') in allowed
+
+    def _kjr_fee_taxes(self):
+        """Steuer auf Teilnahmegebühren dieser Veranstaltung (leer = Produktsteuer).
+
+        Termin 13.10.2026: 0 % Umsatzsteuer auf Freizeiten und Schulungen
+        (Jugendarbeit). Welche Steuer das ist, legt die Buchhaltung bzw. die
+        Steuerberatung fest; sie wird in den Einstellungen gewählt
+        (Systemparameter kjr_event.fee_tax_id) und gilt nur für
+        KJR-Veranstaltungen und nur, wenn sie aktiv ist und zur Firma passt.
+        """
+        self.ensure_one()
+        Tax = self.env['account.tax'].sudo()
+        if not self.is_kjr:
+            return Tax
+        raw = self.env['ir.config_parameter'].sudo().get_param('kjr_event.fee_tax_id')
+        if not raw or not str(raw).strip().isdigit():
+            return Tax
+        tax = Tax.browse(int(raw)).exists()
+        company = self.company_id or self.env.company
+        if not tax or not tax.active or tax.type_tax_use != 'sale' \
+                or (tax.company_id and tax.company_id not in company.parent_ids):
+            return Tax
+        return tax
+
+    @api.depends('kjr_registration_start')
+    def _compute_start_sale_date(self):
+        """Kern: früheste Verkaufsfreigabe der Tickets. Zusätzlich gilt
+        "Anmeldung ab" der Veranstaltung, wenn es später liegt."""
+        super()._compute_start_sale_date()
+        for event in self:
+            start = event.kjr_registration_start
+            if start and (not event.start_sale_datetime or start > event.start_sale_datetime):
+                event.start_sale_datetime = start
 
     @api.depends('kjr_seats_min', 'seats_taken')
     def _compute_kjr_seats_min_reached(self):
@@ -421,11 +547,15 @@ class EventEvent(models.Model):
         # Anders als kjr_age braucht kjr_gender dafür KEINEN Snapshot: es ist ein
         # einfaches Selection-Feld und kein stored compute auf birthdate, wird von
         # der Anonymisierung also gar nicht erst neu berechnet.
+        #   (19.0.5.11.0) Anschriften, Medikamente/Allergien, Notfalltelefon und
+        #   der Zeiger auf den Rechnungskontakt (res.partner selbst bleibt, s. u.)
         blank_fields = (
             'birthdate', 'guardian_name', 'guardian_phone', 'guardian_email',
-            'emergency_contact',
+            'emergency_contact', 'kjr_emergency_phone',
+            'kjr_street', 'kjr_zip', 'kjr_city', 'kjr_medical_note',
+            'guardian_street', 'guardian_zip', 'guardian_city',
             'dietary_requirements', 'dietary_note', 'notes',
-            'email', 'phone', 'mobile', 'partner_id',
+            'email', 'phone', 'mobile', 'partner_id', 'kjr_invoice_partner_id',
         )
         vals = {fname: False for fname in blank_fields if fname in reg_fields}
         vals['kjr_data_anonymized'] = True

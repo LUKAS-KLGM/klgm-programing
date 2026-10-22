@@ -15,7 +15,7 @@
     <data noupdate="1">
 
         <record id="sign_item_role_guardian" model="sign.item.role">
-            <field name="name">Erziehungsberechtigte/r</field>
+            <field name="name">Erziehungsberechtigte</field>
             <field name="change_authorized" eval="True"/>
         </record>
 
@@ -37,13 +37,13 @@
             <field name="sequence" eval="1"/>
         </record>
 
-        <!-- Name des Kindes: x 20.0 mm, y 80.0 mm, 170.0 x 8.0 mm -->
+        <!-- Name der Teilnehmer:in: x 20.0 mm, y 80.0 mm, 170.0 x 8.0 mm -->
         <record id="item_child_name" model="sign.item">
             <field name="document_id" ref="document_consent"/>
             <field name="type_id" ref="sign.sign_item_type_text"/>
             <field name="responsible_id" ref="sign_item_role_guardian"/>
             <field name="required" eval="True"/>
-            <field name="name">Name des Kindes</field>
+            <field name="name">Name der Teilnehmer:in</field>
             <field name="page" eval="1"/>
             <field name="posX" eval="0.095"/>
             <field name="posY" eval="0.269"/>

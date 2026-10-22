@@ -6,7 +6,7 @@ from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 from markupsafe import Markup
 
-from odoo import api, fields, models, _
+from odoo import Command, api, fields, models, _
 from odoo.exceptions import AccessError, ValidationError, UserError
 from odoo.tools import email_normalize
 
@@ -87,7 +87,7 @@ class EventRegistration(models.Model):
         groups=KJR_SENSITIVE_DATA_GROUP,
         help='Nur für die Betreuung/Leitung der Freizeiten sichtbar. Das daraus '
              'abgeleitete Alter (Feld "Alter (bei Beginn)") bleibt für alle '
-             'Veranstaltungs-Benutzer/innen sichtbar.',
+             'Veranstaltungs-Benutzer:innen sichtbar.',
     )
     has_birthdate = fields.Boolean(
         string='Geburtsdatum erfasst', compute='_compute_kjr_age', store=True,
@@ -115,7 +115,8 @@ class EventRegistration(models.Model):
         ('diverse', 'divers'),
         ('no_answer', 'keine Angabe'),
     ], string='Geschlecht',
-        help='Freiwillige Angabe. Sie wird ausschließlich für die aggregierte '
+        help='Im Online-Formular seit 19.0.5.11.0 Pflicht (Termin 13.10.2026), mit der '
+             'Stufe "keine Angabe". Wird ausschließlich für die aggregierte '
              'Meldung an das Landesamt gezählt und nie einzeln ausgewiesen. '
              '"keine Angabe" bedeutet: bewusst nicht angegeben; ein leeres Feld '
              'bedeutet: nicht erfasst.',
@@ -160,29 +161,67 @@ class EventRegistration(models.Model):
         compute='_compute_kjr_consent_recipient_masked', compute_sudo=True,
         groups=KJR_SENSITIVE_DATA_GROUP)
     guardian_name = fields.Char(
-        string='Erziehungsberechtigte/r',
+        string='Name Erziehungsberechtigte',
         groups=KJR_SENSITIVE_DATA_GROUP,
         help='Kontaktdaten der Erziehungsberechtigten, nur für die Betreuung/Leitung '
              'der Freizeiten sichtbar.',
     )
     guardian_phone = fields.Char(
-        string='Telefon Erziehungsberechtigte/r',
+        string='Telefon Erziehungsberechtigte',
         groups=KJR_SENSITIVE_DATA_GROUP,
         help='Kontaktdaten der Erziehungsberechtigten, nur für die Betreuung/Leitung '
              'der Freizeiten sichtbar.',
     )
     guardian_email = fields.Char(
-        string='E-Mail Erziehungsberechtigte/r',
+        string='E-Mail Erziehungsberechtigte',
         groups=KJR_SENSITIVE_DATA_GROUP,
-        help='Empfänger der Unterschriftsanfrage zur Einwilligung. '
-             'Leer = E-Mail der Anmeldung.',
+        help='E-Mail-Adresse der Erziehungsberechtigten (Rechnung, Bestätigung, '
+             'ggf. Einwilligung). Leer = E-Mail der Anmeldung.',
     )
     emergency_contact = fields.Char(
-        string='Notfallkontakt',
+        string='Notfallkontakt: Name',
         groups=KJR_SENSITIVE_DATA_GROUP,
         help='Nur für die Betreuung/Leitung der Freizeiten sichtbar; wird ausschließlich '
              'für den Notfall während der Maßnahme benötigt.',
     )
+
+    # ------------------------------------------------------------------
+    # Anmeldeformular neu (Termin 13.10.2026, Rückmeldung Theresa 14.10.)
+    # Alle personenbezogenen Angaben feldgeschützt wie die übrigen (K3).
+    # ------------------------------------------------------------------
+    kjr_emergency_phone = fields.Char(
+        string='Notfallkontakt: Telefon', groups=KJR_SENSITIVE_DATA_GROUP)
+    kjr_street = fields.Char(
+        string='Straße und Hausnummer (Teilnehmer:in)', groups=KJR_SENSITIVE_DATA_GROUP)
+    kjr_zip = fields.Char(string='PLZ (Teilnehmer:in)', groups=KJR_SENSITIVE_DATA_GROUP)
+    kjr_city = fields.Char(string='Ort (Teilnehmer:in)', groups=KJR_SENSITIVE_DATA_GROUP)
+    kjr_medical_note = fields.Text(
+        string='Medikamente/Allergien',
+        groups=KJR_SENSITIVE_DATA_GROUP,
+        help='Pflichtangabe im Anmeldeformular ("keine", wenn nichts zu beachten '
+             'ist). Gesundheitsdaten: nur für die Betreuung/Leitung sichtbar.')
+    guardian_same_address = fields.Boolean(
+        string='Gleiche Anschrift wie Teilnehmer:in', default=True,
+        groups=KJR_SENSITIVE_DATA_GROUP)
+    guardian_street = fields.Char(
+        string='Straße und Hausnummer (Erziehungsberechtigte)', groups=KJR_SENSITIVE_DATA_GROUP)
+    guardian_zip = fields.Char(string='PLZ (Erziehungsberechtigte)', groups=KJR_SENSITIVE_DATA_GROUP)
+    guardian_city = fields.Char(string='Ort (Erziehungsberechtigte)', groups=KJR_SENSITIVE_DATA_GROUP)
+    # Bestätigungen aus dem Anmeldeformular (Nachweis, keine Gesundheits- oder
+    # Kontaktdaten, deshalb ohne Feldschutz). Gesetzt nur vom Formular.
+    kjr_privacy_accepted = fields.Boolean(
+        string='Datenschutzhinweise bestätigt', readonly=True, copy=False)
+    kjr_terms_accepted = fields.Boolean(
+        string='Teilnahmebedingungen akzeptiert', readonly=True, copy=False)
+    kjr_data_confirmed = fields.Boolean(
+        string='Daten als aktuell bestätigt', readonly=True, copy=False)
+    # Rechnungs-/Kontaktpartner (Termin 13.10.2026): bei Minderjährigen die
+    # Erziehungsberechtigten, bei Volljährigen die Teilnehmer:in, jeweils mit
+    # Anschrift. Gesetzt bei der Online-Anmeldung (_kjr_apply_invoice_partner).
+    kjr_invoice_partner_id = fields.Many2one(
+        'res.partner', string='Rechnungsempfänger:in', copy=False, index='btree_not_null',
+        help='Kontakt mit Anschrift, an den die Rechnung geht: bei Minderjährigen die '
+             'Erziehungsberechtigten, bei Volljährigen die Teilnehmer:in selbst.')
 
     # E1/E3 – Ernährung & Bemerkungen
     # Ernährungsangabe und Freitext können Gesundheits- und Religionsdaten
@@ -207,7 +246,7 @@ class EventRegistration(models.Model):
              'Nur für die Betreuung/Leitung der Freizeiten sichtbar.',
     )
     notes = fields.Text(
-        string='Bemerkungen',
+        string='Bemerkungen, Hinweise etc.',
         groups=KJR_SENSITIVE_DATA_GROUP,
         help='Unstrukturierter Freitext, in dem erfahrungsgemäß auch Gesundheits- und '
              'Familienangaben landen. Nur für die Betreuung/Leitung der Freizeiten sichtbar.',
@@ -323,20 +362,18 @@ class EventRegistration(models.Model):
                 rec._kjr_consent_recipient_email())
 
     @api.depends('parental_consent', 'is_minor', 'kjr_age', 'has_birthdate', 'birthdate',
-                 'event_id.requires_parental_consent', 'event_id.kjr_min_age', 'event_id.kjr_max_age')
+                 'event_id.requires_parental_consent', 'event_id.kjr_min_age', 'event_id.kjr_max_age',
+                 'event_id.kjr_age_tolerance_days', 'event_id.date_begin')
     def _compute_consent_missing(self):
         for rec in self:
             ev = rec.event_id
             rec.consent_missing = bool(
                 ev.requires_parental_consent and rec.is_minor and not rec.parental_consent
             )
-            out = False
-            if rec.has_birthdate:  # Alter 0 ist gültig – nicht auf kjr_age (falsy bei 0) prüfen
-                if ev.kjr_min_age and rec.kjr_age < ev.kjr_min_age:
-                    out = True
-                elif ev.kjr_max_age and rec.kjr_age > ev.kjr_max_age:
-                    out = True
-            rec.age_out_of_range = out
+            # Alter 0 ist gültig – nicht auf kjr_age (falsy bei 0) prüfen.
+            # Seit 19.0.5.11.0 mit Alterskulanz (event.event._kjr_age_check).
+            rec.age_out_of_range = bool(
+                rec.has_birthdate and ev and ev._kjr_age_check(rec.birthdate))
 
     def _search_consent_missing(self, operator, value):
         # stored compute -> Standard-Suche reicht; expliziter Search-Hook für Robustheit.
@@ -414,16 +451,19 @@ class EventRegistration(models.Model):
             ev = rec.event_id
             if not ev.kjr_enforce_age_range or not rec.has_birthdate:
                 continue
-            if ev.kjr_min_age and rec.kjr_age < ev.kjr_min_age:
+            result = ev._kjr_age_check(rec.birthdate)
+            if result == 'too_young':
                 raise ValidationError(_(
-                    'Teilnehmer/in "%(name)s" ist mit %(age)s Jahren jünger als das Mindestalter '
-                    '(%(min)s) der Veranstaltung "%(event)s".',
-                    name=rec.name or '', age=rec.kjr_age, min=ev.kjr_min_age, event=ev.name))
-            if ev.kjr_max_age and rec.kjr_age > ev.kjr_max_age:
+                    'Teilnehmer:in "%(name)s" ist mit %(age)s Jahren jünger als das Mindestalter '
+                    '(%(min)s, Alterskulanz %(tol)s Tage) der Veranstaltung "%(event)s".',
+                    name=rec.name or '', age=rec.kjr_age, min=ev.kjr_min_age,
+                    tol=ev.kjr_age_tolerance_days or 0, event=ev.name))
+            if result == 'too_old':
                 raise ValidationError(_(
-                    'Teilnehmer/in "%(name)s" ist mit %(age)s Jahren älter als das Höchstalter '
-                    '(%(max)s) der Veranstaltung "%(event)s".',
-                    name=rec.name or '', age=rec.kjr_age, max=ev.kjr_max_age, event=ev.name))
+                    'Teilnehmer:in "%(name)s" ist mit %(age)s Jahren älter als das Höchstalter '
+                    '(%(max)s, Alterskulanz %(tol)s Tage) der Veranstaltung "%(event)s".',
+                    name=rec.name or '', age=rec.kjr_age, max=ev.kjr_max_age,
+                    tol=ev.kjr_age_tolerance_days or 0, event=ev.name))
 
     # ------------------------------------------------------------------
     # E10 – Nachweis/Bescheinigung per Mail versenden
@@ -475,21 +515,27 @@ class EventRegistration(models.Model):
                 raise UserError(_(
                     'Für die Veranstaltung "%s" ist kein Schulungsprodukt hinterlegt.',
                     rec.event_id.name))
-            partner = rec.partner_id
+            partner = rec._kjr_billing_partner()
             if not partner:
                 raise UserError(_(
                     'Anmeldung "%s" hat keinen Kontakt für die Rechnung.', rec.name or rec.id))
+            line_vals = {
+                'product_id': product.id,
+                'name': _('%(event)s: Teilnahme %(name)s',
+                          event=rec.event_id.name, name=rec.name or ''),
+                'quantity': 1.0,
+                'price_unit': product.lst_price,
+            }
+            # Umsatzsteuer auf Teilnahmegebühren (Termin 13.10.2026: 0 %),
+            # Steuer aus den Einstellungen; leer = Steuer des Produkts.
+            fee_taxes = rec.event_id._kjr_fee_taxes()
+            if fee_taxes:
+                line_vals['tax_ids'] = [Command.set(fee_taxes.ids)]
             move = self.env['account.move'].create({
                 'move_type': 'out_invoice',
                 'partner_id': partner.id,
                 'invoice_origin': rec.event_id.name,
-                'invoice_line_ids': [(0, 0, {
-                    'product_id': product.id,
-                    'name': _('%(event)s: Teilnahme %(name)s',
-                              event=rec.event_id.name, name=rec.name or ''),
-                    'quantity': 1.0,
-                    'price_unit': product.lst_price,
-                })],
+                'invoice_line_ids': [Command.create(line_vals)],
             })
             rec.kjr_training_invoice_id = move.id
             invoices |= move
@@ -691,12 +737,12 @@ class EventRegistration(models.Model):
                         'unterschriebene Anfrage selbst gesetzt.'))
                 if not self._kjr_user_has_group('event.group_event_user'):
                     raise AccessError(_(
-                        'Nur Veranstaltungs-Benutzer/innen dürfen die Herkunft der '
+                        'Nur Veranstaltungs-Benutzer:innen dürfen die Herkunft der '
                         'Einwilligung eintragen.'))
         if vals.get('parental_consent') and self.filtered('kjr_consent_hold') \
                 and not self._kjr_user_has_group('event.group_event_user'):
             raise AccessError(_(
-                'Nur Veranstaltungs-Benutzer/innen dürfen die Einwilligung für eine '
+                'Nur Veranstaltungs-Benutzer:innen dürfen die Einwilligung für eine '
                 'gesperrte Anmeldung eintragen.'))
 
     def write(self, vals):
@@ -794,7 +840,7 @@ class EventRegistration(models.Model):
             and not ('sale_order_id' in r._fields and r.sale_order_id)
             and r.event_id.training_product_id
             and r.event_id.training_product_id.lst_price > 0
-            and r.partner_id)
+            and r._kjr_billing_partner())
 
     def _kjr_auto_invoice(self):
         """Erzeugt die Schulungsrechnung automatisch; versendet sie NICHT.
@@ -1214,7 +1260,7 @@ class EventRegistration(models.Model):
         """
         if not self._kjr_user_has_group('event.group_event_user'):
             raise AccessError(_(
-                'Nur Veranstaltungs-Benutzer/innen dürfen eine Einwilligung eintragen.'))
+                'Nur Veranstaltungs-Benutzer:innen dürfen eine Einwilligung eintragen.'))
         active = self.filtered(lambda r: r.state != 'cancel')
         if not active:
             raise UserError(_(
@@ -1239,7 +1285,7 @@ class EventRegistration(models.Model):
         """
         if not self._kjr_user_has_group('event.group_event_user'):
             raise AccessError(_(
-                'Nur Veranstaltungs-Benutzer/innen dürfen die Freigabe auslösen.'))
+                'Nur Veranstaltungs-Benutzer:innen dürfen die Freigabe auslösen.'))
         active = self.filtered(
             lambda r: r.state != 'cancel' and r.kjr_consent_hold and r.parental_consent)
         if not active:
@@ -1293,3 +1339,102 @@ class EventRegistration(models.Model):
                   'siehe Aktivitäten).', count=len(held - released)),
                 notif_type='warning')
         return True
+
+    # ------------------------------------------------------------------
+    # Rechnungs-/Kontaktpartner (Termin 13.10.2026, ergänzt nach dem Termin)
+    #
+    # Bei Minderjährigen (Alter am Beginntag unter 18) gehen Rechnung und
+    # Kontakt an die Erziehungsberechtigten, bei Volljährigen an die
+    # Teilnehmer:in selbst, jeweils MIT Anschrift. Vorher legte die
+    # Gastbuchung nur einen Kontakt mit Name und E-Mail an.
+    # ------------------------------------------------------------------
+    def _kjr_invoice_partner_values(self):
+        """Werte für den Rechnungskontakt dieser Anmeldung oder None.
+
+        Liest mit sudo() (feldgeschützte Angaben; läuft auch im Website-Kontext).
+        None, wenn Name oder Anschrift fehlen: dann wird nichts angelegt.
+        """
+        self.ensure_one()
+        rec = self.sudo()
+        if rec.is_minor:
+            name = rec.guardian_name
+            email = rec.guardian_email or rec.email
+            phone = rec.guardian_phone or rec.phone
+            if rec.guardian_same_address:
+                street, zip_code, city = rec.kjr_street, rec.kjr_zip, rec.kjr_city
+            else:
+                street, zip_code, city = rec.guardian_street, rec.guardian_zip, rec.guardian_city
+        else:
+            name, email, phone = rec.name, rec.email, rec.phone
+            street, zip_code, city = rec.kjr_street, rec.kjr_zip, rec.kjr_city
+        name = ' '.join((name or '').split())
+        if not (name and street and zip_code and city):
+            return None
+        country = rec.event_id.company_id.country_id or self.env.company.country_id \
+            or self.env.ref('base.de', raise_if_not_found=False)
+        return {
+            'name': name,
+            'email': email_normalize(email) or (email or '').strip() or False,
+            'phone': (phone or '').strip() or False,
+            'street': street.strip(),
+            'zip': zip_code.strip(),
+            'city': city.strip(),
+            'country_id': country.id if country else False,
+        }
+
+    @api.model
+    def _kjr_find_or_create_invoice_partner(self, values):
+        """Vorhandenen Kontakt wiederverwenden oder neu anlegen.
+
+        Wiederverwendet wird nur ein Kontakt, bei dem Name, E-Mail und die
+        ganze Anschrift übereinstimmen. Bewusst so eng: die Online-Anmeldung
+        ist öffentlich; ein Abgleich nur über die E-Mail würde einer fremden
+        Person den Kontakt (und im Shop dessen Anschrift) einer anderen Person
+        zuordnen.
+        """
+        Partner = self.env['res.partner'].sudo()
+        domain = [
+            ('name', '=ilike', values['name']),
+            ('street', '=ilike', values['street']),
+            ('zip', '=', values['zip']),
+            ('city', '=ilike', values['city']),
+            ('type', '=', 'contact'),
+        ]
+        domain.append(('email', '=ilike', values['email']) if values.get('email')
+                      else ('email', '=', False))
+        partner = Partner.search(domain, limit=1)
+        if partner:
+            if values.get('phone') and not partner.phone:
+                partner.phone = values['phone']
+            return partner
+        return Partner.create(values)
+
+    def _kjr_apply_invoice_partner(self):
+        """Setzt den Rechnungskontakt (und, falls leer, den Kontakt der Anmeldung).
+
+        Wirft nie: ein Fehler beim Anlegen des Kontakts darf die Anmeldung
+        nicht kippen (eigener Savepoint, vor dem try geöffnet, Begründung in
+        _kjr_auto_invoice). kjr_event_shop erweitert die Methode und überträgt
+        den Kontakt auf den Auftrag.
+        """
+        for rec in self:
+            values = rec._kjr_invoice_partner_values()
+            if not values:
+                continue
+            savepoint = self.env.cr.savepoint()
+            try:
+                with savepoint:
+                    partner = self._kjr_find_or_create_invoice_partner(values)
+                    vals = {'kjr_invoice_partner_id': partner.id}
+                    if not rec.sudo().partner_id:
+                        vals['partner_id'] = partner.id
+                    rec.sudo().write(vals)
+            except Exception:  # noqa: BLE001 - die Anmeldung hat Vorrang
+                _logger.exception(
+                    'KJR-Anmeldung %s: Rechnungskontakt konnte nicht angelegt werden.', rec.id)
+        return True
+
+    def _kjr_billing_partner(self):
+        """Kontakt für die Schulungsrechnung: Rechnungskontakt, sonst Kontakt."""
+        self.ensure_one()
+        return self.kjr_invoice_partner_id or self.partner_id

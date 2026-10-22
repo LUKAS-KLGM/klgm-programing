@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 19.0.5.11.0 (Rückmeldung Theresa 14.10.2026, Aufgabe 111): sechs
+         Standardfragen statt der 17 Fragen aus Nupian. Wiederverwendbar
+         (Veranstaltung → Reiter Fragen → Frage hinzufügen), bewusst NICHT
+         "Standardfrage für neue Veranstaltungen" und nie Pflicht: eigene Fragen
+         je Veranstaltung sind freiwillig. noupdate="1": Wortlaut pflegt der KJR.
+         Bestandsfragen aus Nupian räumt tools/kjr_event_questions_t1013.py auf. -->
+    <data noupdate="1">
+        <record id="event_question_kjr_swimming" model="event.question">
+            <field name="title">Wie gut kann die Teilnehmer:in schwimmen? (ggf. Abzeichen angeben)</field>
+            <field name="question_type">text_box</field>
+            <field name="is_reusable">True</field>
+            <field name="is_mandatory_answer">False</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="event_question_kjr_diet" model="event.question">
+            <field name="title">Ist eine bestimmte Kost nötig oder gewünscht (z. B. vegetarisch, glutenfrei)?</field>
+            <field name="question_type">text_box</field>
+            <field name="is_reusable">True</field>
+            <field name="is_mandatory_answer">False</field>
+            <field name="sequence">21</field>
+        </record>
+        <record id="event_question_kjr_ticket" model="event.question">
+            <field name="title">Hat die Teilnehmer:in ein Ticket für öffentliche Verkehrsmittel (z. B. Deutschlandticket)?</field>
+            <field name="question_type">simple_choice</field>
+            <field name="is_reusable">True</field>
+            <field name="is_mandatory_answer">False</field>
+            <field name="sequence">22</field>
+        </record>
+        <record id="event_question_kjr_ticket_yes" model="event.question.answer">
+            <field name="question_id" ref="event_question_kjr_ticket"/>
+            <field name="name">Ja</field>
+            <field name="sequence">1</field>
+        </record>
+        <record id="event_question_kjr_ticket_no" model="event.question.answer">
+            <field name="question_id" ref="event_question_kjr_ticket"/>
+            <field name="name">Nein</field>
+            <field name="sequence">2</field>
+        </record>
+        <record id="event_question_kjr_small_group" model="event.question">
+            <field name="title">Darf sich die Teilnehmer:in vor Ort in Kleingruppen von mindestens 3 Personen selbstständig bewegen?</field>
+            <field name="question_type">simple_choice</field>
+            <field name="is_reusable">True</field>
+            <field name="is_mandatory_answer">False</field>
+            <field name="sequence">23</field>
+        </record>
+        <record id="event_question_kjr_small_group_yes" model="event.question.answer">
+            <field name="question_id" ref="event_question_kjr_small_group"/>
+            <field name="name">Ja</field>
+            <field name="sequence">1</field>
+        </record>
+        <record id="event_question_kjr_small_group_no" model="event.question.answer">
+            <field name="question_id" ref="event_question_kjr_small_group"/>
+            <field name="name">Nein</field>
+            <field name="sequence">2</field>
+        </record>
+        <record id="event_question_kjr_horses" model="event.question">
+            <field name="title">Hat die Teilnehmer:in Erfahrung mit Pferden bzw. im Reiten? (Wenn ja, wie lange und was?)</field>
+            <field name="question_type">text_box</field>
+            <field name="is_reusable">True</field>
+            <field name="is_mandatory_answer">False</field>
+            <field name="sequence">24</field>
+        </record>
+        <record id="event_question_kjr_mobile" model="event.question">
+            <field name="title">Unter welcher Handynummer ist die Teilnehmer:in während der Veranstaltung erreichbar?</field>
+            <field name="question_type">text_box</field>
+            <field name="is_reusable">True</field>
+            <field name="is_mandatory_answer">False</field>
+            <field name="sequence">25</field>
+        </record>
+    </data>
+</odoo>
