@@ -36,7 +36,7 @@ WARUM is_kjr_member UND kjr_vr_right KEIN groups= BEKOMMEN
     (`@api.depends('partner_id.is_kjr_member')`), der in dem Env läuft, das ihn
     auslöst — im Verleih-Portal auch ohne sudo.
   * `kjr_vr_right` wird in `KjrGrantApplication._check_completeness()` gelesen.
-    Diese Methode hängt an `action_submit()`, und die Gruppe „Antragsteller"
+    Diese Methode hängt an `action_submit()`, und die Gruppe „Antragsteller:in"
     (group_kjr_applicant, ein Portal-Profil) hat laut ir.model.access Schreib-
     und Anlagerecht auf kjr.grant.application. Ein `groups=` würde diesen Pfad
     mit einem AccessError beenden.
@@ -111,12 +111,12 @@ class ResPartner(models.Model):
     )
     kjr_vr_delegate_ids = fields.Many2many(
         'res.partner', 'kjr_partner_delegate_rel', 'partner_id', 'delegate_id',
-        string='Vertreter/innen',
+        string='Vertreter:innen',
         help='Kontaktpersonen die den Verband in der KJR-Vollversammlung vertreten.',
         domain="[('is_company', '=', False)]",
     )
     kjr_vr_delegate_count = fields.Integer(
-        string='Anzahl Vertreter', compute='_compute_delegate_count',
+        string='Anzahl Vertreter:innen', compute='_compute_delegate_count',
     )
     # HISTORISCH — nicht mehr verwenden.
     # Nach § 33 Abs. 1 der Satzung hat jedes Mitglied in der Vollversammlung

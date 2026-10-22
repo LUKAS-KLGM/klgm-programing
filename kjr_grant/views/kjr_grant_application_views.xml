@@ -17,7 +17,7 @@
                         domain="[('measure_year','=',context_today().year)]"/>
                 <filter string="Einreichfrist überschritten" name="overdue"
                         domain="[('state','=','draft'),('submission_deadline','&lt;',context_today())]"/>
-                <filter string="Antragsteller" name="group_partner" context="{'group_by':'partner_id'}"/>
+                <filter string="Antragsteller:in" name="group_partner" context="{'group_by':'partner_id'}"/>
                 <filter string="Förderart"     name="group_type"    context="{'group_by':'grant_type_id'}"/>
                 <filter string="Status"        name="group_state"   context="{'group_by':'state'}"/>
                 <filter string="Jahr"          name="group_year"    context="{'group_by':'measure_year'}"/>
@@ -175,7 +175,7 @@
                     </div>
 
                     <group>
-                        <group string="Antragsteller">
+                        <group string="Antragsteller:in">
                             <field name="partner_id" readonly="state not in ('draft',)"
                                    options="{'no_create': True, 'no_quick_create': True}"/>
                             <field name="contact_person" readonly="state not in ('draft','submitted')"/>
@@ -219,7 +219,7 @@
                                     <field name="measure_days"/>
                                     <field name="submission_deadline" readonly="1"/>
                                 </group>
-                                <group string="Teilnehmer">
+                                <group string="Teilnehmende">
                                     <field name="tn_count"          readonly="state not in ('draft','submitted')"/>
                                     <field name="tn_leader_count"   readonly="state not in ('draft','submitted')"
                                            string="Anzahl Gruppenleitung"/>
@@ -271,8 +271,8 @@
                                 </list>
                             </field>
                             <div class="text-muted small mt-2">
-                                Kennziffer: EA = ehrenamtliche/r Mitarbeiter/in, HA = haupt-/nebenberufliche/r
-                                Mitarbeiter/in, HO = Honorarkraft, PR = Praktikant/in, SO = sonstige.
+                                Kennziffer: EA = ehrenamtliche:r Mitarbeiter:in, HA = haupt-/nebenberufliche:r
+                                Mitarbeiter:in, HO = Honorarkraft, PR = Praktikant:in, SO = sonstige.
                                 Teilnehmende bleiben leer, eine gesetzte Kennziffer markiert den Eintrag
                                 automatisch als „Gruppenleitung" (Betreuungsschlüssel).
                                 Das Geburtsdatum ist optional; maßgeblich für die Förderprüfung ist das Alter.
@@ -341,7 +341,7 @@
                                 </group>
                             </group>
                             <div class="text-muted" invisible="not use_digital_receipts">
-                                Diese Belege sind vom Antragsteller zum Zwecke der Nachprüfung 5 Jahre
+                                Diese Belege sind von der antragstellenden Organisation zum Zwecke der Nachprüfung 5 Jahre
                                 im Original aufzubewahren.
                             </div>
                             <field name="receipt_ids"
@@ -378,7 +378,7 @@
                             <div class="alert alert-warning" role="alert"
                                  invisible="not receipt_mismatch">
                                 <strong>Belegliste und Kostenaufstellung weichen voneinander ab.</strong>
-                                Bitte mit dem Antragsteller klären.
+                                Bitte mit der antragstellenden Organisation klären.
                                 <field name="receipt_check_info" readonly="1" nolabel="1"/>
                             </div>
                             <div class="alert alert-success" role="status"
@@ -442,7 +442,7 @@
                                 </group>
                             </group>
                             <group>
-                                <group string="Bestätigungen des Antragstellers">
+                                <group string="Bestätigungen der antragstellenden Organisation">
                                     <field name="confirm_privacy"     readonly="1"/>
                                     <field name="confirm_guidelines"  readonly="1"/>
                                     <field name="confirm_truthful"    readonly="1"/>
@@ -454,7 +454,7 @@
                             </group>
                             <group string="Interne Notizen">
                                 <field name="note_internal" nolabel="1"
-                                       placeholder="Interne Notizen, nicht für Antragsteller sichtbar..."/>
+                                       placeholder="Interne Notizen, nicht für Antragstellende sichtbar..."/>
                             </group>
                         </page>
                     </notebook>

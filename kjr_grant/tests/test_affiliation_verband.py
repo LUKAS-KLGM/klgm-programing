@@ -5,7 +5,7 @@ B45: Bei der Registrierung wählt eine Gruppe zusätzlich ihren Dachverband; der
 Genehmigungsassistent legt eine neue Gruppe als Kind des Dachverbands an, mit
 eigener Anschrift (Ansprechpersonen pflegt bis zur Mitgliedschaft die
 Geschäftsstelle; „Mein Verband“ im Portal nur für Mitgliedsverbände).
-B46: Ankreuzfeld „Ich bin Delegierte/r“; in die Delegiertenliste des Verbands
+B46: Ankreuzfeld „Ich bin Delegierte:r“; in die Delegiertenliste des Verbands
 kommt die Person erst mit der Genehmigung.
 B48: Telefon ist für Delegierte Pflicht (Registrierung, Genehmigung, Portal).
 """
@@ -164,7 +164,7 @@ class TestKjrAffiliationVerband(TransactionCase):
         self.assertNotIn(user.partner_id, self.dachverband.kjr_vr_delegate_ids)
 
     def test_delegierte_ohne_telefon_nicht_genehmigt(self):
-        """Backend-Antrag ohne Telefon: als Delegierte/r nicht genehmigbar."""
+        """Backend-Antrag ohne Telefon: als Delegierte:r nicht genehmigbar."""
         person = self.Partner.create({'name': 'Ohne Telefon', 'email': 'ot@example.com'})
         req = self.Request.with_user(self.reviewer).create({
             'partner_id': person.id, 'requested_name': 'Kreisjugendfeuerwehr Test',
@@ -235,7 +235,7 @@ class TestKjrAffiliationVerband(TransactionCase):
         self._wizard(req, mode='existing', target_partner_id=self.dachverband.id).action_confirm()
         mail = self.env['mail.mail'].search([
             ('model', '=', 'kjr.affiliation.request'), ('res_id', '=', req.id)], limit=1)
-        self.assertIn('als Delegierte/r', str(mail.body_html))
+        self.assertIn('als Delegierte:r', str(mail.body_html))
 
     def test_migration_ergaenzt_delegiertenabsatz(self):
         import importlib.util
@@ -325,7 +325,7 @@ class TestKjrAffiliationVerbandHttp(HttpCase):
         self.assertFalse(self._user(login))
 
     def test_portal_delegierte_ohne_telefon_abgelehnt(self):
-        """Im Portal „Mein Verband“: Häkchen Delegierte/r verlangt Telefon."""
+        """Im Portal „Mein Verband“: Häkchen Delegierte:r verlangt Telefon."""
         verbandsperson = self.env['res.partner'].create({
             'name': 'Vorstand Portal', 'parent_id': self.dachverband.id,
             'email': 'vorstand.portal@example.com',
@@ -355,7 +355,7 @@ class TestKjrAffiliationVerbandHttp(HttpCase):
         self.assertIn(neu, self.dachverband.kjr_vr_delegate_ids)
 
     def test_portal_kennzeichnet_delegierte_aus_ortsgruppe(self):
-        """Delegierte/r aus einer Ortsgruppe: nicht unter „Ansprechpersonen“ pflegbar.
+        """Delegierte:r aus einer Ortsgruppe: nicht unter „Ansprechpersonen“ pflegbar.
 
         Die Delegiertentabelle verlinkt keinen fehlenden Anker und verweist auf
         die Geschäftsstelle statt auf „oben bei der Person“.

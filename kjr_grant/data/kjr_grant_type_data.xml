@@ -20,7 +20,7 @@
             <field name="requires_report">True</field>
             <field name="requires_receipt">True</field>
             <field name="min_duration_hours">4.0</field>
-            <field name="description">Fahrten, Lager und Maßnahmen mit Freizeitcharakter. Min. 4 Stunden Programm. Zuschuss: 5 € pro Teilnehmer, max. 250 €. Max. 4 Maßnahmen/Kalenderjahr.</field>
+            <field name="description">Fahrten, Lager und Maßnahmen mit Freizeitcharakter. Min. 4 Stunden Programm. Zuschuss: 5 € pro Teilnehmer:in, max. 250 €. Max. 4 Maßnahmen/Kalenderjahr.</field>
         </record>
 
         <record id="grant_type_4_1b" model="kjr.grant.type">
@@ -247,7 +247,7 @@
             <field name="requires_report">False</field>
             <field name="requires_receipt">True</field>
             <field name="requires_other_docs">Antragsliste der Vollversammlung (Unterschrift) bzw. Fahrtkostennachweise</field>
-            <field name="description">Jeder stimmberechtigte Delegierte, der zur KJR-Vollversammlung anreist, erhält auf Antrag Fahrtkostenerstattung nach dem Bayerischen Reisekostengesetz (BayRKG): PKW = Wegstreckenentschädigung je km (Hin- und Rückfahrt) zzgl. Mitnahmeentschädigung je Mitfahrer/in; ÖPNV = belegte Fahrtkosten. Antrag durch Unterschrift auf der bei der Vollversammlung ausliegenden Antragsliste. Kein eigener Höchstbetrag (Höhe nach BayRKG). Auszahlung auf das Konto des/der Delegierten möglich.</field>
+            <field name="description">Alle stimmberechtigten Delegierten, die zur KJR-Vollversammlung anreisen, erhalten auf Antrag Fahrtkostenerstattung nach dem Bayerischen Reisekostengesetz (BayRKG): PKW = Wegstreckenentschädigung je km (Hin- und Rückfahrt) zzgl. Mitnahmeentschädigung je Mitfahrer:in; ÖPNV = belegte Fahrtkosten. Antrag durch Unterschrift auf der bei der Vollversammlung ausliegenden Antragsliste. Kein eigener Höchstbetrag (Höhe nach BayRKG). Auszahlung auf das Konto der delegierten Person möglich.</field>
         </record>
 
         <!-- Investitionszuschuss nach einem externen Förderprogramm. KEIN Teil der

@@ -34,7 +34,7 @@
                         <h4 class="text-center mb-4">Verwendungsnachweis</h4>
 
                         <p>
-                            Antragsteller: <strong><t t-esc="app.partner_id.name"/></strong><br/>
+                            Antragsteller:in: <strong><t t-esc="app.partner_id.name"/></strong><br/>
                             Maßnahme: <strong><t t-esc="app.measure_name"/></strong><br/>
                             Zeitraum:
                             <span t-field="app.measure_start" t-options='{"format":"dd.MM.yyyy"}'/> bis
@@ -52,7 +52,7 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>Teilnehmer</td>
+                                    <td>Teilnehmende</td>
                                     <td class="text-end"><t t-esc="app.tn_count"/></td>
                                     <td class="text-end"><t t-esc="o.actual_tn_count"/></td>
                                 </tr>
@@ -107,7 +107,7 @@
                         <div class="row mt-5">
                             <div class="col-6">
                                 <div style="border-top:1px solid #000; width:220px; margin-top:40px; padding-top:4px;">
-                                    <small>Antragsteller (Datum, Unterschrift)</small>
+                                    <small>Antragsteller:in (Datum, Unterschrift)</small>
                                 </div>
                             </div>
                             <div class="col-6 text-end">

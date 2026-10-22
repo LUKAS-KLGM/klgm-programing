@@ -17,7 +17,7 @@ class KjrVolunteerLog(models.Model):
     _inherit = ['mail.thread']
 
     partner_id = fields.Many2one(
-        'res.partner', string='Ehrenamtliche/r', required=True,
+        'res.partner', string='Ehrenamtliche:r', required=True,
         ondelete='cascade', tracking=True, index=True,
         domain="[('is_company', '=', False)]",
         help='Person, die die ehrenamtliche Tätigkeit geleistet hat.',

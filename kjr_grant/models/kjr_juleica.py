@@ -13,7 +13,7 @@ class KjrJuleica(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
     partner_id = fields.Many2one(
-        'res.partner', string='Inhaber/in', required=True,
+        'res.partner', string='Inhaber:in', required=True,
         ondelete='cascade', tracking=True,
     )
     organization_id = fields.Many2one(

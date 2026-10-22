@@ -148,7 +148,7 @@
                         <field name="min_duration_hours"/>
                         <field name="min_participants"/>
                     </group>
-                    <group string="Beschreibung für Antragsteller (Portal)">
+                    <group string="Beschreibung für Antragstellende (Portal)">
                         <field name="description" nolabel="1"
                                placeholder="Diese Beschreibung erscheint im Online-Portal."/>
                     </group>

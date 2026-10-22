@@ -15,7 +15,7 @@ Der Spam-Schutz (kjr_website_antispam) nimmt die Registrierung ausdrücklich aus
 das bleibt so.
 
 Seit 19.0.17.0.0 zusätzlich (Vereinsblock): Auswahl des Dachverbands aus den
-KJR-Mitgliedsverbänden (freiwillig), Ankreuzfeld „Ich bin Delegierte/r meines
+KJR-Mitgliedsverbänden (freiwillig), Ankreuzfeld „Ich bin Delegierte:r meines
 Verbands“ und Telefon (Pflicht bei Delegierten). In die Delegiertenliste kommt
 die Person erst mit der Genehmigung (models/kjr_affiliation_request.py).
 """
@@ -98,7 +98,7 @@ class KjrAuthSignupHome(AuthSignupHome):
         delegate = bool(qcontext.get('kjr_club_delegate'))
         phone = ' '.join((qcontext.get('kjr_club_phone') or '').split())
         if delegate and not phone:
-            raise UserError(_('Als Delegierte/r geben Sie bitte eine Telefonnummer an, damit die '
+            raise UserError(_('Als Delegierte:r geben Sie bitte eine Telefonnummer an, damit die '
                               'Geschäftsstelle Sie vor der Vollversammlung erreichen kann.'))
         if phone and not PHONE_RE.match(phone):
             raise UserError(_('Telefon bitte nur mit Ziffern und den Zeichen + ( ) / - angeben '

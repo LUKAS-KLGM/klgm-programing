@@ -11,7 +11,7 @@ Kundenabstimmung (Besprechung mit der Kassenleitung, Punkte B40 und B43):
   Parameter auf das öffentliche Richtlinien-PDF der Website, wenn es eines gibt
   (``find_guidelines_attachment_url``). Ist nichts gepflegt, führt der Link auf
   den Abschnitt „Zuschussrichtlinien" der Hilfeseite
-  (``/service/zuschuss-hilfe#zuschussrichtlinien``). Dort steht der Link auf
+  (``/service/zuschuss/hilfe#zuschussrichtlinien``). Dort steht der Link auf
   das Dokument, sobald eine Adresse gepflegt ist, sonst der Hinweis, dass die
   Geschäftsstelle die Richtlinien zusendet. Der Link läuft also nie ins Leere.
 * Checkbox 3 „Ich versichere ..." bekommt den Hinweis, wer die Fördermittel
@@ -36,7 +36,10 @@ from odoo import fields, models
 DEFAULT_FUNDING_NOTICE = (
     'Die Mittel für die Förderung der Jugendarbeit stellt der Landkreis Oberallgäu.'
 )
-HELP_PAGE_PATH = '/service/zuschuss-hilfe'
+HELP_PAGE_PATH = '/service/zuschuss/hilfe'
+# Adresse der Hilfeseite bis 19.0.17.0.0; leitet seitdem auf HELP_PAGE_PATH um.
+# Ein so gespeicherter Parameter gilt weiter als „keine eigene Adresse".
+LEGACY_HELP_PAGE_PATHS = ('/service/zuschuss-hilfe',)
 GUIDELINES_ANCHOR = 'zuschussrichtlinien'
 DEFAULT_GUIDELINES_URL = '%s#%s' % (HELP_PAGE_PATH, GUIDELINES_ANCHOR)
 
@@ -71,7 +74,7 @@ def _is_help_page(url):
     schreibt (``default`` am Feld).
     """
     path = (url or '').split('#', 1)[0].split('?', 1)[0].rstrip('/')
-    return path == HELP_PAGE_PATH
+    return path == HELP_PAGE_PATH or path in LEGACY_HELP_PAGE_PATHS
 
 
 def find_guidelines_attachment_url(env):

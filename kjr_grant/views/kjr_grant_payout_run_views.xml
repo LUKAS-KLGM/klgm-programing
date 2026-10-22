@@ -27,8 +27,8 @@
                     <group string="Zeitraum">
                         <field name="fiscal_year"/>
                         <field name="period_type"/>
-                        <field name="date_from" readonly="period_type != 'custom'"/>
-                        <field name="date_to" readonly="period_type != 'custom'"/>
+                        <field name="date_from" readonly="period_type != 'custom'" force_save="1"/>
+                        <field name="date_to" readonly="period_type != 'custom'" force_save="1"/>
                         <field name="period_basis"/>
                     </group>
                     <group string="Abgrenzung (optional)">

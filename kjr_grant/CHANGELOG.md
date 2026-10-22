@@ -1,5 +1,64 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.18.0.0 (2026-10-22)
+
+Umsetzung aus dem Termin am 13.10.2026 (Entscheidungen 4 und 5, Prüfleitfaden Kapitel 4).
+
+### Neu
+- **Hilfeseite unter `/service/zuschuss/hilfe`** („Wie stelle ich einen
+  Zuschussantrag?“), verlinkt von der Zuschuss-Startseite, dem Antragsformular,
+  der Hinweisseite ohne Verband und der Belegliste-Vorlage. Die alte Adresse
+  `/service/zuschuss-hilfe` leitet dauerhaft (301) um; ein so gespeicherter
+  Richtlinien-Link gilt weiter als „keine eigene Adresse“. Inhalt neu aus dem
+  tatsächlichen Ablauf: Registrierung als Privatperson oder für einen Verein,
+  Freigabe durch die Geschäftsstelle, Förderart, Pflichtangaben, Unterlagen und
+  Belege, Einreichen, Verwendungsnachweis und Aufbewahrung, Fristen (Stichtag aus
+  `kjr_grant.payout_cutoff_day/_month`). Förderarten, Beträge und
+  Pflichtunterlagen kommen nur aus den Stammdaten. Schlicht im Standardlayout.
+- **Texte im Website-Editor überschreibbar:** Alle erklärenden Abschnitte stehen
+  in `oe_structure`-Bereichen mit eigener id und ohne QWeb; Werte aus der
+  Konfiguration stehen außerhalb und laufen weiter mit.
+- **Antrag im Portal einreichen.** Das Formular legt den Antrag als Entwurf an;
+  bisher fehlte im Portal der Knopf zum Einreichen, obwohl Bestätigungsseite und
+  Anleitung ihn nannten. Neu: Abschnitt „Antrag einreichen“ in der Antragsansicht
+  (`POST /my/kjr-antraege/<id>/einreichen`, `action_submit` mit derselben
+  Vollständigkeitsprüfung, demselben Jahreslimit und derselben
+  Eingangsbestätigung wie im Backend). Fehlende Angaben stehen als Meldung über
+  dem Knopf.
+
+### Geändert
+- **Upload-Dateinamen** tragen die Feldbeschriftung als Präfix
+  („Belegliste - Scan.pdf“). Die Vollständigkeitsprüfung erkennt Teilnahmeliste,
+  Bericht und Belegliste am Dateinamen; eine im Feld „Belegliste“ hochgeladene
+  Datei mit beliebigem Namen zählte bisher nicht.
+- **Anrede und Gendern (Entscheidungen 4 und 5):** Gendern mit Doppelpunkt in
+  allen Systemtexten (Formular, Portal, Mails, Berichte, Fehlermeldungen, Felder,
+  Rechtegruppen „Antragsteller:in“ und „Sachbearbeiter:in“), wo möglich neutral
+  („Teilnehmende“, „antragstellende Organisation“). Mails beginnen mit
+  „Guten Tag“ statt „Sehr geehrte/r“. Die Warnung zum Altersbereich lautet
+  „Teilnehmende (ohne Gruppenleitungen) außerhalb des förderfähigen
+  Altersbereichs (…): n.“
+
+### Behoben
+- **Auszahlungslauf ließ sich nicht anlegen** (NotNull auf `date_from`/`date_to`):
+  die berechneten Pflichtfelder werden jetzt vor dem Anlegen berechnet
+  (`precompute`), im Formular mit `force_save`.
+- **Genehmigungsassistent Vereinszugehörigkeit** aus Code anlegbar: `mode`,
+  Organisation, Vorschlagswerte und Delegierten-Felder mit `precompute`.
+- **Einreichen im Portal** verlangt Datenschutz und Versicherung der
+  Richtigkeit; fehlen sie am Entwurf, stehen zwei Pflicht-Haken neben dem Knopf.
+- Tests der Rückforderungszinsen setzen ihre Zinsparameter selbst.
+
+### Migration
+- `migrations/19.0.18.0.0/post-jahreslimit.py`: setzt bei 4.1a und 4.1b die
+  Jahreslimit-Gruppe `freizeit_4_1`, wenn sie leer ist (auf Bestandsinstanzen
+  wegen noupdate nie gesetzt; das gemeinsame Jahreslimit griff nicht).
+- `migrations/19.0.18.0.0/post-sprache.py`: zieht die Textänderungen in den
+  noupdate-Mailvorlagen (Antrag eingereicht/bewilligt/abgelehnt,
+  Vereinszugehörigkeit bestätigt; jede Sprachfassung) und in den Förderarten
+  4.1a und 4.9 nach. Ersetzt nur die genau so ausgelieferten Teilstücke,
+  gepflegte Texte bleiben stehen. Idempotent.
+
 ## 19.0.17.0.0 (2026-10-12)
 
 Umsetzung der offenen Punkte aus der Formular-Besprechung mit der Kassenleitung

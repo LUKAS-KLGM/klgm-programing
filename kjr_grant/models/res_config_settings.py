@@ -74,7 +74,7 @@ class ResConfigSettings(models.TransientModel):
              'nach Art. 4 Nr. 7 DSGVO.',
     )
     kjr_privacy_dpo = fields.Char(
-        string='Datenschutzbeauftragte/r',
+        string='Datenschutzbeauftragte:r',
         config_parameter='kjr.privacy.dpo',
         help='Kontakt der/des Datenschutzbeauftragten für Fragen der Betroffenen.',
     )

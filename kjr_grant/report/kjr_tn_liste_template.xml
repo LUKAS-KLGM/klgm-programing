@@ -13,9 +13,9 @@
                 <t t-call="web.external_layout">
                     <!-- Lesbare Labels statt Selection-Keys. Bewusst als Literal
                          gehalten (kein Zugriff auf _fields), damit das Template auch
-                         ohne erfasste Teilnehmer sauber rendert; leere Werte -> ''. -->
+                         ohne erfasste Teilnehmende sauber rendert; leere Werte -> ''. -->
                     <t t-set="gender_labels" t-value="{'male': 'männlich', 'female': 'weiblich', 'diverse': 'divers'}"/>
-                    <!-- Teilnehmer in Erfassungsreihenfolge (sequence), _order der
+                    <!-- Teilnehmende in Erfassungsreihenfolge (sequence), _order der
                          One2many greift hier zwar schon, wird aber explizit erzwungen. -->
                     <t t-set="parts" t-value="o.participant_ids.sorted(lambda p: (p.sequence, p.name or ''))"/>
                     <!-- Nach Ablauf der Aufbewahrungsfrist anonymisierte Datensätze:
@@ -47,7 +47,7 @@
                                     <td><strong><t t-esc="o.name"/></strong></td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Antragsteller</td>
+                                    <td class="text-muted">Antragsteller:in</td>
                                     <td><strong><t t-esc="o.partner_id.name"/></strong></td>
                                 </tr>
                                 <tr>
@@ -141,10 +141,10 @@
                         <p class="mt-2 mb-4">
                             <small>
                                 <strong>Kennziffern:</strong>
-                                EA = ehrenamtliche/r Mitarbeiter/in ·
-                                HA = haupt-/nebenberufliche/r Mitarbeiter/in ·
+                                EA = ehrenamtliche:r Mitarbeiter:in ·
+                                HA = haupt-/nebenberufliche:r Mitarbeiter:in ·
                                 HO = Honorarkraft ·
-                                PR = Praktikant/in ·
+                                PR = Praktikant:in ·
                                 SO = sonstige
                             </small>
                         </p>

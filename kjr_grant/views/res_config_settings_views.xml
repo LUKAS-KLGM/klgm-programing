@@ -22,7 +22,7 @@
                                  help="Name, Anschrift und Kontakt der verantwortlichen Stelle.">
                             <field name="kjr_privacy_controller"/>
                         </setting>
-                        <setting string="Datenschutzbeauftragte/r"
+                        <setting string="Datenschutzbeauftragte:r"
                                  help="Kontakt für Fragen zum Datenschutz.">
                             <field name="kjr_privacy_dpo"/>
                         </setting>

@@ -61,7 +61,7 @@
                             <t t-if="o.measure_location">, Ort: <t t-esc="o.measure_location"/></t>
                         </p>
                         <p>
-                            Teilnehmer: <t t-esc="o.tn_count"/>
+                            Teilnehmende: <t t-esc="o.tn_count"/>
                             (zzgl. <t t-esc="o.tn_leader_count"/> Gruppenleitungen,
                             davon <t t-esc="o.tn_leader_juleica"/> mit Juleica)
                         </p>

@@ -402,6 +402,19 @@ def motiv_website_antispam(d):
     strich(d, haken, 0.050, AKZENT)
 
 
+def motiv_website_downloads(d):
+    """Downloadbereich der Website: Pfeil nach unten in eine Ablage.
+
+    Pfeil weiss als Hauptform, die Ablage darunter im Akzent. Zwischen
+    Pfeilspitze (0.640) und Ablageboden (Innenkante 0.755) sowie zwischen
+    Pfeilkopf (0.330/0.670) und Ablagewaenden (Innenkante 0.265/0.735) bleibt
+    die Grundfarbe als Fuge stehen; Orange grenzt nirgends an Weiss.
+    """
+    strich(d, [(0.500, 0.165), (0.500, 0.500)], 0.110, MOTIV)
+    poly(d, [(0.330, 0.455), (0.670, 0.455), (0.500, 0.640)], MOTIV)
+    strich(d, [(0.220, 0.585), (0.220, 0.800), (0.780, 0.800), (0.780, 0.585)], 0.090, AKZENT)
+
+
 # Reihenfolge und Zuordnung. Alle acht tragen dieselbe Grundfarbe; die
 # frueheren zwei Toene (#714B67 / #5E3F56) hatten 1,25:1 zueinander und waren
 # am Icon nicht auseinanderzuhalten. Unterschieden werden die Kacheln durch das
@@ -420,6 +433,7 @@ ICONS = (
     ("kjr_kommja", motiv_kommja),
     ("kjr_event_sign", motiv_event_sign),
     ("kjr_website_antispam", motiv_website_antispam),
+    ("kjr_website_downloads", motiv_website_downloads),
 )
 
 

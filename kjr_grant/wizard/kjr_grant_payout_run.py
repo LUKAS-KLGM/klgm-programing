@@ -105,12 +105,12 @@ class KjrGrantPayoutRun(models.TransientModel):
              'einstellbar (Nachlauf, Sonderauszahlung).')
     date_from = fields.Date(
         string='Zeitraum von', required=True,
-        compute='_compute_period', store=True, readonly=False,
+        compute='_compute_period', store=True, readonly=False, precompute=True,
         help='Erster Tag des Auswertungszeitraums (einschließlich).',
     )
     date_to = fields.Date(
         string='Zeitraum bis', required=True,
-        compute='_compute_period', store=True, readonly=False,
+        compute='_compute_period', store=True, readonly=False, precompute=True,
         help='Letzter Tag des Auswertungszeitraums (einschließlich).',
     )
     period_basis = fields.Selection([
@@ -152,7 +152,7 @@ class KjrGrantPayoutRun(models.TransientModel):
     application_ids = fields.Many2many(
         'kjr.grant.application', 'kjr_payout_run_app_rel', 'run_id', 'application_id',
         string='Einbezogene Anträge',
-        compute='_compute_applications', store=True, readonly=False,
+        compute='_compute_applications', store=True, readonly=False, precompute=True,
         help='Vorschau der Anträge, die dieser Lauf zur Zahlung anweist. '
              'Einzelne Anträge können vor dem Lauf entfernt werden; eine '
              'Änderung der Abgrenzung oben stellt die Vorschau neu zusammen.',

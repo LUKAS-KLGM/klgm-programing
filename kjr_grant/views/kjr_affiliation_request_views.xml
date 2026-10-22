@@ -16,7 +16,7 @@
                 <filter string="Abgelehnt"  name="filter_rejected"  domain="[('state','=','rejected')]"/>
                 <separator/>
                 <filter string="Aus Registrierung" name="filter_signup" domain="[('origin','=','signup')]"/>
-                <filter string="Als Delegierte/r gemeldet" name="filter_delegate" domain="[('requested_delegate','=',True)]"/>
+                <filter string="Als Delegierte:r gemeldet" name="filter_delegate" domain="[('requested_delegate','=',True)]"/>
                 <field name="requested_parent_id"/>
                 <filter string="Status" name="filter_group_state" context="{'group_by': 'state'}"/>
             </search>
@@ -170,7 +170,7 @@
                     Für Delegierte ist eine Telefonnummer Pflicht. Bei der Person ist keine
                     hinterlegt. Bitte die Nummer oben unter „Telefon der Person nachtragen“
                     eintragen (z. B. nach telefonischer Rückfrage) oder das Häkchen „Als
-                    Delegierte/r eintragen“ entfernen.
+                    Delegierte:r eintragen“ entfernen.
                 </div>
                 <!-- Datenschutz: Leserechte im Portal folgen parent_id
                      (base.res_partner_portal_public_rule, child_of
@@ -191,12 +191,12 @@
                      invisible="not add_delegate or delegate_partner_id or delegate_base_state != 'none'">
                     Bitte zuerst die Organisation wählen (bei einer neuen Organisation den
                     übergeordneten Verband). Vorgeschlagen wird dann der Verband mit
-                    Vertretungsrecht, für den die Person Delegierte/r ist.
+                    Vertretungsrecht, für den die Person Delegierte:r ist.
                 </div>
                 <div class="alert alert-info" role="status"
                      invisible="not add_delegate or delegate_partner_id or delegate_base_state != 'ok'">
-                    Bitte den Verband mit Vertretungsrecht wählen, für den die Person Delegierte/r
-                    ist, oder das Häkchen „Als Delegierte/r eintragen“ entfernen.
+                    Bitte den Verband mit Vertretungsrecht wählen, für den die Person Delegierte:r
+                    ist, oder das Häkchen „Als Delegierte:r eintragen“ entfernen.
                 </div>
                 <div class="alert alert-warning" role="alert"
                      invisible="not add_delegate or delegate_partner_id or delegate_base_state != 'no_vr'">
@@ -204,18 +204,18 @@
                     Vertretungsrecht in der Vollversammlung. Bitte eine andere Organisation wählen
                     oder das Häkchen entfernen.
                 </div>
-                <!-- Delegierte/r eines übergeordneten Verbands: Im Portal „Mein Verband“
+                <!-- Delegierte:r eines übergeordneten Verbands: Im Portal „Mein Verband“
                      dieses Verbands steht die Person nicht unter „Ansprechpersonen“
                      (controllers/portal.py, _verband_contacts: commercial_partner_id),
                      sondern nur in der Delegiertenliste mit dem Vermerk „Änderungen über
                      die Geschäftsstelle“ (views/portal_templates.xml). -->
                 <div class="alert alert-warning" role="alert"
                      invisible="not add_delegate or not delegate_partner_id or (mode == 'existing' and delegate_partner_id == target_partner_id)">
-                    Die Person wird Delegierte/r eines übergeordneten Verbands, gehört aber zu einer
+                    Die Person wird Delegierte:r eines übergeordneten Verbands, gehört aber zu einer
                     anderen Organisation. Im Portal „Mein Verband“ dieses Verbands erscheint sie nur
                     in der Delegiertenliste, nicht unter „Ansprechpersonen“: Der Verband kann sie dort
-                    weder abmelden noch ihre Daten ändern. An- und Abmeldung als Delegierte/r
-                    (Feld „Vertreter/innen“ am Verband) übernimmt die Geschäftsstelle, auch wenn die
+                    weder abmelden noch ihre Daten ändern. An- und Abmeldung als Delegierte:r
+                    (Feld „Vertreter:innen“ am Verband) übernimmt die Geschäftsstelle, auch wenn die
                     Person ihre Organisation verlässt.
                 </div>
                 <div class="alert alert-warning" role="alert"

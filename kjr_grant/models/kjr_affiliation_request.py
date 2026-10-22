@@ -35,7 +35,7 @@ DACHVERBAND UND DELEGIERTE (seit 19.0.17.0.0)
 ─────────────────────────────────────────────
 Bei der Registrierung kann die Gruppe zusätzlich ihren Dachverband aus der
 Liste der KJR-Mitgliedsverbände wählen (``requested_parent_id``, z. B.
-Kreisjugendfeuerwehr) und die Person kann angeben, Delegierte/r ihres Verbands
+Kreisjugendfeuerwehr) und die Person kann angeben, Delegierte:r ihres Verbands
 für die Vollversammlung zu sein (``requested_delegate``, dann mit Pflicht-
 Telefonnummer). Beides ist zunächst nur eine ANGABE:
 
@@ -128,14 +128,14 @@ class KjrAffiliationRequest(models.Model):
              'eine neue Organisation an, wird sie unter diesem Verband angelegt.',
     )
     requested_delegate = fields.Boolean(
-        'Als Delegierte/r gemeldet',
-        help='Die Person hat bei der Registrierung angegeben, Delegierte/r ihres '
+        'Als Delegierte:r gemeldet',
+        help='Die Person hat bei der Registrierung angegeben, Delegierte:r ihres '
              'Verbands für die Vollversammlung zu sein. In die Delegiertenliste des '
              'Verbands kommt sie erst mit der Genehmigung.',
     )
     partner_phone = fields.Char(related='partner_id.phone', string='Telefon')
     delegate_partner_id = fields.Many2one(
-        'res.partner', string='Als Delegierte/r eingetragen für', readonly=True,
+        'res.partner', string='Als Delegierte:r eingetragen für', readonly=True,
         ondelete='set null', tracking=True,
         help='Verband, in dessen Delegiertenliste die Person mit der Genehmigung '
              'aufgenommen wurde.',
@@ -362,7 +362,7 @@ class KjrAffiliationRequest(models.Model):
 
     @api.model
     def _kjr_delegate_verband_for(self, target):
-        """Verband, dessen Delegierte/r eine Person unter ``target`` sein kann.
+        """Verband, dessen Delegierte:r eine Person unter ``target`` sein kann.
 
         Die Organisation selbst, wenn sie Vertretungsrecht hat, sonst der
         nächste übergeordnete Verband mit Vertretungsrecht (Ortsgruppe unter
@@ -399,7 +399,7 @@ class KjrAffiliationRequest(models.Model):
         if not self.env['res.partner'].sudo().search_count(
                 [('id', '=', target.id), ('id', 'child_of', delegate_for.id)], limit=1):
             raise UserError(_(
-                'Die Person kann nur Delegierte/r der zugeordneten Organisation oder eines '
+                'Die Person kann nur Delegierte:r der zugeordneten Organisation oder eines '
                 'übergeordneten Verbands sein.'))
         if not ((self.partner_id.sudo().phone or '').strip() or (phone or '').strip()):
             # Sachbearbeiter haben auf res.partner nur Leserecht: deshalb das
@@ -408,7 +408,7 @@ class KjrAffiliationRequest(models.Model):
                 'Für Delegierte ist eine Telefonnummer Pflicht. Bei der Person ist keine '
                 'hinterlegt. Bitte die Nummer im Feld „Telefon der Person nachtragen“ '
                 'eintragen (z. B. nach telefonischer Rückfrage) oder das Häkchen „Als '
-                'Delegierte/r eintragen“ entfernen.'))
+                'Delegierte:r eintragen“ entfernen.'))
 
     def _kjr_do_approve(self, target, notify=True, delegate_for=None, phone=False):
         """Genehmigen: Person der Organisation zuordnen (parent_id setzen).
@@ -494,7 +494,7 @@ class KjrAffiliationRequest(models.Model):
                 delegate_for.write({'kjr_vr_delegate_ids': [Command.link(partner.id)]})
                 delegate_for.message_post(
                     body=Markup('<p>%s</p>') % _(
-                        'Delegierte/r aus einer genehmigten Vereinsregistrierung aufgenommen: %s.',
+                        'Delegierte:r aus einer genehmigten Vereinsregistrierung aufgenommen: %s.',
                         partner.name or ''),
                     subtype_xmlid='mail.mt_note',
                 )
@@ -517,7 +517,7 @@ class KjrAffiliationRequest(models.Model):
         if delegate_for:
             self.sudo().message_post(
                 body=Markup('<p>%s</p>') % _(
-                    'Als Delegierte/r für %s eingetragen.', delegate_for.display_name),
+                    'Als Delegierte:r für %s eingetragen.', delegate_for.display_name),
                 subtype_xmlid='mail.mt_note',
             )
         if phone:

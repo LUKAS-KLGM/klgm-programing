@@ -670,7 +670,7 @@
                                                         <td><t t-esc="contact.phone or '-'"/></td>
                                                         <td t-if="member_info.get('vr_right')">
                                                             <t t-if="contact in delegates">
-                                                                <span class="badge text-bg-info">Delegierte/r</span>
+                                                                <span class="badge text-bg-info">Delegierte:r</span>
                                                             </t>
                                                             <t t-else="">
                                                                 <span class="text-muted">-</span>
@@ -775,7 +775,7 @@
                                                                                        t-att-checked="(cvals.get('contact_is_delegate') if cvals else (contact in delegates)) and 'checked' or None"
                                                                                        t-attf-aria-describedby="c#{contact.id}_delegate_help"/>
                                                                                 <label class="form-check-label" t-attf-for="c#{contact.id}_delegate">
-                                                                                    Delegierte/r für die Vollversammlung
+                                                                                    Delegierte:r für die Vollversammlung
                                                                                 </label>
                                                                                 <div t-attf-id="c#{contact.id}_delegate_help" class="form-text">
                                                                                     Soll die Person Ihren Verband in der
@@ -935,7 +935,7 @@
                                                            t-att-checked="nvals.get('contact_is_delegate') and 'checked' or None"
                                                            aria-describedby="new_contact_delegate_help"/>
                                                     <label class="form-check-label" for="new_contact_delegate">
-                                                        Delegierte/r für die Vollversammlung
+                                                        Delegierte:r für die Vollversammlung
                                                     </label>
                                                     <div id="new_contact_delegate_help" class="form-text">
                                                         Kann später jederzeit geändert werden.
@@ -985,7 +985,7 @@
                                 </p>
                                 <t t-if="not delegates">
                                     <div class="alert alert-warning" role="status">
-                                        Für Ihren Verband ist noch niemand als Delegierte/r gemeldet.
+                                        Für Ihren Verband ist noch niemand als Delegierte:r gemeldet.
                                         Setzen Sie das Kennzeichen oben bei der Person, die den Verband
                                         vertreten soll.
                                     </div>
@@ -1032,7 +1032,7 @@
                                                             <span t-else="" class="badge text-bg-warning">fehlt, bitte der Geschäftsstelle melden</span>
                                                         </td>
                                                         <td>
-                                                            <span class="badge text-bg-info">Delegierte/r</span>
+                                                            <span class="badge text-bg-info">Delegierte:r</span>
                                                             <div t-if="not delegate_editable" class="form-text mt-1">
                                                                 <t t-if="delegate.parent_id and delegate.parent_id != verband">gehört zu <t t-out="delegate.parent_id.name"/>; </t>Änderungen über die Geschäftsstelle
                                                             </div>
@@ -1156,7 +1156,7 @@
             <dl class="row small mb-0">
                 <dt class="col-sm-4">Was wir speichern</dt>
                 <dd class="col-sm-8">Anschrift und Kontaktdaten Ihres Verbands sowie zu
-                    jeder Ansprechperson und jeder/jedem Delegierten Name, Funktion im
+                    jeder Ansprechperson und allen Delegierten Name, Funktion im
                     Verband, E-Mail-Adresse und Telefonnummer. Dazu das
                     Kennzeichen, ob die Person den Verband in der Vollversammlung
                     vertritt.
@@ -1206,7 +1206,7 @@
                         verantwortlichen Stelle.</span>
                 </dd>
 
-                <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
+                <dt class="col-sm-4">Datenschutzbeauftragte:r</dt>
                 <dd class="col-sm-8">
                     <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
@@ -1314,7 +1314,7 @@
                 </dd>
 
                 <dt class="col-sm-4">Bankverbindung</dt>
-                <dd class="col-sm-8">IBAN, Kontoinhaber, BIC und Geldinstitut erheben wir
+                <dd class="col-sm-8">IBAN, Kontoinhaber:in, BIC und Geldinstitut erheben wir
                     allein dafür, einen bewilligten Zuschuss überweisen zu können. Diese
                     Angaben dienen ausschließlich der Auszahlung und werden zu keinem
                     anderen Zweck verwendet.</dd>
@@ -1343,7 +1343,7 @@
                         verantwortlichen Stelle.</span>
                 </dd>
 
-                <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
+                <dt class="col-sm-4">Datenschutzbeauftragte:r</dt>
                 <dd class="col-sm-8">
                     <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                     <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
@@ -1393,7 +1393,7 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <dl class="row mb-0">
-                                        <dt class="col-5">Antragsteller</dt>
+                                        <dt class="col-5">Antragsteller:in</dt>
                                         <dd class="col-7"><t t-esc="grant.partner_id.name"/></dd>
                                         <dt class="col-5">Förderart</dt>
                                         <dd class="col-7"><t t-esc="grant.grant_type_id.name"/></dd>
@@ -1423,7 +1423,7 @@
                             <hr/>
                             <div class="row">
                                 <div class="col-md-4">
-                                    <h6>Teilnehmer</h6>
+                                    <h6>Teilnehmende</h6>
                                     <dl class="row mb-0">
                                         <dt class="col-7">TN gesamt</dt>
                                         <dd class="col-5"><t t-esc="grant.tn_count"/></dd>
@@ -1477,6 +1477,49 @@
                                     <t t-esc="grant.rejection_reason"/>
                                 </div>
                             </t>
+                        </div>
+                    </div>
+
+                    <!-- Einreichen aus dem Portal (19.0.18.0.0), controllers/portal.py
+                         portal_my_kjr_grant_submit. Fehlermeldungen der
+                         Vollständigkeitsprüfung kommen als submit_error. -->
+                    <div t-if="submitted and grant.state == 'submitted'" class="alert alert-success" role="status">
+                        Ihr Antrag ist eingereicht. Sie erhalten eine Eingangsbestätigung per E-Mail.
+                    </div>
+                    <div t-if="grant.state == 'draft'" class="card mb-3">
+                        <div class="card-header"><h5 class="mb-0">Antrag einreichen</h5></div>
+                        <div class="card-body">
+                            <div t-if="submit_error" class="alert alert-danger" role="alert"
+                                 style="white-space: pre-line;"><t t-esc="submit_error"/></div>
+                            <p>
+                                Ihr Antrag ist als Entwurf gespeichert. Erst mit dem Einreichen gilt
+                                er als gestellt. Laden Sie fehlende Unterlagen vorher unten hoch.
+                                Beim Einreichen prüft das System, ob alles Nötige vorliegt.
+                            </p>
+                            <form t-att-action="'/my/kjr-antraege/%d/einreichen' % grant.id" method="post">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <!-- Nur wenn am Entwurf noch nicht bestätigt (z. B. im
+                                     Backend erfasst); der Controller verlangt beide. -->
+                                <div t-if="not grant.confirm_privacy" class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" value="1"
+                                           name="confirm_privacy" id="submit_confirm_privacy" required="required"/>
+                                    <label class="form-check-label" for="submit_confirm_privacy">
+                                        Ich habe die
+                                        <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>
+                                        gelesen und bin damit einverstanden. *
+                                    </label>
+                                </div>
+                                <div t-if="not grant.confirm_truthful" class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" value="1"
+                                           name="confirm_truthful" id="submit_confirm_truthful" required="required"/>
+                                    <label class="form-check-label" for="submit_confirm_truthful">
+                                        Ich versichere, dass alle Angaben vollständig sind und der Wahrheit
+                                        entsprechen. Mir ist bewusst, dass eventuell zu viel erhaltene Beträge
+                                        unaufgefordert sofort mitzuteilen und zurückzuzahlen sind. *
+                                    </label>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Antrag einreichen</button>
+                            </form>
                         </div>
                     </div>
 
@@ -1630,7 +1673,7 @@
                             werden.
                         </div>
                         <div class="text-center mb-3">
-                            <a href="/service/zuschuss-hilfe" class="btn btn-outline-primary">
+                            <a href="/service/zuschuss/hilfe" class="btn btn-outline-primary">
                                 <i class="fa fa-question-circle me-1"/>Wie stelle ich einen Zuschussantrag?
                             </a>
                         </div>
@@ -1690,7 +1733,7 @@
                         </p>
                     </div>
                 </div>
-                <a href="/service/zuschuss-hilfe" class="btn btn-outline-primary">
+                <a href="/service/zuschuss/hilfe" class="btn btn-outline-primary">
                     <i class="fa fa-question-circle me-1" title="Hilfe" aria-hidden="true"/>Wie stelle ich einen Zuschussantrag?
                 </a>
             </div>
@@ -1721,7 +1764,7 @@
                         In der Anleitung finden Sie, wer antragsberechtigt ist, welche
                         Förderart passt, welche Unterlagen nötig sind und welche Fristen gelten.
                     </div>
-                    <a href="/service/zuschuss-hilfe" class="btn btn-outline-primary mt-2 mt-md-0">
+                    <a href="/service/zuschuss/hilfe" class="btn btn-outline-primary mt-2 mt-md-0">
                         <i class="fa fa-question-circle me-1"/>Anleitung öffnen
                     </a>
                 </div>
@@ -1806,7 +1849,7 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label fw-bold">Anzahl der Teilnehmer *</label>
+                                    <label class="form-label fw-bold">Anzahl der Teilnehmenden *</label>
                                     <input type="number" name="tn_count" class="form-control"
                                            t-att-value="values.get('tn_count',0)" min="1" required="required"/>
                                     <div class="form-text">ohne Gruppenleitung</div>
@@ -1825,7 +1868,7 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">davon Teilnehmer aus anderen Regionen
+                                    <label class="form-label">davon Teilnehmende aus anderen Regionen
                                         <small class="text-muted">(max. 25 %)</small>
                                     </label>
                                     <input type="number" name="tn_external_count" class="form-control"
@@ -1835,10 +1878,10 @@
                         </div>
                     </div>
 
-                    <!-- 2. Antragsteller -->
+                    <!-- 2. Antragsteller:in -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">2. Antragsteller/in (Organisation)</h5>
+                            <h5 class="mb-0">2. Antragsteller:in (Organisation)</h5>
                         </div>
                         <div class="card-body">
                             <div class="row">
@@ -1857,7 +1900,7 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
-                                    <label class="form-label">Ansprechpartner/in *</label>
+                                    <label class="form-label">Ansprechpartner:in *</label>
                                     <input type="text" name="contact_person" class="form-control"
                                            t-att-value="values.get('contact_person','')"
                                            required="required"/>
@@ -1886,13 +1929,13 @@
                         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">3. Teilnahmeliste</h5>
                             <button type="button" class="btn btn-light btn-sm" onclick="addParticipantRow()">
-                                <i class="fa fa-plus me-1"/>Teilnehmer hinzufügen
+                                <i class="fa fa-plus me-1"/>Teilnehmer:in hinzufügen
                             </button>
                         </div>
                         <div class="card-body">
                             <p class="text-muted small">
                                 Laut Zuschussrichtlinien ist die Teilnahmeliste bei Maßnahmen mit
-                                Teilnehmenden Pflicht. Bitte alle Teilnehmer/innen eintragen.
+                                Teilnehmenden Pflicht. Bitte alle Teilnehmenden eintragen.
                                 Name und Alter sind für jede Person Pflicht.
                             </p>
                             <div class="table-responsive">
@@ -1955,9 +1998,9 @@
                                 </table>
                             </div>
                             <p class="text-muted small mb-0">
-                                Kennziffer: EA = ehrenamtliche/r Mitarbeiter/in,
-                                HA = haupt-/nebenberufliche/r Mitarbeiter/in,
-                                HO = Honorarkraft, PR = Praktikant/in, SO = sonstige
+                                Kennziffer: EA = ehrenamtliche:r Mitarbeiter:in,
+                                HA = haupt-/nebenberufliche:r Mitarbeiter:in,
+                                HO = Honorarkraft, PR = Praktikant:in, SO = sonstige
                             </p>
                             <script type="text/javascript">
                                 function addParticipantRow() {
@@ -2030,7 +2073,7 @@
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label fw-bold">Kontoinhaber (exakter Name) *</label>
+                                    <label class="form-label fw-bold">Kontoinhaber:in (exakter Name) *</label>
                                     <input type="text" name="payment_account_holder" class="form-control"
                                            t-att-value="values.get('payment_account_holder','')"
                                            required="required"/>
@@ -2084,7 +2127,7 @@
                         <div class="card-body">
                             <p class="text-muted small">
                                 Nur ausfüllen, wenn oben „Delegiertenförderung (§ 4.9)" gewählt wurde. PKW: einfache
-                                Strecke und Mitfahrer/innen angeben (Erstattung Hin- und Rückfahrt nach BayRKG).
+                                Strecke und Mitfahrer:innen angeben (Erstattung Hin- und Rückfahrt nach BayRKG).
                                 Bei öffentlichen Verkehrsmitteln die belegten Fahrtkosten unter „Kostenaufstellung →
                                 Fahrtkosten" eintragen.
                             </p>
@@ -2104,7 +2147,7 @@
                                            class="form-control" t-att-value="values.get('delegate_km_one_way','')"/>
                                 </div>
                                 <div class="col-md-4 mb-2">
-                                    <label class="form-label">Mitfahrer/innen</label>
+                                    <label class="form-label">Mitfahrer:innen</label>
                                     <input type="number" min="0" name="delegate_passenger_count"
                                            class="form-control" t-att-value="values.get('delegate_passenger_count','')"/>
                                 </div>
@@ -2148,7 +2191,7 @@
                                     <t t-foreach="[
                                         ('cost_accommodation', '1. Unterkunftskosten, Miete, Verpflegung'),
                                         ('cost_transport',     '2. Fahrtkosten'),
-                                        ('cost_referees',      '3. Honorare für Referenten'),
+                                        ('cost_referees',      '3. Honorare für Referent:innen'),
                                         ('cost_allowances',    '4. Aufwandsentschädigung'),
                                         ('cost_materials',     '5. notw. Arbeits- und Hilfsmittel'),
                                         ('cost_jl_fees',       '6. Kursgebühren bei Teilnahme Jugendleiterschulung'),
@@ -2227,7 +2270,7 @@
                                 </div>
                             </div>
                             <p class="text-muted small">
-                                Diese Belege sind vom Antragsteller zum Zwecke der Nachprüfung
+                                Diese Belege sind von der antragstellenden Organisation zum Zwecke der Nachprüfung
                                 5 Jahre im Original aufzubewahren.
                             </p>
                             <!-- Papier- bzw. Dateiweg (B31): Kostenaufstellung und Belegliste
@@ -2259,7 +2302,7 @@
                                                 <th>Nr.</th>
                                                 <th>Datum *</th>
                                                 <th>Beleg-Nr.</th>
-                                                <th>Empfänger / Einzahler *</th>
+                                                <th>Empfänger:in / Einzahler:in *</th>
                                                 <th>Bezeichnung *</th>
                                                 <th>Art *</th>
                                                 <th>Position <span class="fw-normal text-muted">(optional)</span></th>
@@ -2277,7 +2320,7 @@
                                                 <td class="rc-nr"><t t-out="rc['nr']"/></td>
                                                 <td><input type="date" t-attf-name="rc_date_{{ rc['nr'] }}" class="form-control form-control-sm" t-att-value="rc['date']" aria-label="Datum"/></td>
                                                 <td><input type="text" t-attf-name="rc_no_{{ rc['nr'] }}" class="form-control form-control-sm" style="width:90px" t-att-value="rc['no']" aria-label="Beleg-Nr."/></td>
-                                                <td><input type="text" t-attf-name="rc_partner_{{ rc['nr'] }}" class="form-control form-control-sm" t-att-value="rc['partner']" aria-label="Empfänger / Einzahler"/></td>
+                                                <td><input type="text" t-attf-name="rc_partner_{{ rc['nr'] }}" class="form-control form-control-sm" t-att-value="rc['partner']" aria-label="Empfänger:in / Einzahler:in"/></td>
                                                 <td><input type="text" t-attf-name="rc_desc_{{ rc['nr'] }}" class="form-control form-control-sm" t-att-value="rc['desc']" aria-label="Bezeichnung"/></td>
                                                 <td>
                                                     <select t-attf-name="rc_direction_{{ rc['nr'] }}" class="form-select form-select-sm" onchange="syncReceiptCategory(this)" aria-label="Art">
@@ -2295,7 +2338,7 @@
                                                         <option value="income_other"  t-att-selected="rc['category'] == 'income_other'">Einnahme: Sonstige Zuschüsse</option>
                                                         <option value="accommodation" t-att-selected="rc['category'] == 'accommodation'">Ausgabe: Unterkunft, Verpflegung, Miete</option>
                                                         <option value="transport"     t-att-selected="rc['category'] == 'transport'">Ausgabe: Fahrtkosten</option>
-                                                        <option value="referees"      t-att-selected="rc['category'] == 'referees'">Ausgabe: Honorare Referenten</option>
+                                                        <option value="referees"      t-att-selected="rc['category'] == 'referees'">Ausgabe: Honorare Referent:innen</option>
                                                         <option value="allowances"    t-att-selected="rc['category'] == 'allowances'">Ausgabe: Aufwandsentschädigungen</option>
                                                         <option value="materials"     t-att-selected="rc['category'] == 'materials'">Ausgabe: Arbeits- und Hilfsmittel</option>
                                                         <option value="jl_fees"       t-att-selected="rc['category'] == 'jl_fees'">Ausgabe: Kursgebühren JL-Schulung</option>
@@ -2356,7 +2399,7 @@
                                     '&lt;option value="income_other"&gt;Einnahme: Sonstige Zuschüsse&lt;/option&gt;' +
                                     '&lt;option value="accommodation"&gt;Ausgabe: Unterkunft, Verpflegung, Miete&lt;/option&gt;' +
                                     '&lt;option value="transport"&gt;Ausgabe: Fahrtkosten&lt;/option&gt;' +
-                                    '&lt;option value="referees"&gt;Ausgabe: Honorare Referenten&lt;/option&gt;' +
+                                    '&lt;option value="referees"&gt;Ausgabe: Honorare Referent:innen&lt;/option&gt;' +
                                     '&lt;option value="allowances"&gt;Ausgabe: Aufwandsentschädigungen&lt;/option&gt;' +
                                     '&lt;option value="materials"&gt;Ausgabe: Arbeits- und Hilfsmittel&lt;/option&gt;' +
                                     '&lt;option value="jl_fees"&gt;Ausgabe: Kursgebühren JL-Schulung&lt;/option&gt;' +
@@ -2372,7 +2415,7 @@
                                         '&lt;td class="rc-nr"&gt;' + nr + '&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;input type="date" name="rc_date_' + nr + '" class="form-control form-control-sm" aria-label="Datum"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;input type="text" name="rc_no_' + nr + '" class="form-control form-control-sm" style="width:90px" aria-label="Beleg-Nr."/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;input type="text" name="rc_partner_' + nr + '" class="form-control form-control-sm" aria-label="Empfänger / Einzahler"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="rc_partner_' + nr + '" class="form-control form-control-sm" aria-label="Empfänger:in / Einzahler:in"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;input type="text" name="rc_desc_' + nr + '" class="form-control form-control-sm" aria-label="Bezeichnung"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;select name="rc_direction_' + nr + '" class="form-select form-select-sm" onchange="syncReceiptCategory(this)" aria-label="Art"&gt;' +
                                         '&lt;option value="expense"&gt;Ausgabe&lt;/option&gt;' +
@@ -2592,7 +2635,7 @@
                     <div class="alert alert-secondary mb-4">
                         <small>
                             <strong>Hinweis zum Verwendungsnachweis:</strong> Ihre Daten werden zum Zwecke
-                            der Bearbeitung des Zuschussantrages erhoben. Der Antragsteller erklärt sich
+                            der Bearbeitung des Zuschussantrages erhoben. Die antragstellende Organisation erklärt sich
                             mit einer möglichen Verwendungsprüfung durch den KJR einverstanden.
                             Belege sind 5 Jahre aufzubewahren.
                         </small>
@@ -2699,12 +2742,21 @@
     </template>
 
     <!-- ── Website: Hilfeseite „Wie stelle ich einen Zuschussantrag?" ──── -->
-    <!-- Öffentlich (ohne Login) erreichbar. Förderarten, Höchstbeträge und
-         Pflichtunterlagen werden aus den Stammdaten gelesen — nichts hartkodiert,
-         damit die Seite mit den im Backend gepflegten Sätzen mitläuft.
-         TODO(KJR): Mit der Geschäftsstelle klären, ob die Anleitung zusätzlich ins
-         Website-Hauptmenü soll (data/website_menu_data.xml). Bis dahin bewusst nur
-         von der Landingpage und vom Antragsformular aus verlinkt. -->
+    <!-- Öffentlich (ohne Login) unter /service/zuschuss/hilfe, verlinkt von der
+         Zuschuss-Startseite, dem Antragsformular und der Hinweisseite ohne
+         Verband. Die alte Adresse /service/zuschuss-hilfe leitet dauerhaft um.
+
+         Im Website-Editor überschreibbar: Alle erklärenden Texte stehen in
+         Bereichen mit der Klasse oe_structure (je mit eigener id). Die
+         Geschäftsstelle kann sie im Editor ändern, ergänzen oder durch eigene
+         Bausteine ersetzen; gespeichert wird als website-eigene Kopie dieser
+         Ansicht. In diesen Bereichen steht deshalb bewusst KEIN QWeb (t-out,
+         t-if, t-foreach): der Editor würde beim Speichern den gerenderten Wert
+         als festen Text übernehmen.
+         Werte aus der Konfiguration (Förderarten, Pflichtunterlagen, Fristen,
+         Richtlinien-Adresse, Kontakt der Geschäftsstelle) stehen AUSSERHALB
+         dieser Bereiche und laufen mit den im Backend gepflegten Daten mit.
+         Förderbeträge nennt die Seite nur aus den Stammdaten der Förderarten. -->
     <template id="website_kjr_apply_help" name="KJR Zuschussantrag Hilfe">
         <t t-call="website.layout">
             <div id="wrap" class="container mt-4 mb-5">
@@ -2712,465 +2764,434 @@
                     <ol class="breadcrumb">
                         <li class="breadcrumb-item"><a href="/">Start</a></li>
                         <li class="breadcrumb-item"><a href="/service/zuschuss">Zuschuss</a></li>
-                        <li class="breadcrumb-item active">Anleitung</li>
+                        <li class="breadcrumb-item active" aria-current="page">Anleitung</li>
                     </ol>
                 </nav>
 
-                <h1 class="mb-2">Wie stelle ich einen Zuschussantrag?</h1>
-                <p class="text-muted mb-4">
-                    Schritt-für-Schritt-Anleitung zum Zuschussantrag bei
-                    <t t-out="res_company.name"/>. Maßgeblich sind in jedem Fall die
-                    <a href="#zuschussrichtlinien">Zuschussrichtlinien</a> von <t t-out="res_company.name"/>.
+                <h1 class="mb-3">Wie stelle ich einen Zuschussantrag?</h1>
+
+                <div class="oe_structure" id="oe_structure_kjr_help_intro">
+                    <section>
+                        <p class="lead">
+                            Zuschussanträge stellen Sie online. Diese Anleitung zeigt den
+                            Ablauf von der Registrierung bis zur Auszahlung.
+                        </p>
+                        <ol>
+                            <li>Konto anlegen: als Privatperson oder für einen Verein bzw. Verband</li>
+                            <li>Zuordnung zum Verband: Die Geschäftsstelle gibt sie frei</li>
+                            <li>Antragsformular ausfüllen und Förderart wählen</li>
+                            <li>Teilnahmeliste, Kostenaufstellung und Belege beifügen</li>
+                            <li>Antrag in „Meine Zuschussanträge“ einreichen</li>
+                            <li>Prüfung, Bescheid und Auszahlung durch die Geschäftsstelle</li>
+                        </ol>
+                    </section>
+                </div>
+
+                <p class="mb-4">
+                    <a href="/service/antrag-stellen" class="btn btn-primary me-2 mb-2">Zum Antragsformular</a>
+                    <a href="/service/zuschuss/belegliste-vorlage" class="btn btn-outline-secondary me-2 mb-2">Kostenaufstellung und Belegliste zum Ausdrucken</a>
+                    <a href="/service/zuschuss/vorlage-kostenaufstellung-belegliste.xlsx" class="btn btn-outline-secondary mb-2">Vorlage als Excel-Datei</a>
                 </p>
 
-                <!-- B43: Ziel des Links „Zuschussrichtlinien" in Checkbox 2 des
-                     Antragsformulars, solange keine eigene Adresse gepflegt ist
-                     (DEFAULT_GUIDELINES_URL in models/res_config_settings_apply.py).
-                     Mit gepflegter Adresse steht hier der Link auf das Dokument. -->
-                <div class="card border-primary mb-4" id="zuschussrichtlinien">
-                    <div class="card-body">
-                        <h2 class="h5">Zuschussrichtlinien</h2>
-                        <t t-if="apply_settings and apply_settings['guidelines_document_url']">
+                <nav aria-labelledby="hilfe_inhalt_titel" class="mb-4">
+                    <h2 class="h5" id="hilfe_inhalt_titel">Inhalt</h2>
+                    <ol>
+                        <li><a href="#hilfe_registrierung">Registrieren: Privatperson oder Verein</a></li>
+                        <li><a href="#hilfe_freigabe">Freigabe durch die Geschäftsstelle</a></li>
+                        <li><a href="#hilfe_foerderart">Förderart wählen</a></li>
+                        <li><a href="#hilfe_pflichtfelder">Pflichtangaben im Formular</a></li>
+                        <li><a href="#hilfe_unterlagen">Unterlagen und Belege</a></li>
+                        <li><a href="#hilfe_einreichen">Einreichen, Prüfung und Bescheid</a></li>
+                        <li><a href="#hilfe_verwendungsnachweis">Verwendungsnachweis und Aufbewahrung</a></li>
+                        <li><a href="#hilfe_fristen">Fristen</a></li>
+                        <li><a href="#hilfe_fehler">Häufige Fehler</a></li>
+                        <li><a href="#zuschussrichtlinien">Zuschussrichtlinien</a></li>
+                    </ol>
+                </nav>
+
+                <!-- 1. Registrierung -->
+                <section id="hilfe_registrierung" class="mb-4">
+                    <h2 class="h4">1. Registrieren: Privatperson oder Verein</h2>
+                    <div class="oe_structure" id="oe_structure_kjr_help_registrierung">
+                        <section>
                             <p>
-                                Grundlage jedes Antrags sind die Zuschussrichtlinien von
-                                <t t-out="res_company.name"/>. Bitte lesen Sie sie vor dem
-                                Antrag; am Ende des Formulars bestätigen Sie, dass Sie sie
-                                gelesen haben.
+                                Zum Antragsformular brauchen Sie ein Konto. Bei der Registrierung
+                                wählen Sie, wie Sie sich anmelden:
                             </p>
+                            <ul>
+                                <li>
+                                    <strong>Für einen Verein bzw. Verband:</strong> Sie geben den Namen
+                                    Ihres Vereins, Ihre Funktion und den Ort an. Wenn Ihr Verein zu einem
+                                    Dachverband gehört, wählen Sie ihn aus der Liste (freiwillig). Sind Sie
+                                    Delegierte:r Ihres Verbands für die Vollversammlung, kreuzen Sie das an
+                                    und geben eine Telefonnummer an.
+                                </li>
+                                <li>
+                                    <strong>Als Privatperson:</strong> Das Konto ist keinem Verein
+                                    zugeordnet. Zuschussanträge stellen die Mitgliedsverbände; mit einem
+                                    privaten Konto ist kein Antrag möglich.
+                                </li>
+                            </ul>
+                            <p>
+                                Mehrere Personen eines Verbands können sich jeweils eigene Zugangsdaten
+                                anlegen. Nach der Freigabe sehen alle die Anträge ihres Verbands.
+                            </p>
+                            <p>
+                                <a href="/web/signup?redirect=/service/antrag-stellen">Konto erstellen</a>
+                                ·
+                                <a href="/web/login?redirect=/service/antrag-stellen">Anmelden</a>
+                            </p>
+                        </section>
+                    </div>
+                </section>
+
+                <!-- 2. Freigabe -->
+                <section id="hilfe_freigabe" class="mb-4">
+                    <h2 class="h4">2. Freigabe durch die Geschäftsstelle</h2>
+                    <div class="oe_structure" id="oe_structure_kjr_help_freigabe">
+                        <section>
+                            <ul>
+                                <li>
+                                    Nach der Registrierung für einen Verein prüft die Geschäftsstelle Ihre
+                                    Angaben und ordnet Ihr Konto dem Verband zu. Darüber erhalten Sie eine
+                                    E-Mail. Solange die Prüfung läuft, zeigt das Antragsformular einen
+                                    Hinweis statt der Eingabefelder.
+                                </li>
+                                <li>
+                                    Antragsberechtigt sind Mitgliedsverbände mit Vertretungsrecht in der
+                                    Vollversammlung. Fehlt das Vertretungsrecht, lässt sich der Antrag nicht
+                                    einreichen. Sprechen Sie in diesem Fall vorab mit der Geschäftsstelle.
+                                </li>
+                                <li>
+                                    Wird die Zuordnung nicht bestätigt, nennt Ihnen die Geschäftsstelle den
+                                    Grund. Ihr Konto bleibt als persönliches Konto bestehen.
+                                </li>
+                            </ul>
+                        </section>
+                    </div>
+                </section>
+
+                <!-- 3. Förderart (Tabelle aus den Stammdaten, nicht im Editor änderbar) -->
+                <section id="hilfe_foerderart" class="mb-4">
+                    <h2 class="h4">3. Förderart wählen</h2>
+                    <div class="oe_structure" id="oe_structure_kjr_help_foerderart">
+                        <section>
+                            <p>
+                                Pro Antrag wählen Sie genau eine Förderart (Block 5 im Formular). Sie
+                                bestimmt, welche Sätze gelten und welche Unterlagen Pflicht sind. Wenn
+                                Sie unsicher sind, hilft die Geschäftsstelle bei der Zuordnung.
+                            </p>
+                        </section>
+                    </div>
+                    <p t-if="not grant_types" class="alert alert-warning">
+                        Derzeit sind keine Förderarten freigeschaltet. Bitte wenden Sie sich an die
+                        Geschäftsstelle.
+                    </p>
+                    <div t-if="grant_types" class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <caption>Förderarten nach der aktuellen Konfiguration der Geschäftsstelle</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Förderart</th>
+                                    <th scope="col">Kurzbeschreibung</th>
+                                    <th scope="col" class="text-nowrap">Höchstbetrag</th>
+                                    <th scope="col">Rahmenbedingungen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="grant_types" t-as="gt">
+                                    <th scope="row">
+                                        <t t-esc="gt.name"/>
+                                        <div class="text-muted small fw-normal">
+                                            <t t-esc="dict(gt._fields['code'].selection).get(gt.code, gt.code)"/>
+                                        </div>
+                                    </th>
+                                    <td class="small">
+                                        <t t-if="gt.description"><t t-esc="gt.description"/></t>
+                                        <t t-else="">-</t>
+                                    </td>
+                                    <td class="text-nowrap">
+                                        <t t-if="gt.max_amount"><t t-esc="'%.2f €' % gt.max_amount"/></t>
+                                        <t t-else="">-</t>
+                                    </td>
+                                    <td class="small">
+                                        <div t-if="gt.min_age or gt.max_age">
+                                            Alter der Teilnehmenden:
+                                            <t t-esc="gt.min_age or 0"/>
+                                            <t t-if="gt.max_age">bis <t t-esc="gt.max_age"/> Jahre</t>
+                                            <t t-else="">Jahre und älter</t>
+                                        </div>
+                                        <div t-if="gt.min_days">Mindestdauer: <t t-esc="gt.min_days"/> Tage</div>
+                                        <div t-if="gt.max_days">Höchstdauer: <t t-esc="gt.max_days"/> Tage</div>
+                                        <div t-if="gt.min_participants">Mindestens <t t-esc="gt.min_participants"/> Teilnehmende</div>
+                                        <!-- Förderarten mit derselben Jahreslimit-Gruppe teilen
+                                             sich das Limit (dynamisch aus year_limit_group). -->
+                                        <t t-if="gt.max_per_year">
+                                            <t t-set="limit_siblings"
+                                               t-value="gt.year_limit_group and grant_types.filtered_domain([
+                                                   ('year_limit_group', '=', gt.year_limit_group),
+                                                   ('id', '!=', gt.id)]) or None"/>
+                                            <div>
+                                                Höchstens <t t-esc="gt.max_per_year"/> Anträge pro Kalenderjahr
+                                                <t t-if="limit_siblings">
+                                                    gemeinsam mit:
+                                                    <t t-foreach="limit_siblings" t-as="sib"><t t-esc="sib.name"/><t t-if="not sib_last">, </t></t>
+                                                    (die Anträge zählen zusammen)
+                                                </t>
+                                            </div>
+                                        </t>
+                                        <div t-if="gt.allow_private_account">Auszahlung auch auf ein Privatkonto möglich</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 4. Pflichtangaben -->
+                <section id="hilfe_pflichtfelder" class="mb-4">
+                    <h2 class="h4">4. Pflichtangaben im Formular</h2>
+                    <div class="oe_structure" id="oe_structure_kjr_help_pflichtfelder">
+                        <section>
+                            <p>Felder mit * sind Pflicht. Ohne diese Angaben lässt sich das Formular nicht absenden:</p>
+                            <ul>
+                                <li><strong>Maßnahme:</strong> Bezeichnung, Beginn und Ende jeweils mit Uhrzeit, Postleitzahl und Ort</li>
+                                <li><strong>Antragsteller:in:</strong> Organisation, Ansprechpartner:in, E-Mail und Telefon</li>
+                                <li><strong>Teilnehmende:</strong> Anzahl der Teilnehmenden und Anzahl der Gruppenleitung; in der Teilnahmeliste je Person mindestens Name und Alter</li>
+                                <li><strong>Bankverbindung:</strong> Kontoinhaber:in genau wie bei der Bank und IBAN; die BIC ist freiwillig</li>
+                                <li><strong>Förderart</strong></li>
+                                <li><strong>Bestätigungen</strong> am Ende des Formulars: Datenschutzhinweis, Zuschussrichtlinien gelesen, Richtigkeit der Angaben</li>
+                            </ul>
+                            <p>
+                                Fehlt etwas, nennt das Formular jede fehlende Angabe einzeln. Alles, was
+                                Sie schon eingetragen haben, bleibt erhalten.
+                            </p>
+                        </section>
+                    </div>
+                </section>
+
+                <!-- 5. Unterlagen (Tabelle aus den Stammdaten) -->
+                <section id="hilfe_unterlagen" class="mb-4">
+                    <h2 class="h4">5. Unterlagen und Belege</h2>
+                    <div t-if="grant_types" class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <caption>Pflichtunterlagen je Förderart nach der aktuellen Konfiguration</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Förderart</th>
+                                    <th scope="col" class="text-center">Teilnahmeliste</th>
+                                    <th scope="col" class="text-center">Maßnahmenbericht</th>
+                                    <th scope="col" class="text-center">Belegliste</th>
+                                    <th scope="col">Weitere Pflichtunterlagen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="grant_types" t-as="gt">
+                                    <th scope="row" class="fw-normal"><t t-esc="gt.name"/></th>
+                                    <td class="text-center"><t t-if="gt.requires_tn_list">Pflicht</t><t t-else="">-</t></td>
+                                    <td class="text-center"><t t-if="gt.requires_report">Pflicht</t><t t-else="">-</t></td>
+                                    <td class="text-center"><t t-if="gt.requires_receipt">Pflicht</t><t t-else="">-</t></td>
+                                    <td class="small">
+                                        <t t-if="gt.requires_other_docs"><t t-esc="gt.requires_other_docs"/></t>
+                                        <t t-else="">-</t>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="oe_structure" id="oe_structure_kjr_help_unterlagen">
+                        <section>
+                            <ul>
+                                <li>
+                                    <strong>Teilnahmeliste:</strong> alle Teilnehmenden mit Name, Alter,
+                                    Geschlecht und Wohnort. Sie erfassen die Liste direkt im Formular
+                                    (Block 3) oder laden sie als Datei hoch. Gruppenleitung und
+                                    Mitarbeitende erhalten die passende Kennziffer (EA, HA, HO, PR, SO).
+                                </li>
+                                <li>
+                                    <strong>Kostenaufstellung:</strong> Einnahmen (Teilnahmebeiträge,
+                                    Zuschüsse von Gemeinde, Verband oder BJR) und Kosten der Maßnahme
+                                    (Block 6). Das Formular rechnet den Fehlbetrag mit.
+                                </li>
+                                <li>
+                                    <strong>Belegliste:</strong> entweder digital im Formular (Block 7)
+                                    oder als Datei. Eine Vorlage gibt es zum Ausdrucken und als
+                                    Excel-Datei (Schaltflächen oben auf dieser Seite).
+                                </li>
+                                <li>
+                                    <strong>Maßnahmenbericht:</strong> Charakter, Inhalt und Ablauf der
+                                    Maßnahme; als Datei oder kurz im Feld unter Block 9.
+                                </li>
+                                <li>
+                                    <strong>Weitere Nachweise</strong> wie das Neugründungsformular bei der
+                                    Gruppenstarthilfe oder die Kopie der Juleica laden Sie unter
+                                    „Weitere Dokumente“ hoch.
+                                </li>
+                            </ul>
+                            <p>
+                                Zulässig sind PDF, Word, Excel/CSV und Bilder (JPG/PNG) bis 10 MB je
+                                Datei. Unterlagen lassen sich auch nach dem Speichern in der
+                                Antragsansicht unter „Meine Zuschussanträge“ nachreichen.
+                            </p>
+                        </section>
+                    </div>
+                </section>
+
+                <!-- 6. Einreichen -->
+                <section id="hilfe_einreichen" class="mb-4">
+                    <h2 class="h4">6. Einreichen, Prüfung und Bescheid</h2>
+                    <div class="oe_structure" id="oe_structure_kjr_help_einreichen">
+                        <section>
+                            <ol>
+                                <li>
+                                    Mit „Antrag als Entwurf speichern“ am Ende des Formulars wird
+                                    Ihr Antrag gespeichert und erhält eine Nummer. Sie finden ihn unter
+                                    <a href="/my/kjr-antraege">Meine Zuschussanträge</a>.
+                                </li>
+                                <li>
+                                    Dort laden Sie fehlende Unterlagen hoch und klicken auf
+                                    „Antrag einreichen“. Das System prüft dabei, ob alles Nötige vorliegt,
+                                    und nennt fehlende Angaben. Erst mit dem Einreichen gilt der Antrag
+                                    als gestellt. Sie erhalten eine Eingangsbestätigung per E-Mail.
+                                </li>
+                                <li>
+                                    Die Geschäftsstelle prüft den Antrag und meldet sich bei Rückfragen.
+                                    Über die Entscheidung informiert sie Sie per E-Mail. Den Stand sehen
+                                    Sie jederzeit unter „Meine Zuschussanträge“.
+                                </li>
+                                <li>Nach der Bewilligung wird der Zuschuss auf das angegebene Konto überwiesen.</li>
+                            </ol>
+                        </section>
+                    </div>
+                </section>
+
+                <!-- 7. Verwendungsnachweis -->
+                <section id="hilfe_verwendungsnachweis" class="mb-4">
+                    <h2 class="h4">7. Verwendungsnachweis und Aufbewahrung</h2>
+                    <div class="oe_structure" id="oe_structure_kjr_help_verwendungsnachweis">
+                        <section>
+                            <ul>
+                                <li>
+                                    Kostenaufstellung, Belegliste, Teilnahmeliste und Bericht weisen nach,
+                                    wofür der Zuschuss verwendet wurde. Mit dem Antrag erklären Sie sich
+                                    mit einer Prüfung der Verwendung durch die Geschäftsstelle
+                                    einverstanden.
+                                </li>
+                                <li>
+                                    Die Originalbelege bleiben bei Ihnen. Bewahren Sie sie 5 Jahre auf und
+                                    legen Sie sie auf Anfrage vor.
+                                </li>
+                                <li>
+                                    Ergibt die Prüfung geringere Kosten oder höhere Einnahmen als
+                                    angegeben, kann ein zu viel gezahlter Zuschuss zurückgefordert werden.
+                                </li>
+                            </ul>
+                        </section>
+                    </div>
+                </section>
+
+                <!-- 8. Fristen (Werte aus der Konfiguration, nicht im Editor änderbar) -->
+                <section id="hilfe_fristen" class="mb-4">
+                    <h2 class="h4">8. Fristen</h2>
+                    <ul>
+                        <li>
+                            <strong>Einreichfrist:</strong> spätestens
+                            <t t-esc="deadline_months"/> Monate nach dem Ende der Maßnahme. Das
+                            konkrete Datum steht bei jedem Antrag als „Einreichfrist“.
+                        </li>
+                        <li>
+                            <strong>Stichtag für die Auszahlung:</strong> Anträge, die bis zum
+                            <t t-esc="'%02d.%02d.' % (payout_cutoff_day, payout_cutoff_month)"/>
+                            eines Jahres eingehen, werden im selben Jahr ausgezahlt. Später eingehende
+                            Anträge werden ab dem 1. Januar des Folgejahres ausgezahlt.
+                        </li>
+                        <li>
+                            <strong>Erinnerung:</strong> Liegt ein Antrag <t t-esc="reminder_days"/>
+                            Tage vor Fristablauf noch als Entwurf vor, erhält die Geschäftsstelle eine
+                            Erinnerung. Maßgeblich ist trotzdem Ihr rechtzeitiges Einreichen.
+                        </li>
+                        <li>
+                            <strong>Anzahl pro Jahr:</strong> Für viele Förderarten gilt eine
+                            Höchstzahl an Anträgen pro Kalenderjahr (siehe Tabelle unter Punkt 3).
+                            Maßgeblich ist das Jahr des Maßnahmenbeginns.
+                        </li>
+                    </ul>
+                    <div class="oe_structure" id="oe_structure_kjr_help_fristen"/>
+                </section>
+
+                <!-- 9. Häufige Fehler -->
+                <section id="hilfe_fehler" class="mb-4">
+                    <h2 class="h4">9. Häufige Fehler</h2>
+                    <div class="oe_structure" id="oe_structure_kjr_help_fehler">
+                        <section>
+                            <ul>
+                                <li>
+                                    <strong>Antrag nicht eingereicht:</strong> Ein gespeicherter Entwurf
+                                    ist noch kein Antrag. Klicken Sie unter „Meine Zuschussanträge“ auf
+                                    „Antrag einreichen“.
+                                </li>
+                                <li>
+                                    <strong>Unvollständige Teilnahmeliste:</strong> Ohne Alter und Wohnort
+                                    lassen sich Altersgrenzen und der Anteil auswärtiger Teilnehmender
+                                    nicht prüfen. Auch die Gruppenleitung gehört mit Kennziffer in die
+                                    Liste.
+                                </li>
+                                <li>
+                                    <strong>Belegliste fehlt:</strong> Die Kostenaufstellung allein genügt
+                                    nicht. Bei Förderarten mit Belegliste-Pflicht ist die digitale
+                                    Belegliste oder eine Datei nötig.
+                                </li>
+                                <li>
+                                    <strong>Privatkonto statt Vereinskonto:</strong> Der Zuschuss geht an
+                                    das Konto der Organisation, außer bei Förderarten mit dem Hinweis
+                                    „Auszahlung auch auf ein Privatkonto möglich“ (Tabelle unter Punkt 3).
+                                </li>
+                                <li>
+                                    <strong>Einnahmen vergessen:</strong> Teilnahmebeiträge und Zuschüsse
+                                    Dritter gehören in die Kostenaufstellung. Der Zuschuss ist in der
+                                    Regel höchstens so hoch wie der Fehlbetrag.
+                                </li>
+                            </ul>
+                        </section>
+                    </div>
+                </section>
+
+                <!-- 10. Zuschussrichtlinien. Ziel des Links „Zuschussrichtlinien"
+                     in Checkbox 2 des Antragsformulars, solange keine eigene
+                     Adresse gepflegt ist (DEFAULT_GUIDELINES_URL in
+                     models/res_config_settings_apply.py). Mit gepflegter Adresse
+                     steht hier der Link auf das Dokument. -->
+                <section id="zuschussrichtlinien" class="mb-4">
+                    <h2 class="h4">10. Zuschussrichtlinien</h2>
+                    <t t-if="apply_settings and apply_settings['guidelines_document_url']">
+                        <p>
+                            Grundlage jedes Antrags sind die Zuschussrichtlinien von
+                            <t t-out="res_company.name"/>. Bitte lesen Sie sie vor dem
+                            Antrag; am Ende des Formulars bestätigen Sie, dass Sie sie
+                            gelesen haben.
+                        </p>
+                        <p>
                             <a t-att-href="apply_settings['guidelines_document_url']"
-                               class="btn btn-primary" target="_blank" rel="noopener">
-                                <i class="fa fa-file-text-o me-1" title="Dokument" aria-hidden="true"/>Zuschussrichtlinien öffnen
-                            </a>
-                        </t>
-                        <t t-else="">
-                            <p class="mb-0">
-                                Grundlage jedes Antrags sind die Zuschussrichtlinien von
-                                <t t-out="res_company.name"/>. Die aktuelle Fassung sendet Ihnen
-                                die Geschäftsstelle gerne zu<t t-if="res_company.phone or res_company.email">:</t><t t-else="">.</t>
-                                <t t-if="res_company.phone">Tel. <t t-out="res_company.phone"/></t>
-                                <t t-if="res_company.phone and res_company.email"> · </t>
-                                <a t-if="res_company.email" t-attf-href="mailto:{{ res_company.email }}"><t t-out="res_company.email"/></a>
-                            </p>
-                        </t>
-                    </div>
-                </div>
-
-                <div class="d-flex flex-wrap gap-2 mb-4">
-                    <a href="/service/antrag-stellen" class="btn btn-primary">
-                        <i class="fa fa-paper-plane me-1"/>Zum Antragsformular
-                    </a>
-                    <a href="/service/zuschuss/belegliste-vorlage" class="btn btn-outline-secondary"
-                       target="_blank">
-                        <i class="fa fa-print me-1"/>Kostenaufstellung und Belegliste zum Ausdrucken
-                    </a>
-                    <a href="/service/zuschuss/vorlage-kostenaufstellung-belegliste.xlsx"
-                       class="btn btn-outline-secondary">
-                        <i class="fa fa-download me-1"/>Als Excel-Datei
-                    </a>
-                </div>
-
-                <!-- Inhaltsübersicht -->
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <ol class="mb-0">
-                            <li><a href="#hilfe_berechtigt">Wer ist antragsberechtigt?</a></li>
-                            <li><a href="#hilfe_foerderart">Welche Förderart passt?</a></li>
-                            <li><a href="#hilfe_unterlagen">Welche Unterlagen brauche ich?</a></li>
-                            <li><a href="#hilfe_fristen">Welche Fristen gelten?</a></li>
-                            <li><a href="#hilfe_schritte">Schritt für Schritt zum Antrag</a></li>
-                            <li><a href="#hilfe_fehler">Häufige Fehler</a></li>
-                        </ol>
-                    </div>
-                </div>
-
-                <!-- 1. Antragsberechtigung -->
-                <div class="card mb-4" id="hilfe_berechtigt">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">1. Wer ist antragsberechtigt?</h5>
-                    </div>
-                    <div class="card-body">
-                        <ul>
-                            <li>
-                                Antragsberechtigt sind die <strong>Mitgliedsverbände von
-                                <t t-out="res_company.name"/></strong>. Der Antrag wird immer
-                                für die Organisation gestellt, nicht für Einzelpersonen.
-                            </li>
-                            <li>
-                                Der Verband muss <strong>Vertretungsrecht in der
-                                Vollversammlung</strong> haben (§ 3.1 der Richtlinien).
-                                Fehlt das Vertretungsrecht, weist das System den Antrag beim
-                                Einreichen ab. Bitte in diesem Fall vorab die
-                                Geschäftsstelle ansprechen.
-                            </li>
-                            <li>
-                                <strong>Mehrere Personen pro Verband</strong> können sich eigene
-                                Zugangsdaten anlegen. Wählen Sie bei der Registrierung „für einen
-                                Verein / Verband“. Nach der Bestätigung durch die Geschäftsstelle
-                                sieht jede/r die Anträge des eigenen Verbandes.
-                            </li>
-                            <li>
-                                Im Antragsformular wählen Sie unter „2. Antragsteller/in" die
-                                Organisation aus. Erscheint Ihr Verband dort nicht, ist er
-                                noch nicht als Mitgliedsverband hinterlegt. Bitte bei der
-                                Geschäftsstelle melden. Steht dort der Hinweis, dass Ihre
-                                Zugehörigkeit geprüft wird, hat die Geschäftsstelle Ihre
-                                Registrierung noch nicht bestätigt.
-                            </li>
-                        </ul>
-                        <p class="mb-0">
-                            <a href="/web/signup?redirect=/service/antrag-stellen">Konto erstellen</a>
-                            ·
-                            <a href="/web/login?redirect=/service/antrag-stellen">Anmelden</a>
+                               class="btn btn-primary" target="_blank" rel="noopener">Zuschussrichtlinien öffnen</a>
                         </p>
-                    </div>
-                </div>
+                    </t>
+                    <p t-else="">
+                        Grundlage jedes Antrags sind die Zuschussrichtlinien von
+                        <t t-out="res_company.name"/>. Die aktuelle Fassung sendet Ihnen
+                        die Geschäftsstelle gerne zu<t t-if="res_company.phone or res_company.email">:</t><t t-else="">.</t>
+                        <t t-if="res_company.phone">Tel. <t t-out="res_company.phone"/></t>
+                        <t t-if="res_company.phone and res_company.email"> · </t>
+                        <a t-if="res_company.email" t-attf-href="mailto:{{ res_company.email }}"><t t-out="res_company.email"/></a>
+                    </p>
+                </section>
 
-                <!-- 2. Förderarten (dynamisch aus den Stammdaten) -->
-                <div class="card mb-4" id="hilfe_foerderart">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">2. Welche Förderart passt?</h5>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted small">
-                            Pro Antrag wird genau eine Förderart gewählt (Block 5 im Formular).
-                            Sind Sie unsicher, hilft die Geschäftsstelle bei der Zuordnung.
-                        </p>
-                        <t t-if="not grant_types">
-                            <div class="alert alert-warning mb-0">
-                                Derzeit sind keine Förderarten freigeschaltet. Bitte wenden Sie
-                                sich an die KJR-Geschäftsstelle.
-                            </div>
-                        </t>
-                        <t t-if="grant_types">
-                            <div class="table-responsive">
-                                <table class="table table-sm align-middle">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Förderart</th>
-                                            <th>Kurzbeschreibung</th>
-                                            <th class="text-nowrap">Höchstbetrag</th>
-                                            <th class="text-nowrap">Rahmenbedingungen</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <t t-foreach="grant_types" t-as="gt">
-                                            <tr>
-                                                <td>
-                                                    <strong><t t-esc="gt.name"/></strong>
-                                                    <div class="text-muted small">
-                                                        <t t-esc="dict(gt._fields['code'].selection).get(gt.code, gt.code)"/>
-                                                    </div>
-                                                </td>
-                                                <td class="small">
-                                                    <t t-if="gt.description"><t t-esc="gt.description"/></t>
-                                                    <t t-else="">-</t>
-                                                </td>
-                                                <td class="text-nowrap">
-                                                    <t t-if="gt.max_amount">
-                                                        <t t-esc="'%.2f €' % gt.max_amount"/>
-                                                    </t>
-                                                    <t t-else="">-</t>
-                                                </td>
-                                                <td class="small">
-                                                    <t t-if="gt.min_age or gt.max_age">
-                                                        <div>
-                                                            Alter der Teilnehmenden:
-                                                            <t t-esc="gt.min_age or 0"/>
-                                                            <t t-if="gt.max_age">
-                                                                bis <t t-esc="gt.max_age"/> Jahre
-                                                            </t>
-                                                            <t t-else="">Jahre und älter</t>
-                                                        </div>
-                                                    </t>
-                                                    <t t-if="gt.min_days">
-                                                        <div>Mindestdauer: <t t-esc="gt.min_days"/> Tage</div>
-                                                    </t>
-                                                    <t t-if="gt.max_days">
-                                                        <div>Höchstdauer: <t t-esc="gt.max_days"/> Tage</div>
-                                                    </t>
-                                                    <t t-if="gt.min_participants">
-                                                        <div>Mind. <t t-esc="gt.min_participants"/> Teilnehmende</div>
-                                                    </t>
-                                                    <!-- Förderarten mit derselben Jahreslimit-Gruppe
-                                                         teilen sich das Limit: die Anträge zählen
-                                                         zusammen. Dynamisch aus year_limit_group
-                                                         abgeleitet, damit die Seite bei einer
-                                                         Umstellung im Backend nicht falsch wird. -->
-                                                    <t t-if="gt.max_per_year">
-                                                        <t t-set="limit_siblings"
-                                                           t-value="gt.year_limit_group and grant_types.filtered_domain([
-                                                               ('year_limit_group', '=', gt.year_limit_group),
-                                                               ('id', '!=', gt.id)]) or None"/>
-                                                        <div>
-                                                            Max. <t t-esc="gt.max_per_year"/> Anträge pro Kalenderjahr
-                                                            <t t-if="limit_siblings">
-                                                                gemeinsam mit:
-                                                                <t t-foreach="limit_siblings" t-as="sib"><t t-esc="sib.name"/><t t-if="not sib_last">, </t></t>
-                                                                (die Anträge zählen zusammen, nicht je Förderart einzeln)
-                                                            </t>
-                                                        </div>
-                                                    </t>
-                                                    <t t-if="gt.allow_private_account">
-                                                        <div>Auszahlung auch auf Privatkonto möglich</div>
-                                                    </t>
-                                                </td>
-                                            </tr>
-                                        </t>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <p class="text-muted small mb-0">
-                                Angaben aus der aktuell gepflegten Konfiguration der
-                                Geschäftsstelle. Zuschüsse werden nur bis zur Höhe des
-                                Fehlbetrags (Kosten abzüglich Einnahmen) gewährt.
-                            </p>
-                        </t>
-                    </div>
-                </div>
-
-                <!-- 3. Pflichtunterlagen (dynamisch je Förderart) -->
-                <div class="card mb-4" id="hilfe_unterlagen">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">3. Welche Unterlagen brauche ich?</h5>
-                    </div>
-                    <div class="card-body">
-                        <t t-if="grant_types">
-                            <div class="table-responsive">
-                                <table class="table table-sm align-middle">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Förderart</th>
-                                            <th class="text-center">Teilnahmeliste</th>
-                                            <th class="text-center">Maßnahmenbericht</th>
-                                            <th class="text-center">Belegliste</th>
-                                            <th>Weitere Pflichtunterlagen</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <t t-foreach="grant_types" t-as="gt">
-                                            <tr>
-                                                <td><t t-esc="gt.name"/></td>
-                                                <td class="text-center">
-                                                    <t t-if="gt.requires_tn_list">
-                                                        <span class="badge bg-secondary">Pflicht</span>
-                                                    </t>
-                                                    <t t-else="">-</t>
-                                                </td>
-                                                <td class="text-center">
-                                                    <t t-if="gt.requires_report">
-                                                        <span class="badge bg-secondary">Pflicht</span>
-                                                    </t>
-                                                    <t t-else="">-</t>
-                                                </td>
-                                                <td class="text-center">
-                                                    <t t-if="gt.requires_receipt">
-                                                        <span class="badge bg-secondary">Pflicht</span>
-                                                    </t>
-                                                    <t t-else="">-</t>
-                                                </td>
-                                                <td class="small">
-                                                    <t t-if="gt.requires_other_docs">
-                                                        <t t-esc="gt.requires_other_docs"/>
-                                                    </t>
-                                                    <t t-else="">-</t>
-                                                </td>
-                                            </tr>
-                                        </t>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </t>
-                        <h6 class="mt-3">Was hinter den Unterlagen steckt</h6>
-                        <ul class="mb-0">
-                            <li>
-                                <strong>Teilnahmeliste:</strong> alle Teilnehmenden mit Name,
-                                Alter und Wohnort. Sie können die Liste im Formular
-                                (Block 3) direkt erfassen oder als Datei hochladen.
-                                Mitarbeitende und Gruppenleitung erhalten die passende
-                                Kennziffer (EA, HA, HO, PR, SO).
-                            </li>
-                            <li>
-                                <strong>Maßnahmenbericht:</strong> aus dem Bericht müssen
-                                Charakter, Inhalt und Ablauf der Maßnahme hervorgehen.
-                                Kurze Berichte können direkt in Block 9 eingetragen werden.
-                            </li>
-                            <li>
-                                <strong>Belegliste:</strong> entweder digital im Formular
-                                (Block 7) oder als Datei. Beides zusammen ist nicht nötig.
-                                Eine Vorlage für Kostenaufstellung und Belegliste steht
-                                <a href="/service/zuschuss/vorlage-kostenaufstellung-belegliste.xlsx">als
-                                Excel-Datei</a> und
-                                <a href="/service/zuschuss/belegliste-vorlage" target="_blank">zum
-                                Ausdrucken</a>
-                                bereit. Die Originalbelege bleiben bei Ihnen und sind
-                                5 Jahre aufzubewahren. Bei Förderarten ohne Belegliste-Pflicht
-                                (siehe Tabelle oben) entfällt beides.
-                            </li>
-                            <li>
-                                <strong>Neugründungsformular:</strong> zusätzlich Pflicht bei
-                                der Gruppenstarthilfe (§ 4.7).
-                            </li>
-                            <li>
-                                <strong>Juleica-Nachweis:</strong> wenn Sie den Juleica-Zuschlag
-                                geltend machen, laden Sie die Kopie der Jugendleiter/in-Card
-                                unter „Weitere Dokumente" hoch.
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-
-                <!-- 4. Fristen -->
-                <div class="card mb-4" id="hilfe_fristen">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">4. Welche Fristen gelten?</h5>
-                    </div>
-                    <div class="card-body">
-                        <ul>
-                            <li>
-                                <strong>Einreichfrist:</strong> spätestens
-                                <strong><t t-esc="deadline_months"/> Monate nach dem Ende
-                                der Maßnahme</strong>. Das System berechnet das konkrete
-                                Datum je Antrag und zeigt es als „Einreichfrist" an.
-                            </li>
-                            <li>
-                                <strong>Erinnerung:</strong> Anträge, die
-                                <t t-esc="reminder_days"/> Tage vor Fristablauf noch im
-                                Entwurf liegen, werden der Geschäftsstelle zur Erinnerung
-                                vorgelegt. Verlassen Sie sich nicht darauf. Maßgeblich ist
-                                Ihr rechtzeitiges Einreichen.
-                            </li>
-                            <li>
-                                <strong>Auszahlung:</strong> Anträge, die bis zum
-                                <strong><t t-esc="payout_cutoff_day"/>.<t t-esc="payout_cutoff_month"/>.</strong>
-                                eines Jahres eingehen, gelangen im selben Jahr zur Auszahlung.
-                                Später eingehende Anträge werden ab dem 1. Januar des
-                                Folgejahres ausgezahlt.
-                            </li>
-                            <li>
-                                <strong>Anzahl pro Jahr:</strong> für viele Förderarten gilt eine
-                                Höchstzahl an Anträgen pro Kalenderjahr (siehe Tabelle unter
-                                Punkt 2). Maßgeblich ist das Jahr des Maßnahmenbeginns.
-                                <strong>Achtung:</strong> Einige Förderarten teilen sich diese
-                                Höchstzahl. Die Anträge zählen dann zusammen und nicht je
-                                Förderart einzeln. Die Tabelle unter Punkt 2 nennt in diesem
-                                Fall die beteiligten Förderarten hinter „gemeinsam mit".
-                            </li>
-                        </ul>
-                        <div class="alert alert-warning mb-0">
-                            <strong>Wichtig:</strong> Ein Entwurf ist noch kein Antrag. Erst
-                            mit dem Einreichen im Portal gilt der Antrag als gestellt.
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 5. Schritt für Schritt -->
-                <div class="card mb-4" id="hilfe_schritte">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">5. Schritt für Schritt zum Antrag</h5>
-                    </div>
-                    <div class="card-body">
-                        <ol class="mb-3">
-                            <li class="mb-2">
-                                <strong>Anmelden oder registrieren.</strong>
-                                Ohne Konto können Sie das Formular nicht absenden.
-                            </li>
-                            <li class="mb-2">
-                                <strong>Formular ausfüllen.</strong> Maßnahme, Organisation,
-                                Teilnahmeliste, Bankverbindung, Förderart, Kostenaufstellung
-                                und Belegliste. Felder mit * sind Pflichtfelder.
-                            </li>
-                            <li class="mb-2">
-                                <strong>Als Entwurf speichern.</strong> Der Antrag erhält eine
-                                Nummer und erscheint unter
-                                <a href="/my/kjr-antraege">Meine Zuschussanträge</a>.
-                                Sie können ihn dort jederzeit wieder öffnen.
-                            </li>
-                            <li class="mb-2">
-                                <strong>Unterlagen ergänzen.</strong> Teilnahmeliste, Bericht,
-                                Belegliste und weitere Nachweise lassen sich auch nachträglich
-                                in der Antragsansicht hochladen.
-                            </li>
-                            <li class="mb-2">
-                                <strong>Antrag einreichen.</strong> Beim Einreichen prüft das
-                                System die Vollständigkeit und meldet fehlende Angaben. Sie
-                                erhalten eine Eingangsbestätigung per E-Mail an die im Antrag
-                                angegebene Adresse.
-                            </li>
-                            <li class="mb-2">
-                                <strong>Prüfung und Bescheid.</strong> Die Geschäftsstelle prüft
-                                den Antrag. Nach der Bewilligung können Sie den Bescheid im
-                                Portal herunterladen; anschließend erfolgt die Auszahlung.
-                            </li>
-                        </ol>
-                        <a href="/service/antrag-stellen" class="btn btn-primary">
-                            <i class="fa fa-paper-plane me-1"/>Jetzt Antrag stellen
-                        </a>
-                    </div>
-                </div>
-
-                <!-- 6. Häufige Fehler -->
-                <div class="card mb-4" id="hilfe_fehler">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">6. Häufige Fehler</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="list-group list-group-flush">
-                            <div class="list-group-item">
-                                <strong>Unvollständige Teilnahmeliste.</strong>
-                                Fehlen Alter oder Wohnort, lassen sich Altersgrenzen und der
-                                Anteil auswärtiger Teilnehmender nicht prüfen. Der Zuschuss
-                                kann dann nicht in voller Höhe anerkannt werden. Auch die
-                                Gruppenleitung gehört mit Kennziffer in die Liste; anerkannt
-                                wird nur eine begrenzte Zahl an Leitungspersonen im Verhältnis
-                                zu den Teilnehmenden.
-                            </div>
-                            <div class="list-group-item">
-                                <strong>Fehlende Belegliste.</strong>
-                                Häufigster Rückläufer: Kostenaufstellung ausgefüllt, aber weder
-                                digitale Belegliste erfasst noch Datei hochgeladen. Bei allen
-                                Förderarten mit Belegliste-Pflicht (siehe Tabelle unter Punkt 3)
-                                ist eines von beidem nötig. Die Kostenaufstellung allein
-                                genügt nicht.
-                            </div>
-                            <div class="list-group-item">
-                                <strong>Privatkonto statt Organisationskonto.</strong>
-                                Der Zuschuss wird auf das Konto der Organisation überwiesen;
-                                der Kontoinhaber muss exakt angegeben werden.
-                                <t t-set="private_ok" t-value="grant_types.filtered('allow_private_account')"/>
-                                <t t-if="private_ok">
-                                    Ausnahme:
-                                    <t t-foreach="private_ok" t-as="pt">
-                                        <t t-esc="pt.name"/><t t-if="not pt_last">, </t>
-                                    </t>.
-                                </t>
-                            </div>
-                            <div class="list-group-item">
-                                <strong>Frist versäumt.</strong>
-                                Der Antrag bleibt bis zum Einreichen ein Entwurf. Reichen Sie
-                                ihn innerhalb von <t t-esc="deadline_months"/> Monaten nach
-                                Maßnahmenende ein.
-                            </div>
-                            <div class="list-group-item">
-                                <strong>Falsche Förderart.</strong>
-                                Passt die gewählte Förderart nicht zur Maßnahme, greifen falsche
-                                Sätze und Pflichtunterlagen. Im Zweifel vorab nachfragen.
-                            </div>
-                            <div class="list-group-item">
-                                <strong>Kosten ohne Einnahmen.</strong>
-                                Teilnehmerbeiträge und Zuschüsse Dritter (Gemeinde, Verband,
-                                BJR) gehören in die Kostenaufstellung. Der Zuschuss ist in
-                                der Regel höchstens so hoch wie der verbleibende Fehlbetrag
-                                (Ausnahmen siehe <a href="#zuschussrichtlinien">Zuschussrichtlinien</a>).
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="text-muted small">
-                    Noch Fragen? Die KJR-Geschäftsstelle hilft weiter:<br/>
+                <p class="text-muted">
+                    Noch Fragen? Die Geschäftsstelle hilft weiter<t t-if="res_company.phone or res_company.email">:</t><t t-else="">.</t>
                     <t t-if="res_company.phone">Tel. <t t-out="res_company.phone"/></t>
-                    <t t-if="res_company.email"> · <a t-attf-href="mailto:{{ res_company.email }}"><t t-out="res_company.email"/></a></t>
-                </div>
+                    <t t-if="res_company.phone and res_company.email"> · </t>
+                    <a t-if="res_company.email" t-attf-href="mailto:{{ res_company.email }}"><t t-out="res_company.email"/></a>
+                </p>
+                <div class="oe_structure" id="oe_structure_kjr_help_ende"/>
             </div>
         </t>
     </template>
@@ -3205,7 +3226,7 @@
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb">
                             <li class="breadcrumb-item"><a href="/">Start</a></li>
-                            <li class="breadcrumb-item"><a href="/service/zuschuss-hilfe">Anleitung</a></li>
+                            <li class="breadcrumb-item"><a href="/service/zuschuss/hilfe">Anleitung</a></li>
                             <li class="breadcrumb-item active">Vorlage Kostenaufstellung und Belegliste</li>
                         </ol>
                     </nav>
@@ -3240,7 +3261,7 @@
                 </p>
                 <div class="row mb-3">
                     <div class="col-md-6 mb-2">
-                        <div class="small text-muted">Antragsteller (Organisation)</div>
+                        <div class="small text-muted">Antragsteller:in (Organisation)</div>
                         <div class="kjr-fill"></div>
                     </div>
                     <div class="col-md-6 mb-2">
@@ -3301,14 +3322,14 @@
                 <h2 class="mb-1 kjr-page-break">Belegliste zum Zuschussantrag</h2>
                 <p class="small text-muted">
                     <t t-out="res_company.name"/>: Nachweis der Einnahmen und Ausgaben
-                    nach ANBest-P. Die Originalbelege sind vom Antragsteller 5 Jahre
+                    nach ANBest-P. Die Originalbelege sind von der antragstellenden Organisation 5 Jahre
                     aufzubewahren und auf Verlangen vorzulegen.
                 </p>
 
-                <!-- Kopfbereich: Antragsteller und Maßnahme -->
+                <!-- Kopfbereich: Antragsteller:in und Maßnahme -->
                 <div class="row mb-3">
                     <div class="col-md-6 mb-2">
-                        <div class="small text-muted">Antragsteller (Organisation)</div>
+                        <div class="small text-muted">Antragsteller:in (Organisation)</div>
                         <div class="kjr-fill"></div>
                     </div>
                     <div class="col-md-6 mb-2">
@@ -3337,7 +3358,7 @@
                                 <th style="width:3%;">Nr.</th>
                                 <th style="width:9%;">Datum</th>
                                 <th style="width:9%;">Beleg-Nr.</th>
-                                <th style="width:20%;">Empfänger / Einzahler</th>
+                                <th style="width:20%;">Empfänger:in / Einzahler:in</th>
                                 <th style="width:22%;">Bezeichnung</th>
                                 <th style="width:11%;">Art (Einnahme/Ausgabe)</th>
                                 <th style="width:15%;">Position (optional)</th>
@@ -3381,7 +3402,7 @@
                     </div>
                     <div class="col-md-6">
                         <strong>Positionen Ausgaben:</strong>
-                        Unterkunft, Verpflegung, Miete · Fahrtkosten · Honorare Referenten ·
+                        Unterkunft, Verpflegung, Miete · Fahrtkosten · Honorare Referent:innen ·
                         Aufwandsentschädigungen · Arbeits- und Hilfsmittel ·
                         Kursgebühren Jugendleiterschulung · sonstige Ausgaben
                     </div>
@@ -3410,7 +3431,7 @@
                     <a href="/service/antrag-stellen" class="btn btn-outline-primary">
                         <i class="fa fa-arrow-left me-1"/>Zurück zum Antragsformular
                     </a>
-                    <a href="/service/zuschuss-hilfe" class="btn btn-outline-secondary">
+                    <a href="/service/zuschuss/hilfe" class="btn btn-outline-secondary">
                         <i class="fa fa-question-circle me-1"/>Zur Anleitung
                     </a>
                 </div>

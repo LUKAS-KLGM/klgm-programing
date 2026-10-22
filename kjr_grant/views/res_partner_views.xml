@@ -48,7 +48,7 @@
                         </group>
                     </group>
                     <field name="kjr_vr_delegate_ids" invisible="not kjr_vr_right or not is_kjr_member"
-                           string="Vertreter/innen in der Vollversammlung">
+                           string="Vertreter:innen in der Vollversammlung">
                         <!-- Telefon ist für Delegierte Pflicht (Portal, Registrierung,
                              Anmeldung zur Vollversammlung); rot = fehlt. -->
                         <list decoration-danger="not phone">

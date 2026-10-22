@@ -10,7 +10,7 @@
             <field name="email_to">{{ (object.contact_email or object.partner_id.email or '') }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
-    <p>Sehr geehrte/r <t t-out="object.contact_person or 'Antragsteller/in'"/>,</p>
+    <p>Guten Tag <t t-out="object.contact_person or 'Antragsteller:in'"/>,</p>
     <p>Ihr Zuschussantrag <strong><t t-out="object.name"/></strong> wurde erfolgreich eingereicht.</p>
     <table style="border-collapse:collapse;margin:10px 0;">
         <tr><td style="padding:4px 12px 4px 0;"><strong>Maßnahme:</strong></td><td><t t-out="object.measure_name"/></td></tr>
@@ -33,7 +33,7 @@
             <field name="email_to">{{ (object.contact_email or object.partner_id.email or '') }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
-    <p>Sehr geehrte/r <t t-out="object.contact_person or 'Antragsteller/in'"/>,</p>
+    <p>Guten Tag <t t-out="object.contact_person or 'Antragsteller:in'"/>,</p>
     <p>Ihr Zuschussantrag <strong><t t-out="object.name"/></strong> wurde <strong>bewilligt</strong>.</p>
     <table style="border-collapse:collapse;margin:10px 0;">
         <tr><td style="padding:4px 12px 4px 0;"><strong>Maßnahme:</strong></td><td><t t-out="object.measure_name"/></td></tr>
@@ -56,7 +56,7 @@
             <field name="email_to">{{ (object.contact_email or object.partner_id.email or '') }}</field>
             <field name="body_html" type="html">
 <div style="margin:0;padding:0;">
-    <p>Sehr geehrte/r <t t-out="object.contact_person or 'Antragsteller/in'"/>,</p>
+    <p>Guten Tag <t t-out="object.contact_person or 'Antragsteller:in'"/>,</p>
     <p>Ihr Zuschussantrag <strong><t t-out="object.name"/></strong> wurde leider <strong>abgelehnt</strong>.</p>
     <table style="border-collapse:collapse;margin:10px 0;">
         <tr><td style="padding:4px 12px 4px 0;"><strong>Maßnahme:</strong></td><td><t t-out="object.measure_name"/></td></tr>

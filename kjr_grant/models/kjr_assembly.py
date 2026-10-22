@@ -107,7 +107,7 @@ class KjrAssembly(models.Model):
              'Delegierte oder Gäste: § 33 Abs. 1 BJR-Satzung gibt jedem Mitglied '
              'eine Stimme, und genau diese Zahl trägt die Beschlussfähigkeit. '
              'Die Namen der entsandten Personen gehören ins Protokoll bzw. an den '
-             'Verband (Feld "Vertreter/innen" am Kontakt).',
+             'Verband (Feld "Vertreter:innen" am Kontakt).',
     )
     attendee_count = fields.Integer(string='Anwesend', compute='_compute_attendee_count')
     decision_ids = fields.One2many('kjr.assembly.decision', 'assembly_id', string='Beschlüsse')
@@ -150,7 +150,7 @@ class KjrAssembly(models.Model):
         'res.partner', 'kjr_assembly_delegate_rel', 'assembly_id', 'partner_id',
         string='Delegierte der eingeladenen Verbände',
         compute='_compute_delegate_ids',
-        help='Delegiertenverzeichnis: die Vertreter/innen (Feld "Vertreter/innen" '
+        help='Delegiertenverzeichnis: die Vertreter:innen (Feld "Vertreter:innen" '
              'am Verband) aller eingeladenen Verbände.',
     )
     delegate_missing_phone_count = fields.Integer(
@@ -525,7 +525,7 @@ class KjrAssemblyDecision(models.Model):
         ('election', 'Wahl (geheim)'),
     ], string='Art', default='resolution', required=True,
         help='Sachbeschluss: offene Abstimmung mit Ja/Nein/Enthaltung. '
-             'Wahl: geheime Wahl nach § 34 Abs. 3 BJR-Satzung mit Kandidat/innen '
+             'Wahl: geheime Wahl nach § 34 Abs. 3 BJR-Satzung mit Kandidat:innen '
              'und ausgezählten Stimmensummen.')
     vote_yes = fields.Integer(string='Ja-Stimmen', default=0)
     vote_no = fields.Integer(string='Nein-Stimmen', default=0)
@@ -585,13 +585,13 @@ class KjrAssemblyDecision(models.Model):
         'kjr.assembly.decision', 'runoff_parent_id', string='Stichwahlgänge',
     )
     candidate_ids = fields.One2many(
-        'kjr.assembly.candidate', 'decision_id', string='Kandidat/innen',
+        'kjr.assembly.candidate', 'decision_id', string='Kandidat:innen',
     )
     majority_rule = fields.Selection([
         ('absolute', 'Absolute Mehrheit der gültigen Stimmen'),
         ('relative', 'Einfache (relative) Mehrheit, meiste Stimmen'),
     ], string='Erforderliche Mehrheit', default='absolute',
-        help='Berechnungsgrundlage sind ausschließlich die auf Kandidat/innen '
+        help='Berechnungsgrundlage sind ausschließlich die auf Kandidat:innen '
              'entfallenen gültigen Stimmen; Enthaltungen und ungültige Stimmen '
              'bleiben nach § 33 Abs. 2 BJR-Satzung außer Betracht.')
     # TODO(KJR): Die Satzungsauszüge belegen die geheime Wahl (§ 34 Abs. 3), das
@@ -602,7 +602,7 @@ class KjrAssemblyDecision(models.Model):
     # umstellbar. Vor Go-live durch den KJR bestätigen lassen.
     election_valid_votes = fields.Integer(
         string='Gültige Kandidatenstimmen', compute='_compute_election',
-        help='Summe der auf Kandidat/innen entfallenen Stimmen. Grundlage der '
+        help='Summe der auf Kandidat:innen entfallenen Stimmen. Grundlage der '
              'Mehrheitsberechnung, ohne Enthaltungen und ungültige Stimmen.',
     )
     election_majority_needed = fields.Integer(
@@ -621,7 +621,7 @@ class KjrAssemblyDecision(models.Model):
              'Stimmengleichheit an der Sitzgrenze).')
     elected_names = fields.Char(
         string='Gewählt', compute='_compute_election',
-        help='Namen der in diesem Wahlgang gewählten Kandidat/innen.',
+        help='Namen der in diesem Wahlgang gewählten Kandidat:innen.',
     )
     plausibility_hint = fields.Char(
         string='Hinweis zur Auszählung', compute='_compute_plausibility_hint',
@@ -672,9 +672,9 @@ class KjrAssemblyDecision(models.Model):
                 rec.result = 'rejected'
 
     def _elected_candidates(self):
-        """Gewählte Kandidat/innen dieses Wahlgangs.
+        """Gewählte Kandidat:innen dieses Wahlgangs.
 
-        Berechnungsgrundlage sind ausschließlich die auf Kandidat/innen
+        Berechnungsgrundlage sind ausschließlich die auf Kandidat:innen
         entfallenen Stimmen; Enthaltungen und ungültige Stimmen bleiben nach
         § 33 Abs. 2 BJR-Satzung außer Betracht. Bei Stimmengleichheit an der
         Sitzgrenze rückt niemand nach — dann ist eine Stichwahl nötig (es wird
@@ -709,7 +709,7 @@ class KjrAssemblyDecision(models.Model):
         """Mindeststimmenzahl fuer die Wahl in diesem Wahlgang.
 
         Absolute Mehrheit = mehr als die Haelfte der gueltigen Kandidatenstimmen.
-        Bemessungsgrundlage sind nur die auf Kandidat/innen entfallenen Stimmen,
+        Bemessungsgrundlage sind nur die auf Kandidat:innen entfallenen Stimmen,
         Enthaltungen und ungueltige Stimmen zaehlen nach Paragraph 33 Abs. 2
         BJR-Satzung nicht mit. Bei relativer Mehrheit gibt es keine feste
         Schwelle (0).
@@ -785,7 +785,7 @@ class KjrAssemblyDecision(models.Model):
         """Stichwahl als weiteren Wahlgang anlegen.
 
         Übernommen werden alle noch nicht gewählten, nicht zurückgezogenen
-        Kandidat/innen mit auf 0 zurückgesetzten Stimmen. Eine Begrenzung auf
+        Kandidat:innen mit auf 0 zurückgesetzten Stimmen. Eine Begrenzung auf
         die zwei Bestplatzierten wird bewusst NICHT erzwungen — dafür liegt
         keine Satzungsgrundlage vor; die Versammlungsleitung streicht die
         Kandidatur im neuen Wahlgang bei Bedarf selbst.
@@ -833,13 +833,13 @@ class KjrAssemblyDecision(models.Model):
 
 
 class KjrAssemblyCandidate(models.Model):
-    """Kandidat/in eines Wahlgangs — bewusst NUR Stimmensummen.
+    """Kandidat:in eines Wahlgangs — bewusst NUR Stimmensummen.
 
     § 34 Abs. 3 BJR-Satzung schreibt für die Vorstandswahl eine GEHEIME Wahl
     vor. Geheim heißt: aus den gespeicherten Daten darf sich nicht
     rekonstruieren lassen, wer wie gestimmt hat. Dieses Modell speichert
     deshalb ausschließlich die vom Wahlausschuss ausgezählte Gesamtzahl der
-    Stimmen je Kandidat/in sowie — auf dem Wahlgang — Enthaltungen und
+    Stimmen je Kandidat:in sowie — auf dem Wahlgang — Enthaltungen und
     ungültige Stimmen.
 
     Es gibt hier bewusst KEIN Feld, das eine einzelne Stimme einer wählenden
@@ -854,7 +854,7 @@ class KjrAssemblyCandidate(models.Model):
     numerisches Stimmgewicht wird hier deshalb nicht verrechnet.
     """
     _name = 'kjr.assembly.candidate'
-    _description = 'Kandidat/in einer Wahl (Vollversammlung)'
+    _description = 'Kandidat:in einer Wahl (Vollversammlung)'
     _order = 'sequence, id'
 
     decision_id = fields.Many2one(
@@ -866,7 +866,7 @@ class KjrAssemblyCandidate(models.Model):
     )
     sequence = fields.Integer(default=10)
     name = fields.Char(
-        string='Kandidat/in', required=True,
+        string='Kandidat:in', required=True,
         help='Name wie im Protokoll geführt. Wird aus dem Kontakt vorbelegt, '
              'falls einer hinterlegt ist.',
     )
@@ -967,7 +967,7 @@ class KjrAssemblyInvitation(models.Model):
         ('delegates', 'Delegierte'),
         ('delegates_member', 'Delegierte und Verbandskontakt'),
         ('member', 'Verbandskontakt'),
-    ], string='Empfänger', readonly=True,
+    ], string='Empfangende', readonly=True,
         help='„Delegierte und Verbandskontakt“: Nicht alle Delegierten haben eine '
              'E-Mail-Adresse; die Einladung ging deshalb zusätzlich an die E-Mail des '
              'Verbands mit der Bitte um Weitergabe.')
@@ -980,7 +980,7 @@ class KjrAssemblyInvitation(models.Model):
     )
     recipient_ids = fields.Many2many(
         'res.partner', 'kjr_assembly_invitation_recipient_rel', 'invitation_id', 'partner_id',
-        string='Empfänger/innen', readonly=True,
+        string='Empfänger:innen', readonly=True,
     )
     date_sent = fields.Datetime(string='Versandt am', readonly=True, copy=False)
     sent_by_id = fields.Many2one('res.users', string='Versandt von', readonly=True, copy=False)
@@ -1283,7 +1283,7 @@ class KjrAssemblyRegistration(models.Model):
     suggested_partner_id = fields.Many2one(
         'res.partner', string='Vorschlag Kontakt (ungeprüft)',
         compute='_compute_suggested_partner_id',
-        help='Delegierte/r oder Kontakt des Verbands mit derselben E-Mail-Adresse. '
+        help='Delegierte:r oder Kontakt des Verbands mit derselben E-Mail-Adresse. '
              'Nur ein Vorschlag: Die Adresse im Anmeldeformular ist nicht geprüft. '
              'Bitte vor dem Zuordnen bestätigen, z. B. telefonisch.',
     )
@@ -1295,7 +1295,7 @@ class KjrAssemblyRegistration(models.Model):
              'Tag der Vollversammlung erreichen können.',
     )
     is_delegate = fields.Boolean(
-        string='Gemeldete/r Delegierte/r', compute='_compute_is_delegate',
+        string='Gemeldete:r Delegierte:r', compute='_compute_is_delegate',
         help='Die Person steht in der Delegiertenliste des Verbands.',
     )
     state = fields.Selection([

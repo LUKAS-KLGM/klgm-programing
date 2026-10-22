@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Downloads ─────────────────────────────────────────────────── -->
+    <record id="website_download_view_list" model="ir.ui.view">
+        <field name="name">website.download.list</field>
+        <field name="model">website.download</field>
+        <field name="arch" type="xml">
+            <list string="Downloads">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="date"/>
+                <field name="filename" optional="show"/>
+                <field name="file_type_label" optional="show"/>
+                <field name="file_size_label" optional="show"/>
+                <field name="website_id" groups="website.group_multi_website" optional="show"/>
+                <field name="is_published" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="website_download_view_form" model="ir.ui.view">
+        <field name="name">website.download.form</field>
+        <field name="model">website.download</field>
+        <field name="arch" type="xml">
+            <form string="Download">
+                <sheet>
+                    <widget name="web_ribbon" title="Archiviert" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="z. B. Positionspapier"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="datas" filename="filename"/>
+                            <field name="filename" invisible="1"/>
+                            <field name="file_type_label" invisible="not datas"/>
+                            <field name="file_size_label" invisible="not datas"/>
+                            <field name="category_id"/>
+                        </group>
+                        <group>
+                            <field name="is_published"/>
+                            <field name="date"/>
+                            <field name="sequence"/>
+                            <field name="website_id" groups="website.group_multi_website"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <label for="description"/>
+                    <field name="description" placeholder="Kurze Beschreibung für die Website (optional)"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="website_download_view_search" model="ir.ui.view">
+        <field name="name">website.download.search</field>
+        <field name="model">website.download</field>
+        <field name="arch" type="xml">
+            <search string="Downloads">
+                <field name="name"/>
+                <field name="category_id"/>
+                <filter name="published" string="Veröffentlicht" domain="[('is_published', '=', True)]"/>
+                <filter name="unpublished" string="Nicht veröffentlicht" domain="[('is_published', '=', False)]"/>
+                <separator/>
+                <filter name="archived" string="Archiviert" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_category" string="Kategorie" context="{'group_by': 'category_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="website_download_action" model="ir.actions.act_window">
+        <field name="name">Downloads</field>
+        <field name="res_model">website.download</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_category': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Ersten Download anlegen</p>
+            <p>
+                Veröffentlichte Downloads erscheinen auf der Seite /service/downloads,
+                gruppiert nach Kategorie. Einen Menüpunkt dorthin legen Sie im
+                Website-Menü selbst an.
+            </p>
+        </field>
+    </record>
+
+    <!-- ── Kategorien ────────────────────────────────────────────────── -->
+    <record id="website_download_category_view_list" model="ir.ui.view">
+        <field name="name">website.download.category.list</field>
+        <field name="model">website.download.category</field>
+        <field name="arch" type="xml">
+            <list string="Download-Kategorien" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="download_count"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="website_download_category_action" model="ir.actions.act_window">
+        <field name="name">Download-Kategorien</field>
+        <field name="res_model">website.download.category</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Erste Kategorie anlegen</p>
+            <p>Die Reihenfolge der Kategorien bestimmt die Reihenfolge der Abschnitte auf der Website.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_website_download"
+              name="Downloads"
+              parent="website.menu_content"
+              action="website_download_action"
+              sequence="60"
+              groups="website.group_website_designer"/>
+
+    <menuitem id="menu_website_download_category"
+              name="Download-Kategorien"
+              parent="website.menu_website_global_configuration"
+              action="website_download_category_action"
+              sequence="60"
+              groups="website.group_website_designer"/>
+
+</odoo>
