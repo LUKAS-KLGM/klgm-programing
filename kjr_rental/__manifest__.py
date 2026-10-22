@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Materialverleih',
-    'version': '19.0.5.7.0',
+    'version': '19.0.5.8.0',
     'category': 'Custom/KJR',
     'summary': 'Verleih von Material (Fahrzeuge, Zelte, Technik, Sport, Küche, Spielgeräte) mit '
-               'Bestand, Verfügbarkeitsprüfung, Mitgliedertarif, Kaution, Website-Anfrage & Vertrag',
+               'Bestand, Verfügbarkeitsprüfung, Kaution, Website-Anfrage & Vertrag',
     'author': 'KLGM UG (haftungsbeschränkt)',
     'website': 'https://www.klgm-consulting.de',
     'license': 'OPL-1',
