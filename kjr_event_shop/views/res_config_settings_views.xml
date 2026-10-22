@@ -34,6 +34,29 @@
         </field>
     </record>
 
+    <!-- Veranstaltung: Plätze, die unbezahlte Bestellungen freihalten, und
+         Warnhinweis, wenn von Hand über die Kapazität bestätigt wurde
+         (Sonderfall, bewusst erlaubt). -->
+    <record id="view_event_form_kjr_payment" model="ir.ui.view">
+        <field name="name">event.event.form.kjr.payment</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="kjr_event.view_event_form_kjr"/>
+        <field name="arch" type="xml">
+            <field name="seats_taken" position="after">
+                <field name="kjr_seats_reserved_unpaid"/>
+                <field name="kjr_seats_overbooked" invisible="1"/>
+            </field>
+            <xpath expr="//page[@name='kjr']/group[1]" position="after">
+                <div class="alert alert-warning" role="alert" invisible="not kjr_seats_overbooked">
+                    Mehr Plätze vergeben als vorhanden: bestätigte Anmeldungen und Plätze, die
+                    unbezahlte Bestellungen freihalten, übersteigen die maximale Teilnehmerzahl.
+                    Wird eine dieser Bestellungen bezahlt und bestätigt, kommt die Anmeldung auf
+                    die Warteliste.
+                </div>
+            </xpath>
+        </field>
+    </record>
+
     <!-- Auftrag: Zahlungsfrist sichtbar (Reiter "Weitere Informationen"). -->
     <record id="view_order_form_kjr_payment" model="ir.ui.view">
         <field name="name">sale.order.form.kjr.payment</field>

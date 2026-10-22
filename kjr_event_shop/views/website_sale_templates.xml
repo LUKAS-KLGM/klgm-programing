@@ -32,6 +32,14 @@
               priority="20"
               name="KJR: Hinweis Einwilligung auf der Bestellbestaetigung">
         <xpath expr="//div[@id='order_name']" position="after">
+            <!-- Prüfbericht 22.10.2026: beim Abschluss ausgebucht, Anmeldung auf der
+                 Warteliste (kjr_event_shop, _kjr_check_capacity_on_checkout). -->
+            <t t-set="kjr_waiting" t-value="order.order_line.registration_ids.filtered(lambda r: r.kjr_is_waitlist and r.state != 'cancel')"/>
+            <div t-if="kjr_waiting" class="alert alert-warning o_kjr_waitlist_hint" role="status">
+                Die Veranstaltung ist inzwischen ausgebucht. Ihre Anmeldung steht auf der
+                Warteliste. Bitte überweisen Sie noch nichts; wir melden uns, sobald ein Platz
+                frei wird.
+            </div>
             <t t-set="held" t-value="order.order_line.registration_ids.filtered('kjr_consent_hold')"/>
             <div t-if="held" class="alert alert-info o_kjr_consent_hint" role="status">
                 Für Teilnehmende unter 18 Jahren ist die Anmeldung erst verbindlich, wenn
