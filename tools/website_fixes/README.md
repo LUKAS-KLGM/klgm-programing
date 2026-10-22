@@ -173,3 +173,113 @@ zweiter Lauf (Abbruch „schon umgestellt“), Startseite über HTTP gerendert:
 Fuß mit Links Kontakt, Impressum, Datenschutzerklärung, Cookie-Richtlinien,
 Barrierefreiheit, beiden Suchfeldern und Logo; keine Anschriften, keine
 Seitenübersicht. Auf der Produktion NICHT ausgeführt.
+
+## Befund C: Sie-Form im Website-Code und Odoo-Standardseiten (Oktober 2026)
+
+**Entscheidung 4 (13.10.2026):** Website- und Systemtexte siezen. Das Skript
+`sie_form_2026-10.py` korrigiert nur Stellen, die KLGM selbst in die
+Website-Daten gelegt hat, und nimmt Odoo-Mustertexte vom Netz. Die
+Seiteninhalte des KJR mit ihr- bzw. du-Form ändert es nicht (Liste im Vault:
+„KJR Seiten mit ihr-Anrede 2026-10“).
+
+| Teil | Befund | Änderung |
+|---|---|---|
+| 1 | Der Fußbereich-Code (`website.custom_code_footer`, Website 3) enthält ein Skript, das Odoos Platzhalter „…müssen Sie optionale Cookies akzeptieren“ auf „…müsst ihr…“ umschreibt. | Nur dieser Skriptblock samt Kommentar wird entfernt. Der zweite Block (doppelter Cookie-Richtlinien-Link) bleibt. Odoo zeigt danach seinen eigenen Text in Sie-Form. |
+| 2 | Cookie-Banner (`website.cookies_bar`, Ansicht 4546): „damit sie für euch besser funktioniert“ | Nur dieser Satz wird zu „damit sie für Sie besser funktioniert“, in allen Sprachfassungen. Klassen und Aufbau bleiben. |
+| 3 | `/terms` (englische Odoo-Muster-AGB) und `/website/info` (Liste der installierten Apps) sind öffentlich und stehen in der `sitemap.xml`. | Je eine Weiterleitung vom Typ „404 Not Found“ für Website 3 (Website > Konfiguration > Weiterleitungen). Odoo nimmt die Route dann aus dem Routing, die Seite liefert 404 und fällt aus der Sitemap. Außerdem wird die Einstellung „Standard-Geschäftsbedingungen“ (`account.use_invoice_terms`) ausgeschaltet. Sonst schreibt Odoo in jeden neuen Auftrag „Terms & Conditions: …/terms“. Alle 6 bisherigen Aufträge tragen diesen Hinweis. Wer die Einstellung behalten will, setzt `KJR_KEEP_INVOICE_TERMS=1`. |
+| 4 | Für Besucher:innen ohne Cookie-Zustimmung steht der Fußbereich-Code als `<html><head><script>…</script></head></html>` im `<body>`. | Der Code wird mit `<div class="d-none">…</div>` umschlossen (unsichtbar, das Skript läuft weiter). Danach steht er als `<div class="d-none"><script>…` am Ende des `<body>`. |
+
+Am Ende löscht das Skript den zwischengespeicherten Sitemap-Anhang
+(`/sitemap-3-*.xml`). Odoo baut ihn beim nächsten Aufruf neu. Nach dem Commit
+ruft es `env.registry.signal_changes()` auf. Erst dann sehen die laufenden
+Odoo-Prozesse die neuen Weiterleitungen und Vorlagen. Ohne diesen Aufruf
+liefert die Website bis zum nächsten Neustart den alten Stand.
+
+**Ursache von Teil 4:** Für Besucher:innen ohne Zustimmung zu optionalen
+Cookies schickt Odoo den Code durch
+`website._control_third_party_trackers_in_html`, also `lxml.html.fromstring`
+und dann `tostring`. Besteht ein Fragment nur aus `<script>`, ordnet lxml es
+dem `<head>` zu und gibt ein ganzes Dokument aus. Das ist Odoo-Verhalten. Der
+Inhalt des Felds ist nicht fehlerhaft, die Umhüllung umgeht das Verhalten nur.
+Beim `custom_code_head` (Seitenklassen, Logo für /freizeiten) passiert
+dasselbe innerhalb von `<head>`. Dort darf kein `<div>` stehen. Die Browser
+übergehen die doppelten Tags, das Skript läuft. Ein Fix ginge nur im Code (Override von
+`_control_third_party_trackers_in_html`), er ist hier nicht enthalten.
+
+**`/shop` bleibt unverändert.** Der Checkout des Ferienprogramms braucht die
+Routen `/shop/cart`, `/shop/checkout` und `/shop/payment`. Odoo-konform aus der
+Sitemap bekommt man `/shop` nur mit „E-Commerce-Zugriff: nur angemeldete
+Benutzer:innen“ (`website.ecommerce_access = 'logged_in'`). Das sperrt aber
+auch den Warenkorb für Gäste (Umleitung auf `/web/login`). Eine
+404-Weiterleitung auf `/shop` entfernt nur diese eine URL. Die Sitemap-Funktion
+läuft dann über `/shop/page/<n>` weiter und meldet eine URL, die 404 liefert.
+Beides geht also nicht. Empfehlung: Zum Go-live in `robots.txt` (Website >
+Konfiguration > Einstellungen > robots.txt) `Disallow: /shop` eintragen. Das
+nimmt `/shop` und die Checkout-Seiten aus dem Crawling. Ganz aus der Sitemap
+kommt `/shop` nur mit einer Code-Änderung (Override von `sitemap_shop` in
+`kjr_event_shop`). Derzeit steht in `robots.txt` noch `Disallow: /`
+(Staging), es wird also ohnehin nichts indexiert.
+
+> **Ausführen darf das nur eine berechtigte Person** (Administration der
+> Instanz), auf dem Server bzw. zuerst auf einer Server-Kopie. **Nicht durch
+> den Assistenten**, nicht lokal und nicht ohne Snapshot.
+
+### Schritte
+
+1. **Snapshot bei CloudPepper anlegen** (wie Befund A, Schritt 1).
+2. **Probelauf** (schreibt im Transaktionsrahmen, prüft, rollt zurück):
+
+   ```
+   KJR_FIX_OUT=/pfad/ablage odoo shell -d <db> --no-http < sie_form_2026-10.py
+   ```
+
+   Plausibel ist: „Teil 1: Skriptblock … entfernt (2661 -> 1088 Zeichen)“,
+   „Teil 4: … umschlossen“, Ansicht 4546 de_DE/en_US „ändern“, zwei
+   404-Weiterleitungen, `account.use_invoice_terms: 'True' -> aus` und
+   „Nachprüfung: in Ordnung“. Bei „ABBRUCH“ hier aufhören und klären.
+3. **Schreiben:**
+
+   ```
+   KJR_FIX_WRITE=1 KJR_FIX_OUT=/pfad/ablage odoo shell -d <db> --no-http < sie_form_2026-10.py
+   ```
+
+   Vorher legt das Skript `sie_form_backup_<zeit>.json` an: Fußbereich-Code,
+   alle Sprachfassungen der Ansicht 4546, vorhandene Weiterleitungen für die
+   beiden URLs und den alten Wert von `account.use_invoice_terms`. Committet
+   wird nur, wenn die Nachprüfung in Ordnung ist. Ein zweiter Lauf meldet
+   überall „schon erledigt“ und ändert nichts.
+4. **Prüfen**, im privaten Fenster (nicht angemeldet, Cookies NICHT
+   akzeptiert):
+   - Cookie-Hinweis unten: „…damit sie für Sie besser funktioniert.“
+   - Eine Seite mit eingebettetem Video bzw. Karte: Der Platzhalter sagt
+     „…müssen Sie optionale Cookies akzeptieren.“
+   - Quelltext der Startseite (Strg+U), Ende: `<div class="d-none"><script>`
+     vor `</body>`, kein `<html><head>` mehr im `<body>`. In der
+     Copyright-Leiste steht der Link „Cookie-Richtlinien“ nur einmal.
+   - `/terms` und `/website/info` liefern „Seite nicht gefunden“.
+   - `/sitemap.xml` enthält `/terms` und `/website/info` nicht mehr, `/shop`
+     schon (siehe oben).
+   - Eine Testanmeldung für eine bezahlte Veranstaltung bis in den Warenkorb
+     (`/shop/cart`) durchspielen. Der Checkout muss unverändert gehen.
+
+### Rückweg
+
+Snapshot zurückspielen. Ohne Snapshot, mit dem Backup aus Schritt 3:
+Fußbereich-Code unter Website > Konfiguration > Einstellungen > „Code am Ende
+des body“ zurückkopieren. Ansicht 4546 je Sprache zurückschreiben (Odoo-Shell,
+`view.with_context(lang=…, no_cow=True).write({'arch_db': …})`, `en_US`
+zuerst). Die beiden Weiterleitungen „KJR: … gesperrt“ unter Website >
+Konfiguration > Weiterleitungen löschen. „Standard-Geschäftsbedingungen“ in
+den Buchhaltungseinstellungen wieder einschalten.
+
+### Getestet
+
+Am 22.10.2026 auf einer Kopie der Produktionsdatenbank (neutralisiert, eigener
+Odoo-Prozess auf eigenem Port): Probelauf, Schreiblauf, zweiter Lauf („schon
+erledigt“, keine Änderung). Startseite und Sitemap über HTTP abgerufen
+(anonym, ohne Cookie-Zustimmung). Vorher: `/terms` und `/website/info` 200 und
+in der Sitemap, „für euch“ im Banner, ihr-Skript und `<html><head>` im
+`<body>`. Nachher: `/terms` und `/website/info` 404 und nicht mehr in der
+Sitemap, `/shop` und `/shop/cart` 200, Banner „für Sie“, ihr-Skript weg,
+Cookie-Link-Skript da, Fußbereich-Code als `<div class="d-none">` im `<body>`.
+Auf der Produktion NICHT ausgeführt.
