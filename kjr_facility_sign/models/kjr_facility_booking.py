@@ -8,7 +8,7 @@ Ablauf:
   entsteht statt der Vertragsmail eine Unterschriftsanfrage: das aktuell
   gerenderte Vertrags-PDF plus eine eigene Unterschriftsseite (Ort, Datum,
   Unterschrift) wird zu einer Einmal-Vorlage (archiviert) mit drei Feldern
-  der Rolle "Mieter/in" auf der letzten Seite.
+  der Rolle "Mieter:in" auf der letzten Seite.
 * Schlägt das fehl, geht der Vertrag wie bisher per Mail hinaus und die
   Geschäftsstelle erhält eine Aufgabe (der Buchungsablauf wird nie blockiert).
 * Die Unterschrift setzt nur ``contract_signed`` (plus Datum und Quelle). Der
@@ -325,7 +325,7 @@ class KjrFacilityBooking(models.Model):
         email = bk._kjr_sign_recipient_email()
         if not email:
             raise UserError(_('Für die Unterschriftsanfrage fehlt eine E-Mail-Adresse '
-                              '(Ansprechpartner/in oder Mieter).'))
+                              '(Ansprechpartner:in oder Mieter:in).'))
         Partner = self.env['res.partner'].sudo()
         commercial = bk.partner_id.commercial_partner_id
         creator = bk.create_uid
@@ -439,17 +439,17 @@ class KjrFacilityBooking(models.Model):
             'title': _('Unterschrift zum Buchungsvertrag %s', nr),
             'label_facility': _('Einrichtung'),
             'label_period': _('Zeitraum'),
-            'label_party': _('Mieter / Gruppe'),
+            'label_party': _('Mieter:in / Gruppe'),
             'label_company': _('Vermieter'),
             'declaration': _(
                 'Mit meiner Unterschrift auf dieser Seite erkenne ich den vorstehenden '
                 'Buchungsvertrag Nr. %(nr)s (Seiten 1 bis %(n)s) für die genannte Gruppe an. '
-                'Diese Seite ersetzt die Unterschriftszeile „Mieter / Gruppe“ im Vertrag.',
+                'Diese Seite ersetzt die Unterschriftszeile „Mieter:in / Gruppe“ im Vertrag.',
                 nr=nr, n=contract_pages),
             'label_place': _('Ort'),
             'label_date': _('Datum'),
             'label_signature': _('Unterschrift'),
-            'caption': _('Unterschrift der Mieterin / des Mieters bzw. der bevollmächtigten Person'),
+            'caption': _('Unterschrift Mieter:in bzw. bevollmächtigte Person'),
             'footer_page': _('Seite %s', contract_pages + 1),
         }
 

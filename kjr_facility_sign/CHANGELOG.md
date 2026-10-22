@@ -1,5 +1,11 @@
 # Changelog — kjr_facility_sign
 
+## 19.0.1.1.0 (2026-10-22)
+
+### Geändert
+- Gendern mit Doppelpunkt: Rolle „Mieter:in“ (Migration für Bestandsinstanzen,
+  nur bei unverändertem Namen), Texte der Unterschriftsseite und Hinweise.
+
 ## 19.0.1.0.0 (2026-10-12)
 
 ### Neu

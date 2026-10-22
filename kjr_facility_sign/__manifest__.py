@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Brücke: Einrichtungen ↔ E-Signatur',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'category': 'Custom/KJR',
     'summary': 'Buchungsvertrag der Einrichtungsbuchung digital unterschreiben (Odoo Sign).',
     'description': """
