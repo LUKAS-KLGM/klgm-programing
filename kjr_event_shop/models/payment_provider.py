@@ -26,7 +26,13 @@ class PaymentProvider(models.Model):
                     for label, value in acc._kjr_transfer_rows())
                 for acc in accounts
             ]
-            provider.pending_msg = (
+            msg = (
                 '<div><h5>Bitte überweisen Sie den Betrag auf folgendes Konto</h5>'
                 '<h6>%s</h6><ul class="list-unstyled">%s</ul></div>'
             ) % ('Bankverbindung' if len(accounts) == 1 else 'Bankverbindungen', ''.join(blocks))
+            provider.pending_msg = msg
+            # Prüfbericht 22.10.2026: der Text ist deutsch, gespeichert wurde er
+            # aber nur in der Sprache des Aufrufs (beim Installieren en_US).
+            # Deshalb in jeder aktiven Sprache denselben Text setzen.
+            provider._update_field_translations('pending_msg', {
+                code: msg for code, _name in self.env['res.lang'].get_installed()})

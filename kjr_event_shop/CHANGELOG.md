@@ -1,5 +1,27 @@
 # Changelog — KJR Brücke: Veranstaltungen ↔ Shop (`kjr_event_shop`)
 
+## 19.0.2.2.2 (2026-10-22)
+
+Prüfbericht 22.10.2026.
+
+- **Offene Überweisung mit richtigem Betrag.** Nach dem Wechsel der Steuer auf
+  Teilnahmegebühren standen offene Überweisungen (pending) noch auf dem alten
+  Bruttobetrag (23,80 EUR statt 20,00 EUR). `_kjr_recompute_fee_taxes` gleicht
+  sie jetzt an (`_kjr_sync_transfer_amounts`: nur Überweisung, nur ein Auftrag,
+  unbezahlt, keine gewollte Anzahlung), Referenz und Status bleiben, Notiz am
+  Auftrag. Die Migration gleicht bestehende Überweisungen an.
+- **Zahlungserinnerung ohne E-Mail-Adresse:** statt nie erinnert und nie
+  freigegeben bekommt die Geschäftsstelle eine Aufgabe (telefonisch/per Post
+  erinnern); das zählt als Erinnerung, die Freigabefrist läuft danach wie gewohnt.
+- **Gastbuchung mehrerer Teilnehmer:innen im selben Warenkorb:** gleiche
+  Erziehungsberechtigte bzw. Person nur einmal als Kontakt (exakter Abgleich,
+  nur innerhalb DESSELBEN Warenkorbs; außerhalb weiterhin keine
+  Wiederverwendung bei Gästen). Bei verschiedenen Rechnungskontakten bleibt die
+  Rechnungsadresse des Auftrags die der zuerst angemeldeten Person, mit Notiz.
+- **Deutsche Fassung** der Mailvorlage Zahlungserinnerung und des
+  Überweisungs-Hinweistexts (Migration, nur wo `de_DE` fehlt); der Hinweistext
+  wird künftig in allen aktiven Sprachen geschrieben.
+
 ## 19.0.2.2.0 (2026-10-22)
 
 Zahlungsablauf Termin 13.10.2026: Rechnungskontakt mit Anschrift auf den

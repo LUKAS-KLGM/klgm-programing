@@ -8,3 +8,6 @@ def post_init_hook(env):
     env['payment.provider'].search([
         ('code', '=', 'custom'), ('custom_mode', '=', 'wire_transfer'),
     ]).action_recompute_pending_msg()
+    # Prüfbericht 22.10.2026: Mailvorlagen zusätzlich mit de_DE-Fassung.
+    from odoo.addons.kjr_event.lang_fill import fill_module_templates
+    fill_module_templates(env, 'kjr_event_shop')
