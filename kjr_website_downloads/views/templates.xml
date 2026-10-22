@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Öffentliche Seite /service/downloads (controllers/main.py).
+         Schlicht im Standard-Layout der Website, ohne eigenes CSS. Einleitung
+         und Schluss sind oe_structure-Bereiche und im Website-Editor frei
+         befüllbar; die Liste selbst kommt aus den Datensätzen.
+         Kontext: download_groups = [(Kategorie oder None, Downloads)]. -->
+    <template id="downloads_page" name="Downloadbereich">
+        <t t-call="website.layout">
+            <t t-set="pageName" t-value="'downloads'"/>
+            <div id="wrap">
+                <div class="container mt-4 mb-5">
+                    <h1 class="mb-3">Downloads</h1>
+                    <div class="oe_structure" id="oe_structure_downloads_intro"/>
+
+                    <p t-if="not download_groups">Derzeit stehen keine Downloads bereit.</p>
+
+                    <section t-foreach="download_groups" t-as="group" class="mb-4"
+                             t-att-aria-labelledby="'downloads_kat_%s' % group_index">
+                        <t t-set="category" t-value="group[0]"/>
+                        <h2 class="h4" t-att-id="'downloads_kat_%s' % group_index">
+                            <t t-if="category" t-out="category.name"/>
+                            <t t-else="">Weitere Downloads</t>
+                        </h2>
+                        <ul class="list-unstyled">
+                            <li t-foreach="group[1]" t-as="download" class="mb-3">
+                                <a t-att-href="download._download_url()"
+                                   t-att-type="download.mimetype or None"
+                                   t-out="download.name"/>
+                                <span class="text-muted">
+                                    (<t t-out="download.file_type_label"/><t t-if="download.file_size_label">, <t t-out="download.file_size_label"/></t>)
+                                </span>
+                                <div t-if="download.date" class="small text-muted">
+                                    Stand: <time t-att-datetime="download.date" t-out="download.date.strftime('%d.%m.%Y')"/>
+                                </div>
+                                <p t-if="download.description" class="mb-0" t-out="download.description"/>
+                            </li>
+                        </ul>
+                    </section>
+
+                    <div class="oe_structure" id="oe_structure_downloads_ende"/>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>
