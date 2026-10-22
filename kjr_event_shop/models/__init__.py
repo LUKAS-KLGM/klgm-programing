@@ -7,3 +7,4 @@ from . import sale_order_line
 from . import payment_provider
 from . import event_payment
 from . import res_config_settings
+from . import event_event_ticket
