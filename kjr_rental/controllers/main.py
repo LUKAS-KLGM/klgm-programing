@@ -342,10 +342,23 @@ class KjrRentalWebsite(http.Controller):
     @http.route('/service/verleih', type='http', auth='public', website=True, sitemap=True)
     def rental_catalog(self, **kw):
         items = request.env['kjr.rental.item'].sudo().search([('website_published', '=', True)])
-        by_cat = {}
-        for item in items:
-            by_cat.setdefault(item.category_id, request.env['kjr.rental.item'].sudo())
-            by_cat[item.category_id] |= item
+        by_cat = request.env['kjr.rental.item'].sudo()._group_by_category(items)
+        # Filterleiste (Termin 13.10.2026): nur Kategorien mit veröffentlichten
+        # Artikeln, "Alle" als Standard. Serverseitig über ?kategorie=<id>, damit der
+        # Filter ohne JavaScript funktioniert und verlinkbar ist. Unbekannte oder
+        # leere Kategorien fallen still auf "Alle" zurück.
+        filter_categories = [cat for cat in by_cat if cat]
+        selected_category = None
+        try:
+            wanted = int(kw.get('kategorie') or 0)
+        except (TypeError, ValueError):
+            wanted = 0
+        for cat in filter_categories:
+            if cat.id == wanted:
+                selected_category = cat
+                items = by_cat[cat]
+                by_cat = {cat: by_cat[cat]}
+                break
         is_public_user = request.env.user._is_public()
         partner = self._website_partner() if not is_public_user else None
         is_member = self._partner_is_member(partner)
@@ -354,6 +367,8 @@ class KjrRentalWebsite(http.Controller):
         price_info = self._price_info_map(items, is_member)
         values = {
             'items_by_category': by_cat, 'page_name': 'kjr_rental',
+            'filter_categories': filter_categories,
+            'selected_category': selected_category,
             'cart_count': self._cart_count(),
             'is_public_user': is_public_user,
             'partner': partner,
@@ -732,7 +747,7 @@ class KjrRentalWebsite(http.Controller):
             '<table style="border-collapse:collapse">'
             '<tr><td><strong>Vorgang</strong></td><td>%(order)s</td></tr>'
             '<tr><td><strong>Gemeinde / Organisation</strong></td><td>%(org)s</td></tr>'
-            '<tr><td><strong>Ansprechpartner/in</strong></td><td>%(person)s</td></tr>'
+            '<tr><td><strong>Ansprechpartner:in</strong></td><td>%(person)s</td></tr>'
             '<tr><td><strong>E-Mail</strong></td><td>%(email)s</td></tr>'
             '<tr><td><strong>Telefon</strong></td><td>%(phone)s</td></tr>'
             '<tr><td><strong>Wunschtermin</strong></td><td>%(date)s</td></tr>'
@@ -871,7 +886,7 @@ class KjrRentalWebsite(http.Controller):
         place = (post.get('place') or '').strip()
         email = email_normalize(post.get('contact_email') or '')
         if not contact_person:
-            errors['contact_person'] = _('Bitte eine Ansprechpartnerin oder einen Ansprechpartner angeben.')
+            errors['contact_person'] = _('Bitte eine:n Ansprechpartner:in angeben.')
         if not organisation:
             # Adressatenkreis bewusst eng: Entscheidung des Betreibers vom
             # 23.07.2026 (Website-Termin). Welches Gebiet gemeint ist, steht im
@@ -903,7 +918,7 @@ class KjrRentalWebsite(http.Controller):
         except (TypeError, ValueError):
             participants = 0
         if participants <= 0:
-            errors['participants'] = _('Bitte die erwartete Teilnehmerzahl als Zahl angeben.')
+            errors['participants'] = _('Bitte die erwartete Zahl der Teilnehmenden als Zahl angeben.')
 
         purpose = self._validate_purpose(post, errors)
         warn_items = self._usage_warning_items(item) if item else []
@@ -917,10 +932,10 @@ class KjrRentalWebsite(http.Controller):
         partner = self._spielmobil_partner(email, contact_person, organisation, phone)
         note_lines = [
             _('Anfrage über das Online-Formular „Spielmobil".'),
-            _('Ansprechpartner/in: %s') % contact_person,
+            _('Ansprechpartner:in: %s') % contact_person,
             _('Organisation: %s') % organisation,
             _('Einsatzort: %s') % place,
-            _('Erwartete Teilnehmerzahl: %s') % participants,
+            _('Erwartete Zahl der Teilnehmenden: %s') % participants,
         ]
         if is_public:
             note_lines.append(_(

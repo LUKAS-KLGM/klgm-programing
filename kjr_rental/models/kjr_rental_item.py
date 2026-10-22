@@ -257,8 +257,11 @@ class KjrRentalItem(models.Model):
              'je Tag, je Nacht, je Stück/Pauschale oder Grundgebühr neben dem '
              'Kilometerpreis. Der Feldname bleibt aus Bestandsgründen price_per_day.',
     )
+    # Standard seit 19.0.5.8.0 aus: der Erstbetreiber kennt keine Mitgliedspreise
+    # (Rückmeldung vom 14.10.2026). Die Felder bleiben für andere Träger erhalten,
+    # sind im Backend aber nur im Entwicklermodus sichtbar.
     has_member_price = fields.Boolean(
-        string='Eigener Mitgliedstarif', default=True,
+        string='Eigener Mitgliedstarif', default=False,
         help='Wenn aktiv, gilt für Mitglieder der Mitgliedstarif (auch 0 € = gratis). '
              'Wenn inaktiv, gilt für alle der Standardtarif. Wirkt auf Grundpreis, '
              'Kilometerpreis und Mengenstaffel gleichermaßen.',
@@ -331,6 +334,16 @@ class KjrRentalItem(models.Model):
              'Der Text wird dem Entleiher auf der Website vor dem Absenden der Anfrage '
              'angezeigt und muss von ihm bestätigt werden.',
     )
+    # Termin 13.10.2026: kurzer Warnhinweis je Artikel (z. B. "Nur mit Anhänger-
+    # kupplung", "Gasflasche nicht im Lieferumfang"). Anders als die
+    # Nutzungshinweise oben braucht er keine Bestätigung; er steht als Text direkt
+    # am Artikel im Katalog, im Warenkorb und in der Direktanfrage.
+    warning_note = fields.Text(
+        string='Warnhinweis',
+        help='Kurzer Hinweis, der auf der Verleihseite direkt beim Artikel sowie im '
+             'Warenkorb und in der Direktanfrage angezeigt wird. Leer lassen, wenn es '
+             'keinen Hinweis gibt. Für Regeln, die der Entleiher vor dem Absenden '
+             'bestätigen muss, das Feld "Nutzungshinweise" verwenden.')
     website_published = fields.Boolean(string='Auf Website', default=True)
     icon = fields.Char(
         string='FontAwesome-Icon',
@@ -338,6 +351,32 @@ class KjrRentalItem(models.Model):
              'aus; die neueren FA-5/6-Namen (fa-futbol, fa-utensils) gibt es dort '
              'nicht und sie rendern als leerer Kasten.',
     )
+
+    @api.model
+    def _group_by_category(self, items):
+        """Artikel je Kategorie, in der Reihenfolge der Kategorien (Termin 13.10.2026).
+
+        Die Reihenfolge legt die Geschäftsstelle unter Verleih > Konfiguration >
+        Kategorien per Ziehgriff fest (Feld sequence). Bisher ergab sie sich nur
+        indirekt aus der Sortierung der Artikelsuche; hier wird sie ausdrücklich
+        gebildet: Reihenfolge, dann Name, dann ID der Kategorie. Artikel ohne
+        Kategorie stehen am Ende. Innerhalb einer Kategorie bleibt die Reihenfolge
+        der übergebenen Artikel erhalten.
+
+        Rückgabe: dict {Kategorie (Recordset, ggf. leer): Artikel (Recordset)},
+        dessen Einfügereihenfolge die Anzeigereihenfolge ist.
+        """
+        groups = {}
+        for item in items:
+            groups.setdefault(item.category_id, self.browse())
+            groups[item.category_id] |= item
+
+        def sort_key(category):
+            if not category:
+                return (1, 0, '', 0)
+            return (0, category.sequence or 0, (category.name or '').casefold(), category.id)
+
+        return {category: groups[category] for category in sorted(groups, key=sort_key)}
 
     # --- Eindeutigkeit von Inventarnummer und Barcode -------------------------
     # Partieller UNIQUE-Index statt einfacher UNIQUE-Constraint: PostgreSQL lässt
