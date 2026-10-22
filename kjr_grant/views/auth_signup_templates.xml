@@ -38,7 +38,7 @@
                     </div>
                     <div t-attf-class="o_kjr_club_fields mt-2 #{'' if kjr_signup_type == 'club' else 'd-none'}">
                         <p class="small text-muted">Ihr Konto ist sofort nutzbar. Die Zuordnung zu
-                            Ihrem Verein bestätigt die Geschäftsstelle von <t t-out="res_company.name"/>.
+                            Ihrem Verein bestätigt die Geschäftsstelle (<t t-out="res_company.name"/>).
                             Bis dahin können Sie keine Zuschussanträge für den Verein stellen und keine
                             Verbandsdaten pflegen. Sie erhalten eine E-Mail, sobald die Prüfung
                             abgeschlossen ist.</p>
@@ -149,7 +149,7 @@
                      user.commercial_partner_id). Hängt die Gruppe unter einem
                      Dachverband (wizard/kjr_affiliation_wizard.py), lesen dessen
                      Portal-Zugänge sie und ihre Personen mit. -->
-                <dd class="col-sm-8">Die Geschäftsstelle von <t t-out="res_company.name"/>. Nach der
+                <dd class="col-sm-8">Die Geschäftsstelle (<t t-out="res_company.name"/>). Nach der
                     Bestätigung erscheinen Ihr Name, Ihre Funktion und Ihre Kontaktdaten (E-Mail,
                     Telefon) in den Verbandsdaten, die die anderen Zugänge Ihres Verbands im Portal
                     sehen. Gehört Ihr Verein zu einem Dachverband (hier gewählt oder bei uns so

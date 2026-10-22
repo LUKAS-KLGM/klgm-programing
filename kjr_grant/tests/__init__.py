@@ -11,3 +11,4 @@ from . import test_apply_form_feedback
 from . import test_affiliation_verband
 from . import test_assembly_invitation
 from . import test_hilfe_einreichen
+from . import test_year_cap

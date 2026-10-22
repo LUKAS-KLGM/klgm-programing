@@ -58,7 +58,7 @@
             <field name="requires_report">True</field>
             <field name="requires_receipt">True</field>
             <field name="min_duration_hours">4.0</field>
-            <field name="description">Maßnahmen die dem Verbandszweck dienen (z. B. Probentage, Sportwochenenden). Zuschuss: 4 € pro TN/Tag, max. 400 €. Max. 3 Maßnahmen/Jahr.</field>
+            <field name="description">Maßnahmen, die dem Verbandszweck dienen (z. B. Probentage, Sportwochenenden). Zuschuss: 4 € pro TN/Tag, max. 400 €. Max. 3 Maßnahmen/Jahr.</field>
         </record>
 
         <record id="grant_type_4_3" model="kjr.grant.type">
@@ -144,6 +144,8 @@
             <field name="rate_per_tn_day">8.0</field>
             <field name="max_amount">700.0</field>
             <field name="max_per_year">0</field>
+            <!-- Richtlinie (Fassung ab 01.12.2022): „max. 700 € pro Jahr“. -->
+            <field name="max_amount_per_year">700.0</field>
             <field name="max_cofinancing_pct">50.0</field>
             <field name="juleica_bonus">True</field>
             <field name="min_age">5</field>
@@ -163,6 +165,8 @@
             <field name="sequence">70</field>
             <field name="max_amount">300.0</field>
             <field name="max_per_year">0</field>
+            <!-- Richtlinie (Fassung ab 01.12.2022): „Die jährliche Höchstfördersumme beträgt 300 €“. -->
+            <field name="max_amount_per_year">300.0</field>
             <field name="max_cofinancing_pct">50.0</field>
             <field name="material_pct">50.0</field>
             <field name="material_max">300.0</field>
@@ -170,7 +174,7 @@
             <field name="requires_report">False</field>
             <field name="requires_receipt">True</field>
             <field name="requires_other_docs">Rechnungen/Nachweise für Anschaffungen</field>
-            <field name="description">50 % der förderfähigen Kosten, max. 300 €/Jahr. Nur für Gegenstände die ausschließlich für Jugendarbeit genutzt werden.</field>
+            <field name="description">50 % der förderfähigen Kosten, max. 300 €/Jahr. Nur für Gegenstände, die ausschließlich für Jugendarbeit genutzt werden.</field>
         </record>
 
         <record id="grant_type_4_7" model="kjr.grant.type">
@@ -194,6 +198,8 @@
             <field name="rate_per_tn_single">2.0</field>
             <field name="max_amount">400.0</field>
             <field name="max_per_year">0</field>
+            <!-- Richtlinie (Fassung ab 01.12.2022): „max. 400 € jährlich“. -->
+            <field name="max_amount_per_year">400.0</field>
             <field name="max_cofinancing_pct">50.0</field>
             <field name="min_age">5</field>
             <field name="max_age">27</field>
