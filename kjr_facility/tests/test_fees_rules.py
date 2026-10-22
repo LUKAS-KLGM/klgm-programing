@@ -180,3 +180,29 @@ class TestKjrFacilityRequestForm(HttpCase):
         self.assertEqual((partner.street, partner.zip, partner.city, partner.email, partner.phone),
                          ('RF-Weg 1', '87527', 'RF-Ort', 'rf.gast@example.com', '0123 456'))
         self.assertFalse(partner.user_ids)
+
+    def test_kostenvorschau_ohne_action_legt_nichts_an(self):
+        """reCAPTCHA schickt per form.submit() ab, ohne den Knopf (name="action").
+
+        Die Vorschau muss trotzdem über kjr_preview erkannt werden und darf keine
+        Buchung anlegen. Angemeldete Nutzer bekommen kein data-captcha.
+        """
+        self.authenticate('rf_portal', 'rf_portal_pw_1')
+        html = self.url_open(self.url).text
+        self.assertNotIn('data-captcha', html)
+        self.assertIn('name="kjr_preview"', html)
+        check_in = fields.Date.today() + timedelta(days=30)
+        response = self.url_open(self.url, data={
+            'csrf_token': self._csrf(html), 'kjr_preview': '1',
+            'check_in': check_in.isoformat(),
+            'check_out': (check_in + timedelta(days=2)).isoformat(),
+            'participant_count': '10', 'contact_person': 'RF Vorschau',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(self.env['kjr.facility.booking'].search(
+            [('facility_id', '=', self.facility.id)]))
+
+    def test_gastformular_hat_captcha(self):
+        self.facility.allow_guest_request = True
+        html = self.url_open(self.url).text
+        self.assertIn('data-captcha="kjr_facility_request"', html)

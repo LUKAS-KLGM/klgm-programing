@@ -454,9 +454,10 @@ class KjrFacilityWebsite(http.Controller):
         if request.httprequest.method == 'POST':
             # Eingaben für das erneute Rendern aufheben — niemand soll das Formular
             # nach einer Fehlermeldung noch einmal ausfüllen müssen.
-            values = {k: v for k, v in post.items() if k not in ('csrf_token', 'action')}
+            values = {k: v for k, v in post.items()
+                      if k not in ('csrf_token', 'action', 'kjr_preview', 'recaptcha_token_response')}
 
-            if post.get('action') == 'preview':
+            if post.get('action') == 'preview' or post.get('kjr_preview') == '1':
                 # Reine Kostenvorschau: es wird nichts angelegt und es werden bewusst
                 # keine Pflichtfeld-/Regelmeldungen erzeugt.
                 return self._render_facility_request(facility, values, {}, preview_requested=True)

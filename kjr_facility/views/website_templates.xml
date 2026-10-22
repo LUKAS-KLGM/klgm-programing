@@ -165,10 +165,14 @@
                 </t>
 
                 <!-- data-captcha: Spam-Schutz (kjr_website_antispam bzw. reCAPTCHA/Turnstile),
-                     geprüft wird nur bei Anfragen ohne Konto. -->
+                     nur bei Anfragen ohne Konto. Die reCAPTCHA-Interaction schickt das
+                     Formular per form.submit() ab, dabei geht der gedrückte Knopf
+                     (name="action") verloren. Deshalb trägt kjr_preview die Wahl
+                     „Kosten berechnen“ zusätzlich. -->
                 <form method="post" t-attf-action="/service/einrichtung/#{facility.id}/anfrage"
-                      data-captcha="kjr_facility_request">
+                      t-att-data-captcha="'kjr_facility_request' if request.env.user._is_public() else None">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <input type="hidden" name="kjr_preview" value=""/>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Anreise *</label>
@@ -494,11 +498,13 @@
                         </dl>
                     </section>
 
-                    <button type="submit" name="action" value="submit" class="btn btn-primary btn-lg">
+                    <button type="submit" name="action" value="submit" class="btn btn-primary btn-lg"
+                            onclick="this.form.elements.kjr_preview.value='';">
                         <i class="fa fa-paper-plane me-1" aria-hidden="true"/>Anfrage senden
                     </button>
                     <button type="submit" name="action" value="preview" formnovalidate="formnovalidate"
-                            class="btn btn-outline-primary btn-lg">
+                            class="btn btn-outline-primary btn-lg"
+                            onclick="this.form.elements.kjr_preview.value='1';">
                         <i class="fa fa-calculator me-1" aria-hidden="true"/>Kosten berechnen
                     </button>
                     <a t-attf-href="/service/einrichtung/#{facility.id}" class="btn btn-outline-secondary btn-lg">Abbrechen</a>
