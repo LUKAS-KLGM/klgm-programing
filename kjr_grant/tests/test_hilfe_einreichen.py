@@ -88,6 +88,20 @@ class TestKjrHilfeTexte(TransactionCase):
         self.assertEqual(vorher, (str(template.body_html), gt.description))
 
 
+    def test_migration_jahreslimit(self):
+        spec = importlib.util.spec_from_file_location(
+            'kjr_grant_jahreslimit_18', file_path('kjr_grant/migrations/19.0.18.0.0/post-jahreslimit.py'))
+        mig = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mig)
+        a = self.env.ref('kjr_grant.grant_type_4_1a')
+        b = self.env.ref('kjr_grant.grant_type_4_1b')
+        a.year_limit_group = False
+        b.year_limit_group = 'gepflegt'
+        mig.migrate(self.env.cr, '19.0.17.0.0')
+        self.assertEqual(a.year_limit_group, 'freizeit_4_1')
+        self.assertEqual(b.year_limit_group, 'gepflegt')
+
+
 @tagged('post_install', '-at_install')
 class TestKjrHilfeHttp(HttpCase):
 
@@ -132,11 +146,56 @@ class TestKjrHilfeHttp(HttpCase):
         detail = self.url_open('/my/kjr-antraege/%d' % app.id).text
         self.assertIn('Antrag einreichen', detail)
         resp = self.url_open('/my/kjr-antraege/%d/einreichen' % app.id,
-                             data={'csrf_token': http.Request.csrf_token(self)})
+                             data=self._confirmed())
         self.assertEqual(resp.status_code, 200)
         self.assertIn('Antrag unvollständig', resp.text)
         app.invalidate_recordset()
         self.assertEqual(app.state, 'draft')
+
+    def _confirmed(self, **kw):
+        data = {'csrf_token': http.Request.csrf_token(self),
+                'confirm_privacy': '1', 'confirm_truthful': '1'}
+        data.update(kw)
+        return data
+
+    def test_einreichen_ohne_bestaetigungen(self):
+        """Fehlen Datenschutz und Versicherung am Entwurf, verlangt das Portal
+        beide Haken; ohne sie bleibt der Antrag Entwurf."""
+        assoc = self._setup_portal()
+        app = self._draft(assoc)
+        detail = self.url_open('/my/kjr-antraege/%d' % app.id).text
+        self.assertIn('name="confirm_privacy"', detail)
+        self.assertIn('name="confirm_truthful"', detail)
+        resp = self.url_open('/my/kjr-antraege/%d/einreichen' % app.id,
+                             data={'csrf_token': http.Request.csrf_token(self), 'confirm_privacy': '1'})
+        self.assertIn('Bitte bestätigen Sie vor dem Einreichen', resp.text)
+        app.invalidate_recordset()
+        self.assertEqual(app.state, 'draft')
+        self.assertFalse(app.confirm_privacy)
+
+    def test_einreichen_fremder_antrag_und_nicht_entwurf(self):
+        assoc = self._setup_portal()
+        other = self.env['res.partner'].create({
+            'name': 'Fremder Verband e. V.', 'is_company': True,
+            'is_kjr_member': True, 'kjr_vr_right': True,
+        })
+        foreign = self._draft(other)
+        resp = self.url_open('/my/kjr-antraege/%d/einreichen' % foreign.id,
+                             data=self._confirmed(), allow_redirects=False)
+        self.assertIn(resp.status_code, (302, 303))
+        self.assertTrue(resp.headers['Location'].endswith('/my'))
+        foreign.invalidate_recordset()
+        self.assertEqual(foreign.state, 'draft')
+        self.assertFalse(foreign.confirm_privacy)
+        # Eigener Antrag, aber kein Entwurf mehr: nur zurück zur Detailseite.
+        own = self._draft(assoc)
+        own.sudo()._workflow_write({'state': 'submitted'})
+        resp = self.url_open('/my/kjr-antraege/%d/einreichen' % own.id,
+                             data=self._confirmed(), allow_redirects=False)
+        self.assertIn(resp.status_code, (302, 303))
+        self.assertTrue(resp.headers['Location'].endswith('/my/kjr-antraege/%d' % own.id))
+        own.invalidate_recordset()
+        self.assertEqual(own.state, 'submitted')
 
     def test_einreichen_erfolg(self):
         assoc = self._setup_portal()
@@ -152,9 +211,9 @@ class TestKjrHilfeHttp(HttpCase):
                 'name': upload_attachment_name(field, name), 'raw': b'%PDF-1.4',
                 'res_model': 'kjr.grant.application', 'res_id': app.id,
             })
-        resp = self.url_open('/my/kjr-antraege/%d/einreichen' % app.id,
-                             data={'csrf_token': http.Request.csrf_token(self)})
+        resp = self.url_open('/my/kjr-antraege/%d/einreichen' % app.id, data=self._confirmed())
         self.assertEqual(resp.status_code, 200)
         app.invalidate_recordset()
         self.assertEqual(app.state, 'submitted', resp.text[:2000] if app.state == 'draft' else '')
+        self.assertTrue(app.confirm_privacy and app.confirm_truthful)
         self.assertIn('Ihr Antrag ist eingereicht', resp.text)

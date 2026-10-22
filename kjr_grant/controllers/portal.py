@@ -249,7 +249,19 @@ class KjrPortalController(CustomerPortal):
             return request.redirect('/my')
         if grant.state != 'draft':
             return request.redirect(f'/my/kjr-antraege/{app_id}')
+        # Datenschutz und Versicherung der Richtigkeit sind Voraussetzung des
+        # Einreichens. Fehlen sie am Entwurf (z. B. im Backend erfasst), holt
+        # das Formular sie mit zwei Pflicht-Haken neben dem Knopf ein.
+        missing = [f for f in ('confirm_privacy', 'confirm_truthful') if not grant[f]]
+        if any(kw.get(f) != '1' for f in missing):
+            return request.render('kjr_grant.portal_kjr_grant_detail', {
+                'grant': grant, 'page_name': 'kjr_grant',
+                'submit_error': _('Bitte bestätigen Sie vor dem Einreichen die '
+                                  'Datenschutzerklärung und die Richtigkeit Ihrer Angaben.'),
+            })
         try:
+            if missing:
+                grant.sudo().write({f: True for f in missing})
             grant.sudo().action_submit()
         except (UserError, ValidationError) as e:
             request.env.cr.rollback()

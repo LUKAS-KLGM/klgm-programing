@@ -169,14 +169,23 @@ class TestKjrGrantCompliance(TransactionCase):
         self.assertEqual(app.payout_year, 2027)
 
     # ══ Rückforderungszins: Basiszins + 3 PP (bayerisch) ═════════════════════
+    def _set_interest_params(self):
+        """Zinsparameter festlegen: auf einer Bestandsdatenbank ist der
+        Basiszins gepflegt (z. B. 1,27), der Test rechnet mit 0,0 + 3."""
+        params = self.env['ir.config_parameter'].sudo()
+        params.set_param('kjr_grant.base_interest_rate', '0.0')
+        params.set_param('kjr_grant.default_interest_surcharge', '3.0')
+
     def test_interest_rate_is_base_plus_three(self):
         """Default-Zinssatz = Basiszins (0,0) + 3 PP = 3,0 % p. a.
         (ANBest-P Nr. 8.4 i. V. m. Art. 49a Abs. 3 BayVwVfG – NICHT +5 PP)."""
+        self._set_interest_params()
         self.assertEqual(self.Settlement._default_interest_rate(), 3.0)
 
     def test_repayment_interest_calculation(self):
         """Rückforderung 100 €, 3 % p. a., exakt 365 Tage Verzug → 3,00 € Zinsen,
         Gesamtforderung 103,00 €."""
+        self._set_interest_params()
         app = self._app('kjr_grant.grant_type_4_1a', tn_count=20,
                         cost_accommodation=500.0, grant_approved=100.0)
         # Abrechnung ohne Ist-Teilnehmer/-Kosten → Neuberechnung 0 € → volle Rückforderung.

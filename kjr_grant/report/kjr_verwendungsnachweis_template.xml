@@ -34,7 +34,7 @@
                         <h4 class="text-center mb-4">Verwendungsnachweis</h4>
 
                         <p>
-                            Antragsteller: <strong><t t-esc="app.partner_id.name"/></strong><br/>
+                            Antragsteller:in: <strong><t t-esc="app.partner_id.name"/></strong><br/>
                             Maßnahme: <strong><t t-esc="app.measure_name"/></strong><br/>
                             Zeitraum:
                             <span t-field="app.measure_start" t-options='{"format":"dd.MM.yyyy"}'/> bis

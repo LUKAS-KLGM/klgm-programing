@@ -1498,6 +1498,26 @@
                             </p>
                             <form t-att-action="'/my/kjr-antraege/%d/einreichen' % grant.id" method="post">
                                 <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <!-- Nur wenn am Entwurf noch nicht bestätigt (z. B. im
+                                     Backend erfasst); der Controller verlangt beide. -->
+                                <div t-if="not grant.confirm_privacy" class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" value="1"
+                                           name="confirm_privacy" id="submit_confirm_privacy" required="required"/>
+                                    <label class="form-check-label" for="submit_confirm_privacy">
+                                        Ich habe die
+                                        <a href="/datenschutzerklaerung" target="_blank" rel="noopener">Datenschutzerklärung</a>
+                                        gelesen und bin damit einverstanden. *
+                                    </label>
+                                </div>
+                                <div t-if="not grant.confirm_truthful" class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" value="1"
+                                           name="confirm_truthful" id="submit_confirm_truthful" required="required"/>
+                                    <label class="form-check-label" for="submit_confirm_truthful">
+                                        Ich versichere, dass alle Angaben vollständig sind und der Wahrheit
+                                        entsprechen. Mir ist bewusst, dass eventuell zu viel erhaltene Beträge
+                                        unaufgefordert sofort mitzuteilen und zurückzuzahlen sind. *
+                                    </label>
+                                </div>
                                 <button type="submit" class="btn btn-primary">Antrag einreichen</button>
                             </form>
                         </div>

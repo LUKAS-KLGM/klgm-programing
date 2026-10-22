@@ -99,7 +99,7 @@
         <!-- ── Record Rules: kjr.grant.participant (DSGVO: Daten teils Minderjähriger) ─ -->
 
         <record id="rule_kjr_participant_applicant_own" model="ir.rule">
-            <field name="name">KJR: Antragsteller:in sieht nur eigenen Teilnehmenden</field>
+            <field name="name">KJR: Antragsteller:in sieht nur die eigenen Teilnehmenden</field>
             <field name="model_id" ref="model_kjr_grant_participant"/>
             <field name="groups" eval="[(4, ref('group_kjr_applicant'))]"/>
             <field name="domain_force">[('application_id.partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
@@ -110,7 +110,7 @@
         </record>
 
         <record id="rule_kjr_participant_portal_own" model="ir.rule">
-            <field name="name">KJR: Portal-User sieht nur eigenen Teilnehmenden</field>
+            <field name="name">KJR: Portal-User sieht nur die eigenen Teilnehmenden</field>
             <field name="model_id" ref="model_kjr_grant_participant"/>
             <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
             <field name="domain_force">[('application_id.partner_id', 'child_of', [user.commercial_partner_id.id])]</field>

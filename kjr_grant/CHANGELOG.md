@@ -39,7 +39,20 @@ Umsetzung aus dem Termin am 13.10.2026 (Entscheidungen 4 und 5, Prüfleitfaden K
   „Teilnehmende (ohne Gruppenleitungen) außerhalb des förderfähigen
   Altersbereichs (…): n.“
 
+### Behoben
+- **Auszahlungslauf ließ sich nicht anlegen** (NotNull auf `date_from`/`date_to`):
+  die berechneten Pflichtfelder werden jetzt vor dem Anlegen berechnet
+  (`precompute`), im Formular mit `force_save`.
+- **Genehmigungsassistent Vereinszugehörigkeit** aus Code anlegbar: `mode`,
+  Organisation, Vorschlagswerte und Delegierten-Felder mit `precompute`.
+- **Einreichen im Portal** verlangt Datenschutz und Versicherung der
+  Richtigkeit; fehlen sie am Entwurf, stehen zwei Pflicht-Haken neben dem Knopf.
+- Tests der Rückforderungszinsen setzen ihre Zinsparameter selbst.
+
 ### Migration
+- `migrations/19.0.18.0.0/post-jahreslimit.py`: setzt bei 4.1a und 4.1b die
+  Jahreslimit-Gruppe `freizeit_4_1`, wenn sie leer ist (auf Bestandsinstanzen
+  wegen noupdate nie gesetzt; das gemeinsame Jahreslimit griff nicht).
 - `migrations/19.0.18.0.0/post-sprache.py`: zieht die Textänderungen in den
   noupdate-Mailvorlagen (Antrag eingereicht/bewilligt/abgelehnt,
   Vereinszugehörigkeit bestätigt; jede Sprachfassung) und in den Förderarten

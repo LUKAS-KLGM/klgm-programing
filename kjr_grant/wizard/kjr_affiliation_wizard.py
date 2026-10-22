@@ -91,27 +91,27 @@ class KjrAffiliationApproveWizard(models.TransientModel):
     mode = fields.Selection(
         [('existing', 'Bestehende Organisation wählen'),
          ('new', 'Neue Organisation anlegen')],
-        string='Vorgehen', compute='_compute_mode', store=True, readonly=False,
+        string='Vorgehen', compute='_compute_mode', store=True, readonly=False, precompute=True,
         required=True,
     )
     target_partner_id = fields.Many2one(
         'res.partner', string='Organisation', domain=[('is_company', '=', True)],
-        compute='_compute_target_partner_id', store=True, readonly=False,
+        compute='_compute_target_partner_id', store=True, readonly=False, precompute=True,
     )
     target_is_member = fields.Boolean(
         related='target_partner_id.is_kjr_member', string='KJR-Mitgliedsverband')
 
     new_name = fields.Char(
-        'Name der Organisation', compute='_compute_new_defaults', store=True, readonly=False)
+        'Name der Organisation', compute='_compute_new_defaults', store=True, readonly=False, precompute=True)
     new_street = fields.Char('Straße')
     new_zip = fields.Char('PLZ')
     new_city = fields.Char(
-        'Ort', compute='_compute_new_defaults', store=True, readonly=False)
+        'Ort', compute='_compute_new_defaults', store=True, readonly=False, precompute=True)
     new_email = fields.Char('E-Mail der Organisation')
     new_parent_id = fields.Many2one(
         'res.partner', string='Übergeordneter Verband (Dachverband)',
         domain=[('is_company', '=', True)],
-        compute='_compute_new_defaults', store=True, readonly=False,
+        compute='_compute_new_defaults', store=True, readonly=False, precompute=True,
         help='Die neue Organisation wird als eigene Gruppe unter diesem Verband '
              'angelegt (z. B. Ortsfeuerwehr unter der Kreisjugendfeuerwehr). Sie '
              'behält ihre eigene Anschrift. Solange sie selbst kein KJR-Mitglied '
@@ -120,7 +120,7 @@ class KjrAffiliationApproveWizard(models.TransientModel):
     )
     add_delegate = fields.Boolean(
         'Als Delegierte:r eintragen', compute='_compute_add_delegate',
-        store=True, readonly=False,
+        store=True, readonly=False, precompute=True,
         help='Nimmt die Person mit der Genehmigung in die Delegiertenliste des '
              'unten gewählten Verbands auf. Vorbelegt aus der Angabe bei der '
              'Registrierung. Telefon ist für Delegierte Pflicht.',
@@ -128,7 +128,7 @@ class KjrAffiliationApproveWizard(models.TransientModel):
     delegate_partner_id = fields.Many2one(
         'res.partner', string='Delegierte:r für Verband',
         domain=DELEGATE_VERBAND_DOMAIN,
-        compute='_compute_delegate_partner_id', store=True, readonly=False,
+        compute='_compute_delegate_partner_id', store=True, readonly=False, precompute=True,
         help='Verband mit Vertretungsrecht in der Vollversammlung: die zugeordnete '
              'Organisation selbst oder ein übergeordneter Verband.',
     )
