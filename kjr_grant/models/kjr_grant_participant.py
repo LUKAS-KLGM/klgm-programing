@@ -10,7 +10,7 @@ _logger = logging.getLogger(__name__)
 
 class KjrGrantParticipant(models.Model):
     _name = 'kjr.grant.participant'
-    _description = 'Teilnehmer'
+    _description = 'Teilnehmer:in'
     _order = 'sequence, name'
 
     application_id = fields.Many2one(
@@ -35,10 +35,10 @@ class KjrGrantParticipant(models.Model):
     zip_code = fields.Char(string='PLZ')
     city = fields.Char(string='Wohnort')
     role_code = fields.Selection([
-        ('EA', 'EA (ehrenamtliche/r Mitarbeiter/in)'),
-        ('HA', 'HA (haupt-/nebenberufliche/r Mitarbeiter/in)'),
+        ('EA', 'EA (ehrenamtliche:r Mitarbeiter:in)'),
+        ('HA', 'HA (haupt-/nebenberufliche:r Mitarbeiter:in)'),
         ('HO', 'HO (Honorarkraft)'),
-        ('PR', 'PR (Praktikant/in)'),
+        ('PR', 'PR (Praktikant:in)'),
         ('SO', 'SO (sonstige)'),
     ], string='Kennziffer',
         help='Kennziffer laut Teilnahmeliste. '

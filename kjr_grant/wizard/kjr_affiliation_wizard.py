@@ -36,7 +36,7 @@ es sieht“) und als Hinweis in diesem Assistenten. Soll der Dachverband das
 nicht sehen, darf die Gruppe nicht per parent_id unter ihm hängen (eigenes
 Feld statt parent_id; fachlich mit dem KJR zu klären).
 
-Delegierte: Hat die Person „Ich bin Delegierte/r“ angekreuzt, schlägt der
+Delegierte: Hat die Person „Ich bin Delegierte:r“ angekreuzt, schlägt der
 Assistent den Verband mit Vertretungsrecht vor (die Organisation selbst oder
 der nächste darüber) und nimmt die Person erst mit „Genehmigen“ in dessen
 Delegiertenliste auf. Ist das ein übergeordneter Verband (Ortsgruppe ohne
@@ -119,14 +119,14 @@ class KjrAffiliationApproveWizard(models.TransientModel):
              '„Mein Verband“ steht nur Mitgliedsverbänden offen.',
     )
     add_delegate = fields.Boolean(
-        'Als Delegierte/r eintragen', compute='_compute_add_delegate',
+        'Als Delegierte:r eintragen', compute='_compute_add_delegate',
         store=True, readonly=False,
         help='Nimmt die Person mit der Genehmigung in die Delegiertenliste des '
              'unten gewählten Verbands auf. Vorbelegt aus der Angabe bei der '
              'Registrierung. Telefon ist für Delegierte Pflicht.',
     )
     delegate_partner_id = fields.Many2one(
-        'res.partner', string='Delegierte/r für Verband',
+        'res.partner', string='Delegierte:r für Verband',
         domain=DELEGATE_VERBAND_DOMAIN,
         compute='_compute_delegate_partner_id', store=True, readonly=False,
         help='Verband mit Vertretungsrecht in der Vollversammlung: die zugeordnete '
@@ -262,7 +262,7 @@ class KjrAffiliationApproveWizard(models.TransientModel):
             if not self.delegate_partner_id:
                 raise UserError(_(
                     'Bitte den Verband mit Vertretungsrecht wählen, für den die Person '
-                    'Delegierte/r ist, oder das Häkchen „Als Delegierte/r eintragen“ '
+                    'Delegierte:r ist, oder das Häkchen „Als Delegierte:r eintragen“ '
                     'entfernen.'))
             delegate_for = self.delegate_partner_id
         self.request_id._kjr_do_approve(

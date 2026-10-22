@@ -193,7 +193,7 @@ class TestKjrApplyFormFeedback(TransactionCase):
             ('tn_gender_', 'Geschlecht'), ('tn_zip_', 'PLZ'), ('tn_city_', 'Wohnort'),
             ('tn_role_', 'Kennziffer'), ('tn_juleica_', 'Juleica'),
             ('rc_date_', 'Datum'), ('rc_no_', 'Beleg-Nr.'),
-            ('rc_partner_', 'Empfänger / Einzahler'), ('rc_desc_', 'Bezeichnung'),
+            ('rc_partner_', 'Empfänger:in / Einzahler:in'), ('rc_desc_', 'Bezeichnung'),
             ('rc_direction_', 'Art'), ('rc_category_', 'Position (optional)'),
             ('rc_amount_', 'Betrag in Euro'),
         ]
@@ -375,12 +375,13 @@ class TestKjrApplyFormFeedback(TransactionCase):
         self.assertEqual(settings['funding_notice'], DEFAULT_FUNDING_NOTICE)
         self.assertIn('Landkreis Oberallgäu', settings['funding_notice'])
         self.assertEqual(settings['guidelines_url'], DEFAULT_GUIDELINES_URL)
-        self.assertEqual(DEFAULT_GUIDELINES_URL, '/service/zuschuss-hilfe#zuschussrichtlinien')
+        self.assertEqual(DEFAULT_GUIDELINES_URL, '/service/zuschuss/hilfe#zuschussrichtlinien')
         # Keine eigene Adresse: die Hilfeseite zeigt den Hinweis statt eines Links.
         self.assertEqual(settings['guidelines_document_url'], '')
         # Speichert die Einstellungsmaske die Vorgabe (oder die alte Vorgabe ohne
         # Anker), gilt das ebenfalls als „nicht gepflegt".
-        for value in (DEFAULT_GUIDELINES_URL, '/service/zuschuss-hilfe'):
+        for value in (DEFAULT_GUIDELINES_URL, '/service/zuschuss/hilfe',
+                      '/service/zuschuss-hilfe', '/service/zuschuss-hilfe#zuschussrichtlinien'):
             Param.set_param(PARAM_GUIDELINES_URL, value)
             self.assertEqual(get_apply_form_settings(self.env)['guidelines_document_url'], '')
 
@@ -488,7 +489,7 @@ class TestKjrApplyFormHttp(HttpCase):
         # Attributreihenfolge legt QWeb fest, deshalb per Muster.
         self.assertRegex(
             text,
-            r'<a[^>]*href="/service/zuschuss-hilfe#zuschussrichtlinien"[^>]*>Zuschussrichtlinien</a>')
+            r'<a[^>]*href="/service/zuschuss/hilfe#zuschussrichtlinien"[^>]*>Zuschussrichtlinien</a>')
         self.assertIn('höchstens so hoch', text)
         self.assertIn('Die Mittel für die Förderung der Jugendarbeit stellt der Landkreis Oberallgäu.', text)
         self.assertIn('Fehlbetrag (Defizit)', text)
@@ -501,12 +502,12 @@ class TestKjrApplyFormHttp(HttpCase):
         gepflegte Adresse Hinweis auf die Geschäftsstelle, mit Adresse der Link."""
         Param = self.env['ir.config_parameter'].sudo()
         Param.set_param(PARAM_GUIDELINES_URL, False)
-        text = self.url_open('/service/zuschuss-hilfe').text
+        text = self.url_open('/service/zuschuss/hilfe').text
         self.assertIn('id="zuschussrichtlinien"', text)
         self.assertIn('sendet Ihnen', text)
         self.assertNotIn('Zuschussrichtlinien öffnen', text)
         Param.set_param(PARAM_GUIDELINES_URL, '/web/content/42/richtlinien.pdf')
-        text = self.url_open('/service/zuschuss-hilfe').text
+        text = self.url_open('/service/zuschuss/hilfe').text
         self.assertRegex(text, r'<a[^>]*href="/web/content/42/richtlinien.pdf"[^>]*>')
         self.assertIn('Zuschussrichtlinien öffnen', text)
         form = self.url_open('/service/antrag-stellen').text

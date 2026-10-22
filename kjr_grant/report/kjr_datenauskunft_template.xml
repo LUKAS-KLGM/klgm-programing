@@ -80,7 +80,7 @@
                         </t>
 
                         <t t-if="o.kjr_grant_ids">
-                            <h5 class="mt-4">Zuschussanträge (als Antragsteller-Organisation)</h5>
+                            <h5 class="mt-4">Zuschussanträge (als antragstellende Organisation)</h5>
                             <table class="table table-sm table-bordered">
                                 <thead class="table-light">
                                     <tr><th>Antrag</th><th>Maßnahme</th><th>Datum</th><th>Status</th><th class="text-end">Bewilligt (€)</th></tr>

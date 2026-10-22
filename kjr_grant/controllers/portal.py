@@ -18,12 +18,14 @@ from markupsafe import Markup
 from odoo import http, Command, _
 from odoo.http import request
 from odoo.addons.portal.controllers.portal import CustomerPortal, pager as portal_pager
-from odoo.exceptions import AccessError, MissingError
+from odoo.exceptions import AccessError, MissingError, UserError, ValidationError
 
 # E-Mail-Regel des Antragsformulars wiederverwenden, damit im Portal nicht eine
 # zweite, abweichende Prüfung entsteht (dasselbe Muster wie in website.py, das
 # BIC_RE/IBAN_LENGTHS aus dem Modell zieht).
-from odoo.addons.kjr_grant.controllers.website import EMAIL_RE, _parse_int
+from odoo.addons.kjr_grant.controllers.website import (
+    EMAIL_RE, _parse_int, upload_attachment_name,
+)
 
 _logger = logging.getLogger(__name__)
 ITEMS_PER_PAGE = 10
@@ -66,7 +68,7 @@ CONTACT_WRITABLE_FIELDS = ('name', 'function', 'email', 'phone')
 CONTACT_REQUIRED_FIELDS = ('name',)
 # Delegierte zusätzlich (seit 19.0.17.0.0): ohne Telefonnummer sind sie vor der
 # Vollversammlung nicht erreichbar, die Beschlussfähigkeit lässt sich dann nicht
-# klären. Geprüft in _verband_save_contact, sobald das Häkchen „Delegierte/r“
+# klären. Geprüft in _verband_save_contact, sobald das Häkchen „Delegierte:r“
 # gesetzt ist.
 DELEGATE_REQUIRED_FIELDS = ('phone',)
 
@@ -224,7 +226,39 @@ class KjrPortalController(CustomerPortal):
             return request.redirect('/my')
         return request.render('kjr_grant.portal_kjr_grant_detail', {
             'grant': grant, 'page_name': 'kjr_grant',
+            'submitted': kw.get('eingereicht') == '1',
         })
+
+    @http.route(
+        '/my/kjr-antraege/<int:app_id>/einreichen',
+        type='http', auth='user', website=True, methods=['POST'], csrf=True,
+    )
+    def portal_my_kjr_grant_submit(self, app_id, **kw):
+        """Entwurf aus dem Portal einreichen (19.0.18.0.0).
+
+        Bis 19.0.17.0.0 legte das Formular den Antrag nur als Entwurf an, und im
+        Portal fehlte der Knopf zum Einreichen, obwohl Bestätigungsseite und
+        Anleitung ihn nannten. Eingereicht wird über action_submit: dieselbe
+        Vollständigkeitsprüfung, dasselbe Jahreslimit und dieselbe
+        Eingangsbestätigung wie im Backend. Zugriff wie bei der Detailseite
+        (_document_check_access); danach mit sudo, weil der Portalzugang den
+        Antrag nur lesen darf."""
+        try:
+            grant = self._document_check_access('kjr.grant.application', app_id)
+        except (AccessError, MissingError):
+            return request.redirect('/my')
+        if grant.state != 'draft':
+            return request.redirect(f'/my/kjr-antraege/{app_id}')
+        try:
+            grant.sudo().action_submit()
+        except (UserError, ValidationError) as e:
+            request.env.cr.rollback()
+            grant = self._document_check_access('kjr.grant.application', app_id)
+            return request.render('kjr_grant.portal_kjr_grant_detail', {
+                'grant': grant, 'page_name': 'kjr_grant',
+                'submit_error': str(e.args[0] if e.args else e),
+            })
+        return request.redirect(f'/my/kjr-antraege/{app_id}?eingereicht=1')
 
     @http.route(
         '/service/antrag/<int:app_id>/upload',
@@ -253,7 +287,7 @@ class KjrPortalController(CustomerPortal):
                         continue
                     try:
                         att = request.env['ir.attachment'].sudo().create({
-                            'name': filename,
+                            'name': upload_attachment_name(field_name, filename),
                             'type': 'binary',
                             'datas': base64.b64encode(file_obj.read()),
                             'res_model': 'kjr.grant.application',
@@ -928,7 +962,7 @@ class KjrPortalController(CustomerPortal):
             )
             message_key = 'contact_created'
 
-        # Das Häkchen „Delegierte/r" steht im Formular NUR bei Verbänden MIT
+        # Das Häkchen „Delegierte:r" steht im Formular NUR bei Verbänden MIT
         # Vertretungsrecht (Template: t-if member_info['vr_right']). Ohne dieses
         # Recht schickt kein Formular der Seite `contact_is_delegate` mit — ein
         # ungeprüfter Aufruf würde daraus „nicht mehr delegiert" ableiten und bei
@@ -1069,7 +1103,7 @@ class KjrPortalController(CustomerPortal):
                              'Vollversammlung. Mit dem Entfernen ist für Ihren Verband '
                              'niemand mehr gemeldet.')
             else:
-                hints.append('Diese Person ist als Delegierte/r für die Vollversammlung '
+                hints.append('Diese Person ist als Delegierte:r für die Vollversammlung '
                              'gemeldet. Die Meldung wird mit entfernt.')
 
         assembly_count = env['kjr.assembly'].sudo().search_count([

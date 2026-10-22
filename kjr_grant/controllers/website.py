@@ -6,7 +6,8 @@ Routen:
   GET      /service/zuschuss                        Öffentliche Landingpage
   GET/POST /service/antrag-stellen                  Antragsformular (Login)
   GET      /service/antrag-bestaetigung             Bestätigungsseite
-  GET      /service/zuschuss-hilfe                  Hilfeseite zum Antrag (öffentlich)
+  GET      /service/zuschuss/hilfe                  Hilfeseite zum Antrag (öffentlich)
+  GET      /service/zuschuss-hilfe                  alte Adresse, leitet dauerhaft um
   GET      /service/zuschuss/belegliste-vorlage     Kostenaufstellung und Belegliste zum
                                                     Ausdrucken (öffentlich)
   GET      /service/zuschuss/vorlage-kostenaufstellung-belegliste.xlsx
@@ -26,14 +27,16 @@ from odoo.http import content_disposition, request
 # Formatregeln der Bankverbindung aus dem Modell wiederverwenden, damit die
 # Vorprüfung im Formular und der Constraint beim Speichern nicht auseinanderlaufen.
 from odoo.addons.kjr_grant.models.kjr_grant_application import BIC_RE, IBAN_LENGTHS
-from odoo.addons.kjr_grant.models.res_config_settings_apply import get_apply_form_settings
+from odoo.addons.kjr_grant.models.res_config_settings_apply import (
+    HELP_PAGE_PATH, get_apply_form_settings,
+)
 
 _logger = logging.getLogger(__name__)
 ALLOWED_EXTENSIONS = {'.pdf', '.xlsx', '.xls', '.csv', '.docx', '.doc', '.jpg', '.jpeg', '.png'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 # Menschenlesbare Fassung von ALLOWED_EXTENSIONS für Fehlermeldungen. Muss zu den
 # accept-Attributen der Datei-Felder in views/portal_templates.xml passen —
-# sonst findet der Antragsteller seine Datei im Dateidialog nicht wieder.
+# sonst finden Antragstellende ihre Datei im Dateidialog nicht wieder.
 UPLOAD_FORMATS_LABEL = 'PDF, Word, Excel/CSV oder Bild (JPG/PNG), max. 10 MB'
 
 # ── Formular-Konstanten ──────────────────────────────────────────────────────
@@ -148,7 +151,7 @@ COST_STATEMENT_INCOME = (
 COST_STATEMENT_COSTS = (
     ('cost_accommodation', '1. Unterkunftskosten, Miete, Verpflegung'),
     ('cost_transport', '2. Fahrtkosten'),
-    ('cost_referees', '3. Honorare für Referenten'),
+    ('cost_referees', '3. Honorare für Referent:innen'),
     ('cost_allowances', '4. Aufwandsentschädigung'),
     ('cost_materials', '5. notw. Arbeits- und Hilfsmittel'),
     ('cost_jl_fees', '6. Kursgebühren bei Teilnahme Jugendleiterschulung'),
@@ -172,6 +175,30 @@ def _valid_grant_type_domain(date_ref=None):
         '|', ('valid_from', '=', False), ('valid_from', '<=', today),
         '|', ('valid_to', '=', False), ('valid_to', '>=', today),
     ]
+
+
+# Beschriftung je Upload-Feld. Sie wird dem Dateinamen vorangestellt
+# (upload_attachment_name). Die Vollständigkeitsprüfung beim Einreichen
+# (kjr.grant.application._check_completeness) erkennt Teilnahmeliste, Bericht
+# und Belegliste am Dateinamen ("teilnahme", "bericht", "beleg"). Ohne Präfix
+# zählte eine Belegliste namens "Scan_0815.pdf" nicht, obwohl sie im Feld
+# „Belegliste“ hochgeladen wurde.
+UPLOAD_FIELD_LABELS = {
+    'tn_list_file': 'Teilnahmeliste',
+    'report_file': 'Maßnahmenbericht',
+    'receipt_file': 'Belegliste',
+    'foundation_file': 'Neugründungsformular',
+    'other_file_1': 'Weitere Unterlagen',
+    'other_file_2': 'Weitere Unterlagen',
+}
+
+
+def upload_attachment_name(field_name, filename):
+    """Dateiname des Anhangs: Feldbeschriftung + Originalname."""
+    label = UPLOAD_FIELD_LABELS.get(field_name)
+    if not label or filename.lower().startswith(label.lower()):
+        return filename
+    return '%s - %s' % (label, filename)
 
 
 def _parse_int(value, default=0):
@@ -350,7 +377,7 @@ class KjrWebsiteController(http.Controller):
         zurückgegeben, statt das Alter wie bisher still als 0 zu speichern.
         Eine Teilnahmeliste ganz ohne Zeilen bleibt zulässig: sie kann auch als
         Datei hochgeladen werden (Vollständigkeitsprüfung beim Einreichen).
-        Die Namen erscheinen nur in der Meldung an den Antragsteller selbst,
+        Die Namen erscheinen nur in der Meldung an die antragstellende Person selbst,
         nicht im Log."""
         problems = []
         # Gezählt wird wie im erneut angezeigten Formular: leere Zeilen fallen
@@ -462,7 +489,7 @@ class KjrWebsiteController(http.Controller):
         # Jeder Name aus REQUIRED_MEASURE_FIELDS braucht hier eine Beschriftung.
         # Fehlt eine, fällt das beim ersten unvollständigen Antrag als KeyError auf.
         labels = {
-            'partner_id':         _('Antragsteller (Organisation)'),
+            'partner_id':         _('Antragsteller:in (Organisation)'),
             'grant_type_id':      _('Förderart'),
             'measure_name':       _('Maßnahmenbezeichnung'),
             'measure_start':      _('Beginn der Maßnahme'),
@@ -471,9 +498,9 @@ class KjrWebsiteController(http.Controller):
             'measure_end_time':   _('Uhrzeit Ende'),
             'measure_zip':        _('PLZ Maßnahmenort'),
             'measure_location':   _('Ort der Maßnahme'),
-            'tn_count':           _('Anzahl der Teilnehmer'),
+            'tn_count':           _('Anzahl der Teilnehmenden'),
             'tn_leader_count':    _('Anzahl der Gruppenleitung'),
-            'contact_person':     _('Ansprechpartner/in'),
+            'contact_person':     _('Ansprechpartner:in'),
             'contact_email':      _('E-Mail'),
             'contact_phone':      _('Telefon'),
         }
@@ -494,7 +521,7 @@ class KjrWebsiteController(http.Controller):
         # Bestätigungen am Formularende; ohne diese kein Absenden.
         # Geprüft wird über REQUIRED_CONFIRMATIONS, damit die Konstante die
         # einzige Quelle bleibt: eine vierte Bestätigung, die nur hier stünde,
-        # wäre vom Test nicht erfasst und der Antragsteller bekäme eine
+        # wäre vom Test nicht erfasst und die antragstellende Person bekäme eine
         # Fehlermeldung zu einem Haken, den der Browser nie als Pflicht gezeigt
         # hat. Jeder Name aus der Konstante braucht hier eine Meldung; fehlt
         # eine, fällt das beim ersten unvollständigen Antrag als KeyError auf.
@@ -542,7 +569,7 @@ class KjrWebsiteController(http.Controller):
             if receipt_required and not self._parse_receipt_rows(post):
                 errors['receipt_ids'] = _(
                     'Bitte erfassen Sie mindestens einen vollständigen Beleg (Datum, '
-                    'Empfänger/Einzahler, Bezeichnung, Art und Betrag) oder laden '
+                    'Empfänger:in / Einzahler:in, Bezeichnung, Art und Betrag) oder laden '
                     'Sie stattdessen eine Belegliste als Datei hoch.'
                 )
         elif receipt_required and not self._has_upload('receipt_file'):
@@ -560,7 +587,7 @@ class KjrWebsiteController(http.Controller):
 
         # Bankverbindung schon im Formular prüfen. Ohne diese Vorprüfung schlägt erst
         # der Constraint beim Speichern zu; dessen ValidationError landete im
-        # allgemeinen Fehlerpfad und der Antragsteller erfuhr nie, dass die IBAN
+        # allgemeinen Fehlerpfad und die antragstellende Person erfuhr nie, dass die IBAN
         # das Problem ist. Geprüft wird mit denselben Hilfsfunktionen wie im Modell.
         self._check_bank_details(post, errors)
 
@@ -691,7 +718,7 @@ class KjrWebsiteController(http.Controller):
                 'ausgezahlt werden.'
             ),
             'payment_account_holder': _(
-                'Bitte geben Sie den Kontoinhaber genau so an, wie er bei der Bank '
+                'Bitte geben Sie den Namen der Kontoinhaberin oder des Kontoinhabers genau so an, wie er bei der Bank '
                 'hinterlegt ist.'
             ),
         }
@@ -846,23 +873,15 @@ class KjrWebsiteController(http.Controller):
         )
 
     def _handle_file_uploads(self, application):
-        FIELD_LABELS = {
-            'tn_list_file': 'Teilnahmeliste',
-            'report_file': 'Maßnahmenbericht',
-            'receipt_file': 'Belegliste',
-            'foundation_file': 'Neugründungsformular',
-            'other_file_1': 'Weitere Unterlagen',
-            'other_file_2': 'Weitere Unterlagen',
-        }
         attachment_ids = []
-        for field_name in FIELD_LABELS:
+        for field_name in UPLOAD_FIELD_LABELS:
             for file_obj in request.httprequest.files.getlist(field_name):
                 if not self._is_acceptable_upload(file_obj):
                     continue
                 filename = os.path.basename(file_obj.filename)
                 try:
                     att = request.env['ir.attachment'].sudo().create({
-                        'name': filename,
+                        'name': upload_attachment_name(field_name, filename),
                         'type': 'binary',
                         'datas': base64.b64encode(file_obj.read()),
                         'res_model': 'kjr.grant.application',
@@ -905,7 +924,13 @@ class KjrWebsiteController(http.Controller):
     # HILFE- UND VORLAGENSEITEN
     # ══════════════════════════════════════════════════════════════════════════
 
-    @http.route('/service/zuschuss-hilfe', type='http', auth='public', website=True, sitemap=True)
+    @http.route('/service/zuschuss-hilfe', type='http', auth='public', website=True, sitemap=False)
+    def kjr_apply_help_legacy(self, **kw):
+        """Alte Adresse der Hilfeseite (bis 19.0.17.0.0): dauerhaft umleiten,
+        damit Lesezeichen und gespeicherte Richtlinien-Links weiter gehen."""
+        return request.redirect(HELP_PAGE_PATH, code=301)
+
+    @http.route(HELP_PAGE_PATH, type='http', auth='public', website=True, sitemap=True)
     def kjr_apply_help(self, **kw):
         """Öffentliche Hilfeseite „Wie stelle ich einen Zuschussantrag?".
         Bewusst ohne Login erreichbar — Verbände sollen sich vor der Registrierung
@@ -1024,7 +1049,7 @@ class KjrWebsiteController(http.Controller):
         ka.set_column('C:C', 4)
         ka.write(0, 0, 'Kostenaufstellung zum Zuschussantrag', title)
         ka.write(1, 0, company.name or '', bold)
-        ka.write(2, 0, 'Antragsteller (Organisation)')
+        ka.write(2, 0, 'Antragsteller:in (Organisation)')
         ka.write_blank(2, 1, None, input_cell)
         ka.write(3, 0, 'Bezeichnung der Maßnahme')
         ka.write_blank(3, 1, None, input_cell)
@@ -1093,11 +1118,11 @@ class KjrWebsiteController(http.Controller):
         bl.set_column('H:H', 14)
         bl.write(0, 0, 'Belegliste zum Zuschussantrag', title)
         bl.write(1, 0, company.name or '', bold)
-        bl.write(2, 0, 'Antragsteller (Organisation):')
+        bl.write(2, 0, 'Antragsteller:in (Organisation):')
         bl.write(3, 0, 'Bezeichnung der Maßnahme:')
         bl.merge_range(2, 3, 2, 7, '', input_cell)
         bl.merge_range(3, 3, 3, 7, '', input_cell)
-        headers = ['Nr.', 'Datum', 'Beleg-Nr.', 'Empfänger / Einzahler', 'Bezeichnung',
+        headers = ['Nr.', 'Datum', 'Beleg-Nr.', 'Empfänger:in / Einzahler:in', 'Bezeichnung',
                    'Art (Einnahme/Ausgabe)', 'Position (optional)', 'Betrag (€)']
         bl.write_row(5, 0, headers, head)
         for offset in range(XLSX_RECEIPT_ROWS):
@@ -1126,7 +1151,7 @@ class KjrWebsiteController(http.Controller):
         bl.write_formula(sum_row + 1, 7, '=SUMIF(%s,"Ausgabe",%s)' % (kind_range, amount_range), money_bold)
         bl.set_row(sum_row + 3, 32)
         bl.merge_range(sum_row + 3, 0, sum_row + 3, 7,
-                       'Diese Belege sind vom Antragsteller zum Zwecke der Nachprüfung '
+                       'Diese Belege sind von der antragstellenden Organisation zum Zwecke der Nachprüfung '
                        '5 Jahre im Original aufzubewahren. Die Richtigkeit und sachliche '
                        'Notwendigkeit der aufgeführten Einnahmen und Ausgaben wird bestätigt.',
                        muted)

@@ -166,7 +166,7 @@ class TestKjrGrantFormFields(TransactionCase):
 
     # ══ Teilnahmeliste: Kennziffer steuert die Gruppenleitung ════════════════
     def test_role_code_sets_is_leader(self):
-        """Kennziffer gesetzt ⇒ Gruppenleitung; Kennziffer geleert ⇒ Teilnehmer/in.
+        """Kennziffer gesetzt ⇒ Gruppenleitung; Kennziffer geleert ⇒ Teilnehmer:in.
         is_leader trägt die Förderlogik (Betreuungsschlüssel 1:5, Altersfenster-
         Ausnahme) und wird per Onchange mitgeführt."""
         app = self._app()
@@ -202,10 +202,10 @@ class TestKjrGrantFormFields(TransactionCase):
         self.assertEqual([value for value, _label in selection],
                          ['EA', 'HA', 'HO', 'PR', 'SO'])
         self.assertEqual([label for _value, label in selection], [
-            'EA (ehrenamtliche/r Mitarbeiter/in)',
-            'HA (haupt-/nebenberufliche/r Mitarbeiter/in)',
+            'EA (ehrenamtliche:r Mitarbeiter:in)',
+            'HA (haupt-/nebenberufliche:r Mitarbeiter:in)',
             'HO (Honorarkraft)',
-            'PR (Praktikant/in)',
+            'PR (Praktikant:in)',
             'SO (sonstige)',
         ])
 
@@ -324,7 +324,7 @@ class TestKjrGrantFormFields(TransactionCase):
         self._participant(app, name='Erwin Erwachsen', age=32)
         text = self._compliance_note(app)
         self.assertIn(self.AGE_WARNING, text)
-        self.assertIn('1 Teilnehmer (ohne Gruppenleitungen)', text)
+        self.assertRegex(text, r'Teilnehmende \(ohne Gruppenleitungen\) außerhalb [^\n]*\): 1\.')
 
     def test_age_range_below_minimum(self):
         """Unterschreitung ebenfalls: 3 Jahre < Mindestalter 5."""
@@ -363,7 +363,7 @@ class TestKjrGrantFormFields(TransactionCase):
         self._participant(app, name='Erwin Erwachsen', age=32)
         self._participant(app, name='Maxi Musterleiter', age=35, is_leader=True)
         text = self._compliance_note(app)
-        self.assertIn('1 Teilnehmer (ohne Gruppenleitungen)', text)
+        self.assertRegex(text, r'Teilnehmende \(ohne Gruppenleitungen\) außerhalb [^\n]*\): 1\.')
 
     def test_age_range_skips_participants_without_age(self):
         """Wer weder Alter noch Geburtsdatum hat (unvollständiger Papierantrag),

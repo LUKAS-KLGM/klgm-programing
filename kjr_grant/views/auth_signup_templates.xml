@@ -84,7 +84,7 @@
                             <input class="form-check-input" type="checkbox" name="kjr_club_delegate"
                                    id="kjr_club_delegate" value="1" aria-describedby="kjr_club_delegate_help"
                                    t-att-checked="'checked' if kjr_club_delegate else None"/>
-                            <label class="form-check-label" for="kjr_club_delegate">Ich bin Delegierte/r
+                            <label class="form-check-label" for="kjr_club_delegate">Ich bin Delegierte:r
                                 meines Verbands für die Vollversammlung</label>
                             <div id="kjr_club_delegate_help" class="form-text">In die Delegiertenliste
                                 Ihres Verbands nimmt Sie die Geschäftsstelle mit der Bestätigung auf.
@@ -125,7 +125,7 @@
                 <!-- Telefon: models/kjr_affiliation_request.py (_kjr_create_from_signup)
                      schreibt es sofort in den eigenen Kontakt, wenn dort noch keines steht. -->
                 <dd class="col-sm-8">Vereinsname, Dachverband, Funktion, Ort, Telefon und die
-                    Angabe „Delegierte/r“, wie angegeben. Die Telefonnummer wird gleich mit der
+                    Angabe „Delegierte:r“, wie angegeben. Die Telefonnummer wird gleich mit der
                     Registrierung in Ihre Kontaktdaten übernommen, sofern dort noch keine steht.</dd>
 
                 <dt class="col-sm-4">Wofür</dt>
@@ -136,7 +136,7 @@
                 <dd class="col-sm-8">Prüfung der Vereinszugehörigkeit. Nach der Bestätigung wird die
                     angegebene Funktion in Ihre Kontaktdaten übernommen (sofern dort noch keine
                     steht), damit Ihr Verband Sie als Ansprechperson führen kann. Haben Sie
-                    „Delegierte/r“ angekreuzt, nimmt die Geschäftsstelle Sie mit der Bestätigung
+                    „Delegierte:r“ angekreuzt, nimmt die Geschäftsstelle Sie mit der Bestätigung
                     in die Delegiertenliste Ihres Verbands auf; Einladungen zur Vollversammlung
                     gehen dann an Sie, und die Geschäftsstelle kann Sie telefonisch erreichen.
                     Ohne Delegiertenangabe ist die Telefonnummer freiwillig; wir nutzen sie für

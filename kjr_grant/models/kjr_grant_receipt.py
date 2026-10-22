@@ -2,7 +2,7 @@
 """Digitale Belegliste zum Zuschussantrag (Alternative zum Datei-Upload).
 
 Bildet die Papier-Belegliste des Trägers 1:1 ab: je Zeile ein Beleg mit
-Datum, Beleg-Nr., Empfänger/Einzahler (ANBest-P-Pflichtspalte), Bezeichnung,
+Datum, Beleg-Nr., Empfänger:in / Einzahler:in (ANBest-P-Pflichtspalte), Bezeichnung,
 Art (Einnahme/Ausgabe), optional Position, und Betrag. Die Positionen spiegeln
 die Kostenaufstellung des Antrags, damit Belege und Summen zusammenpassen.
 """
@@ -32,7 +32,7 @@ class KjrGrantReceipt(models.Model):
     date = fields.Date(string='Datum', required=True)
     receipt_no = fields.Char(string='Beleg-Nr.')
     # ANBest-P verlangt den Zahlungsempfänger bzw. Einzahler je Beleg — Pflichtspalte.
-    partner_name = fields.Char(string='Empfänger / Einzahler', required=True)
+    partner_name = fields.Char(string='Empfänger:in / Einzahler:in', required=True)
     description = fields.Char(string='Bezeichnung', required=True)
 
     # ── Art, Position und Betrag ─────────────────────────────────────────────
@@ -49,7 +49,7 @@ class KjrGrantReceipt(models.Model):
             ('income_other', 'Einnahme: Sonstige Zuschüsse'),
             ('accommodation', 'Ausgabe: Unterkunft, Verpflegung, Miete'),
             ('transport', 'Ausgabe: Fahrtkosten'),
-            ('referees', 'Ausgabe: Honorare Referenten'),
+            ('referees', 'Ausgabe: Honorare Referent:innen'),
             ('allowances', 'Ausgabe: Aufwandsentschädigungen'),
             ('materials', 'Ausgabe: Arbeits- und Hilfsmittel'),
             ('jl_fees', 'Ausgabe: Kursgebühren JL-Schulung'),

@@ -66,7 +66,7 @@ BIC_RE = re.compile(r'^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$')
 # HARTE GRENZE: Buchungsbelege in 'account' (account.move, account.payment und
 # deren Anhänge) werden von dieser Routine NICHT angefasst – sie hängen an einer
 # Hash-Verkettung, jeder nachträgliche Eingriff zerstört die Unveränderbarkeit
-# des Belegs. Die Klasse 'receipt' meint ausschließlich die vom Antragsteller AM
+# des Belegs. Die Klasse 'receipt' meint ausschließlich die von der antragstellenden Organisation AM
 # ANTRAG hochgeladene Belegliste, nicht den gebuchten Beleg.
 DSGVO_BASE_RETENTION_PARAM = 'kjr_grant.participant_retention_years'
 DSGVO_RETENTION_PARAMS = {
@@ -92,7 +92,7 @@ DSGVO_RETENTION_PARAMS = {
     'chatter':  'kjr_grant.retention_years_chatter',
 }
 
-# Zuordnung Dateiname → Belegklasse. Die Antragsteller laden ihre Dateien unter
+# Zuordnung Dateiname → Belegklasse. Die Antragstellenden laden ihre Dateien unter
 # dem Original-Dateinamen hoch (controllers/website.py, controllers/portal.py),
 # eine strukturierte Kennzeichnung existiert nicht. Dieselbe Schlüsselwort-
 # Heuristik prüft bereits die Vollständigkeit beim Einreichen; sie wird hier
@@ -113,7 +113,7 @@ DSGVO_ATTACHMENT_CLASSES = ('tn_list', 'report', 'receipt', 'other')
 
 # Felder mit tracking=True, deren Historie personenbezogen bzw. Bankdaten ist.
 # partner_id (Verband) trägt ebenfalls tracking=True; Odoo speichert dort den
-# damaligen Anzeigenamen als Text. Der Antragsteller ist eine Organisation und
+# damaligen Anzeigenamen als Text. Die antragstellende Partei ist eine Organisation und
 # der Wechsel des Antragstellers ist ein prüfungsrelevanter Vorgang – deshalb
 # bleibt partner_id hier bewusst unangetastet.
 # TODO(DSGVO): partner_id-Historie mit der Datenschutzbeauftragten bewerten.
@@ -195,9 +195,9 @@ class KjrGrantApplication(models.Model):
         default=lambda self: self.env.company,
     )
 
-    # ── Antragsteller ────────────────────────────────────────────────────────
+    # ── Antragsteller:in ────────────────────────────────────────────────────────
     partner_id = fields.Many2one(
-        'res.partner', string='Antragsteller (Verband)', required=True, tracking=True,
+        'res.partner', string='Antragsteller:in (Verband)', required=True, tracking=True,
         domain="[('is_kjr_member', '=', True), ('is_company', '=', True)]",
         ondelete='restrict',
     )
@@ -250,8 +250,8 @@ class KjrGrantApplication(models.Model):
         store=True, help='Spätestens 3 Monate nach Maßnahmenende.',
     )
 
-    # ── Teilnehmer ───────────────────────────────────────────────────────────
-    tn_count = fields.Integer(string='Anzahl Teilnehmer', default=0, tracking=True)
+    # ── Teilnehmende ───────────────────────────────────────────────────────────
+    tn_count = fields.Integer(string='Anzahl Teilnehmende', default=0, tracking=True)
     tn_leader_count = fields.Integer(string='Gruppenleitung', default=0)
     tn_leader_juleica = fields.Integer(string='Davon mit Juleica', default=0)
     tn_external_count = fields.Integer(string='TN aus anderen Regionen', default=0)
@@ -266,12 +266,12 @@ class KjrGrantApplication(models.Model):
     # weder im Website-Formular abgefragt noch beim Einreichen geprüft.
     participant_consent = fields.Boolean(
         string='Einwilligung Erziehungsberechtigte (historisch)', tracking=True,
-        help='Nur für Altanträge: Bestätigung, dass für minderjährige Teilnehmer die '
+        help='Nur für Altanträge: Bestätigung, dass für minderjährige Teilnehmende die '
              'Einwilligung der Erziehungsberechtigten vorliegt. Seit 31.07.2026 auf '
              'Wunsch des KJR nicht mehr erhoben.',
     )
 
-    # ── Bestätigungen Antragsteller ──────────────────────────────────────────
+    # ── Bestätigungen Antragsteller:in ──────────────────────────────────────────
     # Pflicht ausschließlich im Website-Formular (Template + Controller). Im Backend
     # bewusst NICHT required, damit die Geschäftsstelle Papieranträge abtippen kann.
     confirm_privacy = fields.Boolean(
@@ -282,7 +282,7 @@ class KjrGrantApplication(models.Model):
     )
     confirm_truthful = fields.Boolean(
         string='Angaben vollständig und wahrheitsgemäß', tracking=True,
-        help='Antragsteller versichert Vollständigkeit/Richtigkeit und bestätigt, dass zu viel '
+        help='Die antragstellende Organisation versichert Vollständigkeit/Richtigkeit und bestätigt, dass zu viel '
              'erhaltene Beträge unaufgefordert mitzuteilen und zurückzuzahlen sind.',
     )
 
@@ -303,13 +303,13 @@ class KjrGrantApplication(models.Model):
              'nach dem Bayer. Reisekostengesetz (BayRKG).',
     )
     delegate_passenger_count = fields.Integer(
-        string='Mitfahrer/innen', default=0,
+        string='Mitfahrer:innen', default=0,
         help='Nur § 4.9: Zahl der mitgenommenen weiteren Delegierten (Mitnahme-'
              'entschädigung nach BayRKG).',
     )
 
     # ── Bankverbindung ───────────────────────────────────────────────────────
-    payment_account_holder = fields.Char(string='Kontoinhaber (exakt)')
+    payment_account_holder = fields.Char(string='Kontoinhaber:in (exakt)')
     payment_iban = fields.Char(string='IBAN (Organisationskonto)', tracking=True)
     payment_bic = fields.Char(string='BIC')
     payment_bank = fields.Char(string='Geldinstitut')
@@ -328,7 +328,7 @@ class KjrGrantApplication(models.Model):
     # ── Ausgaben ─────────────────────────────────────────────────────────────
     cost_accommodation = fields.Float(string='Unterkunft/Verpflegung/Miete (€)', digits=(10, 2), default=0.0)
     cost_transport = fields.Float(string='Fahrtkosten (€)', digits=(10, 2), default=0.0)
-    cost_referees = fields.Float(string='Honorare Referenten (€)', digits=(10, 2), default=0.0)
+    cost_referees = fields.Float(string='Honorare Referent:innen (€)', digits=(10, 2), default=0.0)
     cost_allowances = fields.Float(string='Aufwandsentschädigungen (€)', digits=(10, 2), default=0.0)
     cost_materials = fields.Float(string='Arbeits- und Hilfsmittel (€)', digits=(10, 2), default=0.0)
     cost_jl_fees = fields.Float(
@@ -439,7 +439,7 @@ class KjrGrantApplication(models.Model):
     )
     payment_ordered_date = fields.Date(string='Zahlung angewiesen am', copy=False, tracking=True)
     rejection_reason = fields.Text(string='Ablehnungsgrund', copy=False, tracking=True)
-    note_internal = fields.Text(string='Interne Notizen (nicht für Antragsteller)')
+    note_internal = fields.Text(string='Interne Notizen (nicht für Antragstellende)')
     # Buchhaltung
     move_id = fields.Many2one('account.move', string='Buchung Bewilligung', readonly=True, copy=False)
     payment_id = fields.Many2one('account.payment', string='Auszahlung', readonly=True, copy=False)
@@ -961,7 +961,7 @@ class KjrGrantApplication(models.Model):
                 ))
             if rec.tn_external_count > rec.tn_count:
                 raise ValidationError(_(
-                    'Die Zahl externer Teilnehmer kann die Gesamtteilnehmerzahl nicht übersteigen.'
+                    'Die Zahl externer Teilnehmender kann die Gesamtteilnehmerzahl nicht übersteigen.'
                 ))
 
     @api.constrains(
@@ -987,7 +987,7 @@ class KjrGrantApplication(models.Model):
 
     @staticmethod
     def _normalize_bank_code(value):
-        """Eingabe der Antragsteller tolerant normalisieren: Leerzeichen (auch
+        """Eingabe der Antragstellenden tolerant normalisieren: Leerzeichen (auch
         geschützte), Bindestriche und Kleinschreibung sind erlaubt und werden vor
         der Prüfung entfernt bzw. in Großbuchstaben gewandelt."""
         return re.sub(r'[\s -]', '', (value or '')).upper()
@@ -1285,7 +1285,7 @@ class KjrGrantApplication(models.Model):
         haken, Zahlung anweisen) – das Vier-Augen-Prinzip wäre wirkungslos.
 
         Verhalten:
-          • Normale Feldänderungen (Beträge, Texte, Teilnehmer …) und alle
+          • Normale Feldänderungen (Beträge, Texte, Teilnehmende …) und alle
             Schreibvorgänge aus den Workflow-Actions laufen unverändert durch.
           • Direkte Änderungen an Status/Vermerken sind der Administrator-Gruppe
             vorbehalten (Korrekturen bei Fehleingaben) und landen im Chatter.
@@ -1608,7 +1608,7 @@ class KjrGrantApplication(models.Model):
         Anweisung weiter – die Auszahlung wäre dann ohne zweite Person möglich.
         Was verworfen wurde, hält der Chatter fest (Kassenprüfung)."""
         # Serverseitig auf die Administrator-Gruppe begrenzt (die Schaltfläche im
-        # Formular ist bereits so eingeschränkt); sonst könnten Antragsteller die
+        # Formular ist bereits so eingeschränkt); sonst könnten Antragstellende die
         # Vermerke eines bewilligten Antrags über einen direkten Aufruf verwerfen.
         if not self.env.user.has_group('kjr_grant.group_kjr_manager'):
             raise AccessError(_(
@@ -2362,7 +2362,7 @@ class KjrGrantApplication(models.Model):
         t = self.grant_type_id
         errors = []
         if not self.partner_id:
-            errors.append(_('Antragsteller fehlt.'))
+            errors.append(_('Antragsteller:in fehlt.'))
         if self.partner_id and not self.partner_id.kjr_vr_right:
             errors.append(_('Der Verband "%s" hat kein Vertretungsrecht in der '
                            'Vollversammlung (§ 3.1 Richtlinien). Nur Verbände '
@@ -2377,9 +2377,9 @@ class KjrGrantApplication(models.Model):
         # § 4.9 (Delegiertenfahrtkosten), Investitionszuschuss.
         no_tn_codes = ('4_6', '4_7', '4_9', 'invest')
         if t.code not in no_tn_codes and self.tn_count <= 0:
-            errors.append(_('Anzahl Teilnehmer muss > 0 sein.'))
+            errors.append(_('Anzahl Teilnehmende muss > 0 sein.'))
         if t.min_participants and self.tn_count < t.min_participants:
-            errors.append(_('Mindestens %d Teilnehmer erforderlich für "%s".')
+            errors.append(_('Mindestens %d Teilnehmende erforderlich für "%s".')
                          % (t.min_participants, t.name))
         # § 4.9 braucht eine Vollversammlung (Grundlage der Erstattung lt. Antragsliste)
         # und entweder gefahrene km (PKW) oder belegte Fahrtkosten.
@@ -2397,7 +2397,7 @@ class KjrGrantApplication(models.Model):
 
         # Teilnahmeliste: digital oder als Datei. 'teilnahme' muss mitgeprüft werden —
         # seit 07/2026 heißt das Feld im Formular „Teilnahmeliste", die Dateien der
-        # Antragsteller heißen entsprechend (Kundenabstimmung 30.07.2026).
+        # Antragsteller:in heißen entsprechend (Kundenabstimmung 30.07.2026).
         if t.requires_tn_list and not self.participant_ids:
             attachments = self.env['ir.attachment'].search([
                 ('res_model', '=', self._name), ('res_id', '=', self.id),
@@ -2475,8 +2475,8 @@ class KjrGrantApplication(models.Model):
         # Herkunft: TN sollen überwiegend aus dem Landkreis kommen.
         if t.max_external_pct and self.tn_external_pct > t.max_external_pct:
             warnings.append(_(
-                'Hoher Anteil auswärtiger Teilnehmer (%(pct).0f %%, zulässig max. %(max).0f %%). '
-                'Die Teilnehmer sollen überwiegend aus dem eigenen Einzugsgebiet stammen.'
+                'Hoher Anteil auswärtiger Teilnehmender (%(pct).0f %%, zulässig max. %(max).0f %%). '
+                'Die Teilnehmenden sollen überwiegend aus dem eigenen Einzugsgebiet stammen.'
             ) % {'pct': self.tn_external_pct, 'max': t.max_external_pct})
         # Betreuungsschlüssel.
         ratio = t.leader_ratio if t.leader_ratio and t.leader_ratio > 0 else 5
@@ -2528,8 +2528,8 @@ class KjrGrantApplication(models.Model):
                     bereich = _('ab %(min)d Jahren, ohne Obergrenze') % {
                         'min': t.min_age}
                 warnings.append(_(
-                    '%(n)d Teilnehmer (ohne Gruppenleitungen) liegen außerhalb des förderfähigen '
-                    'Altersbereichs (%(bereich)s).'
+                    'Teilnehmende (ohne Gruppenleitungen) außerhalb des förderfähigen '
+                    'Altersbereichs (%(bereich)s): %(n)d.'
                 ) % {'n': out, 'bereich': bereich})
         # Subsidiarität: anderweitige Zuschussmöglichkeiten sind auszuschöpfen und
         # anzugeben; eine angemessene Eigenleistung wird vorausgesetzt (Grundsätze der
@@ -2552,7 +2552,7 @@ class KjrGrantApplication(models.Model):
                     'berechtigung prüfen.'
                 ) % self.partner_id.name)
         # Abgleich Belegliste ⇄ Kostenaufstellung (19.0.17.0.0): nicht blockierend,
-        # die Sachbearbeitung klärt Abweichungen mit dem Antragsteller.
+        # die Sachbearbeitung klärt Abweichungen mit der antragstellenden Organisation.
         if self.receipt_mismatch:
             warnings.append(_(
                 'Die digitale Belegliste stimmt nicht mit der Kostenaufstellung '

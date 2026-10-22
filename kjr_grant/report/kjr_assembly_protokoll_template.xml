@@ -218,7 +218,7 @@
                                     <table class="table table-sm table-bordered mb-1">
                                         <thead class="table-light">
                                             <tr>
-                                                <th>Kandidat/in</th>
+                                                <th>Kandidat:in</th>
                                                 <th class="text-end" style="width:16%;">Stimmen</th>
                                                 <th class="text-end" style="width:16%;">Anteil</th>
                                                 <th style="width:22%;">Ergebnis</th>

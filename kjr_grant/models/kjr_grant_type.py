@@ -40,7 +40,7 @@ class KjrGrantType(models.Model):
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     description = fields.Text(
-        string='Beschreibung für Antragsteller',
+        string='Beschreibung für Antragstellende',
         help='Wird im Portal bei Auswahl dieser Förderart angezeigt.',
     )
 
@@ -124,19 +124,19 @@ class KjrGrantType(models.Model):
              'Greift nur wenn "Juleica-Bonus aktiv".',
     )
     leader_ratio = fields.Integer(
-        string='Teilnehmer je anerkannter Gruppenleitung', default=5,
-        help='Es wird max. 1 geförderte Gruppenleitung je N Teilnehmer anerkannt (Voreinstellung: 5).',
+        string='Teilnehmende je anerkannter Gruppenleitung', default=5,
+        help='Es wird max. 1 geförderte Gruppenleitung je N Teilnehmende anerkannt (Voreinstellung: 5).',
     )
     max_external_pct = fields.Float(
         string='Max. Anteil auswärtiger TN (%)', digits=(5, 1), default=25.0,
-        help='Teilnehmer sollen überwiegend aus dem eigenen Einzugsgebiet stammen '
+        help='Teilnehmende sollen überwiegend aus dem eigenen Einzugsgebiet stammen '
              '(Voreinstellung: max. 25 % auswärts). 0 = keine Prüfung.',
     )
     min_age = fields.Integer(
-        string='Mindestalter Teilnehmer', default=0, help='0 = keine Prüfung.',
+        string='Mindestalter Teilnehmende', default=0, help='0 = keine Prüfung.',
     )
     max_age = fields.Integer(
-        string='Höchstalter Teilnehmer', default=0, help='0 = keine Obergrenze.',
+        string='Höchstalter Teilnehmende', default=0, help='0 = keine Obergrenze.',
     )
     min_days = fields.Integer(
         string='Mindestdauer (Tage)', default=0, help='0 = keine Prüfung.',
@@ -220,7 +220,7 @@ class KjrGrantType(models.Model):
     def _check_leader_ratio(self):
         for rec in self:
             if rec.leader_ratio < 1:
-                raise ValidationError(_('Teilnehmer je Gruppenleitung muss mindestens 1 sein.'))
+                raise ValidationError(_('Teilnehmende je Gruppenleitung muss mindestens 1 sein.'))
 
     @api.constrains('valid_from', 'valid_to')
     def _check_validity_dates(self):

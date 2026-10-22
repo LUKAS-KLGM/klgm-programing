@@ -69,7 +69,7 @@
                         <field name="plausibility_hint" nolabel="1" readonly="1"/>
                     </div>
                     <notebook>
-                        <page string="Kandidat/innen" invisible="decision_type != 'election'">
+                        <page string="Kandidat:innen" invisible="decision_type != 'election'">
                             <div class="text-muted mb-2">
                                 Geheime Wahl nach § 34 Abs. 3 BJR-Satzung: Es werden
                                 ausschließlich die ausgezählten Stimmensummen je
@@ -203,8 +203,8 @@
                         </page>
                         <page string="Delegierte" name="delegates">
                             <div class="text-muted mb-2">
-                                Delegiertenverzeichnis: die Vertreter/innen aller eingeladenen Verbände
-                                (gepflegt am Verband, Feld „Vertreter/innen“, oder vom Verband im Portal).
+                                Delegiertenverzeichnis: die Vertreter:innen aller eingeladenen Verbände
+                                (gepflegt am Verband, Feld „Vertreter:innen“, oder vom Verband im Portal).
                                 Telefon ist für Delegierte Pflicht.
                             </div>
                             <field name="delegate_ids" nolabel="1" readonly="1">

@@ -343,12 +343,12 @@ class KjrFunding(models.Model):
     def _bezjr_detail_header(self):
         return [
             'Lfd. Nr.', 'Antragsnummer', 'KJR-Aktenzeichen',
-            'Träger / Antragsteller', 'PLZ Träger', 'Ort Träger',
+            'Träger / Antragsteller:in', 'PLZ Träger', 'Ort Träger',
             'Maßnahme', 'Förderart', 'Förderart-Code',
             'Beginn', 'Ende', 'Förderfähige Tage',
             'PLZ Maßnahmenort', 'Ort der Maßnahme',
-            'Teilnehmer gesamt', 'davon Gruppenleitung',
-            'davon Gruppenleitung mit Juleica', 'davon auswärtige Teilnehmer',
+            'Teilnehmende gesamt', 'davon Gruppenleitung',
+            'davon Gruppenleitung mit Juleica', 'davon auswärtige Teilnehmende',
             'Förderfähige Gesamtkosten (€)', 'Gesamteinnahmen (€)', 'Fehlbetrag (€)',
             'Berechneter Zuschuss (€)', 'Bewilligter Zuschuss (€)',
             'Zuschuss BJR/BezJR laut Antrag (€)',
@@ -456,7 +456,7 @@ class KjrFunding(models.Model):
     def _bezjr_summary_header(self):
         return [
             'Förderart', 'Förderart-Code', 'Anzahl Maßnahmen',
-            'Förderfähige Tage gesamt', 'Teilnehmer gesamt', 'davon Gruppenleitung',
+            'Förderfähige Tage gesamt', 'Teilnehmende gesamt', 'davon Gruppenleitung',
             'Förderfähige Gesamtkosten (€)', 'Gesamteinnahmen (€)', 'Fehlbetrag (€)',
             'Berechneter Zuschuss (€)', 'Bewilligter Zuschuss (€)',
             'Förderquelle', 'Kostenstelle / Projekt',

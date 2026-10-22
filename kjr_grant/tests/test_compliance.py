@@ -110,7 +110,7 @@ class TestKjrGrantCompliance(TransactionCase):
         self.assertEqual(app.grant_calculated, 70.0)
 
     def test_4_9_bayrkg_passenger_allowance(self):
-        """Mit 2 Mitfahrer/innen: 200 km × (0,35 + 2×0,03) = 200 × 0,41 = 82 €."""
+        """Mit 2 Mitfahrer:innen: 200 km × (0,35 + 2×0,03) = 200 × 0,41 = 82 €."""
         app = self._app('kjr_grant.grant_type_4_9',
                         delegate_transport_mode='car', delegate_km_one_way=100.0,
                         delegate_passenger_count=2)

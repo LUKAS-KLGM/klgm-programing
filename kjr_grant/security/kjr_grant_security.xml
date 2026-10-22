@@ -6,15 +6,15 @@
             <field name="name">KJR Zuschussverwaltung</field>
         </record>
 
-        <!-- Gruppe: Antragsteller (Portal-User mit KJR-Verband) -->
+        <!-- Gruppe: Antragsteller:in (Portal-User mit KJR-Verband) -->
         <record id="group_kjr_applicant" model="res.groups">
-            <field name="name">Antragsteller</field>
+            <field name="name">Antragsteller:in</field>
             <field name="privilege_id" ref="privilege_kjr"/>
         </record>
 
         <!-- Gruppe: Sachbearbeiter (KJR-Mitarbeiter) -->
         <record id="group_kjr_reviewer" model="res.groups">
-            <field name="name">Sachbearbeiter</field>
+            <field name="name">Sachbearbeiter:in</field>
             <field name="privilege_id" ref="privilege_kjr"/>
             <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
         </record>
@@ -29,7 +29,7 @@
         <!-- ── Record Rules: kjr.grant.application ───────────────────────── -->
 
         <record id="rule_kjr_grant_applicant_own" model="ir.rule">
-            <field name="name">KJR: Antragsteller sieht nur eigene Anträge</field>
+            <field name="name">KJR: Antragsteller:in sieht nur eigene Anträge</field>
             <field name="model_id" ref="model_kjr_grant_application"/>
             <field name="groups" eval="[(4, ref('group_kjr_applicant'))]"/>
             <field name="domain_force">[('partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
@@ -51,7 +51,7 @@
         </record>
 
         <record id="rule_kjr_grant_reviewer_all" model="ir.rule">
-            <field name="name">KJR: Sachbearbeiter sieht alle Anträge</field>
+            <field name="name">KJR: Sachbearbeiter:in sieht alle Anträge</field>
             <field name="model_id" ref="model_kjr_grant_application"/>
             <field name="groups" eval="[(4, ref('group_kjr_reviewer'))]"/>
             <field name="domain_force">[(1, '=', 1)]</field>
@@ -64,7 +64,7 @@
         <!-- ── Record Rules: kjr.grant.settlement ────────────────────────── -->
 
         <record id="rule_kjr_settlement_applicant_own" model="ir.rule">
-            <field name="name">KJR: Antragsteller sieht nur eigene Abrechnungen</field>
+            <field name="name">KJR: Antragsteller:in sieht nur eigene Abrechnungen</field>
             <field name="model_id" ref="model_kjr_grant_settlement"/>
             <field name="groups" eval="[(4, ref('group_kjr_applicant'))]"/>
             <field name="domain_force">[('partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
@@ -86,7 +86,7 @@
         </record>
 
         <record id="rule_kjr_settlement_reviewer_all" model="ir.rule">
-            <field name="name">KJR: Sachbearbeiter sieht alle Abrechnungen</field>
+            <field name="name">KJR: Sachbearbeiter:in sieht alle Abrechnungen</field>
             <field name="model_id" ref="model_kjr_grant_settlement"/>
             <field name="groups" eval="[(4, ref('group_kjr_reviewer'))]"/>
             <field name="domain_force">[(1, '=', 1)]</field>
@@ -99,7 +99,7 @@
         <!-- ── Record Rules: kjr.grant.participant (DSGVO: Daten teils Minderjähriger) ─ -->
 
         <record id="rule_kjr_participant_applicant_own" model="ir.rule">
-            <field name="name">KJR: Antragsteller sieht nur eigene Teilnehmer</field>
+            <field name="name">KJR: Antragsteller:in sieht nur eigenen Teilnehmenden</field>
             <field name="model_id" ref="model_kjr_grant_participant"/>
             <field name="groups" eval="[(4, ref('group_kjr_applicant'))]"/>
             <field name="domain_force">[('application_id.partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
@@ -110,7 +110,7 @@
         </record>
 
         <record id="rule_kjr_participant_portal_own" model="ir.rule">
-            <field name="name">KJR: Portal-User sieht nur eigene Teilnehmer</field>
+            <field name="name">KJR: Portal-User sieht nur eigenen Teilnehmenden</field>
             <field name="model_id" ref="model_kjr_grant_participant"/>
             <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
             <field name="domain_force">[('application_id.partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
@@ -121,7 +121,7 @@
         </record>
 
         <record id="rule_kjr_participant_reviewer_all" model="ir.rule">
-            <field name="name">KJR: Sachbearbeiter sieht alle Teilnehmer</field>
+            <field name="name">KJR: Sachbearbeiter:in sieht alle Teilnehmenden</field>
             <field name="model_id" ref="model_kjr_grant_participant"/>
             <field name="groups" eval="[(4, ref('group_kjr_reviewer'))]"/>
             <field name="domain_force">[(1, '=', 1)]</field>
@@ -131,10 +131,10 @@
             <field name="perm_unlink" eval="True"/>
         </record>
 
-        <!-- ── Record Rules: kjr.grant.receipt (Belege: Empfänger/Einzahler + Beträge) ─ -->
+        <!-- ── Record Rules: kjr.grant.receipt (Belege: Empfänger:in / Einzahler:in + Beträge) ─ -->
 
         <record id="rule_kjr_receipt_applicant_own" model="ir.rule">
-            <field name="name">KJR: Antragsteller sieht nur eigene Belege</field>
+            <field name="name">KJR: Antragsteller:in sieht nur eigene Belege</field>
             <field name="model_id" ref="model_kjr_grant_receipt"/>
             <field name="groups" eval="[(4, ref('group_kjr_applicant'))]"/>
             <field name="domain_force">[('application_id.partner_id', 'child_of', [user.commercial_partner_id.id])]</field>
@@ -156,7 +156,7 @@
         </record>
 
         <record id="rule_kjr_receipt_reviewer_all" model="ir.rule">
-            <field name="name">KJR: Sachbearbeiter sieht alle Belege</field>
+            <field name="name">KJR: Sachbearbeiter:in sieht alle Belege</field>
             <field name="model_id" ref="model_kjr_grant_receipt"/>
             <field name="groups" eval="[(4, ref('group_kjr_reviewer'))]"/>
             <field name="domain_force">[(1, '=', 1)]</field>
@@ -169,7 +169,7 @@
         <!-- ── Record Rules: kjr.juleica (DSGVO: personenbezogene Daten) ──────── -->
 
         <record id="rule_kjr_juleica_own" model="ir.rule">
-            <field name="name">KJR: Inhaber/Antragsteller sieht nur die eigene Juleica</field>
+            <field name="name">KJR: Inhaber:in/Antragsteller:in sieht nur die eigene Juleica</field>
             <field name="model_id" ref="model_kjr_juleica"/>
             <field name="groups" eval="[(4, ref('group_kjr_applicant')), (4, ref('base.group_portal'))]"/>
             <field name="domain_force">[('partner_id', '=', user.partner_id.id)]</field>
@@ -180,7 +180,7 @@
         </record>
 
         <record id="rule_kjr_juleica_reviewer_all" model="ir.rule">
-            <field name="name">KJR: Sachbearbeiter sieht alle Juleica-Karten</field>
+            <field name="name">KJR: Sachbearbeiter:in sieht alle Juleica-Karten</field>
             <field name="model_id" ref="model_kjr_juleica"/>
             <field name="groups" eval="[(4, ref('group_kjr_reviewer'))]"/>
             <field name="domain_force">[(1, '=', 1)]</field>

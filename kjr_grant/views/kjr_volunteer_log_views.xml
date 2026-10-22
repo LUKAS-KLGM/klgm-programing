@@ -53,7 +53,7 @@
                 <filter name="filter_this_year" string="Dieses Jahr"
                         domain="[('date', '&gt;=', time.strftime('%Y-01-01'))]"/>
                 <separator/>
-                <filter name="group_partner" string="Ehrenamtliche/r" context="{'group_by': 'partner_id'}"/>
+                <filter name="group_partner" string="Ehrenamtliche:r" context="{'group_by': 'partner_id'}"/>
                 <filter name="group_category" string="Tätigkeit" context="{'group_by': 'category'}"/>
                 <filter name="group_org" string="Verband" context="{'group_by': 'organization_id'}"/>
             </search>
