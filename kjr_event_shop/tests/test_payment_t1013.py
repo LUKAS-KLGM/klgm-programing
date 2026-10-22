@@ -176,3 +176,48 @@ class TestKjrPaymentT1013(TransactionCase):
         settings = self.env['res.config.settings'].create({'kjr_event_fee_tax_id': tax.id})
         settings.set_values()
         self.assertEqual(order.order_line.tax_ids, tax)
+
+    # ------------------------------------------------------------------
+    # Re-Verifikation 22.10.2026
+    # ------------------------------------------------------------------
+    def test_promoted_from_cart_reserves_seat(self):
+        """Nachgerückt mit Warenkorb-Auftrag reserviert: kein doppeltes Nachrücken."""
+        order, _reg = self._order()
+        order.write({'state': 'sent'})
+        _o2, w1 = self._order(name='W1', kjr_is_waitlist=True)
+        _o3, w2 = self._order(name='W2', kjr_is_waitlist=True)
+        order._kjr_release_unpaid()
+        self.assertFalse(w1.kjr_is_waitlist)
+        self.assertTrue(w2.kjr_is_waitlist)
+        self.assertEqual(self.event._kjr_free_seats(), 0)
+        with self.assertRaises(Exception):
+            self.event.action_kjr_promote_from_waitlist()
+        w1.sale_order_id.action_confirm()
+        self.assertEqual(w1.state, 'open')
+
+    def test_two_parallel_carts_one_seat(self):
+        """Zwei Warenkörbe bei einem Platz: der zweite Abschluss landet auf der Warteliste."""
+        order_a, reg_a = self._order(name='A')
+        order_b, reg_b = self._order(name='B')
+        self.assertFalse(reg_a.kjr_is_waitlist or reg_b.kjr_is_waitlist)
+        order_a.write({'state': 'sent'})
+        order_b.write({'state': 'sent'})
+        self.assertFalse(reg_a.kjr_is_waitlist)
+        self.assertTrue(reg_b.kjr_is_waitlist)
+        self.assertTrue(order_b.activity_ids)
+        order_a.action_confirm()
+        self.assertEqual(reg_a.state, 'open')
+        # B ist von der Erinnerung ausgenommen (Warteliste).
+        self.assertFalse(order_b._kjr_payment_open())
+
+    def test_confirm_after_payment_never_fails_on_full_event(self):
+        """Bestätigung bei voller Veranstaltung: Warteliste statt Fehler."""
+        self.event.kjr_waitlist_enabled = False
+        self.Registration.create({'event_id': self.event.id, 'name': 'Sonderfall',
+                                  'state': 'open'})
+        order, reg = self._order(name='Bezahlt')
+        order.action_confirm()
+        self.assertEqual(order.state, 'sale')
+        self.assertTrue(reg.kjr_is_waitlist)
+        self.assertNotEqual(reg.state, 'open')
+        self.assertTrue(order.activity_ids)

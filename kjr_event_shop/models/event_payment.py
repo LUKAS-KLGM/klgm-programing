@@ -102,33 +102,54 @@ class EventRegistrationPayment(models.Model):
 class EventEventPayment(models.Model):
     _inherit = 'event.event'
 
-    def _kjr_unpaid_reserved_count(self):
-        """Unbezahlte Shop-Anmeldungen mit abgeschlossener Bestellung.
+    kjr_seats_reserved_unpaid = fields.Integer(
+        string='Reserviert (Zahlung offen)', compute='_compute_kjr_seats_reserved_unpaid',
+        help='Plätze, die abgeschlossene, noch unbezahlte Bestellungen bzw. von der '
+             'Warteliste Nachgerückte mit offener Zahlung freihalten. Sie zählen in Odoo '
+             'nicht als belegt, werden bei der Platzvergabe aber berücksichtigt.')
+    kjr_seats_overbooked = fields.Boolean(compute='_compute_kjr_seats_reserved_unpaid')
+
+    def _compute_kjr_seats_reserved_unpaid(self):
+        for event in self:
+            reserved = event._kjr_unpaid_reserved_count()
+            event.kjr_seats_reserved_unpaid = reserved
+            limited = event.seats_limited if 'seats_limited' in event._fields else bool(event.seats_max)
+            event.kjr_seats_overbooked = bool(
+                limited and event.seats_max and reserved
+                and event.seats_taken + reserved > event.seats_max)
+
+    def _kjr_unpaid_reserved_count(self, exclude_order=None):
+        """Unbezahlte Shop-Anmeldungen, die einen Platz freihalten.
 
         Sie stehen im Kern unbestätigt ('draft') und zählen dort nicht auf die
-        belegten Plätze. Damit die Zahlungsfrist einen Platz wirklich
-        freihält und die Platzfreigabe einen Platz freigibt (Prüfbericht
-        22.10.2026), reservieren sie hier einen Platz. Nur Bestellungen im
-        Status "gesendet" (Checkout abgeschlossen); abgebrochene Warenkörbe
-        reservieren nichts.
+        belegten Plätze. Reserviert wird, sobald die Zahlung angefordert ist
+        (``sale.order.kjr_payment_requested_date``): beim Abschluss der
+        Bestellung (Status "gesendet") und beim Nachrücken von der Warteliste,
+        auch wenn der Auftrag dann noch ein Warenkorb ist (Prüfbericht
+        22.10.2026, sonst doppeltes Nachrücken). Abgebrochene Warenkörbe ohne
+        Zahlungsanforderung reservieren nichts.
         """
         self.ensure_one()
         if not self._origin.id:
             return 0
-        return self.env['event.registration'].sudo().search_count([
+        domain = [
             ('event_id', '=', self._origin.id),
             ('state', '=', 'draft'),
             ('kjr_is_waitlist', '=', False),
             ('kjr_consent_hold', '=', False),
-            ('sale_order_id.state', '=', 'sent'),
+            ('sale_order_id.state', 'in', ('draft', 'sent')),
+            ('sale_order_id.kjr_payment_requested_date', '!=', False),
             ('sale_status', '=', 'to_pay'),
-        ])
+        ]
+        if exclude_order:
+            domain.append(('sale_order_id', 'not in', exclude_order.ids))
+        return self.env['event.registration'].sudo().search_count(domain)
 
-    def _kjr_free_seats(self):
+    def _kjr_free_seats(self, exclude_order=None):
         free = super()._kjr_free_seats()
         if free is None:
             return None
-        return max(free - self._kjr_unpaid_reserved_count(), 0)
+        return max(free - self._kjr_unpaid_reserved_count(exclude_order=exclude_order), 0)
 
 
 class SaleOrderPayment(models.Model):
@@ -167,12 +188,78 @@ class SaleOrderPayment(models.Model):
         if start:
             super(SaleOrderPayment, start).write(
                 {'kjr_payment_requested_date': fields.Datetime.now()})
+            start._kjr_check_capacity_on_checkout()
         return res
+
+    def _kjr_open_regs(self, event):
+        """Anmeldungen dieses Auftrags zu ``event``, die einen Platz brauchen."""
+        self.ensure_one()
+        return self.sudo().order_line.registration_ids.filtered(
+            lambda r: r.event_id == event and r.state == 'draft'
+            and not r.kjr_is_waitlist and not r.kjr_consent_hold).sorted('id')
+
+    def _kjr_move_to_waitlist(self, regs, summary, note):
+        """Überzählige Anmeldungen auf die Warteliste, Notiz und Aktivität."""
+        if not regs:
+            return
+        regs.sudo().write({'kjr_is_waitlist': True})
+        for order in regs.sale_order_id:
+            order.message_post(body=Markup('<p>%s</p>') % note, subtype_xmlid='mail.mt_note')
+            try:
+                order.sudo().activity_schedule(
+                    'mail.mail_activity_data_todo', summary=summary, note=note,
+                    user_id=(regs.event_id.user_id[:1] or self.env.ref('base.user_admin')).id)
+            except Exception:  # noqa: BLE001 - die Aktivität ist Nebensache
+                _logger.exception('KJR: Aktivität zu Auftrag %s nicht angelegt.', order.id)
+
+    def _kjr_check_capacity_on_checkout(self):
+        """Beim Abschluss der Bestellung erneut gegen die freien Plätze prüfen.
+
+        Parallele Warenkörbe, Veranstaltungen ohne Warteliste oder von Hand
+        bestätigte Sonderfälle können dazu führen, dass mehr Bestellungen
+        abgeschlossen werden, als Plätze frei sind (Prüfbericht 22.10.2026).
+        Überzählige Anmeldungen kommen auf die Warteliste; die
+        Bestellbestätigung sagt das der bestellenden Person (statt einer
+        Zahlungsaufforderung), die Geschäftsstelle bekommt eine Aktivität.
+        """
+        for order in self.sudo():
+            for event in order._kjr_kjr_event_lines().event_id:
+                free = event._kjr_free_seats(exclude_order=order)
+                if free is None:
+                    continue
+                overflow = order._kjr_open_regs(event)[free:]
+                order._kjr_move_to_waitlist(
+                    overflow,
+                    _('Bestellung über der Kapazität: Warteliste'),
+                    _('"%(event)s" war beim Abschluss der Bestellung ausgebucht; '
+                      '%(count)s Anmeldung(en) stehen jetzt auf der Warteliste. Bitte die '
+                      'bestellende Person informieren (keine Zahlung anfordern).',
+                      event=event.name, count=len(overflow)))
 
     # ------------------------------------------------------------------
     # Rechnung automatisch beim Bestätigen
     # ------------------------------------------------------------------
     def action_confirm(self):
+        # Bestätigung nach Zahlungseingang darf nie an der Platzprüfung des
+        # Kerns scheitern (event: _check_seats_availability). Sind mehr
+        # Anmeldungen zu bestätigen, als im Kern Plätze frei sind (z. B. weil
+        # die Geschäftsstelle einen Sonderfall über die Kapazität bestätigt
+        # hat), kommen die überzähligen auf die Warteliste, mit Aktivität.
+        for order in self.sudo().filtered(lambda o: o.state in ('draft', 'sent')):
+            for event in order._kjr_kjr_event_lines().event_id:
+                limited = event.seats_limited if 'seats_limited' in event._fields \
+                    else bool(event.seats_max)
+                if not limited or not event.seats_max:
+                    continue
+                available = max(event.seats_available, 0)
+                overflow = order._kjr_open_regs(event)[available:]
+                order._kjr_move_to_waitlist(
+                    overflow,
+                    _('Bezahlt, aber kein Platz frei: Warteliste'),
+                    _('Beim Bestätigen von "%(event)s" war kein regulärer Platz frei; '
+                      '%(count)s Anmeldung(en) stehen auf der Warteliste. Bitte über '
+                      'Nachrücken oder Erstattung entscheiden.',
+                      event=event.name, count=len(overflow)))
         res = super().action_confirm()
         params = self.env['ir.config_parameter'].sudo()
         if params.get_param(PARAM_INVOICE_ON_CONFIRM, '0') in ('1', 'True', 'true'):

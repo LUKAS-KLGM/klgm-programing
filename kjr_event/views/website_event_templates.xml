@@ -770,6 +770,9 @@
               inherit_id="website_event.registration_template">
         <xpath expr="//div[@t-if=&quot;registration_error_code == 'insufficient_seats'&quot;]"
                position="after">
+            <div t-if="event.is_kjr and event.event_registrations_open and event._kjr_free_seats() == 0" class="alert alert-info my-3 small" role="status">
+                Alle Plätze sind vergeben. Neue Anmeldungen kommen auf die Warteliste.
+            </div>
             <div t-if="registration_error_code == 'kjr_birthdate_missing'" class="alert alert-danger my-3" role="alert">
                 Anmeldung nicht möglich: Bitte geben Sie für alle Teilnehmer:innen das Geburtsdatum an.
             </div>
@@ -858,9 +861,14 @@
                position="replace" mode="inner">
             <t t-if="event.is_kjr">Weiter zur Anmeldung</t>
             <t t-else="">Registrieren</t>
-            <t t-if="event.seats_limited and event.seats_max and event.seats_available &lt;= (event.seats_max * 0.2)">
-                <t t-if="event.is_kjr">(nur noch <t t-out="event.seats_available"/> Plätze frei)</t>
-                <t t-else="">(nur <t t-out="event.seats_available"/> verfügbar)</t>
+            <!-- Prüfbericht 22.10.2026: freie Plätze wie bei der Platzvergabe
+                 (event._kjr_free_seats, mit kjr_event_shop abzüglich der Plätze,
+                 die unbezahlte Bestellungen freihalten). -->
+            <t t-set="kjr_free" t-value="event._kjr_free_seats()"/>
+            <t t-if="kjr_free is not None and event.seats_max and kjr_free &lt;= (event.seats_max * 0.2)">
+                <t t-if="not kjr_free">(ausgebucht, Anmeldung auf die Warteliste)</t>
+                <t t-elif="event.is_kjr">(nur noch <t t-out="kjr_free"/> Plätze frei)</t>
+                <t t-else="">(nur <t t-out="kjr_free"/> verfügbar)</t>
             </t>
         </xpath>
         <!-- Absende-Button, Zweig "genau eine bzw. keine Ticketart".
@@ -872,9 +880,14 @@
                position="replace" mode="inner">
             <t t-if="event.is_kjr">Weiter zur Anmeldung</t>
             <t t-else="">Registrieren</t>
-            <t t-if="event.seats_limited and event.seats_max and event.seats_available &lt;= (event.seats_max * 0.2)">
-                <t t-if="event.is_kjr">(nur noch <t t-out="event.seats_available"/> Plätze frei)</t>
-                <t t-else="">(nur <t t-out="event.seats_available"/> verfügbar)</t>
+            <!-- Prüfbericht 22.10.2026: freie Plätze wie bei der Platzvergabe
+                 (event._kjr_free_seats, mit kjr_event_shop abzüglich der Plätze,
+                 die unbezahlte Bestellungen freihalten). -->
+            <t t-set="kjr_free" t-value="event._kjr_free_seats()"/>
+            <t t-if="kjr_free is not None and event.seats_max and kjr_free &lt;= (event.seats_max * 0.2)">
+                <t t-if="not kjr_free">(ausgebucht, Anmeldung auf die Warteliste)</t>
+                <t t-elif="event.is_kjr">(nur noch <t t-out="kjr_free"/> Plätze frei)</t>
+                <t t-else="">(nur <t t-out="kjr_free"/> verfügbar)</t>
             </t>
         </xpath>
     </template>
