@@ -15,7 +15,10 @@ Umsetzung Termin 13.10.2026.
   der Tarifhinweis „Mitglieds-/Standardtarif“ entfällt. Die Migration nimmt den
   Satz zu vergünstigten Mitgliedstarifen aus einem im Website-Editor angelegten
   Infotext. Backend: `has_member_price` steht standardmäßig auf aus, die
-  Mitgliedsfelder sind nur im Entwicklermodus sichtbar.
+  Mitgliedsfelder sind nur im Entwicklermodus sichtbar. Die Website rechnet und
+  legt Vorgänge immer zum Standardtarif an (`_partner_is_member` = False); die
+  Migration schaltet `has_member_price` an allen Artikeln ab (auch archiviert).
+  Der Mitgliedstarif der Einrichtungen bleibt unberührt.
 - **Neutraler Preishinweis statt widersprüchlicher USt-Hinweise.** Standardtext
   „Orientierungswerte … verbindlich ist die Rechnung“, änderbar über den
   Systemparameter `kjr_rental.price_notice`. Der zweite, widersprechende

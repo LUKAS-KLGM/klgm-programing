@@ -23,6 +23,9 @@
    nicht geklärt). Ersetzt wird nur der exakt bekannte Wortlaut; abweichend
    gepflegte Texte bleiben unberührt und werden protokolliert.
 
+3. Mitgliedstarif (has_member_price) an allen verbleibenden Artikeln, auch
+   archivierten, abschalten: im Verleih gibt es keine Mitgliedspreise.
+
 Idempotent: ein zweiter Lauf findet nichts mehr.
 """
 import json
@@ -112,9 +115,25 @@ def _katalogtexte_bereinigen(env):
     env.registry.clear_cache('templates')
 
 
+def _mitgliedstarif_abschalten(env):
+    """Mitgliedstarif an allen verbleibenden Artikeln abschalten (auch archivierte).
+
+    Der Betreiber kennt im Verleih keine Mitgliedspreise. Ohne diesen Schritt
+    bekämen Kontakte mit Mitgliedskennzeichen bei Artikeln mit aktivem
+    has_member_price den (oft ungepflegten, also 0,00 €) Mitgliedspreis.
+    """
+    items = env['kjr.rental.item'].with_context(active_test=False).search(
+        [('has_member_price', '=', True)])
+    if items:
+        _logger.info('Mitgliedstarif an %d Artikel(n) abgeschaltet: %s', len(items),
+                     ', '.join('%s (id %s)' % (i.name, i.id) for i in items))
+        items.write({'has_member_price': False})
+
+
 def migrate(cr, version):
     if not version:
         return
     env = api.Environment(cr, SUPERUSER_ID, {})
     _beispielartikel_entfernen(env)
+    _mitgliedstarif_abschalten(env)
     _katalogtexte_bereinigen(env)

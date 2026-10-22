@@ -6,11 +6,13 @@
 - Die öffentliche Seite nennt keinen Mitgliedstarif mehr, zeigt den
   Warnhinweis eines Artikels und den neutralen Preishinweis.
 """
+import importlib.util
 import xml.etree.ElementTree as ElementTree
 
 from odoo.tests import HttpCase, tagged
 from odoo.tests.common import TransactionCase
 from odoo.tools import file_open
+from odoo.tools.misc import file_path
 
 SEED_DATEI = 'kjr_rental/data/kjr_rental_data.xml'
 BEISPIEL_XMLIDS = ('item_bus', 'item_tent', 'item_pa', 'item_balls',
@@ -62,8 +64,31 @@ class TestKjrRentalCategoryOrder(TransactionCase):
         self.assertIn('item_spielmobil', ids)
 
     def test_mitgliedstarif_standard_aus(self):
-        """Neue Artikel haben keinen eigenen Mitgliedstarif."""
-        self.assertFalse(self.items[0].has_member_price)
+        """Neue Artikel haben keinen eigenen Mitgliedstarif; ein Vorgang eines
+        Kontakts mit Mitgliedskennzeichen zahlt den Standardpreis."""
+        item = self.items[0]
+        self.assertFalse(item.has_member_price)
+        member = self.env['res.partner'].create({'name': 'RF Mitglied', 'is_kjr_member': True})
+        order = self.env['kjr.rental.order'].create({
+            'partner_id': member.id, 'date_from': '2026-11-02', 'date_to': '2026-11-02',
+            'line_ids': [(0, 0, {'item_id': item.id, 'quantity': 1})],
+        })
+        self.assertEqual(order.line_ids.price_per_day, item.price_per_day)
+
+    def test_migration_schaltet_mitgliedstarif_ab(self):
+        """Migration 19.0.5.8.0 schaltet has_member_price überall ab, auch archiviert."""
+        aktiv = self.items[0]
+        archiviert = self.items[1]
+        (aktiv | archiviert).write({'has_member_price': True, 'price_member_per_day': 0.5})
+        archiviert.active = False
+        spec = importlib.util.spec_from_file_location(
+            'kjr_rental_mig_19_0_5_8_0',
+            file_path('kjr_rental/migrations/19.0.5.8.0/post-migration.py'))
+        migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration)
+        migration._mitgliedstarif_abschalten(self.env)
+        self.assertFalse(aktiv.has_member_price)
+        self.assertFalse(archiviert.has_member_price)
 
 
 @tagged('post_install', '-at_install')
@@ -84,8 +109,11 @@ class TestKjrRentalCatalogPage(HttpCase):
         html = response.text
         self.assertIn('RF Gasflasche nicht im Lieferumfang', html)
         self.assertLess(html.index('RF Kategorie Früh'), html.index('RF Kategorie Spät'))
-        for wort in ('Mitgliedstarif', 'vergünstigte', 'Ihr Tarif'):
+        for wort in ('Mitgliedstarif', 'vergünstigte', 'Ihr Tarif', 'Mitglied:'):
             self.assertNotIn(wort, html)
+        # Filterleiste steht oben, vor den Hinweisblöcken der Seite.
+        self.assertLess(html.index('aria-label="Kategorien filtern"'),
+                        html.index('Wer darf ausleihen?'))
         self.assertIn('Verbindlich ist die Rechnung der Geschäftsstelle', html)
         self.env['ir.config_parameter'].sudo().set_param(
             'kjr_rental.price_notice', 'RF eigener Preishinweis')

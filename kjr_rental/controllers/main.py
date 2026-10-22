@@ -63,15 +63,16 @@ class KjrRentalWebsite(http.Controller):
         return request.env.user.partner_id.commercial_partner_id
 
     def _partner_is_member(self, partner):
-        """Mitgliedstarif-Kennzeichen des Kontakts.
+        """Mitgliedstarif im Verleih über die Website: immer aus.
 
-        sudo(): Portal- und öffentliche Nutzer dürfen ihren eigenen Kontakt nur
-        eingeschränkt lesen; das Kennzeichen ist reine Stammdatenpflege der
-        Geschäftsstelle und wird hier nur ausgewertet, nicht verändert.
+        Seit 19.0.5.8.0 (Termin 13.10.2026): Der Betreiber kennt im Verleih keine
+        Mitgliedspreise. Die Website zeigt deshalb immer den Standardtarif und
+        legt Vorgänge immer mit is_member = False an, auch für Kontakte mit
+        Mitgliedskennzeichen (das Kennzeichen gilt weiter für andere Module, z. B.
+        den Mitgliedstarif der Einrichtungen). Die Geschäftsstelle kann im Backend
+        (Entwicklermodus) bei Bedarf übersteuern.
         """
-        if not partner:
-            return False
-        return bool(partner.sudo().is_kjr_member)
+        return False
 
     def _usage_warning_items(self, items):
         """Artikel mit gepflegten Nutzungshinweisen (Reihenfolge bleibt erhalten).

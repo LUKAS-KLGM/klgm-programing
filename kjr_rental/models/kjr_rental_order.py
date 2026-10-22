@@ -207,6 +207,10 @@ class KjrRentalOrder(models.Model):
                 # Selbstzuweisung, damit im Loop JEDEM Record ein Wert zugewiesen ist.
                 rec.is_member = rec.is_member
                 continue
+            # Seit 19.0.5.8.0 nur noch wirksam, wenn ein Artikel ausdrücklich einen
+            # Mitgliedstarif hat (has_member_price, Standard aus; die Migration hat
+            # ihn an allen Artikeln abgeschaltet). Sonst gilt price_for(True) ==
+            # Standardpreis.
             rec.is_member = bool(rec.partner_id.is_kjr_member)
 
     @api.depends('line_ids.quantity', 'line_ids.return_scanned_qty')

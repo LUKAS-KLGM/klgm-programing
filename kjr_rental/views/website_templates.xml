@@ -183,6 +183,25 @@
                     </a>
                 </div>
                 <p class="text-muted mb-4">Material für Ihre Jugendarbeit.</p>
+                <!-- Kategorie-Filter (Termin 13.10.2026): schlichte Nav-Pills aus
+                     Bootstrap, kein eigenes CSS. Nur Kategorien mit veröffentlichten
+                     Artikeln, in der Reihenfolge aus dem Backend; "Alle" ist Standard. -->
+                <nav t-if="len(filter_categories) &gt; 1" aria-label="Kategorien filtern" class="mb-3">
+                    <ul class="nav nav-pills flex-wrap gap-1">
+                        <li class="nav-item">
+                            <a href="/service/verleih" t-attf-class="nav-link#{'' if selected_category else ' active'}"
+                               t-att-aria-current="None if selected_category else 'page'">Alle</a>
+                        </li>
+                        <t t-foreach="filter_categories" t-as="fcat">
+                            <li class="nav-item">
+                                <a t-attf-href="/service/verleih?kategorie=#{fcat.id}"
+                                   t-attf-class="nav-link#{' active' if selected_category == fcat else ''}"
+                                   t-att-aria-current="'page' if selected_category == fcat else None"
+                                   t-esc="fcat.name"/>
+                            </li>
+                        </t>
+                    </ul>
+                </nav>
                 <t t-call="kjr_rental.rental_pricing_hint"/>
 
                 <!-- Nutzungsberechtigung, Tarife und Umsatzsteuer -->
@@ -243,25 +262,6 @@
                     </div>
                 </div>
 
-                <!-- Kategorie-Filter (Termin 13.10.2026): schlichte Nav-Pills aus
-                     Bootstrap, kein eigenes CSS. Nur Kategorien mit veröffentlichten
-                     Artikeln, in der Reihenfolge aus dem Backend; "Alle" ist Standard. -->
-                <nav t-if="len(filter_categories) &gt; 1" aria-label="Kategorien filtern" class="mb-3">
-                    <ul class="nav nav-pills flex-wrap gap-1">
-                        <li class="nav-item">
-                            <a href="/service/verleih" t-attf-class="nav-link#{'' if selected_category else ' active'}"
-                               t-att-aria-current="None if selected_category else 'page'">Alle</a>
-                        </li>
-                        <t t-foreach="filter_categories" t-as="fcat">
-                            <li class="nav-item">
-                                <a t-attf-href="/service/verleih?kategorie=#{fcat.id}"
-                                   t-attf-class="nav-link#{' active' if selected_category == fcat else ''}"
-                                   t-att-aria-current="'page' if selected_category == fcat else None"
-                                   t-esc="fcat.name"/>
-                            </li>
-                        </t>
-                    </ul>
-                </nav>
                 <t t-foreach="items_by_category" t-as="cat">
                     <!-- Rubrik ohne Kategorie: der Controller gruppiert nach
                          item.category_id, fuer Artikel ohne Kategorie ist der Schluessel
