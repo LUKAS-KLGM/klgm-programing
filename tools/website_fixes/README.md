@@ -97,3 +97,79 @@ Ist nach dem Schreiben etwas falsch, den Snapshot aus Schritt 1 zurückspielen.
 Einzelne Ansichten lassen sich im Backend (Einstellungen > Technisch >
 Ansichten, Entwicklermodus) nicht verlässlich „zurückdrehen", deshalb ist der
 Snapshot Pflicht.
+
+## Befund B: Seitenfuß nach Entscheidung 10 (Termin 13.10.2026)
+
+**Entscheidung:** Seitenübersicht und Kontaktblock raus, ein Link zur
+Kontaktseite rein. Rechtliches (Impressum, Datenschutz, Cookies,
+Barrierefreiheit) und Suche bleiben. Keine neue Gestaltung.
+
+**Betroffen:** die website-eigene Ansicht `website.template_footer_mega_links`
+(auf der Produktion `ir.ui.view` 4473, Website 3), Sprachfassungen `de_DE` und
+`en_US` (derzeit identisch).
+
+**Werkzeug:** `footer_2026-10.py` (Odoo-Shell-Skript). Es arbeitet je
+Sprachfassung mit lxml auf der Struktur, nicht mit Textersetzung:
+
+- entfernt die Rasterelemente „Seitenübersicht“ mit den drei Linkspalten und
+  den Kontaktblock „BÜROS“,
+- entfernt im Logo-Element alles hinter der mobilen Suche (Trennlinie und
+  Kontaktblock „POSTADRESSE“),
+- fügt dort einen Link `Kontakt` auf `/ueber-uns/contactus` im Stil der
+  übrigen Fußlinks ein (`<p><a class="o_translate_inline">`),
+- kürzt die Rasterhöhe der Logo-Spalte (16 auf 10 Zeilen) und die Zeilenzahl
+  des Rasters (18 auf 10), damit unter dem Logo keine leere Fläche bleibt.
+
+Logo, mobile Suche, Suche (Desktop), Spalte „Rechtliches“ und die
+Copyright-Zeile bleiben unverändert. Weicht der Aufbau ab oder ist der Fuß
+schon umgestellt, bricht das Skript ohne Änderung ab (zweiter Lauf ist also
+harmlos).
+
+> **Ausführen darf das nur eine berechtigte Person** (Administration der
+> Instanz), auf dem Server bzw. zuerst auf einer Server-Kopie. **Nicht durch
+> den Assistenten**, nicht lokal und nicht ohne Snapshot.
+
+### Schritte
+
+1. **Snapshot bei CloudPepper anlegen** (wie Befund A, Schritt 1).
+2. **Dry-Run** (schreibt im Transaktionsrahmen, prüft, rollt zurück):
+
+   ```
+   KJR_FOOTER_OUT=/pfad/ablage odoo shell -d <db> --no-http < footer_2026-10.py
+   ```
+
+   Die Ausgabe nennt je Sprache die entfernten Blöcke und den eingefügten
+   Link; die neue Fassung liegt als `footer_4473_<lang>_neu.xml` in der Ablage.
+   Plausibel: fünf Rasterelemente entfernt, im Logo-Element „Kontakt |
+   POSTADRESSE | …“ entfernt, „alle Sprachen geprüft, in Ordnung“.
+3. **Schreiben:**
+
+   ```
+   KJR_FIX_WRITE=1 KJR_FOOTER_OUT=/pfad/ablage odoo shell -d <db> --no-http < footer_2026-10.py
+   ```
+
+   Vor dem Schreiben legt das Skript `footer_4473_backup_<zeit>.json` mit allen
+   Sprachfassungen roh ab. Committet wird nur, wenn danach jede Sprache die
+   Prüfung besteht.
+4. **Startseite prüfen**, angemeldet und im privaten Fenster, am Rechner und
+   am Handy: Fuß zeigt Logo, Suche, „Kontakt“ (führt auf die Kontaktseite) und
+   „Rechtliches“ mit vier Links; keine Seitenübersicht, keine Anschriften.
+   Bei sehr breiten Bildschirmen (über ca. 2200 px) prüfen, ob das Logo die
+   Copyright-Zeile berührt; dann im Editor die Logo-Spalte im Raster um eine
+   Zeile verlängern.
+
+### Rückweg
+
+Snapshot zurückspielen. Ohne Snapshot: die Backup-Datei aus Schritt 3 je
+Sprache zurückschreiben (Odoo-Shell, `view.with_context(lang=…,
+no_cow=True).write({'arch_db': …})`, `en_US` zuerst). Die Fassung vor der
+Umstellung liegt zusätzlich im Vault unter `Data/Website-Backups/2026-10-22
+footer vorher (ir.ui.view 4473) *.xml`.
+
+### Getestet
+
+Am 22.10.2026 auf einer Kopie der Produktionsdatenbank: Dry-Run, Schreiben,
+zweiter Lauf (Abbruch „schon umgestellt“), Startseite über HTTP gerendert:
+Fuß mit Links Kontakt, Impressum, Datenschutzerklärung, Cookie-Richtlinien,
+Barrierefreiheit, beiden Suchfeldern und Logo; keine Anschriften, keine
+Seitenübersicht. Auf der Produktion NICHT ausgeführt.
