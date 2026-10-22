@@ -1,24 +1,23 @@
 /**
- * KJR Einwilligung (19.0.5.9.0): Komfort im Anmeldedialog.
+ * KJR Anmeldedialog (19.0.5.9.0, neu gefasst 19.0.5.11.0): Komfort im Formular.
  *
  * Rechnet aus dem eingegebenen Geburtsdatum das Alter am Beginntag der
  * Veranstaltung (data-kjr-event-start am Container .o_kjr_attendee_fields,
- * gleiche Formel wie event.event._kjr_age_at_begin) und markiert die
- * Einwilligungsfelder derselben Teilnehmerin bzw. desselben Teilnehmers:
+ * gleiche Formel wie event.event._kjr_age_at_begin) und schaltet je
+ * Teilnehmer:in um (Termin 13.10.2026):
  *
- * - Verfahren 'checkbox': das Haekchen "Einwilligung liegt vor" wird fuer
- *   Minderjaehrige zum Pflichtfeld (required) und sonst wieder freigegeben.
- * - Verfahren 'sign': das Feld "E-Mail der/des Erziehungsberechtigten" wird
- *   hervorgehoben, aber NICHT Pflicht (leer greift die Anmelde-E-Mail).
- *   Das Feld "Name der/des Erziehungsberechtigten" wird fuer Minderjaehrige
- *   Pflichtfeld (required, Stern sichtbar; 19.0.5.10.0): der Name wird in das
- *   Einwilligungsformular uebernommen. Steht dort derselbe Name wie im
- *   Kernfeld "Name des Kindes / Teilnehmer/in" (gemeldeter Fall), melden
- *   BEIDE Felder einen Eingabefehler (setCustomValidity), weil nicht
- *   feststeht, welches falsch ist; serverseitig kjr_guardian_name_is_child.
+ * - unter 18 oder noch kein Geburtsdatum: Block "Erziehungsberechtigte"
+ *   sichtbar, Name/E-Mail/Telefon Pflicht; E-Mail/Telefon der Teilnehmer:in
+ *   ausgeblendet und deaktiviert (wird nicht gesendet);
+ * - ab 18: umgekehrt.
+ * - Haken "Gleiche Anschrift wie Teilnehmer:in": blendet die Anschrift der
+ *   Erziehungsberechtigten aus bzw. ein (dann Pflicht).
+ * - Verfahren 'sign' (nur wenn eingeschaltet): steht im Namen der
+ *   Erziehungsberechtigten derselbe Name wie bei der Teilnehmer:in, melden
+ *   beide Felder einen Eingabefehler (serverseitig kjr_guardian_name_is_child).
  *
  * Nur Komfort: massgeblich ist die Vorpruefung im Controller
- * (KjrWebsiteEventController._kjr_consent_precheck).
+ * (KjrWebsiteEventController._kjr_form_precheck).
  */
 import { Interaction } from "@web/public/interaction";
 import { registry } from "@web/core/registry";
@@ -45,14 +44,33 @@ function ageAt(birthdate, start) {
 }
 
 /**
- * Vergleichsform fuer Namen wie im Controller (_kjr_norm_text): Gross-/
- * Kleinschreibung und Mehrfach-Leerraum egal.
+ * Vergleichsform fuer Namen wie im Controller (_kjr_norm_text).
  *
  * @param {string} value
  * @returns {string}
  */
 function normName(value) {
     return (value || "").trim().split(/\s+/).join(" ").toLocaleLowerCase();
+}
+
+/**
+ * Element ein-/ausblenden; darin liegende Eingaben dabei de-/aktivieren, damit
+ * ausgeblendete Pflichtfelder das Absenden nicht blockieren.
+ *
+ * @param {HTMLElement} el
+ * @param {boolean} visible
+ * @param {boolean} required Eingaben bei Sichtbarkeit Pflicht
+ */
+function toggleBlock(el, visible, required) {
+    el.classList.toggle("d-none", !visible);
+    for (const input of el.querySelectorAll("input, select, textarea")) {
+        if (input.type === "checkbox") {
+            input.disabled = !visible;
+            continue;
+        }
+        input.disabled = !visible;
+        input.required = visible && required;
+    }
 }
 
 export class KjrConsentFields extends Interaction {
@@ -62,7 +80,10 @@ export class KjrConsentFields extends Interaction {
             "t-on-change": this.onBirthdateChange,
             "t-on-input": this.onBirthdateChange,
         },
-        // Name der/des Erziehungsberechtigten und Kernfeld "Name"
+        "input[name$='-guardian_same_address']": {
+            "t-on-change": this.onSameAddressChange,
+        },
+        // Name der Erziehungsberechtigten und Kernfeld "Name"
         // ("<zaehler>-name-<frage-id>", website_event.registration_event_question)
         "input[name$='-guardian_name'], input[name*='-name-']": {
             "t-on-input": this.onNameInput,
@@ -71,37 +92,54 @@ export class KjrConsentFields extends Interaction {
 
     start() {
         for (const input of this.el.querySelectorAll("input[name$='-birthdate']")) {
-            this.updateConsentFields(input);
+            this.updateFields(input);
         }
     }
 
-    /**
-     * @param {Event} ev
-     */
     onBirthdateChange(ev) {
-        this.updateConsentFields(ev.currentTarget);
+        this.updateFields(ev.currentTarget);
     }
 
-    /**
-     * @param {Event} ev
-     */
+    onSameAddressChange(ev) {
+        const container = ev.currentTarget.closest(".o_kjr_attendee_fields");
+        if (container) {
+            // Sichtbarkeit des Blocks aus dem Alter ableiten (dieselbe Regel wie
+            // updateFields), nicht aus den Anschriftsfeldern selbst.
+            const birth = container.querySelector("input[name$='-birthdate']");
+            const age = birth ? ageAt(birth.value, container.dataset.kjrEventStart) : null;
+            this.updateAddress(container, !(age !== null && age >= 18));
+        }
+    }
+
     onNameInput(ev) {
         this.checkGuardianName(ev.currentTarget.name.split("-")[0]);
     }
 
     /**
-     * Markiert die Felder "Name des Kindes / Teilnehmer/in" und "Name der/des
-     * Erziehungsberechtigten" derselben Person als fehlerhaft, wenn der Name
-     * der Erziehungsberechtigten Pflicht ist (Verfahren 'sign', minderjaehrig)
-     * und beide denselben Namen enthalten. Beide Felder, weil nicht
-     * feststeht, welches falsch ist (gleicher Wortlaut wie die Meldung zu
-     * kjr_guardian_name_is_child auf der Anmeldeseite).
+     * Anschrift der Erziehungsberechtigten nur bei abweichender Anschrift.
      *
+     * @param {HTMLElement} container
+     * @param {boolean} guardianVisible
+     */
+    updateAddress(container, guardianVisible) {
+        const same = container.querySelector("input[name$='-guardian_same_address']");
+        const showAddress = guardianVisible && !!same && !same.checked;
+        for (const el of container.querySelectorAll(".o_kjr_guardian_address")) {
+            toggleBlock(el, showAddress, true);
+        }
+    }
+
+    /**
      * @param {string} counter Zaehler der Teilnehmerin / des Teilnehmers
      */
     checkGuardianName(counter) {
         const guardianName = this.el.querySelector(`input[name='${counter}-guardian_name']`);
         if (!guardianName) {
+            return;
+        }
+        const container = guardianName.closest(".o_kjr_attendee_fields");
+        if (!container || container.dataset.kjrConsentMode !== "sign") {
+            guardianName.setCustomValidity("");
             return;
         }
         const childName = this.el.querySelector(`input[name^='${counter}-name-']`);
@@ -110,7 +148,7 @@ export class KjrConsentFields extends Interaction {
             guardianName.required && !!guardian && !!childName && guardian === normName(childName.value);
         const message = isChild
             ? _t(
-                  "Die Namen bei „Name des Kindes / Teilnehmer/in“ und „Name der/des Erziehungsberechtigten“ sind gleich. Bitte prüfen Sie beide Angaben."
+                  "Die Namen bei „Name Teilnehmer:in“ und beim Namen der Erziehungsberechtigten sind gleich. Bitte prüfen Sie beide Angaben."
               )
             : "";
         guardianName.setCustomValidity(message);
@@ -122,47 +160,32 @@ export class KjrConsentFields extends Interaction {
     /**
      * @param {HTMLInputElement} input Geburtsdatumsfeld "<zaehler>-birthdate"
      */
-    updateConsentFields(input) {
+    updateFields(input) {
         const container = input.closest(".o_kjr_attendee_fields");
         if (!container) {
             return;
         }
         const counter = input.name.split("-")[0];
-        const mode = container.dataset.kjrConsentMode;
         const age = ageAt(input.value, container.dataset.kjrEventStart);
-        const isMinor = age !== null && age < 18;
+        const isAdult = age !== null && age >= 18;
 
-        if (mode === "checkbox") {
-            const checkbox = container.querySelector(
-                `input[name='${counter}-parental_consent'][data-kjr-consent-checkbox]`
-            );
-            if (checkbox) {
-                checkbox.required = isMinor;
+        for (const el of container.querySelectorAll(".o_kjr_guardian_block")) {
+            if (el.classList.contains("o_kjr_guardian_address")) {
+                continue;
             }
-        } else if (mode === "sign") {
-            const guardianName = container.querySelector(
-                `input[name='${counter}-guardian_name']`
-            );
-            if (guardianName) {
-                guardianName.required = isMinor;
-                this.checkGuardianName(counter);
-            }
-            const guardianNameStar = container.querySelector(".o_kjr_guardian_name_required");
-            if (guardianNameStar) {
-                guardianNameStar.classList.toggle("d-none", !isMinor);
-            }
-            const guardianEmail = container.querySelector(
-                `input[name='${counter}-guardian_email']`
-            );
-            if (guardianEmail) {
-                guardianEmail.classList.toggle("border-primary", isMinor);
-                guardianEmail.classList.toggle("border-2", isMinor);
-            }
-            const hint = container.querySelector(".o_kjr_consent_sign_hint");
-            if (hint) {
-                hint.classList.toggle("fw-bold", isMinor);
+            el.classList.toggle("d-none", isAdult);
+            for (const field of el.querySelectorAll("input, select, textarea")) {
+                field.disabled = isAdult;
+                if (field.classList.contains("o_kjr_guardian_required")) {
+                    field.required = !isAdult;
+                }
             }
         }
+        this.updateAddress(container, !isAdult);
+        for (const el of container.querySelectorAll(".o_kjr_adult_contact")) {
+            toggleBlock(el, isAdult, true);
+        }
+        this.checkGuardianName(counter);
     }
 }
 

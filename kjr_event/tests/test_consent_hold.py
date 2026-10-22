@@ -81,7 +81,7 @@ class TestKjrConsentHold(TransactionCase):
         return self.Registration.browse(reg.id)
 
     def _reg(self, event=None, **kw):
-        vals = {'event_id': (event or self.event).id, 'name': 'Teilnehmer/in'}
+        vals = {'event_id': (event or self.event).id, 'name': 'Teilnehmer:in'}
         vals.update(kw)
         return self.Registration.create(vals)
 
@@ -409,7 +409,7 @@ class TestKjrConsentHold(TransactionCase):
                          'Unterschrift vortäuschen.')
 
     def test_event_user_paper_action_works(self):
-        """Der Papier-Knopf funktioniert für Veranstaltungs-Benutzer/innen."""
+        """Der Papier-Knopf funktioniert für Veranstaltungs-Benutzer:innen."""
         user = new_test_user(self.env, login='kjr_consent_paper_user',
                              groups='base.group_user,event.group_event_user')
         reg = self._held(birthdate='2015-01-01')

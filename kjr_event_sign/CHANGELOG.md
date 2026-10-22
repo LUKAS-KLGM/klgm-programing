@@ -1,5 +1,12 @@
 # Changelog — KJR Brücke: Veranstaltungen ↔ E-Signatur (`kjr_event_sign`)
 
+## 19.0.1.2.0 (2026-10-22)
+
+Entscheidung 13.10.2026: keine elektronische Unterschrift. Migration entfernt
+`kjr_event_sign.enabled` (= aus). Beschriftungen der mitgelieferten Vorlagen
+(Feldnamen, Rolle) per Migration auf „Teilnehmer:in“ und Doppelpunkt-Gendern.
+Offen: der Text im PDF der Vorlagen („Ihr Kind“, „der/des“).
+
 ## 19.0.1.1.0 (2026-10-12)
 
 Rückmeldung aus dem Betrieb: Im Sign-Dokument stand im Feld „Name" der Name des

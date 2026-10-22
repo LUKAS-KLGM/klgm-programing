@@ -1,5 +1,33 @@
 # Changelog — KJR Ferienprogramm & Schulungen (`kjr_event`)
 
+## 19.0.5.11.0 (2026-10-22)
+
+Umsetzung Termin 13.10.2026 und Rückmeldung Theresa 14./15.10.
+
+### Neu
+- Anmeldeformular neu: Block Teilnehmer:in (Geschlecht, Geburtsdatum, Anschrift,
+  Medikamente/Allergien, alle Pflicht), Block Erziehungsberechtigte (Pflicht unter
+  18 am Beginntag, Anschrift nur wenn abweichend), sonst E-Mail/Telefon der
+  Teilnehmer:in; Notfallkontakt Name+Telefon; eigene Fragen freiwillig;
+  „Bemerkungen, Hinweise etc.“; Pflicht-Haken Datenschutz, Teilnahmebedingungen
+  (Link aus Einstellungen), „Meine Daten sind aktuell“; Hinweis zur Anmeldung nur
+  durch Erziehungsberechtigte. „Ernährung“ entfällt. Serverseitige Prüfung
+  (`_kjr_form_precheck`).
+- Rechnungs-/Kontaktpartner mit Anschrift (`kjr_invoice_partner_id`).
+- Alterskulanz in Tagen, zugelassene Postleitzahlen (Standardliste in den
+  Einstellungen + je Veranstaltung), „Anmeldung ab“.
+- Einstellungen „KJR Veranstaltungen“; Steuer auf Teilnahmegebühren.
+- Sechs Standardfragen (wiederverwendbar, freiwillig).
+
+### Geändert
+- Einordnung nur noch „Ferienprogramm“ / „Aus- und Weiterbildungen“
+  (Migration), Juleica als eigener Haken.
+- Veranstaltungsseite: „Start“/„Ende“, Ort ohne Wegbeschreibung/Kontakt, Teilen
+  nur WhatsApp/E-Mail/Facebook, Satz „Finden Sie heraus …“ entfernt.
+- Filter „Zielgruppe“ (Schlagwort-Kategorie) per Migration unveröffentlicht.
+- Backend: Zeitzone, Sprache, Vorlage ausgeblendet; Reiter „Interne Notizen“ und
+  „Downloads auf der Veranstaltungsseite“; „Teilnehmer:in“ statt „Kind“.
+
 ## 19.0.5.10.0 (2026-10-12)
 
 Eindeutige Beschriftungen im Anmeldedialog: Eltern hatten im Feld

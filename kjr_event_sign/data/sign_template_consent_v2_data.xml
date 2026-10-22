@@ -4,8 +4,8 @@
     PDF und Feldpositionen stammen aus derselben Koordinatentabelle im Skript
     (Millimeter auf A4, hier als Seitenanteile: posX = x/210, posY = y/297).
 
-    Vorlage v2 (19.0.1.1.0): Name des Kindes, Veranstaltung (Name und Zeitraum)
-    und Name der/des Erziehungsberechtigten sind schreibgeschützt (constant) und
+    Vorlage v2 (19.0.1.1.0): Name der Teilnehmer:in, Veranstaltung (Name und Zeitraum)
+    und Name der Erziehungsberechtigten sind schreibgeschützt (constant) und
     werden beim Anlegen der Unterschriftsanfrage aus der Anmeldung gefüllt
     (sign.request._populate_constant_items -> auto_field der Feldtypen aus
     data/sign_item_type_data.xml, gelesen über reference_doc der Anfrage).
@@ -39,14 +39,14 @@
             <field name="sequence" eval="1"/>
         </record>
 
-        <!-- Name des Kindes / Teilnehmer/in: x 20.0 mm, y 86.0 mm, 170.0 x 8.0 mm -->
+        <!-- Name Teilnehmer:in: x 20.0 mm, y 86.0 mm, 170.0 x 8.0 mm -->
         <record id="item_v2_child_name" model="sign.item">
             <field name="document_id" ref="document_consent_v2"/>
             <field name="type_id" ref="sign_item_type_kjr_child_name"/>
             <field name="responsible_id" ref="sign_item_role_guardian"/>
             <field name="required" eval="False"/>
             <field name="constant" eval="True"/>
-            <field name="name">Name des Kindes / Teilnehmer/in</field>
+            <field name="name">Name Teilnehmer:in</field>
             <field name="page" eval="1"/>
             <field name="posX" eval="0.095"/>
             <field name="posY" eval="0.290"/>
@@ -83,14 +83,14 @@
             <field name="height" eval="0.020"/>
         </record>
 
-        <!-- Name der/des Erziehungsberechtigten: x 20.0 mm, y 148.0 mm, 170.0 x 8.0 mm -->
+        <!-- Name der Erziehungsberechtigten: x 20.0 mm, y 148.0 mm, 170.0 x 8.0 mm -->
         <record id="item_v2_guardian_name" model="sign.item">
             <field name="document_id" ref="document_consent_v2"/>
             <field name="type_id" ref="sign_item_type_kjr_guardian_name"/>
             <field name="responsible_id" ref="sign_item_role_guardian"/>
             <field name="required" eval="False"/>
             <field name="constant" eval="True"/>
-            <field name="name">Name der/des Erziehungsberechtigten</field>
+            <field name="name">Name der Erziehungsberechtigten</field>
             <field name="page" eval="1"/>
             <field name="posX" eval="0.095"/>
             <field name="posY" eval="0.498"/>

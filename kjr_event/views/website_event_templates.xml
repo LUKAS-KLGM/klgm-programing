@@ -1,180 +1,147 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- E1: KJR-Felder in das Online-Anmeldeformular einfügen -->
+    <!-- E1: KJR-Felder in das Online-Anmeldeformular einfügen.
+
+         19.0.5.11.0 (Termin 13.10.2026, Rückmeldung Theresa 14.10.): zwei klar
+         getrennte Blöcke im bestehenden Dialog-Stil.
+         * Teilnehmer:in: Name (Kernfeld, Beschriftung siehe
+           registration_event_question_kjr_label), Geschlecht, Geburtsdatum,
+           Anschrift, Medikamente/Allergien - alle Pflicht.
+         * Erziehungsberechtigte: Name, E-Mail, Telefon, Anschrift nur wenn
+           abweichend. Pflicht, wenn die Teilnehmer:in am Beginntag unter 18 ist
+           (nach Geburtsdatum). Sonst E-Mail und Telefon der Teilnehmer:in.
+           Ein-/Ausblenden macht das Formular-Skript
+           (static/src/interactions/kjr_consent_fields.js); massgeblich ist die
+           Vorpruefung im Controller (_kjr_form_precheck).
+         * Notfallkontakt (Name, Telefon) Pflicht, danach die eigenen Fragen der
+           Veranstaltung (freiwillig) und "Bemerkungen, Hinweise etc.".
+         Die Kernfragen E-Mail und Telefon werden je Teilnehmer:in nicht mehr
+         angezeigt (siehe registration_attendee_details_kjr_questions); der
+         Controller setzt E-Mail/Telefon der Anmeldung aus dem passenden Block.
+         "Ernaehrung" entfaellt (Termin 13.10.2026). -->
     <template id="registration_attendee_details_kjr"
               inherit_id="website_event.registration_attendee_details"
               name="KJR Anmeldedetails">
         <xpath expr="//t[@name='attendee_loop']" position="inside">
-            <!-- Eigener modal-body: Odoos Fragen stehen in einem modal-body mit
-                 Innenabstand; ohne diese Huelle liefen die KJR-Felder bis an den
-                 Dialogrand und standen links versetzt zu Name/E-Mail. -->
-            <!-- Einwilligung (19.0.5.9.0): Beginntag und Verfahren stehen als
-                 data-Attribute am Container. Das Formular-Skript
-                 (static/src/interactions/kjr_consent_fields.js) rechnet damit das
-                 Alter und markiert die Einwilligungsfelder; massgeblich bleibt die
-                 Vorpruefung im Controller. Beginntag als UTC-Datum, genau wie
-                 event.event._kjr_age_at_begin. -->
+            <!-- Beginntag als UTC-Datum, genau wie event.event._kjr_age_at_begin. -->
             <div class="modal-body pt-0">
             <div class="row g-3 o_kjr_attendee_fields"
                  t-att-data-kjr-event-start="event.date_begin and event.date_begin.date().isoformat()"
                  t-att-data-kjr-consent-mode="event.kjr_consent_mode"
                  t-att-data-kjr-counter="counter">
                 <div class="col-md-4">
-                    <label t-attf-for="#{counter}-birthdate" class="form-label">Geburtsdatum (Kind)<span t-if="event.requires_parental_consent" class="ms-1" aria-hidden="true">*</span></label>
-                    <input type="date" class="form-control"
-                           t-attf-name="#{counter}-birthdate"
-                           t-attf-id="#{counter}-birthdate"
-                           t-att-required="event.requires_parental_consent and 'required' or None"
-                           t-att-aria-describedby="event.requires_parental_consent and '%s-birthdate_help' % counter or None"/>
-                    <div t-if="event.requires_parental_consent" class="form-text"
-                         t-attf-id="#{counter}-birthdate_help">
-                        Pflichtangabe: wird für die Einwilligung der Erziehungsberechtigten benötigt
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <label t-attf-for="#{counter}-dietary_requirements" class="form-label">Ernährung</label>
-                    <select class="form-select"
-                            t-attf-name="#{counter}-dietary_requirements"
-                            t-attf-id="#{counter}-dietary_requirements">
-                        <option value="">-</option>
-                        <option value="none">Keine besonderen</option>
-                        <option value="vegetarian">Vegetarisch</option>
-                        <option value="vegan">Vegan</option>
-                        <option value="halal">Halal</option>
-                        <option value="kosher">Koscher</option>
-                        <option value="allergy">Allergie/Unverträglichkeit</option>
-                        <option value="other">Sonstiges</option>
-                    </select>
-                </div>
-                <!-- Datenminimierung (Audit-Befund K2): Der frühere Platzhalter
-                     "z. B. Nussallergie" hat aktiv zur Angabe einer Gesundheits-
-                     information aufgefordert. Für die Küche zählt, WAS nicht auf den
-                     Teller darf – nicht die Diagnose dahinter. Der Platzhalter nennt
-                     deshalb nur noch Verpflegungsangaben, der Hilfetext grenzt das Feld
-                     ausdrücklich gegen weitergehende Gesundheitsdaten ab.
-                     TODO(KJR): Ob die Küche personenscharfe Allergieangaben doch
-                     braucht – und wenn ja, auf welchem Weg statt über dieses
-                     öffentliche Freitextfeld – entscheiden Geschäftsstelle und
-                     Datenschutzbeauftragte. Bis dahin gilt die engere Variante. -->
-                <div class="col-md-4">
-                    <label t-attf-for="#{counter}-dietary_note" class="form-label">Ernährung: Hinweis</label>
-                    <input type="text" class="form-control"
-                           t-attf-name="#{counter}-dietary_note"
-                           t-attf-id="#{counter}-dietary_note"
-                           t-attf-aria-describedby="#{counter}-dietary_note_help"
-                           placeholder="z. B. glutenfrei, ohne Schweinefleisch"/>
-                    <div class="form-text" t-attf-id="#{counter}-dietary_note_help">
-                        Bitte nur das eintragen, was wir für das Essen wissen müssen, also
-                        was nicht auf den Teller darf. Krankheiten, Diagnosen, Medikamente
-                        oder Ähnliches gehören <strong>nicht</strong> in dieses Feld. Wenn es
-                        für die Freizeit gesundheitlich etwas zu beachten gibt, wenden Sie
-                        sich bitte direkt an die Geschäftsstelle.
-                    </div>
-                </div>
-                <!-- E2c: freiwillige Angabe zum Geschlecht. Wird ausschliesslich
-                     aggregiert fuer die gesetzliche Meldung an das Landesamt
-                     gezaehlt (siehe wizard/kjr_event_statistics.py) und nie
-                     einzeln ausgewiesen. Bewusst OHNE required und mit einer
-                     eigenen Stufe "keine Angabe", damit die bewusste
-                     Nicht-Angabe von der gar nicht erfassten Angabe
-                     unterscheidbar bleibt. Die Stufen muessen zum Feld
-                     event.registration.kjr_gender passen; ein unbekannter Wert
-                     wird im Controller verworfen und bricht die Anmeldung
-                     nicht ab.
-                     STELLUNG IM FORMULAR: bewusst HINTER "Ernaehrung: Hinweis"
-                     und nicht zwischen den beiden Ernaehrungsfeldern. Die Zeile
-                     fuehrt drei Spalten (col-md-4); dazwischen eingefuegt waere
-                     das Hinweisfeld in die naechste Zeile gerutscht und stuende
-                     auf dem Desktop nicht mehr neben der Auswahl, auf die es
-                     sich bezieht.
-                     Die Leeroption heisst "bitte waehlen" und nicht "-": neben
-                     der Stufe "keine Angabe" muss erkennbar bleiben, was die
-                     bewusste Nicht-Angabe ist und was nur die noch nicht
-                     getroffene Auswahl. -->
-                <div class="col-md-4">
-                    <label t-attf-for="#{counter}-kjr_gender" class="form-label">Geschlecht (freiwillig)</label>
-                    <select class="form-select"
+                    <label t-attf-for="#{counter}-kjr_gender" class="form-label">Geschlecht<span class="ms-1" aria-hidden="true">*</span></label>
+                    <select class="form-select" required="required"
                             t-attf-name="#{counter}-kjr_gender"
-                            t-attf-id="#{counter}-kjr_gender"
-                            t-attf-aria-describedby="#{counter}-kjr_gender_help">
+                            t-attf-id="#{counter}-kjr_gender">
                         <option value="">bitte wählen</option>
                         <option value="male">männlich</option>
                         <option value="female">weiblich</option>
                         <option value="diverse">divers</option>
                         <option value="no_answer">keine Angabe</option>
                     </select>
-                    <div class="form-text" t-attf-id="#{counter}-kjr_gender_help">
-                        Die Angabe ist freiwillig. Sie wird nur gezählt (als Zahl in einer
-                        Statistik) und für die gesetzlich vorgeschriebene Meldung gebraucht,
-                        nie einzeln weitergegeben.
+                </div>
+                <div class="col-md-4">
+                    <label t-attf-for="#{counter}-birthdate" class="form-label">Geburtsdatum<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="date" class="form-control" required="required"
+                           t-attf-name="#{counter}-birthdate"
+                           t-attf-id="#{counter}-birthdate"/>
+                </div>
+                <div class="col-md-4"/>
+                <div class="col-md-6">
+                    <label t-attf-for="#{counter}-kjr_street" class="form-label">Straße und Hausnummer<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="text" class="form-control" required="required" autocomplete="street-address"
+                           t-attf-name="#{counter}-kjr_street" t-attf-id="#{counter}-kjr_street"/>
+                </div>
+                <div class="col-md-2">
+                    <label t-attf-for="#{counter}-kjr_zip" class="form-label">PLZ<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="text" class="form-control" required="required" autocomplete="postal-code"
+                           inputmode="numeric" maxlength="10"
+                           t-attf-name="#{counter}-kjr_zip" t-attf-id="#{counter}-kjr_zip"/>
+                </div>
+                <div class="col-md-4">
+                    <label t-attf-for="#{counter}-kjr_city" class="form-label">Ort<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="text" class="form-control" required="required" autocomplete="address-level2"
+                           t-attf-name="#{counter}-kjr_city" t-attf-id="#{counter}-kjr_city"/>
+                </div>
+                <div class="col-12">
+                    <label t-attf-for="#{counter}-kjr_medical_note" class="form-label">Medikamente/Allergien<span class="ms-1" aria-hidden="true">*</span></label>
+                    <textarea class="form-control" rows="2" required="required"
+                              t-attf-name="#{counter}-kjr_medical_note"
+                              t-attf-id="#{counter}-kjr_medical_note"
+                              t-attf-aria-describedby="#{counter}-kjr_medical_note_help"/>
+                    <div class="form-text" t-attf-id="#{counter}-kjr_medical_note_help">
+                        Bitte „keine“ eintragen, wenn nichts zu beachten ist.
                     </div>
                 </div>
-                <!-- 19.0.5.10.0: Beschriftung eindeutig (vorher nur
-                     "Erziehungsberechtigte/r"; Eltern trugen dort den Namen des
-                     Kindes ein). Im Verfahren "digitale Unterschrift" wird der
-                     Name schreibgeschuetzt in das Einwilligungsformular
-                     uebernommen und ist fuer Minderjaehrige Pflicht: Stern und
-                     required setzt das Formular-Skript je nach Alter,
-                     massgeblich ist die Vorpruefung im Controller
-                     (kjr_guardian_name_missing). -->
-                <div class="col-md-6">
-                    <label t-attf-for="#{counter}-guardian_name" class="form-label">Name der/des Erziehungsberechtigten<span t-if="event.kjr_consent_mode == 'sign'" class="ms-1 d-none o_kjr_guardian_name_required" aria-hidden="true">*</span></label>
-                    <input type="text" class="form-control"
+                <!-- Kontakt der volljaehrigen Teilnehmer:in. Ohne Skript
+                     ausgeblendet (die meisten Teilnehmer:innen sind
+                     minderjaehrig); der Controller nimmt dann ersatzweise die
+                     Angaben aus dem Block Erziehungsberechtigte. -->
+                <div class="col-md-6 d-none o_kjr_adult_contact">
+                    <label t-attf-for="#{counter}-kjr_participant_email" class="form-label">E-Mail Teilnehmer:in<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="email" class="form-control" autocomplete="email" disabled="disabled"
+                           t-attf-name="#{counter}-kjr_participant_email"
+                           t-attf-id="#{counter}-kjr_participant_email"/>
+                </div>
+                <div class="col-md-6 d-none o_kjr_adult_contact">
+                    <label t-attf-for="#{counter}-kjr_participant_phone" class="form-label">Telefon Teilnehmer:in<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="tel" class="form-control" autocomplete="tel" disabled="disabled"
+                           t-attf-name="#{counter}-kjr_participant_phone"
+                           t-attf-id="#{counter}-kjr_participant_phone"/>
+                </div>
+
+                <div class="col-12 mt-4 o_kjr_guardian_block">
+                    <h6 class="mb-0">Erziehungsberechtigte</h6>
+                    <div class="form-text">Pflicht, wenn die Teilnehmer:in zu Beginn der Veranstaltung unter 18 Jahre alt ist.</div>
+                </div>
+                <div class="col-md-4 o_kjr_guardian_block">
+                    <label t-attf-for="#{counter}-guardian_name" class="form-label">Name<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="text" class="form-control o_kjr_guardian_required" autocomplete="name"
                            t-attf-name="#{counter}-guardian_name"
-                           t-attf-id="#{counter}-guardian_name"
-                           autocomplete="name"
-                           t-att-aria-describedby="event.kjr_consent_mode == 'sign' and '%s-guardian_name_help' % counter or None"/>
-                    <div t-if="event.kjr_consent_mode == 'sign'" class="form-text"
-                         t-attf-id="#{counter}-guardian_name_help">
-                        Pflicht für Teilnehmende unter 18 Jahren: Ihr eigener Name (nicht der des Kindes); er wird in das Einwilligungsformular übernommen.
-                    </div>
+                           t-attf-id="#{counter}-guardian_name"/>
                 </div>
-                <div class="col-md-6">
-                    <label t-attf-for="#{counter}-guardian_phone" class="form-label">Telefon Erziehungsberechtigte/r</label>
-                    <input type="text" class="form-control"
+                <div class="col-md-4 o_kjr_guardian_block">
+                    <label t-attf-for="#{counter}-guardian_email" class="form-label">E-Mail<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="email" class="form-control o_kjr_guardian_required" autocomplete="email"
+                           t-attf-name="#{counter}-guardian_email"
+                           t-attf-id="#{counter}-guardian_email"/>
+                </div>
+                <div class="col-md-4 o_kjr_guardian_block">
+                    <label t-attf-for="#{counter}-guardian_phone" class="form-label">Telefon<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="tel" class="form-control o_kjr_guardian_required" autocomplete="tel"
                            t-attf-name="#{counter}-guardian_phone"
                            t-attf-id="#{counter}-guardian_phone"/>
                 </div>
-                <!-- Nur im Verfahren "digitale Unterschrift": Empfaenger der
-                     Unterschriftsanfrage. Bewusst KEIN required: leer greift die
-                     E-Mail der Anmeldung (Vorpruefung im Controller). -->
-                <div t-if="event.kjr_consent_mode == 'sign'" class="col-md-6">
-                    <label t-attf-for="#{counter}-guardian_email" class="form-label">E-Mail der/des Erziehungsberechtigten (für die digitale Einwilligung)</label>
-                    <input type="email" class="form-control"
-                           t-attf-name="#{counter}-guardian_email"
-                           t-attf-id="#{counter}-guardian_email"
-                           t-attf-aria-describedby="#{counter}-guardian_email_help"
-                           autocomplete="email"/>
-                    <div class="form-text" t-attf-id="#{counter}-guardian_email_help">
-                        Leer lassen, wenn die oben angegebene E-Mail-Adresse einer erziehungsberechtigten Person gehört.
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <label t-attf-for="#{counter}-emergency_contact" class="form-label">Notfallkontakt</label>
-                    <input type="text" class="form-control"
-                           t-attf-name="#{counter}-emergency_contact"
-                           t-attf-id="#{counter}-emergency_contact"/>
-                </div>
-                <!-- Im Verfahren "digitale Unterschrift" entfaellt das Haekchen:
-                     die Einwilligung gibt dort die erziehungsberechtigte Person
-                     selbst per Unterschrift (ein gepostetes Haekchen verwirft der
-                     Controller). -->
-                <div t-if="event.kjr_consent_mode != 'sign'" class="col-md-6 d-flex align-items-end">
+                <div class="col-12 o_kjr_guardian_block">
                     <div class="form-check">
-                        <input type="checkbox" class="form-check-input" value="1"
-                               t-attf-name="#{counter}-parental_consent"
-                               t-attf-id="#{counter}-parental_consent"
-                               data-kjr-consent-checkbox="1"/>
-                        <label class="form-check-label" t-attf-for="#{counter}-parental_consent">
-                            Einwilligung der Erziehungsberechtigten liegt vor
+                        <input type="checkbox" class="form-check-input" value="1" checked="checked"
+                               t-attf-name="#{counter}-guardian_same_address"
+                               t-attf-id="#{counter}-guardian_same_address"/>
+                        <label class="form-check-label" t-attf-for="#{counter}-guardian_same_address">
+                            Gleiche Anschrift wie Teilnehmer:in
                         </label>
-                        <div t-if="event.kjr_consent_mode == 'checkbox'" class="form-text">
-                            Pflicht für Teilnehmende unter 18 Jahren
-                        </div>
                     </div>
                 </div>
-                <div t-else="" class="col-12">
+                <div class="col-md-6 o_kjr_guardian_block o_kjr_guardian_address">
+                    <label t-attf-for="#{counter}-guardian_street" class="form-label">Straße und Hausnummer<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="text" class="form-control"
+                           t-attf-name="#{counter}-guardian_street" t-attf-id="#{counter}-guardian_street"/>
+                </div>
+                <div class="col-md-2 o_kjr_guardian_block o_kjr_guardian_address">
+                    <label t-attf-for="#{counter}-guardian_zip" class="form-label">PLZ<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="text" class="form-control" inputmode="numeric" maxlength="10"
+                           t-attf-name="#{counter}-guardian_zip" t-attf-id="#{counter}-guardian_zip"/>
+                </div>
+                <div class="col-md-4 o_kjr_guardian_block o_kjr_guardian_address">
+                    <label t-attf-for="#{counter}-guardian_city" class="form-label">Ort<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="text" class="form-control"
+                           t-attf-name="#{counter}-guardian_city" t-attf-id="#{counter}-guardian_city"/>
+                </div>
+                <!-- Nur im Verfahren "digitale Unterschrift" (kjr_event_sign,
+                     nur wenn in den Einstellungen eingeschaltet). -->
+                <div t-if="event.kjr_consent_mode == 'sign'" class="col-12 o_kjr_guardian_block">
                     <div class="form-text o_kjr_consent_sign_hint" t-attf-id="#{counter}-consent_sign_hint">
                         Für Teilnehmende unter 18 Jahren senden wir nach der Anmeldung eine
                         E-Mail mit der Bitte um digitale Unterschrift an die
@@ -182,14 +149,83 @@
                         verbindlich bestätigt.
                     </div>
                 </div>
-                <div class="col-12">
-                    <label t-attf-for="#{counter}-notes" class="form-label">Bemerkungen</label>
+
+                <div class="col-12 mt-4">
+                    <h6 class="mb-0">Notfallkontakt</h6>
+                </div>
+                <div class="col-md-6">
+                    <label t-attf-for="#{counter}-emergency_contact" class="form-label">Name<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="text" class="form-control" required="required"
+                           t-attf-name="#{counter}-emergency_contact"
+                           t-attf-id="#{counter}-emergency_contact"/>
+                </div>
+                <div class="col-md-6">
+                    <label t-attf-for="#{counter}-kjr_emergency_phone" class="form-label">Telefon<span class="ms-1" aria-hidden="true">*</span></label>
+                    <input type="tel" class="form-control" required="required"
+                           t-attf-name="#{counter}-kjr_emergency_phone"
+                           t-attf-id="#{counter}-kjr_emergency_phone"/>
+                </div>
+
+                <!-- Eigene Fragen der Veranstaltung (freiwillig). Die Kernschleife
+                     zeigt je Teilnehmer:in nur noch die Namensfrage (siehe
+                     registration_attendee_details_kjr_questions). -->
+                <t t-set="kjr_extra_questions" t-value="event.specific_question_ids.filtered(lambda q: q.question_type not in ('name', 'email', 'phone', 'company_name'))"/>
+                <div t-if="kjr_extra_questions" class="col-12 mt-4">
+                    <h6 class="mb-0">Weitere Fragen (freiwillig)</h6>
+                </div>
+                <t t-foreach="kjr_extra_questions" t-as="question">
+                    <div t-att-class="question.question_type == 'text_box' and 'col-12' or 'col-md-6'">
+                        <t t-call="website_event.registration_event_question">
+                            <t t-set="registration_index" t-value="counter"/>
+                        </t>
+                    </div>
+                </t>
+                <div class="col-12 mt-4">
+                    <label t-attf-for="#{counter}-notes" class="form-label">Bemerkungen, Hinweise etc.</label>
                     <textarea class="form-control" rows="2"
                               t-attf-name="#{counter}-notes"
                               t-attf-id="#{counter}-notes"/>
                 </div>
             </div>
             </div>
+        </xpath>
+    </template>
+
+    <!-- 19.0.5.11.0: In der Kernschleife je Teilnehmer:in nur noch die
+         Namensfrage. E-Mail und Telefon kommen aus den KJR-Bloecken
+         (Erziehungsberechtigte bzw. Teilnehmer:in), die eigenen Fragen der
+         Veranstaltung stehen im KJR-Block unter "Weitere Fragen (freiwillig)".
+         Anker: einziges t-foreach ueber specific_question_ids im Kerntemplate.
+         NACH EINEM ODOO-UPDATE PRUEFEN. -->
+    <template id="registration_attendee_details_kjr_questions"
+              inherit_id="website_event.registration_attendee_details"
+              name="KJR Anmeldung: Fragen je Teilnehmer:in">
+        <xpath expr="//t[@t-foreach='event.specific_question_ids']" position="attributes">
+            <attribute name="t-foreach">event.specific_question_ids.filtered(lambda q: q.question_type == 'name')</attribute>
+        </xpath>
+        <!-- Prüfbericht 22.10.2026: die Blocküberschrift "Teilnehmer:in" steht
+             VOR dem Namensfeld; Geschlecht, Geburtsdatum usw. folgen direkt
+             darunter im KJR-Block. -->
+        <xpath expr="//div[@t-if='event.specific_question_ids']/div[hasclass('row')]" position="before">
+            <h6 class="mt-3 mb-0">Teilnehmer:in</h6>
+        </xpath>
+    </template>
+
+    <!-- 19.0.5.11.0 (Theresa 14.10.): eigene Fragen je Veranstaltung sind
+         freiwillig. Fragen vom Typ Auswahl/Freitext sind im Formular deshalb
+         nie Pflicht, auch wenn an der Frage "Pflichtantwort" gesetzt ist
+         (Bestandsfragen aus Nupian). Name/E-Mail/Telefon unveraendert. -->
+    <template id="registration_event_question_kjr_optional"
+              inherit_id="website_event.registration_event_question"
+              name="KJR Anmeldung: eigene Fragen freiwillig">
+        <xpath expr="//span[@t-if='question.is_mandatory_answer']" position="attributes">
+            <attribute name="t-if">question.is_mandatory_answer and question.question_type in ('name', 'email', 'phone', 'company_name')</attribute>
+        </xpath>
+        <xpath expr="//select[@t-att-required]" position="attributes">
+            <attribute name="t-att-required">False</attribute>
+        </xpath>
+        <xpath expr="//textarea[@t-att-required]" position="attributes">
+            <attribute name="t-att-required">False</attribute>
         </xpath>
     </template>
 
@@ -208,7 +244,7 @@
          gelten auch im Backend und in Berichten.
 
          Bedingung: genau dort, wo kjr_event seine Zusatzfelder (Geburtsdatum,
-         Erziehungsberechtigte) rendert, also je Teilnehmer/in im
+         Erziehungsberechtigte) rendert, also je Teilnehmer:in im
          attendee_loop (der Kern ruft website_event.registration_event_question
          dort mit registration_index = Zaehler >= 1 auf). Die Zusatzfelder haengen
          an keiner weiteren Bedingung (auch nicht an event.is_kjr), deshalb
@@ -231,9 +267,9 @@
          unveraenderte Kernausdruck. -->
     <template id="registration_event_question_kjr_label"
               inherit_id="website_event.registration_event_question"
-              name="KJR Anmeldung: Beschriftung Name des Kindes">
+              name="KJR Anmeldung: Beschriftung Name Teilnehmer:in">
         <xpath expr="//label[@t-out='question.title']" position="attributes">
-            <attribute name="t-out">'Name des Kindes / Teilnehmer/in' if question.question_type == 'name' and registration_index else question.title</attribute>
+            <attribute name="t-out">'Name Teilnehmer:in' if question.question_type == 'name' and registration_index else question.title</attribute>
         </xpath>
         <xpath expr="//input[@t-att-value]" position="attributes">
             <attribute name="t-att-value">'' if question.question_type == 'name' and registration_index else (default_first_attendee.get(question.question_type, '') if counter in (0,1) else '')</attribute>
@@ -310,22 +346,25 @@
                 </p>
                 <dl class="row small mb-0">
                     <dt class="col-sm-4">Was wir speichern</dt>
-                    <dd class="col-sm-8">Name des Kindes / Teilnehmer/in, Geburtsdatum
-                        (Kind), die Angaben zur Ernährung (Auswahl und Hinweisfeld), Name
-                        und Telefonnummer der/des Erziehungsberechtigten<t t-if="event.kjr_consent_mode == 'sign'">
-                        sowie die E-Mail der/des Erziehungsberechtigten für die Bitte um
-                        Einwilligung</t>, den Notfallkontakt, Ihre Bemerkungen und das
-                        Geschlecht (freiwillige Angabe).</dd>
+                    <dd class="col-sm-8">Von der Teilnehmer:in Name, Geschlecht,
+                        Geburtsdatum, Anschrift und die Angaben zu Medikamenten/Allergien;
+                        bei Teilnehmer:innen unter 18 Jahren Name, E-Mail, Telefon und
+                        Anschrift der Erziehungsberechtigten, sonst E-Mail und Telefon der
+                        Teilnehmer:in; den Notfallkontakt (Name und Telefon), Ihre Antworten
+                        auf die freiwilligen Fragen zur Veranstaltung, Ihre Bemerkungen und
+                        Ihre Bestätigungen unten. Für Rechnung und Rückfragen legen wir mit
+                        Name, Anschrift, E-Mail und Telefon einen Kontakt an (bei
+                        Minderjährigen für die Erziehungsberechtigten).</dd>
 
                     <dt class="col-sm-4">Wofür wir sie nutzen</dt>
                     <dd class="col-sm-8">Um die Veranstaltung durchzuführen (Anmeldung,
-                        Platzvergabe, Warteliste, passende Altersgruppe), um die Verpflegung
-                        zu planen, um im Notfall jemanden erreichen zu können, für Rechnung
-                        und Zahlung bei kostenpflichtigen Angeboten und, bei
-                        Juleica-Schulungen, für den Nachweis der Ausbildung. Die
-                        freiwillige Angabe zum Geschlecht wird ausschließlich für die
-                        gesetzlich vorgeschriebene, rein zahlenmäßige Meldung an die
-                        Statistikstelle gebraucht (ohne Namen).</dd>
+                        Platzvergabe, Warteliste, passende Altersgruppe und Wohnort), um
+                        gesundheitlich Wichtiges beachten und im Notfall jemanden erreichen zu
+                        können, für Rechnung und Zahlung bei kostenpflichtigen Angeboten und,
+                        bei Juleica-Schulungen, für den Nachweis der Ausbildung. Die Angabe
+                        zum Geschlecht wird ausschließlich für die gesetzlich
+                        vorgeschriebene, rein zahlenmäßige Meldung an die Statistikstelle
+                        gebraucht (ohne Namen).</dd>
 
                     <dt class="col-sm-4">Wer sie sehen kann</dt>
                     <dd class="col-sm-8">Die Geschäftsstelle des Veranstalters
@@ -344,7 +383,7 @@
                             verantwortlichen Stelle.</span>
                     </dd>
 
-                    <dt class="col-sm-4">Datenschutzbeauftragte/r</dt>
+                    <dt class="col-sm-4">Datenschutzbeauftragte:r</dt>
                     <dd class="col-sm-8">
                         <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.dpo')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
                         <span class="d-block text-muted">Kontakt für Fragen zum Datenschutz.</span>
@@ -383,6 +422,54 @@
         </xpath>
     </template>
 
+    <!-- 19.0.5.11.0 (Termin 13.10.2026, Theresa 14.10.): Hinweis und drei
+         Pflicht-Haken je Anmeldung (einmal je Formular, gelten fuer alle
+         Teilnehmer:innen): Datenschutz, Teilnahmebedingungen, "Meine Daten
+         sind aktuell". Die Feldnamen haben bewusst keinen Bindestrich, damit
+         der Kern sie nicht als Anmeldefelder liest; der Controller prueft sie
+         (kjr_confirmations_missing) und schreibt sie an jede Anmeldung.
+         Teilnahmebedingungen: Link aus den Einstellungen (kjr_event.terms_url),
+         Inhalt liefert der KJR. Keine elektronische Unterschrift (Entscheidung
+         13.10.2026); der Haken zu den Teilnahmebedingungen gilt bei
+         Minderjaehrigen als Einwilligung der Erziehungsberechtigten (Herkunft
+         "Angabe im Website-Formular"), ausser die digitale Unterschrift ist
+         eingeschaltet. -->
+    <template id="registration_attendee_details_kjr_confirmations"
+              inherit_id="kjr_event.registration_attendee_details_kjr_privacy"
+              name="KJR Anmeldung: Bestaetigungen">
+        <xpath expr="//section[hasclass('o_kjr_privacy_notice')]" position="after">
+            <t t-set="kjr_icp" t-value="request.env['ir.config_parameter'].sudo()"/>
+            <t t-set="kjr_terms_url" t-value="kjr_icp.get_param('kjr_event.terms_url')"/>
+            <t t-set="kjr_privacy_url" t-value="kjr_icp.get_param('kjr_event.privacy_url') or '/datenschutzerklaerung'"/>
+            <div class="o_kjr_confirmations mt-3">
+                <p class="fw-bold">Minderjährige Teilnehmer:innen dürfen nur von ihren eigenen Erziehungsberechtigten angemeldet werden, sonst ist die Anmeldung ungültig.</p>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" value="1" required="required"
+                           name="kjr_privacy_accepted" id="kjr_privacy_accepted"/>
+                    <label class="form-check-label" for="kjr_privacy_accepted">
+                        Ich habe die <a t-att-href="kjr_privacy_url" target="_blank" rel="noopener">Datenschutzhinweise</a> gelesen.<span class="ms-1" aria-hidden="true">*</span>
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" value="1" required="required"
+                           name="kjr_terms_accepted" id="kjr_terms_accepted"/>
+                    <label class="form-check-label" for="kjr_terms_accepted">
+                        Ich habe die <a t-if="kjr_terms_url" t-att-href="kjr_terms_url" target="_blank" rel="noopener">Teilnahmebedingungen</a><t t-else="">Teilnahmebedingungen</t>
+                        gelesen und bin mit ihnen einverstanden. Bei Teilnehmer:innen unter 18 Jahren
+                        willige ich als erziehungsberechtigte Person in die Teilnahme ein.<span class="ms-1" aria-hidden="true">*</span>
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" value="1" required="required"
+                           name="kjr_data_confirmed" id="kjr_data_confirmed"/>
+                    <label class="form-check-label" for="kjr_data_confirmed">
+                        Meine Daten sind aktuell.<span class="ms-1" aria-hidden="true">*</span>
+                    </label>
+                </div>
+            </div>
+        </xpath>
+    </template>
+
     <!-- E12: Treffpunkt, Wichtig, Webseite (Parität zum Altsystem) -->
     <template id="event_description_full_kjr_meeting_info"
               name="KJR: Treffpunkt, Wichtig, Webseite"
@@ -398,7 +485,10 @@
         <!-- "Treffpunkt" und "Webseite" gehören inhaltlich zum Ort-Block dazu (Ziel +
              Treffpunkt + weiterführender Link) und teilen sich daher dessen bestehenden
              Toggle (opt_event_location_block) statt einen eigenen zu bekommen. -->
-        <xpath expr="//a[@t-att-href=&quot;event._google_map_link()&quot;]" position="after">
+        <!-- 19.0.5.11.0: Anker war der Knopf "Wegbeschreibung", der seit dem
+             Termin 13.10.2026 entfällt (event_description_full_kjr_location).
+             Jetzt am Ende des Ort-Blocks. -->
+        <xpath expr="//div[@t-if='opt_event_location_block and event.address_id']" position="inside">
             <div t-if="event.kjr_meeting_point" class="mt-3">
                 <h6 class="o_wevent_sidebar_title">Treffpunkt</h6>
                 <p class="mb-0" t-field="event.kjr_meeting_point"/>
@@ -408,6 +498,35 @@
                     <i class="fa fa-external-link me-1" role="presentation"/>Webseite
                 </a>
             </div>
+        </xpath>
+    </template>
+
+    <!-- 19.0.5.11.0 (Termin 13.10.2026): Veranstaltungsseite.
+         Nur Elemente entfernen bzw. umbenennen, keine neue Gestaltung.
+         * "Start"/"Ende" statt "startet"/"endet" (Datumsblock).
+         * Veranstaltungsort nur mit Ort und Anschrift: Knopf "Wegbeschreibung"
+           und Telefon/E-Mail des Orts entfallen.
+         * Teilen: Satz "Finden Sie heraus, was über diese Veranstaltung gesagt
+           wird ..." entfällt, nur noch WhatsApp, E-Mail und Facebook.
+           Instagram hat keinen Teilen-Link für Webseiten und fehlt deshalb.
+         Anker sind Kernklassen/-bedingungen. NACH EINEM ODOO-UPDATE PRUEFEN. -->
+    <template id="event_description_dates_kjr_wording"
+              name="KJR: Start/Ende"
+              inherit_id="website_event.event_description_dates">
+        <xpath expr="//small[hasclass('fw-bold')][following-sibling::div//time[@t-out='event.date_begin'][hasclass('o_wevent_day_header_number')]]"
+               position="replace" mode="inner">Start</xpath>
+        <xpath expr="//small[hasclass('fw-bold')][following-sibling::div//time[@t-out='event.date_end'][hasclass('o_wevent_day_header_number')]]"
+               position="replace" mode="inner">Ende</xpath>
+    </template>
+
+    <template id="event_description_full_kjr_location"
+              name="KJR: Ort ohne Wegbeschreibung, Teilen reduziert"
+              inherit_id="website_event.event_description_full">
+        <xpath expr="//a[@t-att-href=&quot;event._google_map_link()&quot;]" position="replace"/>
+        <xpath expr="//div[@t-if='opt_event_location_block and event.address_id']/small[contains(@t-options, 'phone')]" position="replace"/>
+        <xpath expr="//div[@t-if='opt_event_share_block']//p" position="replace"/>
+        <xpath expr="//div[@t-if='opt_event_share_block']//t[@t-snippet-call='website.s_share']" position="inside">
+            <t t-set="_exclude_share_links" t-value="['twitter', 'linkedin', 'pinterest']"/>
         </xpath>
     </template>
 
@@ -470,7 +589,7 @@
         <xpath expr="//section[hasclass('o_wevent_index_topbar_filters')]" position="after">
             <section t-if="kjr_age_groups" class="o_kjr_age_filter d-print-none mb-3">
                 <div class="d-flex flex-wrap align-items-center gap-2">
-                    <span class="fw-bold me-1">Alter des Kindes:</span>
+                    <span class="fw-bold me-1">Alter:</span>
                     <!-- "Alle anzeigen" entfernt den Parameter wieder: QueryURL lässt
                          leere Werte weg, dadurch ist der Filter zurückgesetzt. -->
                     <a t-att-href="keep_event_url('/event', alter='')"
@@ -612,6 +731,17 @@
             <t t-if="event.is_kjr">Jetzt anmelden</t>
             <t t-else="">Registrieren</t>
         </xpath>
+        <!-- 19.0.5.11.0 (Termin 13.10.2026): "Anmeldung ab <Datum>" statt des
+             Anmeldeknopfs, solange "Anmeldung ab" an der Veranstaltung (bzw.
+             der Verkaufsstart der Tickets) nicht erreicht ist. Der Kern blendet
+             den Knopf dann selbst aus (event_registrations_open). -->
+        <xpath expr="//div[@t-elif='not event.event_registrations_started and not event.event_registrations_sold_out']"
+               position="replace" mode="inner">
+            <t t-if="event.is_kjr">Anmeldung ab
+                <b t-out="event.start_sale_datetime" t-options="{'widget': 'datetime', 'tz_name': event.date_tz, 'format': 'dd.MM.yyyy, HH:mm'}"/> Uhr</t>
+            <t t-else="">Anmeldungen öffnen am
+                <b t-out="event.start_sale_datetime" t-options="{'widget': 'datetime', 'tz_name': event.date_tz, 'format': 'dd.MM.yyyy, HH:mm'}"/></t>
+        </xpath>
         <!-- Fehlermeldung "zu wenige freie Plätze".
              Anker: exakte t-if-Bedingung des Kerns (nicht übersetzbar, eindeutig).
              mode="inner": alert-Klassen und role="alert" bleiben Kernsache. -->
@@ -630,9 +760,9 @@
          vollstaendig. Die Codes kommen wie die Kerncodes ueber
          ?registration_error_code=... auf die Anmeldeseite.
          19.0.5.10.0: kjr_guardian_name_missing (Verfahren "digitale
-         Unterschrift", minderjaehrig, Name der/des Erziehungsberechtigten
+         Unterschrift", minderjaehrig, Name der Erziehungsberechtigten
          fehlt) und kjr_guardian_name_is_child (Name des Kindes und Name
-         der/des Erziehungsberechtigten gleich; die Meldung nennt beide
+         der Erziehungsberechtigten gleich; die Meldung nennt beide
          Felder, weil nicht feststeht, welches falsch ist); Wortlaut der
          Feldbeschriftungen uebernommen. -->
     <template id="registration_template_kjr_consent_errors"
@@ -641,19 +771,40 @@
         <xpath expr="//div[@t-if=&quot;registration_error_code == 'insufficient_seats'&quot;]"
                position="after">
             <div t-if="registration_error_code == 'kjr_birthdate_missing'" class="alert alert-danger my-3" role="alert">
-                Anmeldung nicht möglich: Bitte geben Sie für alle Teilnehmenden das Geburtsdatum (Kind) an.
+                Anmeldung nicht möglich: Bitte geben Sie für alle Teilnehmer:innen das Geburtsdatum an.
             </div>
             <div t-if="registration_error_code == 'kjr_consent_missing'" class="alert alert-danger my-3" role="alert">
                 Anmeldung nicht möglich: Für Teilnehmende unter 18 Jahren muss die Einwilligung der Erziehungsberechtigten bestätigt werden.
             </div>
             <div t-if="registration_error_code == 'kjr_guardian_email_missing'" class="alert alert-danger my-3" role="alert">
-                Anmeldung nicht möglich: Bitte geben Sie für Teilnehmende unter 18 Jahren die E-Mail der/des Erziehungsberechtigten an.
+                Anmeldung nicht möglich: Bitte geben Sie für Teilnehmende unter 18 Jahren die E-Mail der Erziehungsberechtigten an.
             </div>
             <div t-if="registration_error_code == 'kjr_guardian_name_missing'" class="alert alert-danger my-3" role="alert">
-                Anmeldung nicht möglich: Bitte geben Sie den Namen der/des Erziehungsberechtigten an.
+                Anmeldung nicht möglich: Bitte geben Sie den Namen der Erziehungsberechtigten an.
             </div>
             <div t-if="registration_error_code == 'kjr_guardian_name_is_child'" class="alert alert-danger my-3" role="alert">
-                Anmeldung nicht möglich: Die Namen bei „Name des Kindes / Teilnehmer/in“ und „Name der/des Erziehungsberechtigten“ sind gleich. Bitte prüfen Sie beide Angaben.
+                Anmeldung nicht möglich: Die Namen bei „Name Teilnehmer:in“ und beim Namen der Erziehungsberechtigten sind gleich. Bitte prüfen Sie beide Angaben.
+            </div>
+            <div t-if="registration_error_code == 'kjr_required_missing'" class="alert alert-danger my-3" role="alert">
+                Anmeldung nicht möglich: Bitte füllen Sie für alle Teilnehmer:innen die Pflichtfelder aus (Geschlecht, Geburtsdatum, Anschrift, Medikamente/Allergien, Notfallkontakt).
+            </div>
+            <div t-if="registration_error_code == 'kjr_guardian_missing'" class="alert alert-danger my-3" role="alert">
+                Anmeldung nicht möglich: Für Teilnehmer:innen unter 18 Jahren sind Name, E-Mail, Telefon und (wenn abweichend) Anschrift der Erziehungsberechtigten Pflicht.
+            </div>
+            <div t-if="registration_error_code == 'kjr_contact_missing'" class="alert alert-danger my-3" role="alert">
+                Anmeldung nicht möglich: Bitte geben Sie für volljährige Teilnehmer:innen E-Mail und Telefon an.
+            </div>
+            <div t-if="registration_error_code == 'kjr_confirmations_missing'" class="alert alert-danger my-3" role="alert">
+                Anmeldung nicht möglich: Bitte bestätigen Sie Datenschutzhinweise, Teilnahmebedingungen und dass Ihre Daten aktuell sind.
+            </div>
+            <div t-if="registration_error_code == 'kjr_age_out_of_range'" class="alert alert-danger my-3" role="alert">
+                Anmeldung nicht möglich: Das Alter liegt außerhalb der Altersgruppe dieser Veranstaltung.
+            </div>
+            <div t-if="registration_error_code == 'kjr_zip_not_allowed'" class="alert alert-danger my-3" role="alert">
+                Anmeldung nicht möglich: Diese Veranstaltung steht nur Teilnehmer:innen aus den vorgesehenen Orten offen (Postleitzahl der Anschrift).
+            </div>
+            <div t-if="registration_error_code == 'kjr_registration_not_started'" class="alert alert-danger my-3" role="alert">
+                Anmeldung nicht möglich: Die Anmeldung ist noch nicht freigeschaltet.
             </div>
         </xpath>
     </template>
@@ -744,10 +895,10 @@
              Kopfbereich). Der frühere Selektor band nur an die Klasse modal-title. -->
         <xpath expr="//div[hasclass('modal-header')]/h4[hasclass('modal-title')]"
                position="replace" mode="inner">
-            <t t-if="event.is_kjr">Teilnehmer/innen</t>
+            <t t-if="event.is_kjr">Teilnehmer:innen</t>
             <t t-else="">Teilnehmer</t>
         </xpath>
-        <!-- Zwischenüberschrift je Teilnehmer/in.
+        <!-- Zwischenüberschrift je Teilnehmer:in.
              Anker: exakte t-if-Bedingung des Kern-Blocks + dessen einzige h5.
              mode="inner": das t-attf-class des Kerns (border-bottom nur bei
              vorhandenen Fragen) muss nicht mehr kopiert werden. -->

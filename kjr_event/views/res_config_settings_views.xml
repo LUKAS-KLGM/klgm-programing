@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- 19.0.5.11.0 (Termin 13.10.2026): Einstellungen für Anmeldeformular,
+         Postleitzahlen und Steuer auf Teilnahmegebühren. kjr_event_shop
+         ergänzt den Block "Zahlung" (Anker block name="kjr_event_payment"). -->
+    <record id="res_config_settings_view_form_kjr_event" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.kjr.event</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="55"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="KJR Veranstaltungen" string="KJR Veranstaltungen"
+                     name="kjr_event" groups="base.group_system">
+                    <block title="Anmeldeformular" name="kjr_event_form">
+                        <setting id="kjr_event_terms_url" string="Teilnahmebedingungen"
+                                 help="Link im Pflicht-Haken „Teilnahmebedingungen“ des Anmeldeformulars.">
+                            <field name="kjr_event_terms_url" placeholder="/teilnahmebedingungen"/>
+                        </setting>
+                        <setting id="kjr_event_privacy_url" string="Datenschutzhinweise"
+                                 help="Link im Pflicht-Haken „Datenschutz“. Leer = /datenschutzerklaerung.">
+                            <field name="kjr_event_privacy_url" placeholder="/datenschutzerklaerung"/>
+                        </setting>
+                        <setting id="kjr_event_allowed_zips" string="Zugelassene Postleitzahlen"
+                                 help="Standardliste für Veranstaltungen mit „Nur zugelassene Postleitzahlen“ (z. B. Landkreis Oberallgäu und Kempten). Je Veranstaltung erweiterbar.">
+                            <field name="kjr_event_allowed_zips" placeholder="87435, 87437, ..."/>
+                        </setting>
+                    </block>
+                    <block title="Zahlung" name="kjr_event_payment">
+                        <setting id="kjr_event_fee_tax" string="Steuer auf Teilnahmegebühren"
+                                 help="Gilt für Anmeldungen zu KJR-Veranstaltungen (Shop und Schulungsrechnung). Leer = Steuer des Produkts. Welche Steuer zutrifft, entscheidet die Steuerberatung.">
+                            <field name="kjr_event_fee_tax_id" options="{'no_create': True}"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

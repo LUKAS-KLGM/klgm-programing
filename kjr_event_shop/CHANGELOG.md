@@ -1,5 +1,12 @@
 # Changelog — KJR Brücke: Veranstaltungen ↔ Shop (`kjr_event_shop`)
 
+## 19.0.2.2.0 (2026-10-22)
+
+Zahlungsablauf Termin 13.10.2026: Rechnungskontakt mit Anschrift auf den
+Warenkorb, Rechnung beim Bestätigen des Auftrags, genau eine Zahlungserinnerung
+und Platzfreigabe mit Nachrücken der Warteliste (Cron inaktiv, Fristen 0 = aus),
+Steuer auf Teilnahmegebühren aus den Einstellungen.
+
 ## 19.0.2.1.0 (2026-10-12)
 
 Einwilligungs-Sperre aus `kjr_event` 19.0.5.9.0 für Anmeldungen, die über den

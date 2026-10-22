@@ -20,7 +20,7 @@ class ResConfigSettings(models.TransientModel):
         domain=[('active', '=', True)],
         config_parameter='kjr_event_sign.default_template_id',
         help='Leer = mitgelieferte Vorlage "Einwilligung Erziehungsberechtigte '
-             '(vorausgefüllt)": Name des Kindes, Veranstaltung und Name der/des '
+             '(vorausgefüllt)": Name der Teilnehmer:in, Veranstaltung und Name der '
              'Erziehungsberechtigten kommen schreibgeschützt aus der Anmeldung. '
              'Die alte Vorlage "… (alt, ohne Vorbefüllung)" nicht mehr wählen. '
              'An der Veranstaltung kann eine eigene Vorlage gewählt werden.')

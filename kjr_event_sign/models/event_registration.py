@@ -17,8 +17,8 @@ Datensparsamkeit: Referenz und Betreff der Anfrage tragen die Veranstaltung und
 die Anmeldenummer, NIE den Namen des Kindes (unterschriebene Anfragen und
 sign.log lassen sich nicht löschen). Ins Protokoll kommen nur IDs.
 
-Vorbefüllung (19.0.1.1.0, Vorlage v2): Name des Kindes, Veranstaltung mit
-Zeitraum und Name der/des Erziehungsberechtigten stehen schreibgeschützt im
+Vorbefüllung (19.0.1.1.0, Vorlage v2): Name der Teilnehmer:in, Veranstaltung mit
+Zeitraum und Name der Erziehungsberechtigten stehen schreibgeschützt im
 Dokument. Odoo Sign füllt sie beim Anlegen der Anfrage selbst
 (``sign.request._populate_constant_items``) über die Feldtypen aus
 ``data/sign_item_type_data.xml``; Quelle ist ``reference_doc`` (diese
@@ -26,7 +26,7 @@ Anmeldung). Diese Datei liefert dafür ``kjr_sign_event_label`` und prüft vor
 dem Anlegen, dass die Vorbefüllung vollständig wäre
 (``_kjr_sign_check_prefill``: Name der Eltern vorhanden und nicht der Name
 des Kindes). Werte bekommt nur die eigene Anfrage der Anmeldung
-(``models/sign_request_item.py``). Der Name des Kindes steht damit im Dokument,
+(``models/sign_request_item.py``). Der Name der Teilnehmer:in steht damit im Dokument,
 weiterhin aber NICHT in Referenz, Betreff oder Begleittext der Mail.
 """
 import logging
@@ -60,12 +60,12 @@ SIGN_STATES_NEED_FORCE = ('refused', 'expired', 'canceled')
 # (_kjr_consent_recipient_email: guardian_email, email, partner_id.email).
 RECIPIENT_FIELDS = ('guardian_email', 'email', 'partner_id')
 # Felder der Anmeldung, die die Vorlage v2 schreibgeschützt in die Anfrage
-# übernimmt (Name des Kindes, Name der/des Erziehungsberechtigten). Ändern sie
+# übernimmt (Name der Teilnehmer:in, Name der Erziehungsberechtigten). Ändern sie
 # sich bei offener Anfrage, stimmt das Dokument nicht mehr
 # (_kjr_sign_check_prefilled). Die Veranstaltung (Name, Termine) prüft
 # event.event.write.
 PREFILL_FIELDS = ('name', 'guardian_name')
-# auto_field des Feldtyps "Name der/des Erziehungsberechtigten"
+# auto_field des Feldtyps "Name der Erziehungsberechtigten"
 # (data/sign_item_type_data.xml). Enthält eine Vorlage ein schreibgeschütztes
 # Feld dieses Typs, ist guardian_name Pflicht für die Anfrage.
 GUARDIAN_AUTO_FIELD = 'guardian_name'
@@ -254,7 +254,7 @@ class EventRegistration(models.Model):
                 })
                 rec._kjr_consent_activity(
                     _('Unterschriftsanfrage konnte nicht versendet werden'),
-                    _('Bitte Absender, Vorlage, E-Mail-Adresse und Name der/des '
+                    _('Bitte Absender, Vorlage, E-Mail-Adresse und Name der '
                       'Erziehungsberechtigten prüfen und erneut senden.'))
 
     def _kjr_sign_mode_active(self):
@@ -411,13 +411,13 @@ class EventRegistration(models.Model):
         period = self._kjr_sign_event_period() or _('Termin folgt')
         if prefilled:
             hint = _('Bitte prüfen Sie die aus der Anmeldung übernommenen Angaben (Name '
-                     'Ihres Kindes, Veranstaltung und Ihr Name), bestätigen Sie die '
+                     'der Teilnehmer:in, Veranstaltung und Ihr Name), bestätigen Sie die '
                      'Einwilligung und unterschreiben Sie. Stimmen die Angaben nicht, '
                      'kennen Sie diese Anmeldung nicht oder sind Sie nicht '
                      'erziehungsberechtigt, unterschreiben Sie bitte nicht und melden Sie '
                      'sich bei uns.')
         else:
-            hint = _('Bitte tragen Sie im Formular den Namen Ihres Kindes ein. Kennen Sie '
+            hint = _('Bitte tragen Sie im Formular den Namen der Teilnehmer:in ein. Kennen Sie '
                      'diese Anmeldung nicht oder sind Sie nicht erziehungsberechtigt, '
                      'unterschreiben Sie bitte nicht und melden Sie sich bei uns.')
         return Markup('<p>%s</p><p>%s</p><p>%s</p>') % (
@@ -431,15 +431,15 @@ class EventRegistration(models.Model):
         )
 
     def _kjr_sign_check_prefill(self, template):
-        """Wirft UserError, wenn die Vorlage den Namen der/des
+        """Wirft UserError, wenn die Vorlage den Namen der
         Erziehungsberechtigten schreibgeschützt aus der Anmeldung übernimmt und
         er an der Anmeldung fehlt oder dem Namen des Kindes entspricht.
 
         Ein schreibgeschütztes Feld können die Eltern nicht selbst füllen; das
         unterschriebene Dokument trüge sonst keinen Namen der unterschreibenden
-        Person. Ebenso, wenn dort der Name des Kindes steht (Vergleich ohne
+        Person. Ebenso, wenn dort der Name der Teilnehmer:in steht (Vergleich ohne
         Groß-/Kleinschreibung und Mehrfach-Leerraum): sonst stünde der
-        Kindername schreibgeschützt als Name der/des Erziehungsberechtigten im
+        Kindername schreibgeschützt als Name der Erziehungsberechtigten im
         Dokument. Die Website-Vorprüfung (kjr_event) prüft beides im Verfahren
         'sign'; hier geht es um Anmeldungen aus dem Backend, ältere
         Anmeldungen und "Erneut senden". Der Fehler landet wie jeder andere in
@@ -456,7 +456,7 @@ class EventRegistration(models.Model):
         guardian = _norm_name(reg.guardian_name)
         if not guardian:
             raise UserError(_(
-                'Für die Unterschriftsanfrage fehlt der Name der/des '
+                'Für die Unterschriftsanfrage fehlt der Name der '
                 'Erziehungsberechtigten an der Anmeldung. Bitte ergänzen und erneut '
                 'senden.'))
         if guardian == _norm_name(reg.name):
@@ -466,8 +466,8 @@ class EventRegistration(models.Model):
             # Betrifft vor allem ältere Anmeldungen (vor der Website-Prüfung
             # kjr_guardian_name_is_child) und das Backend.
             raise UserError(_(
-                'An der Anmeldung steht als Name der/des Erziehungsberechtigten der '
-                'Name des Kindes. Bitte den Namen der erziehungsberechtigten Person '
+                'An der Anmeldung steht als Name der Erziehungsberechtigten der '
+                'Name der Teilnehmer:in. Bitte den Namen der erziehungsberechtigten Person '
                 'eintragen und erneut senden.'))
 
     def _kjr_sign_guardian_partner(self):
@@ -478,7 +478,7 @@ class EventRegistration(models.Model):
         des KINDES. Wurde er wiederverwendet, stand im Sign-Feld "Name" der
         Kindername und die Sign-Mail sprach das Kind an.
 
-        Mit Namen der/des Erziehungsberechtigten (``guardian_name``):
+        Mit Namen der Erziehungsberechtigten (``guardian_name``):
         1. der Kontakt der Anmeldung, wenn E-Mail UND Name passen,
         2. sonst ein Kontakt mit derselben normalisierten E-Mail UND demselben
            Namen (Vergleich ohne Groß-/Kleinschreibung und Mehrfach-Leerraum),
@@ -488,7 +488,7 @@ class EventRegistration(models.Model):
         Kontakt mit der E-Mail-Adresse als Name.
         In beiden Fällen NIE ein Kontakt, dessen Name dem Namen des Kindes
         (``name`` der Anmeldung) entspricht. Steht in ``guardian_name`` der
-        Name des Kindes, gilt der Name als fehlend.
+        Name der Teilnehmer:in, gilt der Name als fehlend.
 
         Bei mehreren Treffern haben Kontakte mit Benutzerkonto Vorrang (nur
         dann erscheint die Anfrage im Portal unter "Signaturanfragen"), danach
@@ -507,7 +507,7 @@ class EventRegistration(models.Model):
         guardian = _norm_name(guardian_name)
         child = _norm_name(reg.name)
         if guardian and guardian == child:
-            # Name des Kindes im Feld der Erziehungsberechtigten (gemeldeter
+            # Name der Teilnehmer:in im Feld der Erziehungsberechtigten (gemeldeter
             # Fall): wie ein fehlender Name behandeln. Sonst würde der
             # Kind-Kontakt wiederverwendet oder ein neuer Kontakt mit dem
             # Kindernamen angelegt. Vorlagen mit vorbefülltem Namen weist
@@ -682,7 +682,7 @@ class EventRegistration(models.Model):
         weiter an die alte, womöglich fremde Adresse. Wirft nie.
 
         Automatisch neu versendet wird nur mit sudo oder für
-        Veranstaltungs-Benutzer/innen (gleiche Grenze wie die Schaltflächen,
+        Veranstaltungs-Benutzer:innen (gleiche Grenze wie die Schaltflächen,
         ``_kjr_sign_check_button_access``). Die Anmelde-E-Mail darf auch die
         Registrierungstheke ändern; ein Neuversand von dort schickte den
         Signierlink an eine selbst gewählte Adresse und höbe nach der
@@ -710,7 +710,7 @@ class EventRegistration(models.Model):
               'die Anfrage erneut senden.'))
 
     def _kjr_sign_check_prefilled(self):
-        """Angaben der Anmeldung geändert (Name des Kindes, Name der/des
+        """Angaben der Anmeldung geändert (Name der Teilnehmer:in, Name der
         Erziehungsberechtigten, über event.event.write auch Name oder Termine
         der Veranstaltung): Weicht ein schreibgeschützt übernommener Wert der
         offenen Anfrage (Vorlage v2) vom aktuellen Stand ab, wird die Anfrage
@@ -737,11 +737,11 @@ class EventRegistration(models.Model):
             return
         changed._kjr_sign_cancel_and_restart(
             'data',
-            _('Angaben der Anmeldung (Name des Kindes, Name der/des '
+            _('Angaben der Anmeldung (Name der Teilnehmer:in, Name der '
               'Erziehungsberechtigten oder Veranstaltung) wurden geändert, die offene '
               'Unterschriftsanfrage mit den alten Angaben konnte aber nicht storniert '
               'werden. Bitte die Anfrage stornieren und erneut senden.'),
-            _('Angaben der Anmeldung (Name des Kindes, Name der/des '
+            _('Angaben der Anmeldung (Name der Teilnehmer:in, Name der '
               'Erziehungsberechtigten oder Veranstaltung) wurden geändert, die offene '
               'Unterschriftsanfrage mit den alten Angaben ist storniert. Bitte prüfen '
               'und die Anfrage erneut senden.'))
@@ -773,7 +773,7 @@ class EventRegistration(models.Model):
         """Storniert die offenen Anfragen mit ``reason`` und versendet neu.
 
         Automatisch neu versendet wird nur mit sudo oder für
-        Veranstaltungs-Benutzer/innen (gleiche Grenze wie die Schaltflächen,
+        Veranstaltungs-Benutzer:innen (gleiche Grenze wie die Schaltflächen,
         siehe ``_kjr_sign_check_recipient``) und nur, solange die Anmeldung
         gesperrt ist und die Einwilligung fehlt. Sonst die Aktivität
         "Unterschriftsanfrage neu senden" mit ``note_canceled``. Scheitert das
@@ -817,7 +817,7 @@ class EventRegistration(models.Model):
         """
         if not (self.env.su or self.env.user.has_group('event.group_event_user')):
             raise AccessError(_(
-                'Nur Veranstaltungs-Benutzer/innen dürfen Unterschriftsanfragen '
+                'Nur Veranstaltungs-Benutzer:innen dürfen Unterschriftsanfragen '
                 'anfordern, neu senden oder stornieren.'))
         self.check_access(operation)
 

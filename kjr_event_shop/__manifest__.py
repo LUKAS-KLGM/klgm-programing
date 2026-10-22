@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Brücke: Veranstaltungen ↔ Shop',
-    'version': '19.0.2.1.0',
+    'version': '19.0.2.2.0',
     'category': 'Custom/KJR',
     'summary': 'Bestellbestätigung im Shop: Kursname statt Ticketname, '
                '"Referenz" statt "Mitteilungen", vollständige Bankverbindung, Kursbild; '
                'Angebots-PDF als Reservierungs-/Anmeldebestätigung; '
-               'Einwilligungs-Sperre bei Anmeldungen mit Verkaufsauftrag.',
+               'Einwilligungs-Sperre bei Anmeldungen mit Verkaufsauftrag; '
+               'Rechnungskontakt mit Anschrift, Rechnung beim Bestätigen, eine '
+               'Zahlungserinnerung mit Platzfreigabe, Steuer auf Teilnahmegebühren.',
     'author': 'KLGM UG (haftungsbeschränkt)',
     'website': 'https://www.klgm-consulting.de',
     'license': 'OPL-1',
@@ -18,6 +20,8 @@
         'views/website_sale_templates.xml',
         'views/payment_templates.xml',
         'report/sale_report_templates.xml',
+        'data/kjr_event_shop_data.xml',
+        'views/res_config_settings_views.xml',
     ],
     'post_init_hook': 'post_init_hook',
     'images': ['static/description/icon.png'],

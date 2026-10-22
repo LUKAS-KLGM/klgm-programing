@@ -70,7 +70,7 @@
     </record>
 
     <!-- Menüpunkt im bestehenden Veranstaltungs-Ast, direkt neben den
-         KJR-Teilnehmer/innen (siehe views/event_views.xml). -->
+         KJR-Teilnehmer:innen (siehe views/event_views.xml). -->
     <menuitem id="menu_kjr_event_statistics"
               name="KJR-Statistik"
               parent="event.menu_event_event"

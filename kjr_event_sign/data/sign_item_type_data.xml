@@ -17,7 +17,7 @@
            direkt verknüpft, NICHT über ein ungeschütztes Hilfsfeld, das jede
            Person mit Leserecht an der Anmeldung (Registrierungstheke,
            Portal-Kooperationspartner) per RPC lesen könnte.
-         * Der Feldschutz allein reicht dafür aber nicht: Sign-Benutzer/innen
+         * Der Feldschutz allein reicht dafür aber nicht: Sign-Benutzer:innen
            dürfen Anfragen anlegen und könnten eine Anfrage mit
            reference_doc = event.registration,<id> und sich selbst als
            Unterzeichner/in anlegen; die Signierseite liefert auto_value für
@@ -28,8 +28,8 @@
            Brücke mit sudo setzbar) bzw. die gerade
            von der Brücke angelegte bekommt Werte.
          * Restrisiko: Wer die Anfrage einer Anmeldung in Odoo Sign öffnen
-           darf (Sign-Benutzer/innen mit Zugriff auf die Anfrage), sieht die
-           dort gespeicherten Werte, also auch den Namen der/des
+           darf (Sign-Benutzer:innen mit Zugriff auf die Anfrage), sieht die
+           dort gespeicherten Werte, also auch den Namen der
            Erziehungsberechtigten. Sign-Rechte deshalb nur an Personen der
            Betreuungsgruppe (kjr_event.group_kjr_event_care) vergeben.
          * _check_auto_field_exists prüft beim Installieren auf einem LEEREN
@@ -41,11 +41,11 @@
     <data noupdate="0">
 
         <record id="sign_item_type_kjr_child_name" model="sign.item.type">
-            <field name="name">Name des Kindes (aus der Anmeldung)</field>
+            <field name="name">Name der Teilnehmer:in (aus der Anmeldung)</field>
             <field name="item_type">text</field>
             <field name="field_size">long_text</field>
             <field name="tip">Aus der Anmeldung übernommen</field>
-            <field name="placeholder">Name des Kindes / Teilnehmer/in</field>
+            <field name="placeholder">Name Teilnehmer:in</field>
             <field name="model_id" ref="event.model_event_registration"/>
             <field name="auto_field">name</field>
             <field name="icon">fa-child</field>
@@ -63,11 +63,11 @@
         </record>
 
         <record id="sign_item_type_kjr_guardian_name" model="sign.item.type">
-            <field name="name">Name der/des Erziehungsberechtigten (aus der Anmeldung)</field>
+            <field name="name">Name der Erziehungsberechtigten (aus der Anmeldung)</field>
             <field name="item_type">text</field>
             <field name="field_size">long_text</field>
             <field name="tip">Aus der Anmeldung übernommen</field>
-            <field name="placeholder">Name der/des Erziehungsberechtigten</field>
+            <field name="placeholder">Name der Erziehungsberechtigten</field>
             <field name="model_id" ref="event.model_event_registration"/>
             <field name="auto_field">guardian_name</field>
             <field name="icon">fa-user</field>

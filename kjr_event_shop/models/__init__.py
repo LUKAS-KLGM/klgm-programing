@@ -5,3 +5,5 @@ from . import res_partner_bank
 from . import sale_order
 from . import sale_order_line
 from . import payment_provider
+from . import event_payment
+from . import res_config_settings

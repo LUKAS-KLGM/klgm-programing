@@ -112,7 +112,7 @@ class TestKjrWebsiteRegistrationValues(TransactionCase):
             'Unbekannte Auswahlwerte fallen heraus, der Rest der Zeile bleibt.')
 
     def test_several_attendees_keep_their_own_values(self):
-        """Je Teilnehmer/in bleibt der eigene Wert am eigenen Zähler."""
+        """Je Teilnehmer:in bleibt der eigene Wert am eigenen Zähler."""
         values = self._extract(self._public_env(), {
             '1-name': 'Kind eins',
             '1-dietary_requirements': 'vegan',
@@ -301,12 +301,12 @@ class TestKjrWebsiteConsentPrecheck(TransactionCase):
         self.assertIn("registration_error_code == 'kjr_guardian_name_is_child'", arch)
         # Die Meldung nennt beide Felder (nicht feststellbar, welches falsch ist).
         self.assertIn('Bitte prüfen Sie beide Angaben', arch)
-        self.assertIn('Name des Kindes / Teilnehmer/in', arch)
+        self.assertIn('Name Teilnehmer:in', arch)
         self.assertNotIn('nicht den Namen des Kindes', arch)
 
     def test_name_question_label_names_the_child(self):
-        """19.0.5.10.0: Das Kernfeld "Name" heißt je Teilnehmer/in "Name des
-        Kindes / Teilnehmer/in"; der Fragetitel in der Datenbank bleibt, und
+        """19.0.5.10.0: Das Kernfeld "Name" heißt je Teilnehmer:in "Name des
+        Kindes / Teilnehmer:in"; der Fragetitel in der Datenbank bleibt, und
         Fragen je Bestellung (Index 0) sowie andere Fragetypen behalten ihn."""
         name_question = self.env['event.question'].create({
             'title': 'Name', 'question_type': 'name'})
@@ -323,7 +323,7 @@ class TestKjrWebsiteConsentPrecheck(TransactionCase):
                 'website_event.registration_event_question',
                 dict(base, question=question, registration_index=index)))
 
-        self.assertIn('Name des Kindes / Teilnehmer/in', render(name_question, 1))
+        self.assertIn('Name Teilnehmer:in', render(name_question, 1))
         self.assertNotIn('Name des Kindes', render(name_question, 0))
         self.assertNotIn('Name des Kindes', render(email_question, 1))
         self.assertIn('E-Mail', render(email_question, 1))

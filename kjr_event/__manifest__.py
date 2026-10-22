@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Ferienprogramm & Schulungen',
-    'version': '19.0.5.10.0',
+    'version': '19.0.5.11.0',
     'category': 'Custom/KJR',
-    'summary': 'Erweiterung der Odoo-Veranstaltungen für KJR-Ferienprogramm und Schulungen '
-               '(Juleica, Rettungsschwimmer): Altersgruppen, Einwilligung Minderjähriger, '
+    'summary': 'Erweiterung der Odoo-Veranstaltungen für KJR-Ferienprogramm und Aus- und '
+               'Weiterbildungen: Altersgruppen mit Alterskulanz, Postleitzahlen, Anmeldung ab, '
+               'Anmeldeformular Teilnehmer:in/Erziehungsberechtigte, Einwilligung Minderjähriger, '
                'Notfallkontakt, Teilnahmebescheinigung, Website-Dokumente-Block, '
-               'Treffpunkt/Wichtig/Webseite, Mindestanzahl Teilnehmer, '
+               'Treffpunkt/Wichtig/Webseite, Mindestanzahl Teilnehmer:innen, '
                'Einwilligungs-Sperre bis zur Einwilligung der Erziehungsberechtigten',
     'author': 'KLGM UG (haftungsbeschränkt)',
     'website': 'https://www.klgm-consulting.de',
@@ -28,7 +29,9 @@
         'data/mail_templates.xml',
         'data/ir_config_parameter_data.xml',
         'data/ir_cron_data.xml',
+        'data/event_question_data.xml',
         'views/event_views.xml',
+        'views/res_config_settings_views.xml',
         'views/kjr_event_statistics_views.xml',
         'views/website_event_templates.xml',
         'views/portal_templates.xml',

@@ -94,7 +94,7 @@
                 <div t-if="line.event_id.address_inline" class="text-muted" t-out="line.event_id.address_inline"/>
                 <t t-set="kjr_attendees" t-value="line._kjr_attendee_names()"/>
                 <div t-if="kjr_attendees" class="mt-1">
-                    <t t-if="len(kjr_attendees) == 1">Teilnehmer/in: </t>
+                    <t t-if="len(kjr_attendees) == 1">Teilnehmer:in: </t>
                     <t t-else="">Teilnehmende: </t>
                     <t t-out="', '.join(kjr_attendees)"/>
                 </div>

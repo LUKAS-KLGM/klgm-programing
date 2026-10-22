@@ -62,7 +62,8 @@ class TestKjrEventAutoInvoice(TransactionCase):
             'is_kjr': True,
             'date_begin': '2026-11-02 09:00:00',
             'date_end': '2026-11-04 17:00:00',
-            'kjr_event_type': 'juleica_course',
+            'kjr_event_type': 'training',
+            'is_juleica_course': True,
             'payment_required': payment_required,
             'kjr_auto_invoice': auto_invoice,
         }

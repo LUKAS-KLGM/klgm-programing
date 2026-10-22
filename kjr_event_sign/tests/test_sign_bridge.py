@@ -68,7 +68,7 @@ class TestKjrEventSignBridge(TransactionCase):
     def _held_registration(self, **kw):
         """Gesperrte Anmeldung eines minderjährigen Kindes (wie Website).
 
-        Mit Namen der/des Erziehungsberechtigten: die Website verlangt ihn im
+        Mit Namen der Erziehungsberechtigten: die Website verlangt ihn im
         Verfahren 'sign' (kjr_event 19.0.5.10.0), die Vorlage v2 übernimmt ihn.
         ``guardian_name=False`` bildet ältere bzw. Backend-Anmeldungen ab.
         """
@@ -190,7 +190,7 @@ class TestKjrEventSignBridge(TransactionCase):
         self.assertNotIn(category, existing.category_id)
 
     def test_partner_same_email_other_name_gets_new_contact(self):
-        """Gleiche E-Mail, anderer Name: neuer Kontakt mit dem Namen der/des
+        """Gleiche E-Mail, anderer Name: neuer Kontakt mit dem Namen der
         Erziehungsberechtigten; der bestehende bleibt unverändert."""
         existing = self.env['res.partner'].create({
             'name': 'Bestehender Kontakt', 'email': 'Eltern.Test@Example.com'})
@@ -720,8 +720,8 @@ class TestKjrEventSignBridge(TransactionCase):
         self.assertFalse(any(constant.mapped('required')))
 
     def test_v2_prefills_child_event_and_guardian(self):
-        """Nach dem Anlegen der Anfrage stehen Name des Kindes, Veranstaltung
-        mit Zeitraum und Name der/des Erziehungsberechtigten in den
+        """Nach dem Anlegen der Anfrage stehen Name der Teilnehmer:in, Veranstaltung
+        mit Zeitraum und Name der Erziehungsberechtigten in den
         schreibgeschützten Feldern, auch wenn der Absender die Gruppe für die
         geschützten Eltern-Daten nicht hat (Odoo Sign liest mit sudo)."""
         self.assertFalse(self.sender.has_group('kjr_event.group_kjr_event_care'))
@@ -789,14 +789,14 @@ class TestKjrEventSignBridge(TransactionCase):
 
     def test_message_without_child_name(self):
         """Begleittext: v2 bittet um Prüfung der übernommenen Angaben, v1 wie
-        bisher um das Eintragen; der Name des Kindes steht in keinem."""
+        bisher um das Eintragen; der Name der Teilnehmer:in steht in keinem."""
         reg, req = self._started()
         self.assertIn('übernommenen Angaben', req.message)
         self.assertNotIn('Mustername', req.message)
         self.event.kjr_consent_sign_template_id = self.template_v1
         reg_v1, req_v1 = self._started(email='v1.eltern@example.com')
         self.assertEqual(req_v1.template_id, self.template_v1)
-        self.assertIn('Namen Ihres Kindes', req_v1.message)
+        self.assertIn('Namen der Teilnehmer:in', req_v1.message)
         self.assertNotIn('Mustername', req_v1.message)
         self.assertFalse(self._item_values(req_v1))
 
@@ -859,10 +859,10 @@ class TestKjrEventSignBridge(TransactionCase):
         self.assertFalse(Event._kjr_sign_rename_template_v1())
         self.assertEqual(self.template_v1.name, 'Einwilligung Ferienlager (eigene)')
 
-    # ── Name des Kindes im Feld der Eltern (gemeldeter Fall) ────────────────
+    # ── Name der Teilnehmer:in im Feld der Eltern (gemeldeter Fall) ────────────────
 
     def test_v2_guardian_name_is_child_sets_error(self):
-        """Steht im Feld der Eltern der Name des Kindes (andere Schreibweise,
+        """Steht im Feld der Eltern der Name der Teilnehmer:in (andere Schreibweise,
         Mehrfach-Leerraum egal), geht mit v2 keine Anfrage hinaus: sonst
         stünde der Kindername schreibgeschützt als unterschreibende Person im
         Dokument. Fehlermerker und Aktivität wie bei fehlendem Namen; nach der
@@ -892,7 +892,7 @@ class TestKjrEventSignBridge(TransactionCase):
         self.assertEqual(self._item_values(req).get(guardian_item), GUARDIAN)
 
     def test_partner_guardian_name_is_child_treated_as_missing(self):
-        """Ohne Vorbefüllung (v1): Name des Kindes im Feld der Eltern gilt als
+        """Ohne Vorbefüllung (v1): Name der Teilnehmer:in im Feld der Eltern gilt als
         fehlender Name. Weder der Kind-Kontakt noch ein neuer Kontakt mit dem
         Kindernamen wird Unterzeichner, sondern ein Kontakt mit der Adresse
         als Name."""
@@ -920,7 +920,7 @@ class TestKjrEventSignBridge(TransactionCase):
         """Eine fremde Anfrage mit reference_doc = Anmeldung (z. B. von einer
         Sign-Benutzerin ohne Betreuungsgruppe angelegt) bekommt weder beim
         Anlegen noch auf der Signierseite Werte aus der Anmeldung, auch nicht
-        den Namen der/des Erziehungsberechtigten. Die eigene Anfrage der
+        den Namen der Erziehungsberechtigten. Die eigene Anfrage der
         Anmeldung bekommt sie weiter."""
         reg, req = self._started()
         guardian_type = self.env.ref('kjr_event_sign.sign_item_type_kjr_guardian_name')
@@ -994,7 +994,7 @@ class TestKjrEventSignBridge(TransactionCase):
     # ── Geänderte Angaben bei offener Anfrage (Vorlage v2) ──────────────────
 
     def test_v2_guardian_name_change_resends(self):
-        """Name der/des Erziehungsberechtigten berichtigt: die offene Anfrage
+        """Name der Erziehungsberechtigten berichtigt: die offene Anfrage
         mit dem alten, schreibgeschützten Namen wird storniert und mit dem
         neuen Namen neu versendet."""
         reg, req = self._started()
@@ -1008,7 +1008,7 @@ class TestKjrEventSignBridge(TransactionCase):
         self.assertEqual(len(self._notes(reg, 'Angaben der Anmeldung geändert')), 1)
 
     def test_v2_child_name_change_resends(self):
-        """Name des Kindes berichtigt: ebenso Storno und Neuversand."""
+        """Name der Teilnehmer:in berichtigt: ebenso Storno und Neuversand."""
         reg, req = self._started()
         reg.write({'name': 'Kind Berichtigt'})
         self.assertEqual(req.state, 'canceled')

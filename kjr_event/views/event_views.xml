@@ -7,17 +7,38 @@
         <field name="model">event.event</field>
         <field name="inherit_id" ref="event.view_event_form"/>
         <field name="arch" type="xml">
+            <!-- Termin 13.10.2026 / Theresa 14.10. (Aufgabe 110): Zeitzone,
+                 Sprache und "Vorlage" (Veranstaltungsvorlage) ausblenden. Die
+                 Felder bleiben im Formular (Zeitzone ist Pflicht und wird aus
+                 dem Benutzer vorbelegt), sie sind nur nicht mehr sichtbar. -->
+            <field name="date_tz" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <field name="lang" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <field name="event_type_id" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <!-- Reiter eindeutig benennen: der Kernreiter enthält die interne
+                 Notiz (und Ticketanweisungen/Badge), der KJR-Reiter
+                 "Dokumente" die Downloads auf der Veranstaltungsseite. -->
+            <page name="event_notes" position="attributes">
+                <attribute name="string">Interne Notizen und Ticket-Hinweise</attribute>
+            </page>
             <notebook position="inside">
                 <page string="KJR" name="kjr">
                     <group>
                         <group string="KJR-Einordnung">
                             <field name="is_kjr"/>
                             <field name="kjr_event_type" invisible="not is_kjr"/>
-                            <field name="is_juleica_course" invisible="1"/>
+                            <field name="is_juleica_course"
+                                   invisible="not is_kjr or kjr_event_type != 'training'"/>
                         </group>
                         <group string="Teilnahme" invisible="not is_kjr">
                             <field name="kjr_min_age"/>
                             <field name="kjr_max_age"/>
+                            <field name="kjr_age_tolerance_days"/>
                             <!-- SCHNITTSTELLE: requires_parental_consent bleibt im
                                  Formular (Anker fuer kjr_event_sign). -->
                             <field name="requires_parental_consent"/>
@@ -34,7 +55,7 @@
                     </div>
                     <div class="alert alert-warning" role="alert"
                          invisible="not is_kjr or kjr_seats_min_reached">
-                        Mindestanzahl Teilnehmer/innen noch nicht erreicht (siehe Anzahl
+                        Mindestanzahl Teilnehmer:innen noch nicht erreicht (siehe Anzahl
                         angemeldeter Plätze oben). Durchführung der Veranstaltung ggf. prüfen.
                     </div>
                     <group string="Warteliste" invisible="not is_kjr">
@@ -79,6 +100,14 @@
                             <field name="kjr_enforce_age_range"/>
                         </group>
                     </group>
+                    <group invisible="not is_kjr">
+                        <group string="Online-Anmeldung">
+                            <field name="kjr_registration_start"/>
+                            <field name="kjr_zip_restricted"/>
+                            <field name="kjr_zip_extra" invisible="not kjr_zip_restricted"
+                                   placeholder="z. B. 88161, 88167"/>
+                        </group>
+                    </group>
                     <group string="Kooperationspartner (Portal-Zugriff)" invisible="not is_kjr">
                         <field name="cooperation_partner_id"/>
                         <field name="cooperation_user_ids" widget="many2many_tags"/>
@@ -101,7 +130,7 @@
                 </page>
 
                 <!-- E11: Dokumente (Website) -->
-                <page string="Dokumente" name="kjr_documents">
+                <page string="Downloads auf der Veranstaltungsseite" name="kjr_documents">
                     <div class="alert alert-info" role="alert">
                         Dateien (z. B. PDF-Merkblätter, Hinweise), die auf der Website als
                         optionaler Sidebar-Block angezeigt werden können. Der Block muss pro
@@ -177,14 +206,14 @@
             </xpath>
             <sheet position="inside">
                 <div class="alert alert-warning" role="alert" invisible="not consent_missing">
-                    Einwilligung der Erziehungsberechtigten fehlt (minderjährige/r Teilnehmer/in).
+                    Einwilligung der Erziehungsberechtigten fehlt (minderjährige Teilnehmer:in).
                 </div>
                 <div class="alert alert-warning" role="alert" invisible="not kjr_consent_hold">
                     Diese Anmeldung ist gesperrt, bis die Einwilligung der Erziehungsberechtigten
                     vorliegt. Sie belegt noch keinen Platz und kann erst danach bestätigt werden.
                 </div>
                 <div class="alert alert-warning" role="alert" invisible="not age_out_of_range">
-                    Teilnehmer/in liegt außerhalb der vorgesehenen Altersgruppe der Veranstaltung.
+                    Teilnehmer:in liegt außerhalb der vorgesehenen Altersgruppe der Veranstaltung.
                 </div>
                 <div class="alert alert-info" role="alert" invisible="not kjr_is_waitlist">
                     Diese Anmeldung steht auf der Warteliste und belegt noch keinen Platz.
@@ -200,12 +229,31 @@
                         <field name="kjr_waitlist_position" invisible="not kjr_is_waitlist"/>
                     </group>
                 </group>
-                <group string="KJR: Teilnehmer/in &amp; Einwilligung">
+                <group string="KJR: Teilnehmer:in">
                     <group>
                         <field name="birthdate"/>
                         <field name="kjr_age"/>
                         <field name="is_minor"/>
                         <field name="kjr_gender"/>
+                        <field name="kjr_medical_note"/>
+                    </group>
+                    <group>
+                        <field name="kjr_street"/>
+                        <field name="kjr_zip"/>
+                        <field name="kjr_city"/>
+                        <field name="emergency_contact"/>
+                        <field name="kjr_emergency_phone"/>
+                    </group>
+                </group>
+                <group string="KJR: Erziehungsberechtigte &amp; Einwilligung">
+                    <group>
+                        <field name="guardian_name" invisible="not is_minor"/>
+                        <field name="guardian_email" invisible="not is_minor" widget="email"/>
+                        <field name="guardian_phone" invisible="not is_minor"/>
+                        <field name="guardian_same_address" invisible="not is_minor"/>
+                        <field name="guardian_street" invisible="not is_minor or guardian_same_address"/>
+                        <field name="guardian_zip" invisible="not is_minor or guardian_same_address"/>
+                        <field name="guardian_city" invisible="not is_minor or guardian_same_address"/>
                     </group>
                     <group>
                         <!-- SCHNITTSTELLE: parental_consent bleibt im Formular
@@ -213,20 +261,22 @@
                         <field name="parental_consent"/>
                         <field name="kjr_consent_hold"/>
                         <field name="kjr_consent_source" readonly="1"/>
-                        <field name="guardian_name" invisible="not is_minor"/>
-                        <field name="guardian_phone" invisible="not is_minor"/>
-                        <field name="guardian_email" invisible="not is_minor" widget="email"/>
-                        <field name="emergency_contact"/>
+                        <field name="kjr_privacy_accepted"/>
+                        <field name="kjr_terms_accepted"/>
+                        <field name="kjr_data_confirmed"/>
+                        <field name="kjr_invoice_partner_id"/>
                     </group>
                 </group>
-                <group string="KJR: Ernährung &amp; Bemerkungen">
-                    <group>
-                        <field name="dietary_requirements"/>
-                        <field name="dietary_note"
-                               invisible="dietary_requirements not in ('allergy','other')"/>
-                    </group>
+                <group string="KJR: Bemerkungen">
                     <group>
                         <field name="notes"/>
+                    </group>
+                    <group>
+                        <!-- Altbestand: "Ernährung" ist seit 19.0.5.11.0 nicht
+                             mehr im Anmeldeformular (Termin 13.10.2026), nur
+                             noch sichtbar, wenn ein Wert erfasst ist. -->
+                        <field name="dietary_requirements" invisible="not dietary_requirements"/>
+                        <field name="dietary_note" invisible="not dietary_note"/>
                     </group>
                 </group>
                 <group string="KJR: Zahlung" invisible="not event_payment_required">
@@ -270,7 +320,7 @@
         <field name="name">event.registration.list.kjr</field>
         <field name="model">event.registration</field>
         <field name="arch" type="xml">
-            <list string="KJR-Teilnehmer/innen" decoration-muted="kjr_is_waitlist">
+            <list string="KJR-Teilnehmer:innen" decoration-muted="kjr_is_waitlist">
                 <field name="name"/>
                 <field name="event_id"/>
                 <field name="kjr_is_waitlist" string="Warteliste"/>
@@ -278,7 +328,9 @@
                 <field name="kjr_age" string="Alter"/>
                 <field name="kjr_gender" optional="hide"/>
                 <field name="has_birthdate" column_invisible="1"/>
-                <field name="dietary_requirements"/>
+                <field name="kjr_zip" optional="hide"/>
+                <field name="kjr_invoice_partner_id" optional="hide"/>
+                <field name="dietary_requirements" optional="hide"/>
                 <field name="dietary_note" optional="hide"/>
                 <field name="notes" optional="hide"/>
                 <field name="parental_consent" string="Einwilligung"/>
@@ -297,7 +349,7 @@
         <field name="name">event.registration.search.kjr</field>
         <field name="model">event.registration</field>
         <field name="arch" type="xml">
-            <search string="KJR-Teilnehmer/innen">
+            <search string="KJR-Teilnehmer:innen">
                 <field name="name"/>
                 <field name="event_id"/>
                 <filter string="Einwilligung fehlt" name="consent_missing"
@@ -332,7 +384,7 @@
     </record>
 
     <record id="action_kjr_registration" model="ir.actions.act_window">
-        <field name="name">KJR-Teilnehmer/innen</field>
+        <field name="name">KJR-Teilnehmer:innen</field>
         <field name="res_model">event.registration</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_kjr_registration_search"/>
@@ -348,7 +400,7 @@
     </record>
 
     <menuitem id="menu_kjr_registration"
-              name="KJR-Teilnehmer/innen"
+              name="KJR-Teilnehmer:innen"
               parent="event.menu_event_event"
               action="action_kjr_registration"
               sequence="20"/>
