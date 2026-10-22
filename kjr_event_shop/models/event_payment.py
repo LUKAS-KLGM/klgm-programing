@@ -26,6 +26,7 @@ from datetime import timedelta
 from markupsafe import Markup
 
 from odoo import _, api, fields, models
+from odoo.tools.misc import format_amount, format_date
 
 _logger = logging.getLogger(__name__)
 
@@ -60,6 +61,22 @@ class EventRegistrationPayment(models.Model):
                 with self.env.cr.savepoint():
                     customer = order.partner_id
                     public = order.website_id.user_id.partner_id
+                    current = order.partner_invoice_id
+                    if current != partner and current in rec._kjr_cart_siblings().kjr_invoice_partner_id:
+                        # Prüfbericht 22.10.2026: gemischter Warenkorb mit
+                        # verschiedenen Rechnungskontakten (z. B. eine
+                        # minderjährige und eine volljährige Person). Der
+                        # Auftrag kennt nur EINE Rechnungsadresse: es bleibt
+                        # die der zuerst angemeldeten Person, statt mit jeder
+                        # Anmeldung zu wechseln; die Geschäftsstelle sieht es
+                        # in der Notiz.
+                        order.message_post(body=_(
+                            'Der Warenkorb enthält Anmeldungen mit verschiedenen '
+                            'Rechnungskontakten (%(first)s, %(other)s). Rechnungsadresse '
+                            'des Auftrags bleibt %(first)s; bei Bedarf aufteilen.',
+                            first=current.display_name, other=partner.display_name),
+                            subtype_xmlid='mail.mt_note')
+                        continue
                     if (public and customer == public) or (
                             not customer.user_ids and not customer.street):
                         order.partner_id = partner
@@ -68,6 +85,34 @@ class EventRegistrationPayment(models.Model):
                 _logger.exception('KJR-Anmeldung %s: Rechnungskontakt nicht auf Auftrag %s '
                                   'übertragen.', rec.id, order.id)
         return created
+
+    def _kjr_cart_siblings(self):
+        """Andere Anmeldungen desselben Warenkorbs (Auftrag im Status 'draft')."""
+        self.ensure_one()
+        order = self.sudo().sale_order_id
+        if not order or order.state != 'draft':
+            return self.browse()
+        return self.sudo().search([
+            ('sale_order_id', '=', order.id), ('id', '!=', self.id),
+            ('kjr_invoice_partner_id', '!=', False), ('state', '!=', 'cancel')])
+
+    def _kjr_same_booking_invoice_partner(self, values):
+        """Gleiche Erziehungsberechtigte bzw. Person im SELBEN Warenkorb nur einmal.
+
+        Prüfbericht 22.10.2026: Meldet ein Elternteil Geschwister in einem
+        Warenkorb an, entstand je Anmeldung ein eigener, gleicher Kontakt.
+        Wiederverwendet wird nur ein Kontakt, der für eine andere Anmeldung
+        DIESES Warenkorbs angelegt wurde und exakt passt (Name, E-Mail,
+        Telefon, Anschrift). Die Datenschutzregel bleibt: bestehende Kontakte
+        außerhalb des Warenkorbs werden bei Gästen nie gesucht.
+        """
+        partner = super()._kjr_same_booking_invoice_partner(values)
+        if partner:
+            return partner
+        for candidate in self._kjr_cart_siblings().kjr_invoice_partner_id:
+            if self._kjr_invoice_partner_matches(candidate, values):
+                return candidate
+        return partner
 
     def _kjr_unpaid_order(self):
         """Auftrag dieser Anmeldung, wenn er noch auf Zahlung wartet, sonst leer."""
@@ -351,7 +396,61 @@ class SaleOrderPayment(models.Model):
         ])
         if lines:
             lines._compute_tax_ids()
+            lines.order_id._kjr_sync_transfer_amounts()
         return len(lines)
+
+    def _kjr_stale_transfer_txs(self):
+        """Offene Überweisungen, deren Betrag nicht mehr zum Auftrag passt.
+
+        Nur Überweisung (payment_custom) im Status 'draft' oder 'pending', die
+        genau zu diesem einen Auftrag gehört, bei offenem, unbezahltem Auftrag.
+        Ausgenommen ist eine gewollte Anzahlung (Betrag = geforderte
+        Vorauszahlung).
+        """
+        self.ensure_one()
+        order = self.sudo()
+        if order.state not in ('draft', 'sent') or order._kjr_is_paid():
+            return self.env['payment.transaction']
+        compare = order.currency_id.compare_amounts
+        return order.transaction_ids.filtered(
+            lambda t: t.provider_id.code == 'custom' and t.state in ('draft', 'pending')
+            and t.sale_order_ids == order and t.currency_id == order.currency_id
+            and compare(t.amount, order.amount_total) != 0
+            and not (order.require_payment
+                     and compare(t.amount, order._get_prepayment_required_amount()) == 0))
+
+    def _kjr_sync_transfer_amounts(self):
+        """Offene Überweisung auf den aktuellen Auftragsbetrag bringen.
+
+        Prüfbericht 22.10.2026: Nach dem Wechsel der Steuer auf Teilnahmegebühren
+        (19 % -> 0 %) standen offene Überweisungen noch auf dem alten
+        Bruttobetrag (23,80 EUR), Auftrag, Reservierungsbestätigung und
+        Zahlungserinnerung auf 20,00 EUR. Eine Überweisung (payment_custom) hat
+        kein Gegenstück bei einem Zahlungsanbieter; der Datensatz hält nur die
+        Zahlungsanweisung mit Referenz (Verwendungszweck) fest. Angeglichen wird
+        deshalb der Betrag, Referenz und Status bleiben. So zeigt die
+        Zahlungsanweisung den richtigen Betrag, und die Zahlung, die Odoo beim
+        Bestätigen der Überweisung aus dem Transaktionsbetrag bucht
+        (account_payment), passt zu Auftrag und Rechnung. Jede Änderung steht
+        als Notiz am Auftrag. Rückgabe: angeglichene Transaktionen.
+        """
+        synced = self.env['payment.transaction']
+        for order in self.sudo():
+            txs = order._kjr_stale_transfer_txs()
+            for tx in txs:
+                old = tx.amount
+                tx.amount = order.amount_total
+                order.message_post(body=_(
+                    'Offene Überweisung %(ref)s an den Auftragsbetrag angeglichen: '
+                    '%(old)s -> %(new)s (Steuer auf Teilnahmegebühren geändert).',
+                    ref=tx.reference,
+                    old=format_amount(self.env, old, tx.currency_id),
+                    new=format_amount(self.env, order.amount_total, order.currency_id)),
+                    subtype_xmlid='mail.mt_note')
+                synced |= tx
+        if synced:
+            _logger.info('KJR: Betrag offener Überweisungen angeglichen: %s', synced.ids)
+        return synced
 
     @api.model
     def _kjr_payment_cron_domain(self, now):
@@ -392,7 +491,6 @@ class SaleOrderPayment(models.Model):
                 ('kjr_payment_reminder_date', '=', False),
                 ('kjr_payment_requested_date', '!=', False),
                 ('kjr_payment_requested_date', '<=', now - timedelta(days=reminder_days)),
-                ('partner_id.email', '!=', False),
             ], limit=200, order='id')
             for order in orders.filtered(lambda o: o._kjr_payment_open()):
                 if order._kjr_send_payment_reminder():
@@ -419,8 +517,10 @@ class SaleOrderPayment(models.Model):
         self.ensure_one()
         template = self.env.ref('kjr_event_shop.mail_template_payment_reminder',
                                 raise_if_not_found=False)
-        if not template or not self.partner_id.email:
-            _logger.warning('KJR Zahlungserinnerung: Auftrag %s ohne Vorlage oder E-Mail.', self.id)
+        if not self.partner_id.email:
+            return self._kjr_payment_reminder_activity()
+        if not template:
+            _logger.warning('KJR Zahlungserinnerung: Auftrag %s ohne Vorlage.', self.id)
             return False
         # Merker VOR dem Versand: lieber keine als eine zweite Erinnerung.
         self.kjr_payment_reminder_date = fields.Datetime.now()
@@ -431,6 +531,36 @@ class SaleOrderPayment(models.Model):
             self.message_post(body=_('Zahlungserinnerung konnte nicht versendet werden.'),
                               subtype_xmlid='mail.mt_note')
             return False
+        return True
+
+    def _kjr_payment_reminder_activity(self):
+        """Erinnerung ohne E-Mail-Adresse: Aufgabe für die Geschäftsstelle.
+
+        Prüfbericht 22.10.2026: Ein unbezahlter Auftrag, dessen Kunde keine
+        E-Mail-Adresse hat (z. B. im Backoffice erfasst), bekam nie eine
+        Erinnerung und wurde deshalb auch nie freigegeben; der Platz blieb bis
+        zum Beginn reserviert. Jetzt zählt die Aufgabe an die Geschäftsstelle
+        (telefonisch bzw. per Post erinnern) als Erinnerung: das Datum wird
+        gesetzt, die Freigabefrist läuft wie nach einer Mail.
+        """
+        self.ensure_one()
+        self.kjr_payment_reminder_date = fields.Datetime.now()
+        events = self._kjr_kjr_event_lines().event_id
+        note = _('Keine E-Mail-Adresse beim Kunden: Zahlungserinnerung bitte telefonisch '
+                 'oder per Post. Ohne Zahlungseingang wird der Platz %(when)s freigegeben.',
+                 when=(_('am %s', format_date(self.env, self.kjr_payment_release_date))
+                       if self.kjr_payment_release_date else _('nicht automatisch')))
+        self.message_post(body=Markup('<p>%s</p>') % note, subtype_xmlid='mail.mt_note')
+        try:
+            with self.env.cr.savepoint():
+                self.activity_schedule(
+                    'mail.mail_activity_data_todo',
+                    summary=_('Zahlungserinnerung ohne E-Mail'), note=note,
+                    user_id=(events.user_id[:1] or self.user_id
+                             or self.env.ref('base.user_admin')).id)
+        except Exception:  # noqa: BLE001 - die Notiz steht, Aktivität ist Nebensache
+            _logger.exception('KJR: Aktivität Zahlungserinnerung zu Auftrag %s nicht angelegt.',
+                              self.id)
         return True
 
     def _kjr_release_unpaid(self):

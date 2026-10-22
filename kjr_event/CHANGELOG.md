@@ -1,5 +1,23 @@
 # Changelog — KJR Ferienprogramm & Schulungen (`kjr_event`)
 
+## 19.0.5.11.1 (2026-10-22)
+
+Prüfbericht 22.10.2026.
+
+- **Mailvorlagen mit deutscher Fassung.** Die Vorlagen (noupdate) lagen nur
+  unter `en_US` (deutscher Text). Migration und Installations-Hook kopieren die
+  Fassung nach `de_DE`, nur wo sie fehlt (`lang_fill.py`); gepflegte deutsche
+  Texte bleiben.
+- **Datum auf der Veranstaltungsseite deutsch:** „03. November 2026“ statt
+  „03 November 2026“; Monat mit Kalenderjahr (`y`) statt Wochenjahr (`Y`), sonst
+  stand am 30./31.12. das Folgejahr. Nur das Format, keine neue Gestaltung.
+- **Hook `_kjr_same_booking_invoice_partner`** für den Rechnungskontakt: Bei
+  einer Anmeldung, die zum selben Vorgang gehört (Warenkorb, `kjr_event_shop`),
+  wird ein dort schon angelegter, exakt passender Kontakt genommen. Ohne Shop
+  ändert sich nichts.
+- Geschlecht: „keine Angabe“ ist gewollt (bewusste Nicht-Angabe); ein leerer
+  Wert ist online nicht möglich (Pflichtfeld und Serverprüfung). Keine Änderung.
+
 ## 19.0.5.11.0 (2026-10-22)
 
 Umsetzung Termin 13.10.2026 und Rückmeldung Theresa 14./15.10.

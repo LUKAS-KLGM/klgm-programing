@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Brücke: Veranstaltungen ↔ Shop',
-    'version': '19.0.2.2.1',
+    'version': '19.0.2.2.2',
     'category': 'Custom/KJR',
     'summary': 'Bestellbestätigung im Shop: Kursname statt Ticketname, '
                '"Referenz" statt "Mitteilungen", vollständige Bankverbindung, Kursbild; '

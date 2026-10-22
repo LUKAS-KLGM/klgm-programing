@@ -517,6 +517,28 @@
                position="replace" mode="inner">Start</xpath>
         <xpath expr="//small[hasclass('fw-bold')][following-sibling::div//time[@t-out='event.date_end'][hasclass('o_wevent_day_header_number')]]"
                position="replace" mode="inner">Ende</xpath>
+        <!-- Prüfbericht 22.10.2026: deutsches Datumsformat "03. November 2026"
+             statt "03 November 2026" (Tag mit Punkt). Monat mit Kalenderjahr
+             'y' statt Wochenjahr 'Y' (sonst z. B. "Dezember 2027" am
+             30.12.2026). Nur das Format, keine neue Gestaltung. -->
+        <xpath expr="//div[@t-elif='event.is_one_day']/time[hasclass('o_wevent_day_header_number')]" position="attributes">
+            <attribute name="t-options">{'widget': 'datetime', 'tz_name': event.date_tz, 'format': 'dd.', 'date_only': 'true'}</attribute>
+        </xpath>
+        <xpath expr="//div[@t-elif='event.is_one_day']//time[hasclass('d-block')]" position="attributes">
+            <attribute name="t-options">{'widget': 'datetime', 'tz_name': event.date_tz, 'format': 'MMMM y', 'date_only': 'true'}</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('flex-lg-column')]//time[@t-out='event.date_begin'][hasclass('o_wevent_day_header_number')]" position="attributes">
+            <attribute name="t-options">{'widget': 'datetime', 'tz_name': event.date_tz, 'format': 'dd.', 'date_only': 'true'}</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('flex-lg-column')]//time[@t-out='event.date_begin'][hasclass('d-block')]" position="attributes">
+            <attribute name="t-options">{'widget': 'datetime', 'tz_name': event.date_tz, 'format': 'MMMM y', 'date_only': 'true'}</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('flex-lg-column')]//time[@t-out='event.date_end'][hasclass('o_wevent_day_header_number')]" position="attributes">
+            <attribute name="t-options">{'widget': 'datetime', 'tz_name': event.date_tz, 'format': 'dd.', 'date_only': 'true'}</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('flex-lg-column')]//time[@t-out='event.date_end'][hasclass('d-block')]" position="attributes">
+            <attribute name="t-options">{'widget': 'datetime', 'tz_name': event.date_tz, 'format': 'MMMM y', 'date_only': 'true'}</attribute>
+        </xpath>
     </template>
 
     <template id="event_description_full_kjr_location"

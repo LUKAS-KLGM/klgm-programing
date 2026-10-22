@@ -1444,6 +1444,26 @@ class EventRegistration(models.Model):
                 return partner, False
         return Partner.create(values), True
 
+    def _kjr_same_booking_invoice_partner(self, values):
+        """Rechnungskontakt einer anderen Anmeldung desselben Vorgangs oder leer.
+
+        Hook für kjr_event_shop (gleicher Warenkorb). Ohne Shop gibt es keinen
+        gemeinsamen Vorgang, also nie eine Wiederverwendung.
+        """
+        self.ensure_one()
+        return self.env['res.partner']
+
+    @api.model
+    def _kjr_invoice_partner_matches(self, partner, values):
+        """True, wenn ``partner`` exakt den Werten entspricht (Name, E-Mail,
+        Telefon, Straße, PLZ, Ort; Leerraum und Groß-/Kleinschreibung egal)."""
+        norm = lambda value: ' '.join((value or '').split()).casefold()  # noqa: E731
+        if (partner.email_normalized or False) != (
+                email_normalize(values.get('email') or '') or False):
+            return False
+        return all(norm(partner[fname]) == norm(values.get(fname))
+                   for fname in ('name', 'phone', 'street', 'zip', 'city'))
+
     def _kjr_apply_invoice_partner(self):
         """Setzt den Rechnungskontakt (und, falls leer, den Kontakt der Anmeldung).
 
@@ -1462,7 +1482,13 @@ class EventRegistration(models.Model):
             savepoint = self.env.cr.savepoint()
             try:
                 with savepoint:
-                    partner, created = self._kjr_find_or_create_invoice_partner(values)
+                    # Gleiche Person schon für eine andere Anmeldung DESSELBEN
+                    # Vorgangs angelegt (z. B. Geschwister im selben
+                    # Warenkorb, kjr_event_shop): diesen Kontakt nehmen.
+                    partner = rec._kjr_same_booking_invoice_partner(values)
+                    created = False
+                    if not partner:
+                        partner, created = self._kjr_find_or_create_invoice_partner(values)
                     vals = {'kjr_invoice_partner_id': partner.id}
                     if not rec.sudo().partner_id:
                         vals['partner_id'] = partner.id
