@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR Ferienprogramm & Schulungen',
-    'version': '19.0.5.11.0',
+    'version': '19.0.5.11.1',
     'category': 'Custom/KJR',
     'summary': 'Erweiterung der Odoo-Veranstaltungen für KJR-Ferienprogramm und Aus- und '
                'Weiterbildungen: Altersgruppen mit Alterskulanz, Postleitzahlen, Anmeldung ab, '
@@ -46,6 +46,7 @@
             'kjr_event/static/src/interactions/kjr_consent_fields.js',
         ],
     },
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': False,
     'auto_install': False,

@@ -10,3 +10,4 @@ from . import test_event_auto_invoice
 from . import test_event_statistics
 from . import test_consent_hold
 from . import test_t1013_ferienprogramm
+from . import test_audit_n2
