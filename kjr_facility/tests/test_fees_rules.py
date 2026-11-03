@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """Termin 13.10.2026: Endreinigung/Kurbeitrag je Einrichtung, Buchungsvorlauf
-18 Monate und Anfrage ohne Konto (Schalter je Einrichtung)."""
+18 Monate und Anfrage ohne Konto (Schalter je Einrichtung).
+
+Rückmeldung KJR 11/2026: eigener Hinweis zum Kurbeitrag, Telefon und E-Mail
+immer Pflicht, Anzahlung je Einrichtung mit Frist und Bankverbindung im Vertrag."""
 import re
 from datetime import timedelta
 
@@ -107,6 +110,66 @@ class TestKjrFacilityFees(TransactionCase):
         self.assertNotIn('Buchungsvorlauf', booking.occupancy_warning or '')
 
 
+    def test_anzahlung_aus_einrichtung(self):
+        """Neue Buchungen übernehmen den Anzahlungssatz der Einrichtung."""
+        self.assertEqual(self.facility.deposit_pct_default, 20.0)
+        self.assertEqual(self._booking().deposit_pct, 20.0)
+        self.facility.deposit_pct_default = 30.0
+        booking = self._booking()
+        self.assertEqual(booking.deposit_pct, 30.0)
+        self.assertEqual(booking.deposit_amount, booking.amount_total * 0.3)
+        self.facility.deposit_pct_default = 0.0
+        self.assertEqual(self._booking().deposit_amount, 0.0)
+        # Von Hand übergebener Satz bleibt.
+        self.assertEqual(self._booking(deposit_pct=50.0).deposit_pct, 50.0)
+        with self.assertRaises(ValidationError):
+            self.facility.deposit_pct_default = 120.0
+
+    def test_anzahlung_faelligkeit_beim_bestaetigen(self):
+        today = fields.Date.today()
+        self.facility.deposit_due_days = 14
+        booking = self._booking(check_in=today + timedelta(days=60),
+                                check_out=today + timedelta(days=62))
+        booking._set_deposit_due_date()
+        self.assertEqual(booking.deposit_due_date, today + timedelta(days=14))
+        # Kurz vor der Anreise: höchstens Vortag der Anreise.
+        short = self._booking(check_in=today + timedelta(days=5),
+                              check_out=today + timedelta(days=7))
+        short._set_deposit_due_date()
+        self.assertEqual(short.deposit_due_date, today + timedelta(days=4))
+        # Von Hand gesetztes Datum bleibt, ohne Anzahlung kein Datum.
+        manual = self._booking(check_in=today + timedelta(days=60),
+                               check_out=today + timedelta(days=62),
+                               deposit_due_date=today + timedelta(days=30))
+        manual._set_deposit_due_date()
+        self.assertEqual(manual.deposit_due_date, today + timedelta(days=30))
+        none = self._booking(check_in=today + timedelta(days=60),
+                             check_out=today + timedelta(days=62), deposit_pct=0.0)
+        none._set_deposit_due_date()
+        self.assertFalse(none.deposit_due_date)
+
+    def test_vertrag_nennt_anzahlung_frist_und_konto(self):
+        today = fields.Date.today()
+        bank = self.env['res.partner.bank'].create({
+            'partner_id': self.env.company.partner_id.id,
+            'acc_number': 'DE02120300000000202051',
+        })
+        booking = self._booking(check_in=today + timedelta(days=60),
+                                check_out=today + timedelta(days=62),
+                                deposit_due_date=today + timedelta(days=14))
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'kjr_facility.action_report_booking_contract', booking.ids)[0].decode()
+        self.assertIn('Bitte überweisen Sie die Anzahlung', html)
+        self.assertIn((today + timedelta(days=14)).strftime('%d.%m.%Y'), html)
+        self.assertIn(bank.acc_number, html)
+        self.assertIn(booking.name, html)
+        booking.deposit_pct = 0.0
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'kjr_facility.action_report_booking_contract', booking.ids)[0].decode()
+        self.assertNotIn('Bitte überweisen Sie die Anzahlung', html)
+        self.assertNotIn('Anzahlung (', html)
+
+
 @tagged('post_install', '-at_install')
 class TestKjrFacilityRequestForm(HttpCase):
 
@@ -148,6 +211,7 @@ class TestKjrFacilityRequestForm(HttpCase):
             'check_in': too_late.isoformat(),
             'check_out': (too_late + timedelta(days=2)).isoformat(),
             'participant_count': '10', 'contact_person': 'RF Leitung',
+            'contact_email': 'rf.leitung@example.com', 'contact_phone': '0123 1',
         })
         self.assertIn('höchstens 18 Monate im Voraus', response.text)
         self.assertFalse(self.env['kjr.facility.booking'].search(
@@ -197,6 +261,7 @@ class TestKjrFacilityRequestForm(HttpCase):
             'check_in': check_in.isoformat(),
             'check_out': (check_in + timedelta(days=2)).isoformat(),
             'participant_count': '10', 'contact_person': 'RF Vorschau',
+            'contact_email': 'rf.vorschau@example.com', 'contact_phone': '0123 2',
         })
         self.assertEqual(response.status_code, 200)
         self.assertFalse(self.env['kjr.facility.booking'].search(
@@ -227,7 +292,46 @@ class TestKjrFacilityRequestForm(HttpCase):
             'check_in': check_in.isoformat(),
             'check_out': (check_in + timedelta(days=2)).isoformat(),
             'participant_count': '10', 'contact_person': 'RF Vorschau',
+            'contact_email': 'rf.vorschau@example.com', 'contact_phone': '0123 2',
         })
         self.assertEqual(response.status_code, 200)
         self.assertIn('1.240,00</span>\N{NO-BREAK SPACE}€', response.text)
         self.assertNotRegex(response.text, r'\d\.\d\d €')
+
+    def test_kurbeitrag_eigener_hinweis(self):
+        """Eigener Hinweis ersetzt den Standardtext, leer gilt der Standard."""
+        self.authenticate('rf_portal', 'rf_portal_pw_1')
+        html = self.url_open(self.url).text
+        self.assertIn('Ihre Betreuungspersonen sind als Begleitpersonen befreit', html)
+        self.facility.visitor_tax_note = '<p>RF eigener Kurbeitrag-Hinweis</p>'
+        html = self.url_open(self.url).text
+        self.assertIn('RF eigener Kurbeitrag-Hinweis', html)
+        self.assertNotIn('Ihre Betreuungspersonen sind als Begleitpersonen befreit', html)
+
+    def test_telefon_und_email_pflicht_mit_konto(self):
+        """Auch mit Konto sind Telefon und E-Mail Pflicht (vorbelegt aus dem Konto)."""
+        self.authenticate('rf_portal', 'rf_portal_pw_1')
+        html = self.url_open(self.url).text
+        self.assertRegex(html, r'type="email" name="contact_email"[^>]*required')
+        self.assertRegex(html, r'type="tel" name="contact_phone"[^>]*required')
+        check_in = fields.Date.today() + timedelta(days=30)
+        data = {
+            'csrf_token': self._csrf(html), 'action': 'submit',
+            'check_in': check_in.isoformat(),
+            'check_out': (check_in + timedelta(days=2)).isoformat(),
+            'participant_count': '10', 'contact_person': 'RF Pflicht',
+            'contact_email': '', 'contact_phone': '',
+        }
+        response = self.url_open(self.url, data=data)
+        self.assertIn('Telefon ist ein Pflichtfeld', response.text)
+        self.assertIn('E-Mail ist ein Pflichtfeld', response.text)
+        self.assertFalse(self.env['kjr.facility.booking'].search(
+            [('facility_id', '=', self.facility.id)]))
+        data.update({'csrf_token': self._csrf(response.text),
+                     'contact_email': 'rf.pflicht@example.com', 'contact_phone': '0123 3'})
+        response = self.url_open(self.url, data=data)
+        self.assertIn('Vielen Dank für Ihre Anfrage', response.text)
+        booking = self.env['kjr.facility.booking'].search(
+            [('facility_id', '=', self.facility.id)])
+        self.assertEqual((booking.contact_email, booking.contact_phone),
+                         ('rf.pflicht@example.com', '0123 3'))

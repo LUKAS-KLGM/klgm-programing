@@ -798,6 +798,9 @@ class KjrFacilityBooking(models.Model):
                     vals['arrival_time'] = facility.check_in_default_time
                 if 'departure_time' not in vals and facility.check_out_default_time:
                     vals['departure_time'] = facility.check_out_default_time
+                # Anzahlung aus der Einrichtung vorbelegen (Rückmeldung KJR 11/2026).
+                if 'deposit_pct' not in vals:
+                    vals['deposit_pct'] = facility.deposit_pct_default
                 # Verpflegung nur, wenn die Einrichtung sie anbietet. Bei NEUEN
                 # Vorgaengen wird still auf 'none' normalisiert statt zu blockieren:
                 # der Weg fuehrt sonst beim Duplizieren einer Altbuchung und bei
@@ -956,6 +959,8 @@ class KjrFacilityBooking(models.Model):
             if rec.state not in ('draft', 'reserved'):
                 raise UserError(_('Nur Anfragen oder Reservierungen können gebucht werden.'))
             rec.state = 'confirmed'
+            # Fälligkeit der Anzahlung vor dem Vertrag setzen, damit sie darin steht.
+            rec._set_deposit_due_date()
             # F2: Vertrag automatisch zuschicken (Standard: Mail mit PDF-Anhang;
             # Erweiterungsstelle _send_contract, z. B. kjr_facility_sign).
             rec._send_contract()
@@ -967,6 +972,18 @@ class KjrFacilityBooking(models.Model):
             )
             # Bestehende Buchungsbestätigung weiterhin senden.
             rec._send_template('kjr_facility.mail_template_booking_confirmed')
+
+    def _set_deposit_due_date(self):
+        """Fälligkeit der Anzahlung: heute + Frist der Einrichtung, höchstens bis zum
+        Tag vor der Anreise. Ein von Hand eingetragenes Datum bleibt stehen."""
+        for rec in self:
+            days = rec.facility_id.deposit_due_days
+            if rec.deposit_due_date or not rec.deposit_pct or not days:
+                continue
+            due = fields.Date.context_today(rec) + timedelta(days=days)
+            if rec.check_in:
+                due = min(due, rec.check_in - timedelta(days=1))
+            rec.deposit_due_date = max(due, fields.Date.context_today(rec))
 
     def action_request_deposit(self):
         for rec in self:

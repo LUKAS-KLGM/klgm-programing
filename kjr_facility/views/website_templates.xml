@@ -152,13 +152,19 @@
                             <li t-if="fees.get('visitor_tax')">
                                 <strong>Kurbeitrag:</strong>
                                 <t t-out="fees['visitor_tax']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/> pro
-                                teilnehmender Person und Nacht. Den Beitrag führen wir an die Gemeinde ab.
+                                teilnehmender Person und Nacht.
+                                <!-- Rückmeldung KJR 11/2026: eigener Hinweis je Einrichtung,
+                                     sonst der Standardtext. -->
+                                <div t-if="not is_html_empty(facility.visitor_tax_note)" class="mt-1"
+                                     t-out="facility.visitor_tax_note"/>
+                                <t t-else=""> Den Beitrag führen wir an die Gemeinde ab.
                                 Ihre Betreuungspersonen sind als Begleitpersonen befreit. Sie rechnen wir
                                 automatisch heraus, Sie müssen dafür nichts angeben. Sind darüber hinaus
                                 einzelne Teilnehmende befreit (z. B. Einwohner:innen der
                                 Standortgemeinde<t t-if="fees.get('exempt_age')">, Teilnehmende unter
                                 <t t-esc="fees['exempt_age']"/> Jahren</t>, Schwerbehinderte), tragen Sie
                                 deren Anzahl unten ein.
+                                </t>
                             </li>
                         </ul>
                     </div>
@@ -262,17 +268,17 @@
                             </div>
                         </t>
                         <div class="col-md-4 mb-3">
-                            <label t-attf-class="form-label#{' fw-bold' if is_guest else ''}">E-Mail<t t-if="is_guest"> *</t></label>
+                            <label class="form-label fw-bold">E-Mail *</label>
                             <input type="email" name="contact_email"
                                    t-attf-class="form-control#{' is-invalid' if errors.get('contact_email') else ''}"
-                                   t-att-required="'required' if is_guest else None"
+                                   required="required"
                                    t-att-value="values.get('contact_email','')"/>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label t-attf-class="form-label#{' fw-bold' if is_guest else ''}">Telefon<t t-if="is_guest"> *</t></label>
+                            <label class="form-label fw-bold">Telefon *</label>
                             <input type="tel" name="contact_phone"
                                    t-attf-class="form-control#{' is-invalid' if errors.get('contact_phone') else ''}"
-                                   t-att-required="'required' if is_guest else None"
+                                   required="required"
                                    t-att-value="values.get('contact_phone','')"/>
                         </div>
                         <!-- Anfrage ohne Konto: Anschrift ist Pflicht, weil kein Kundenkonto

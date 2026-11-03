@@ -1,5 +1,24 @@
 # Changelog — kjr_facility
 
+## 19.0.7.6.0 (2026-11-03)
+
+Rückmeldung KJR (Bora) zum Testmonat, über Marvin.
+
+### Neu
+- **Hinweis zum Kurbeitrag je Einrichtung** (Reiter „Hinweis zum Kurbeitrag“,
+  Feld `visitor_tax_note`). Ist er gefüllt, ersetzt er im Anfrageformular den
+  Standardtext; Betrag und Altersgrenze („Kurbeitragsfrei unter“) bleiben wie bisher.
+- **Anzahlung je Einrichtung** (Gruppe „Anzahlung“): Satz in % als Vorgabe für
+  neue Buchungen (Standard 20 %, 0 = keine Anzahlung) und Frist in Tagen
+  (Standard 14). Beim Bestätigen wird „Anzahlung fällig bis“ gesetzt, höchstens
+  bis zum Vortag der Anreise; ein von Hand eingetragenes Datum bleibt.
+- **Vertrag:** Absatz zur Anzahlung mit Betrag, Fälligkeit, Bankverbindung der
+  Firma und Buchungsnummer als Verwendungszweck. Bei 0 % entfallen Zeile und Absatz.
+
+### Geändert
+- **Telefon und E-Mail sind im Anfrageformular immer Pflicht**, auch mit
+  Kundenkonto (dort aus dem Konto vorbelegt). Bisher nur bei Anfragen ohne Konto.
+
 ## 19.0.7.5.2 (2026-10-22)
 
 ### Behoben

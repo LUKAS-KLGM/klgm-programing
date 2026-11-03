@@ -132,6 +132,26 @@ class KjrFacility(models.Model):
              'Kurbeitrag befreit (z. B. 7 = bis zum 7. Geburtstag). Der Wert erscheint '
              'im Anfrageformular als Hinweis, welche Teilnehmenden die Gruppe als '
              'befreit angeben kann. 0 = keine Altersbefreiung.')
+    # Rückmeldung KJR 11/2026: Den Hinweis zum Kurbeitrag im Anfrageformular pflegt
+    # die Geschäftsstelle je Einrichtung selbst. Leer = eingebauter Standardtext.
+    visitor_tax_note = fields.Html(
+        string='Hinweis zum Kurbeitrag (Website)', sanitize=True,
+        help='Erscheint im Anfrageformular der Website im Kasten zu Endreinigung und '
+             'Kurbeitrag. Leer lassen, um den Standardtext zu verwenden (Betrag pro '
+             'Person und Nacht, Befreiung der Betreuungspersonen, Altersgrenze).')
+    # Rückmeldung KJR 11/2026: Anzahlung je Einrichtung voreinstellen. Gilt für neue
+    # Buchungen; an der Buchung bleibt der Satz änderbar.
+    deposit_pct_default = fields.Float(
+        string='Anzahlung (%)', default=20.0, digits=(5, 2),
+        help='Anzahlung in Prozent des Gesamtbetrags, die neue Buchungen dieser '
+             'Einrichtung vorbelegt bekommen. 0 = keine Anzahlung; dann entfällt sie '
+             'auch im Vertrag.')
+    deposit_due_days = fields.Integer(
+        string='Anzahlung fällig nach (Tagen)', default=14,
+        help='Beim Bestätigen der Buchung wird das Fälligkeitsdatum der Anzahlung auf '
+             'heute plus diese Anzahl Tage gesetzt (höchstens bis zum Tag vor der '
+             'Anreise), sofern an der Buchung noch keins eingetragen ist. Es steht im '
+             'Vertrag. 0 = kein Datum setzen.')
     # Termin 13.10.2026 / Korrektur 14.10.: Ob Anfragen ohne Konto möglich sein
     # sollen, ist für das Tagungshaus noch offen. Deshalb nur als Schalter, Standard
     # aus = bisheriges Verhalten (Anmeldung erforderlich).
@@ -207,7 +227,7 @@ class KjrFacility(models.Model):
 
     @api.constrains('max_advance_months', 'min_persons', 'min_nights', 'capacity',
                     'final_cleaning_fee', 'visitor_tax_per_person_night',
-                    'visitor_tax_exempt_age')
+                    'visitor_tax_exempt_age', 'deposit_pct_default', 'deposit_due_days')
     def _check_booking_rules(self):
         """Buchungsregeln dürfen nie negativ sein — 0 ist der Aus-Schalter."""
         for rec in self:
@@ -228,6 +248,12 @@ class KjrFacility(models.Model):
                 raise ValidationError(_(
                     'Das Alter für die Befreiung vom Kurbeitrag darf nicht negativ sein '
                     '(0 = keine Altersbefreiung).'))
+            if not 0 <= rec.deposit_pct_default <= 100:
+                raise ValidationError(_(
+                    'Die Anzahlung muss zwischen 0 und 100 % liegen (0 = keine Anzahlung).'))
+            if rec.deposit_due_days < 0:
+                raise ValidationError(_(
+                    'Die Frist für die Anzahlung darf nicht negativ sein (0 = kein Datum setzen).'))
             if rec.capacity and rec.min_persons > rec.capacity:
                 raise ValidationError(_(
                     'Die Mindestbelegung (%(min)s) ist größer als die maximale '

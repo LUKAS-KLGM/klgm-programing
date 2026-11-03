@@ -78,9 +78,20 @@
                             <field name="visitor_tax_per_person_night"/>
                             <field name="visitor_tax_exempt_age"/>
                         </group>
+                        <!-- Rückmeldung KJR 11/2026: Vorgabe für neue Buchungen. -->
+                        <group string="Anzahlung" name="deposit">
+                            <field name="deposit_pct_default"/>
+                            <field name="deposit_due_days" invisible="not deposit_pct_default"/>
+                        </group>
                     </group>
                     <field name="description_short" placeholder="Kurzbeschreibung für die Liste/Website"/>
                     <notebook>
+                        <page string="Hinweis zum Kurbeitrag" name="visitor_tax_note">
+                            <p class="text-muted">Erscheint im Anfrageformular der Website.
+                                Leer lassen, um den Standardtext zu verwenden.</p>
+                            <field name="visitor_tax_note"
+                                   placeholder="Eigener Hinweis zum Kurbeitrag, z. B. wer befreit ist und welche Nachweise nötig sind..."/>
+                        </page>
                         <page string="Mail-Hinweis" name="mail_hint">
                             <field name="mail_hint"
                                    placeholder="Hinweistext für E-Mails an die Gruppe (Anfahrt, Schlüssel, Hausordnung)..."/>

@@ -94,8 +94,23 @@
                             <tr><td>Netto</td><td class="text-end"><t t-out="o.amount_untaxed" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td></tr>
                             <tr><td>USt</td><td class="text-end"><t t-out="o.amount_tax" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td></tr>
                             <tr class="fw-bold table-light"><td>Gesamt (brutto)</td><td class="text-end"><t t-out="o.amount_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td></tr>
-                            <tr><td>Anzahlung (<t t-esc="'%.0f' % o.deposit_pct"/> %)</td><td class="text-end"><t t-out="o.deposit_amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td></tr>
+                            <tr t-if="o.deposit_pct"><td>Anzahlung (<t t-esc="('%g' % o.deposit_pct).replace('.', ',')"/> %)</td><td class="text-end"><t t-out="o.deposit_amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/></td></tr>
                         </table>
+
+                        <!-- Rückmeldung KJR 11/2026: Anzahlung mit Frist und Bankverbindung
+                             im Vertrag. Ohne Anzahlung (0 %) entfällt der Absatz. -->
+                        <t t-if="o.deposit_pct and o.deposit_amount">
+                            <t t-set="kjr_bank" t-value="o.company_id.partner_id.bank_ids[:1]"/>
+                            <p>
+                                <strong>Anzahlung:</strong> Bitte überweisen Sie die Anzahlung von
+                                <t t-out="o.deposit_amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                <t t-if="o.deposit_due_date">bis zum <t t-out="o.deposit_due_date" t-options="{'widget': 'date', 'format': 'dd.MM.yyyy'}"/></t>
+                                <t t-if="kjr_bank">auf das Konto
+                                    <t t-esc="kjr_bank.acc_number"/><t t-if="kjr_bank.bank_id"> (<t t-esc="kjr_bank.bank_id.name"/>)</t></t>
+                                mit dem Verwendungszweck <strong><t t-esc="o.name"/></strong>.
+                                Den Restbetrag stellen wir nach dem Aufenthalt in Rechnung.
+                            </p>
+                        </t>
 
                         <t t-if="o.note">
                             <p><strong>Hinweise:</strong> <t t-esc="o.note"/></p>

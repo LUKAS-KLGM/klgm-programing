@@ -233,17 +233,19 @@ class KjrFacilityWebsite(http.Controller):
         errors = {}
         required = [('check_in', _('Anreise')), ('check_out', _('Abreise')),
                     ('participant_count', _('Anzahl der Teilnehmenden')),
-                    ('contact_person', _('Ansprechpartner:in'))]
+                    ('contact_person', _('Ansprechpartner:in')),
+                    # Rückmeldung KJR 11/2026: E-Mail und Telefon immer Pflicht, auch
+                    # mit Konto (dort aus dem Konto vorbelegt), für Rückfragen zum Aufenthalt.
+                    ('contact_email', _('E-Mail')), ('contact_phone', _('Telefon'))]
         if self._is_guest_request():
-            # Anfrage ohne Konto: ohne Anschrift, E-Mail und Telefon kann die
-            # Geschäftsstelle weder antworten noch eine Rechnung stellen.
+            # Anfrage ohne Konto: ohne Anschrift kann die Geschäftsstelle keine
+            # Rechnung stellen.
             required += [('street', _('Straße und Hausnummer')), ('zip', _('PLZ')),
-                         ('city', _('Ort')), ('contact_email', _('E-Mail')),
-                         ('contact_phone', _('Telefon'))]
+                         ('city', _('Ort'))]
         for fname, label in required:
             if not str(post.get(fname) or '').strip():
                 errors[fname] = _('%s ist ein Pflichtfeld.') % label
-        if (self._is_guest_request() and str(post.get('contact_email') or '').strip()
+        if (str(post.get('contact_email') or '').strip()
                 and not email_normalize(post.get('contact_email'))):
             errors['contact_email'] = _('Bitte geben Sie eine gültige E-Mail-Adresse an.')
 
