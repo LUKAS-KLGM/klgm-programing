@@ -329,8 +329,9 @@ class TestKjrFacilityRequestForm(HttpCase):
             [('facility_id', '=', self.facility.id)]))
         data.update({'csrf_token': self._csrf(response.text),
                      'contact_email': 'rf.pflicht@example.com', 'contact_phone': '0123 3'})
+        # Mit Konto führt das Absenden auf die Buchungsdetailseite im Portal.
         response = self.url_open(self.url, data=data)
-        self.assertIn('Vielen Dank für Ihre Anfrage', response.text)
+        self.assertEqual(response.status_code, 200)
         booking = self.env['kjr.facility.booking'].search(
             [('facility_id', '=', self.facility.id)])
         self.assertEqual((booking.contact_email, booking.contact_phone),
