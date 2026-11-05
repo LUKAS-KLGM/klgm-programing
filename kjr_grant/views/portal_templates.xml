@@ -1368,12 +1368,18 @@
 
                 <dt class="col-sm-4">Wie lange wir speichern</dt>
                 <dd class="col-sm-8">
-                    <t t-set="kjr_dsw" t-value="request.env['ir.config_parameter'].sudo().get_param('kjr.privacy.retention')"/><span t-if="kjr_dsw" class="ms-1" t-esc="kjr_dsw"/><span t-else="" class="badge text-bg-warning">Angabe folgt</span>
-                    <span class="d-block text-muted">Die Aufbewahrungsdauer legt der
-                        Kreisjugendring fest und trägt sie hier ein. Namen, Wohnort und
-                        Geburtsdatum in der Teilnahmeliste ersetzt das System nach Ablauf
-                        der eingestellten Frist selbsttätig durch „(anonymisiert)“; Alter,
-                        Geschlecht und Kennziffer bleiben für die Förderstatistik
+                    <!-- Rückmeldung KJR 05.11.2026: Speicherdauer bei Zuschussanträgen 5 Jahre.
+                         Angezeigt werden die tatsächlich eingestellten Fristen der
+                         Anonymisierung (Systemparameter), damit Text und Verhalten
+                         nicht auseinanderlaufen. -->
+                    <t t-set="kjr_icp" t-value="request.env['ir.config_parameter'].sudo()"/>
+                    <t t-set="kjr_ret_tn" t-value="kjr_icp.get_param('kjr_grant.participant_retention_years', '5')"/>
+                    <t t-set="kjr_ret_rc" t-value="kjr_icp.get_param('kjr_grant.retention_years_receipt') or kjr_ret_tn"/>
+                    <span class="ms-1"><strong><t t-esc="kjr_ret_tn"/> Jahre</strong> nach Ende der Maßnahme<t t-if="kjr_ret_rc != kjr_ret_tn">,
+                        Belege und Rechnungen <t t-esc="kjr_ret_rc"/> Jahre</t>.</span>
+                    <span class="d-block text-muted">Danach ersetzt das System Namen, Wohnort und
+                        Geburtsdatum in der Teilnahmeliste selbsttätig durch „(anonymisiert)“;
+                        Alter, Geschlecht und Kennziffer bleiben für die Förderstatistik
                         erhalten.</span>
                 </dd>
 

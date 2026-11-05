@@ -1,5 +1,12 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.18.1.1 (2026-11-05)
+
+### Geändert
+- **Datenschutzhinweis Zuschussantrag, „Wie lange wir speichern“:** zeigt die
+  eingestellten Anonymisierungsfristen (Teilnahmeliste 5 Jahre nach Ende der Maßnahme,
+  abweichende Frist für Belege wird mitgenannt) statt „Angabe folgt“.
+
 ## 19.0.18.1.0 (2026-11-05)
 
 Rückmeldung KJR (Bora) im Termin 05.11.2026.

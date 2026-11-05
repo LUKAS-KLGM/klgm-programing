@@ -193,4 +193,14 @@ class TestKjrGrantYearCapHelp(HttpCase):
         # Seit 05.11.2026 nicht mehr im Antragsformular (Antrag über die Vollversammlung).
         self.assertNotIn(self.env.ref('kjr_grant.grant_type_4_9').name, form)
         self.assertNotIn('name="delegate_km_one_way"', form)
+        # Speicherdauer im Datenschutzhinweis aus den Anonymisierungsfristen (05.11.2026).
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('kjr_grant.participant_retention_years', '5')
+        icp.set_param('kjr_grant.retention_years_receipt', '5')
+        form = self.url_open('/service/antrag-stellen').text
+        self.assertIn('5 Jahre</strong> nach Ende der Maßnahme', form)
+        self.assertNotIn('Belege und Rechnungen', form)
+        icp.set_param('kjr_grant.retention_years_receipt', '8')
+        form = self.url_open('/service/antrag-stellen').text
+        self.assertIn('Belege und Rechnungen 8 Jahre', form)
         self.assertIn('ist auch ein Privatkonto möglich. Den Antrag stellt trotzdem der Verband.', form)
