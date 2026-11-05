@@ -178,7 +178,7 @@ class TestKjrGrantYearCapHelp(HttpCase):
 
     def test_antragsformular_texte(self):
         """Hinweis Bankverbindung nennt alle Förderarten mit Privatkonto-Freigabe
-        (§ 4.4 und § 4.9) aus den Stammdaten; Kopfzeile ohne „Antrag bei“."""
+        (§ 4.4; § 4.9 seit 05.11.2026 nicht mehr im Formular) aus den Stammdaten; Kopfzeile ohne „Antrag bei“."""
         assoc = self.env['res.partner'].create({
             'name': 'Jahresgrenze Formular e. V.', 'is_company': True,
             'is_kjr_member': True, 'kjr_vr_right': True,
@@ -190,5 +190,7 @@ class TestKjrGrantYearCapHelp(HttpCase):
         self.assertNotIn('Antrag bei', form)
         self.assertIn('Antrag auf Zuschuss', form)
         self.assertIn(self.env.ref('kjr_grant.grant_type_4_4').name, form)
-        self.assertIn(self.env.ref('kjr_grant.grant_type_4_9').name, form)
+        # Seit 05.11.2026 nicht mehr im Antragsformular (Antrag über die Vollversammlung).
+        self.assertNotIn(self.env.ref('kjr_grant.grant_type_4_9').name, form)
+        self.assertNotIn('name="delegate_km_one_way"', form)
         self.assertIn('ist auch ein Privatkonto möglich. Den Antrag stellt trotzdem der Verband.', form)

@@ -251,7 +251,11 @@ class KjrWebsiteController(http.Controller):
         website=True, methods=['GET', 'POST'], sitemap=True,
     )
     def kjr_apply(self, **post):
-        grant_types = request.env['kjr.grant.type'].sudo().search(_valid_grant_type_domain())
+        # Rückmeldung KJR 05.11.2026: Die Delegiertenförderung (§ 4.9) wird über die
+        # Unterschriftsliste der Vollversammlung beantragt, nicht über dieses Formular.
+        # Die Geschäftsstelle erfasst sie im Backend; die Hilfeseite nennt sie weiter.
+        grant_types = request.env['kjr.grant.type'].sudo().search(
+            _valid_grant_type_domain() + [('code', '!=', '4_9')])
         kjr_members = request.env['res.partner'].sudo().search(
             self._allowed_member_domain(), order='name',
         )

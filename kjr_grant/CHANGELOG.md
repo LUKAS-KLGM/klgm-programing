@@ -13,6 +13,9 @@ Rückmeldung KJR (Bora) im Termin 05.11.2026.
 - **Reihenfolge im Antragsformular:** „Maßnahme (zutreffendes ankreuzen)“ steht jetzt
   als Punkt 1, danach Angaben zur Maßnahme, Antragsteller:in und direkt dahinter die
   Überweisung (Bankverbindung), dann Teilnahmeliste, Kostenaufstellung, Belegliste.
+- **Delegiertenförderung (§ 4.9) aus dem Antragsformular entfernt** (Förderart in der
+  Auswahl und Block „Nur bei Delegiertenförderung“). Beantragt wird sie über die
+  Unterschriftsliste der Vollversammlung; im Backend und auf der Hilfeseite bleibt sie.
 
 ## 19.0.18.0.1 (2026-10-22)
 
