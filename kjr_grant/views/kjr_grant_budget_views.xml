@@ -9,7 +9,7 @@
                   decoration-danger="usage_pct &gt; 90"
                   decoration-warning="usage_pct &gt; 75 and usage_pct &lt;= 90"
                   decoration-success="usage_pct &lt;= 75">
-                <field name="year"/>
+                <field name="year" options="{'format': false}"/>
                 <field name="grant_type_id" optional="show"/>
                 <field name="amount_total" string="Budget (€)"/>
                 <field name="amount_approved" string="Bewilligt (€)"/>
@@ -29,7 +29,7 @@
                 <sheet>
                     <group>
                         <group string="Budget">
-                            <field name="year"/>
+                            <field name="year" options="{'format': false}"/>
                             <field name="grant_type_id"/>
                             <field name="amount_total"/>
                         </group>

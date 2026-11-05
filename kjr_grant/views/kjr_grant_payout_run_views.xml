@@ -74,7 +74,7 @@
                                 <field name="grant_type_id" optional="show"/>
                                 <field name="date_submitted" optional="show"/>
                                 <field name="date_approved" optional="show"/>
-                                <field name="payout_year" optional="hide"/>
+                                <field name="payout_year" options="{'format': false}" optional="hide"/>
                                 <field name="reviewed_by" optional="show"/>
                                 <field name="grant_approved" sum="Summe"/>
                             </list>

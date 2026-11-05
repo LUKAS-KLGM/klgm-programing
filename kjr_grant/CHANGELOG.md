@@ -6,6 +6,8 @@
 - **Datenschutzhinweis Zuschussantrag, „Wie lange wir speichern“:** zeigt die
   eingestellten Anonymisierungsfristen (Teilnahmeliste 5 Jahre nach Ende der Maßnahme,
   abweichende Frist für Belege wird mitgenannt) statt „Angabe folgt“.
+- **Jahreszahlen ohne Tausenderpunkt** im Backend (Auszahlungsjahr „2026“ statt
+  „2.026“, ebenso Haushaltsjahr im Budget).
 
 ## 19.0.18.1.0 (2026-11-05)
 
