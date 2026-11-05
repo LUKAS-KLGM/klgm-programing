@@ -171,6 +171,15 @@ class TestKjrApplyFormFeedback(TransactionCase):
         self.assertIn('Zeile 6 (Emil E): Geschlecht fehlt', text)
         self.assertNotIn('Zeile 5 (Dora D): Geschlecht', text)
 
+    def test_section_order(self):
+        """05.11.2026: Maßnahmenart zuerst, Überweisung direkt nach Antragsteller:in."""
+        arch = self._arch()
+        heads = ['1. Maßnahme <small>', '2. Angaben zur Maßnahme', '3. Antragsteller:in',
+                 '4. Überweisung des Zuschusses', '5. Teilnahmeliste', '6. Kostenaufstellung',
+                 '7. Belegliste']
+        pos = [arch.index(h) for h in heads]
+        self.assertEqual(pos, sorted(pos))
+
     def test_participant_zip_city_and_leader_role(self):
         """05.11.2026: PLZ und Wohnort Pflicht; Leitung angekreuzt ⇒ Kennziffer Pflicht."""
         post = {

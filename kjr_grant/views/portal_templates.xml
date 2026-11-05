@@ -1791,10 +1791,75 @@
                       enctype="multipart/form-data" novalidate="novalidate">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
 
-                    <!-- 1. Maßnahme -->
+                    <!-- Reihenfolge seit 05.11.2026 (Termin Bora): Maßnahmenart zuerst,
+                         Überweisung direkt nach Antragsteller:in. -->
+                    <!-- 1. Maßnahmenart -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">1. Maßnahme</h5>
+                            <h5 class="mb-0">1. Maßnahme <small>(zutreffendes ankreuzen)</small></h5>
+                        </div>
+                        <div class="card-body">
+                            <label for="grant_type_id" class="form-label fw-bold">Förderart *</label>
+                            <!-- data-requires-receipt steuert, ob die Belegliste (Block 7 bzw.
+                                 Datei-Upload in Block 8) Pflicht ist. Ohne Auswahl wird
+                                 konservativ „Pflicht" angenommen — genauso prüft der Server. -->
+                            <select name="grant_type_id" id="grant_type_id" class="form-select" required="required">
+                                <option value="" data-code="" data-requires-receipt="1">Bitte wählen</option>
+                                <t t-foreach="grant_types" t-as="gt">
+                                    <option t-att-value="gt.id"
+                                            t-att-data-code="gt.code"
+                                            t-att-data-requires-receipt="gt.requires_receipt and '1' or '0'"
+                                            t-att-selected="values.get('grant_type_id') and int(values.get('grant_type_id',0)) == gt.id">
+                                        <t t-esc="gt.name"/>
+                                    </option>
+                                </t>
+                            </select>
+                            <div class="form-text">
+                                s. Zuschussrichtlinien, erforderliche Unterlagen werden je nach Förderart geprüft.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5b. Delegiertenförderung § 4.9 (nur bei Bedarf ausfüllen) -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">Nur bei Delegiertenförderung (§ 4.9, Fahrtkosten n. BayRKG)</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small">
+                                Nur ausfüllen, wenn oben „Delegiertenförderung (§ 4.9)" gewählt wurde. PKW: einfache
+                                Strecke und Mitfahrer:innen angeben (Erstattung Hin- und Rückfahrt nach BayRKG).
+                                Bei öffentlichen Verkehrsmitteln die belegten Fahrtkosten unter „Kostenaufstellung →
+                                Fahrtkosten" eintragen.
+                            </p>
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label">Verkehrsmittel</label>
+                                    <select name="delegate_transport_mode" class="form-select">
+                                        <option value="">-</option>
+                                        <option value="car"    t-att-selected="values.get('delegate_transport_mode') == 'car'">PKW</option>
+                                        <option value="public" t-att-selected="values.get('delegate_transport_mode') == 'public'">Öffentliche Verkehrsmittel</option>
+                                        <option value="other"  t-att-selected="values.get('delegate_transport_mode') == 'other'">Sonstiges</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label">Gefahrene km (einfache Strecke)</label>
+                                    <input type="number" step="0.1" min="0" name="delegate_km_one_way"
+                                           class="form-control" t-att-value="values.get('delegate_km_one_way','')"/>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label">Mitfahrer:innen</label>
+                                    <input type="number" min="0" name="delegate_passenger_count"
+                                           class="form-control" t-att-value="values.get('delegate_passenger_count','')"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Maßnahme -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">2. Angaben zur Maßnahme</h5>
                         </div>
                         <div class="card-body">
                             <div class="row">
@@ -1882,10 +1947,10 @@
                         </div>
                     </div>
 
-                    <!-- 2. Antragsteller:in -->
+                    <!-- 3. Antragsteller:in -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">2. Antragsteller:in (Organisation)</h5>
+                            <h5 class="mb-0">3. Antragsteller:in (Organisation)</h5>
                         </div>
                         <div class="card-body">
                             <div class="row">
@@ -1928,10 +1993,55 @@
                         </div>
                     </div>
 
-                    <!-- 3. Teilnahmeliste -->
+                    <!-- 4. Bankverbindung -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">4. Überweisung des Zuschusses soll erfolgen auf:</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                Nur Organisationskonto. Bitte exakten Namen angeben.
+                                <t t-set="private_types" t-value="grant_types.filtered('allow_private_account') if grant_types else []"/>
+                                <t t-if="private_types">
+                                    Ausnahme: Bei <t t-foreach="private_types" t-as="pt"><t t-esc="pt.name"/><t t-if="not pt_last">, </t></t>
+                                    ist auch ein Privatkonto möglich. Den Antrag stellt trotzdem der Verband.
+                                </t>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">IBAN *</label>
+                                    <input type="text" name="payment_iban" class="form-control"
+                                           t-att-value="values.get('payment_iban','')"
+                                           required="required"
+                                           placeholder="DE00 0000 0000 0000 0000 00"/>
+                                    <div class="form-text">
+                                        Ohne Konto kann der Zuschuss nicht ausgezahlt werden.
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Kontoinhaber:in (exakter Name) *</label>
+                                    <input type="text" name="payment_account_holder" class="form-control"
+                                           t-att-value="values.get('payment_account_holder','')"
+                                           required="required"/>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">BIC</label>
+                                    <input type="text" name="payment_bic" class="form-control"
+                                           t-att-value="values.get('payment_bic','')"/>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Geldinstitut</label>
+                                    <input type="text" name="payment_bank" class="form-control"
+                                           t-att-value="values.get('payment_bank','')"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Teilnahmeliste -->
                     <div class="card mb-4">
                         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">3. Teilnahmeliste</h5>
+                            <h5 class="mb-0">5. Teilnahmeliste</h5>
                             <button type="button" class="btn btn-light btn-sm" onclick="addParticipantRow()">
                                 <i class="fa fa-plus me-1"/>Teilnehmer:in hinzufügen
                             </button>
@@ -2056,114 +2166,6 @@
                                     });
                                 }
                             </script>
-                        </div>
-                    </div>
-
-                    <!-- 4. Bankverbindung -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">4. Überweisung des Zuschusses soll erfolgen auf:</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="alert alert-info">
-                                Nur Organisationskonto. Bitte exakten Namen angeben.
-                                <t t-set="private_types" t-value="grant_types.filtered('allow_private_account') if grant_types else []"/>
-                                <t t-if="private_types">
-                                    Ausnahme: Bei <t t-foreach="private_types" t-as="pt"><t t-esc="pt.name"/><t t-if="not pt_last">, </t></t>
-                                    ist auch ein Privatkonto möglich. Den Antrag stellt trotzdem der Verband.
-                                </t>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label fw-bold">IBAN *</label>
-                                    <input type="text" name="payment_iban" class="form-control"
-                                           t-att-value="values.get('payment_iban','')"
-                                           required="required"
-                                           placeholder="DE00 0000 0000 0000 0000 00"/>
-                                    <div class="form-text">
-                                        Ohne Konto kann der Zuschuss nicht ausgezahlt werden.
-                                    </div>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label fw-bold">Kontoinhaber:in (exakter Name) *</label>
-                                    <input type="text" name="payment_account_holder" class="form-control"
-                                           t-att-value="values.get('payment_account_holder','')"
-                                           required="required"/>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">BIC</label>
-                                    <input type="text" name="payment_bic" class="form-control"
-                                           t-att-value="values.get('payment_bic','')"/>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Geldinstitut</label>
-                                    <input type="text" name="payment_bank" class="form-control"
-                                           t-att-value="values.get('payment_bank','')"/>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 5. Maßnahmenart -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">5. Maßnahme <small>(zutreffendes ankreuzen)</small></h5>
-                        </div>
-                        <div class="card-body">
-                            <label for="grant_type_id" class="form-label fw-bold">Förderart *</label>
-                            <!-- data-requires-receipt steuert, ob die Belegliste (Block 7 bzw.
-                                 Datei-Upload in Block 8) Pflicht ist. Ohne Auswahl wird
-                                 konservativ „Pflicht" angenommen — genauso prüft der Server. -->
-                            <select name="grant_type_id" id="grant_type_id" class="form-select" required="required">
-                                <option value="" data-code="" data-requires-receipt="1">Bitte wählen</option>
-                                <t t-foreach="grant_types" t-as="gt">
-                                    <option t-att-value="gt.id"
-                                            t-att-data-code="gt.code"
-                                            t-att-data-requires-receipt="gt.requires_receipt and '1' or '0'"
-                                            t-att-selected="values.get('grant_type_id') and int(values.get('grant_type_id',0)) == gt.id">
-                                        <t t-esc="gt.name"/>
-                                    </option>
-                                </t>
-                            </select>
-                            <div class="form-text">
-                                s. Zuschussrichtlinien, erforderliche Unterlagen werden je nach Förderart geprüft.
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 5b. Delegiertenförderung § 4.9 (nur bei Bedarf ausfüllen) -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0">Nur bei Delegiertenförderung (§ 4.9, Fahrtkosten n. BayRKG)</h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted small">
-                                Nur ausfüllen, wenn oben „Delegiertenförderung (§ 4.9)" gewählt wurde. PKW: einfache
-                                Strecke und Mitfahrer:innen angeben (Erstattung Hin- und Rückfahrt nach BayRKG).
-                                Bei öffentlichen Verkehrsmitteln die belegten Fahrtkosten unter „Kostenaufstellung →
-                                Fahrtkosten" eintragen.
-                            </p>
-                            <div class="row">
-                                <div class="col-md-4 mb-2">
-                                    <label class="form-label">Verkehrsmittel</label>
-                                    <select name="delegate_transport_mode" class="form-select">
-                                        <option value="">-</option>
-                                        <option value="car"    t-att-selected="values.get('delegate_transport_mode') == 'car'">PKW</option>
-                                        <option value="public" t-att-selected="values.get('delegate_transport_mode') == 'public'">Öffentliche Verkehrsmittel</option>
-                                        <option value="other"  t-att-selected="values.get('delegate_transport_mode') == 'other'">Sonstiges</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4 mb-2">
-                                    <label class="form-label">Gefahrene km (einfache Strecke)</label>
-                                    <input type="number" step="0.1" min="0" name="delegate_km_one_way"
-                                           class="form-control" t-att-value="values.get('delegate_km_one_way','')"/>
-                                </div>
-                                <div class="col-md-4 mb-2">
-                                    <label class="form-label">Mitfahrer:innen</label>
-                                    <input type="number" min="0" name="delegate_passenger_count"
-                                           class="form-control" t-att-value="values.get('delegate_passenger_count','')"/>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
