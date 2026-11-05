@@ -341,11 +341,12 @@ class TestKjrFacilityRequestForm(HttpCase):
         """Eigener Hinweis ersetzt den Standardtext, leer gilt der Standard."""
         self.authenticate('rf_portal', 'rf_portal_pw_1')
         html = self.url_open(self.url).text
-        self.assertIn('Ihre Betreuungspersonen sind als Begleitpersonen befreit', html)
+        self.assertIn('Den Beitrag führen wir an die Gemeinde ab.', html)
+        self.assertNotIn('als Begleitpersonen befreit', html)
         self.facility.visitor_tax_note = '<p>RF eigener Kurbeitrag-Hinweis</p>'
         html = self.url_open(self.url).text
         self.assertIn('RF eigener Kurbeitrag-Hinweis', html)
-        self.assertNotIn('Ihre Betreuungspersonen sind als Begleitpersonen befreit', html)
+        self.assertNotIn('Den Beitrag führen wir an die Gemeinde ab.', html)
 
     def test_hinweis_befreite_und_betreuende(self):
         """Hinweis unter dem Feld der Befreiten ist pflegbar und folgt der Einstellung."""
@@ -356,7 +357,6 @@ class TestKjrFacilityRequestForm(HttpCase):
         html = self.url_open(self.url).text
         self.assertNotIn('Sie sind ohnehin befreit', html)
         self.assertNotIn('als Begleitpersonen befreit', html)
-        self.assertIn('Er gilt auch für Ihre', html)
         self.assertIn('Vom Kurbeitrag befreite Personen', html)
         self.assertNotIn('teilnehmender Person', html)
         self.facility.visitor_tax_exempt_note = '<p>RF eigener Befreiten-Hinweis</p>'

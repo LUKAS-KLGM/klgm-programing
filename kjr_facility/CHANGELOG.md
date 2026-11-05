@@ -1,5 +1,13 @@
 # Changelog — kjr_facility
 
+## 19.0.7.7.1 (2026-11-05)
+
+### Geändert
+- **Kurbeitrag-Hinweis auf der Buchungsseite gekürzt** (Wunsch Bora im Termin 05.11.):
+  Standardtext ist nur noch „Den Beitrag führen wir an die Gemeinde ab.“ Die Sätze zu
+  Betreuenden und Befreiten entfallen (Gemeinde akzeptiert nur 1 Betreuende:n je
+  6 Kinder; Regel folgt ggf. separat). Eigener Hinweis je Einrichtung bleibt möglich.
+
 ## 19.0.7.7.0 (2026-11-05)
 
 Nachbesserung nach Boras Originalmail (03.11.): „Im Vertrag steht Anzahlung, sowas

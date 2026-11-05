@@ -157,15 +157,7 @@
                                      sonst der Standardtext. -->
                                 <div t-if="not is_html_empty(facility.visitor_tax_note)" class="mt-1"
                                      t-out="facility.visitor_tax_note"/>
-                                <t t-else=""> Den Beitrag führen wir an die Gemeinde ab.
-                                <t t-if="fees.get('leaders_exempt')">Ihre Betreuungspersonen sind als Begleitpersonen befreit.
-                                Sie rechnen wir automatisch heraus, Sie müssen dafür nichts angeben.</t><t t-else="">Er gilt auch für Ihre
-                                Betreuungspersonen.</t> Sind<t t-if="fees.get('leaders_exempt')"> darüber hinaus</t>
-                                einzelne Teilnehmende befreit (z. B. Einwohner:innen der
-                                Standortgemeinde<t t-if="fees.get('exempt_age')">, Teilnehmende unter
-                                <t t-esc="fees['exempt_age']"/> Jahren</t>, Schwerbehinderte), tragen Sie
-                                deren Anzahl unten ein.
-                                </t>
+                                <t t-else=""> Den Beitrag führen wir an die Gemeinde ab.</t>
                             </li>
                         </ul>
                     </div>
