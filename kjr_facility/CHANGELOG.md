@@ -7,6 +7,10 @@
   Standardtext ist nur noch „Den Beitrag führen wir an die Gemeinde ab.“ Die Sätze zu
   Betreuenden und Befreiten entfallen (Gemeinde akzeptiert nur 1 Betreuende:n je
   6 Kinder; Regel folgt ggf. separat). Eigener Hinweis je Einrichtung bleibt möglich.
+- **Feld „Weitere vom Kurbeitrag befreite Teilnehmende“ aus dem Buchungsformular
+  entfernt.** Befreite erfasst die Geschäftsstelle nach dem Abnahmeprotokoll im Backend.
+- **Betreuende (Anzahl) und Gruppenbezeichnung sind Pflichtfelder** im Buchungsformular
+  (0 Betreuende ist zulässig, das Feld darf aber nicht leer bleiben).
 
 ## 19.0.7.7.0 (2026-11-05)
 

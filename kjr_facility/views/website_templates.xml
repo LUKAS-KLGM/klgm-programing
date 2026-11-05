@@ -196,9 +196,10 @@
                                 und während des Aufenthalts erreichbar ist.</div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Gruppenbezeichnung</label>
-                            <input type="text" name="group_name" class="form-control"
-                                   t-att-value="values.get('group_name','')"/>
+                            <label class="form-label fw-bold">Gruppenbezeichnung *</label>
+                            <input type="text" name="group_name"
+                                   t-attf-class="form-control#{' is-invalid' if errors.get('group_name') else ''}"
+                                   t-att-value="values.get('group_name','')" required="required"/>
                             <div class="form-text">z. B. „Jugendgruppe St. Martin“ oder „Klasse 7b“.</div>
                         </div>
                         <div class="col-md-4 mb-3">
@@ -209,9 +210,10 @@
                             <div class="form-text">Anzahl der Personen in der Gruppe ohne Begleitpersonen.</div>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Betreuende (Anzahl)</label>
-                            <input type="number" name="leader_count" class="form-control" min="0"
-                                   t-att-value="values.get('leader_count','')"/>
+                            <label class="form-label fw-bold">Betreuende (Anzahl) *</label>
+                            <input type="number" name="leader_count" min="0"
+                                   t-attf-class="form-control#{' is-invalid' if errors.get('leader_count') else ''}"
+                                   t-att-value="values.get('leader_count','')" required="required"/>
                             <div class="form-text">Anzahl der volljährigen Begleitpersonen, nicht zu
                                 verwechseln mit der Ansprechperson oben.</div>
                         </div>
@@ -244,26 +246,9 @@
                                     und Zubereitung organisiert die Gruppe selbst.</div>
                             </div>
                         </t>
-                        <t t-if="fees.get('visitor_tax')">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label"><t t-if="fees.get('leaders_exempt')">Weitere vom Kurbeitrag befreite
-                                    Teilnehmende</t><t t-else="">Vom Kurbeitrag befreite Personen</t> (Anzahl)</label>
-                                <input type="number" name="visitor_tax_exempt_count" min="0"
-                                       t-attf-class="form-control#{' is-invalid' if errors.get('visitor_tax_exempt_count') else ''}"
-                                       t-att-value="values.get('visitor_tax_exempt_count','')"/>
-                                <!-- Rückmeldung KJR 05.11.2026: Hinweis je Einrichtung pflegbar. -->
-                                <div t-if="not is_html_empty(facility.visitor_tax_exempt_note)"
-                                     class="form-text" t-out="facility.visitor_tax_exempt_note"/>
-                                <div t-else="" class="form-text">Anzahl der <strong>Teilnehmenden</strong>, die nach
-                                    der Satzung der Gemeinde vom Beitrag befreit sind (Einwohner:innen der
-                                    Standortgemeinde<t t-if="fees.get('exempt_age')">, Teilnehmende unter
-                                    <t t-esc="fees['exempt_age']"/> Jahren</t>, Schwerbehinderte).
-                                    <t t-if="fees.get('leaders_exempt')">Ihre Betreuungspersonen bitte
-                                    <strong>nicht</strong> mitzählen. Sie sind ohnehin befreit und werden
-                                    automatisch herausgerechnet.</t> Im Zweifel leer
-                                    lassen. Wir prüfen das gemeinsam mit Ihnen.</div>
-                            </div>
-                        </t>
+                        <!-- Rückmeldung KJR 05.11.2026 (Termin): Feld „Weitere vom Kurbeitrag befreite
+                             Teilnehmende“ entfällt im Formular. Die Befreiten erfasst die
+                             Geschäftsstelle nach dem Abnahmeprotokoll im Backend. -->
                         <div class="col-md-4 mb-3">
                             <label class="form-label fw-bold">E-Mail *</label>
                             <input type="email" name="contact_email"

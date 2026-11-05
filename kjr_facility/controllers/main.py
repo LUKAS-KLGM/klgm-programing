@@ -233,6 +233,9 @@ class KjrFacilityWebsite(http.Controller):
         errors = {}
         required = [('check_in', _('Anreise')), ('check_out', _('Abreise')),
                     ('participant_count', _('Anzahl der Teilnehmenden')),
+                    # Rückmeldung KJR 05.11.2026: Betreuende und Gruppenbezeichnung Pflicht.
+                    ('leader_count', _('Anzahl der Betreuenden')),
+                    ('group_name', _('Gruppenbezeichnung')),
                     ('contact_person', _('Ansprechpartner:in')),
                     # Rückmeldung KJR 11/2026: E-Mail und Telefon immer Pflicht, auch
                     # mit Konto (dort aus dem Konto vorbelegt), für Rückfragen zum Aufenthalt.
