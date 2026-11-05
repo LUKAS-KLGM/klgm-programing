@@ -158,8 +158,10 @@
                                 <div t-if="not is_html_empty(facility.visitor_tax_note)" class="mt-1"
                                      t-out="facility.visitor_tax_note"/>
                                 <t t-else=""> Den Beitrag führen wir an die Gemeinde ab.
-                                Ihre Betreuungspersonen sind als Begleitpersonen befreit. Sie rechnen wir
-                                automatisch heraus, Sie müssen dafür nichts angeben. Sind darüber hinaus
+                                <t t-if="fees.get('leaders_exempt')">Ihre Betreuungspersonen sind als
+                                Begleitpersonen befreit. Sie rechnen wir automatisch heraus, Sie müssen
+                                dafür nichts angeben.</t><t t-else="">Er gilt auch für Ihre
+                                Betreuungspersonen.</t> Sind<t t-if="fees.get('leaders_exempt')"> darüber hinaus</t>
                                 einzelne Teilnehmende befreit (z. B. Einwohner:innen der
                                 Standortgemeinde<t t-if="fees.get('exempt_age')">, Teilnehmende unter
                                 <t t-esc="fees['exempt_age']"/> Jahren</t>, Schwerbehinderte), tragen Sie
@@ -258,12 +260,16 @@
                                 <input type="number" name="visitor_tax_exempt_count" min="0"
                                        t-attf-class="form-control#{' is-invalid' if errors.get('visitor_tax_exempt_count') else ''}"
                                        t-att-value="values.get('visitor_tax_exempt_count','')"/>
-                                <div class="form-text">Anzahl der <strong>Teilnehmenden</strong>, die nach
+                                <!-- Rückmeldung KJR 05.11.2026: Hinweis je Einrichtung pflegbar. -->
+                                <div t-if="not is_html_empty(facility.visitor_tax_exempt_note)"
+                                     class="form-text" t-out="facility.visitor_tax_exempt_note"/>
+                                <div t-else="" class="form-text">Anzahl der <strong>Teilnehmenden</strong>, die nach
                                     der Satzung der Gemeinde vom Beitrag befreit sind (Einwohner:innen der
                                     Standortgemeinde<t t-if="fees.get('exempt_age')">, Teilnehmende unter
                                     <t t-esc="fees['exempt_age']"/> Jahren</t>, Schwerbehinderte).
-                                    Ihre Betreuungspersonen bitte <strong>nicht</strong> mitzählen. Sie sind
-                                    ohnehin befreit und werden automatisch herausgerechnet. Im Zweifel leer
+                                    <t t-if="fees.get('leaders_exempt')">Ihre Betreuungspersonen bitte
+                                    <strong>nicht</strong> mitzählen. Sie sind ohnehin befreit und werden
+                                    automatisch herausgerechnet.</t> Im Zweifel leer
                                     lassen. Wir prüfen das gemeinsam mit Ihnen.</div>
                             </div>
                         </t>

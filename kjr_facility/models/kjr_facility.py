@@ -124,14 +124,15 @@ class KjrFacility(models.Model):
     visitor_tax_per_person_night = fields.Float(
         string='Kurbeitrag p. P./Nacht (€)', digits=(8, 2), default=0.0,
         help='Kurbeitrag der Standortgemeinde je teilnehmender Person und Nacht. '
-             'Betreuende sind befreit und werden nicht mitgerechnet. 0 = kein '
+             'Ob Betreuende mitzählen, steuert „Betreuende vom Kurbeitrag befreit“. 0 = kein '
              'Kurbeitrag. Ist am Tarif ein eigener Betrag gepflegt, gilt der Tarif.')
     visitor_tax_exempt_age = fields.Integer(
         string='Kurbeitragsfrei unter (Jahren)', default=0,
         help='Teilnehmende UNTER diesem Alter sind nach der Satzung der Gemeinde vom '
              'Kurbeitrag befreit (z. B. 7 = bis zum 7. Geburtstag). Der Wert erscheint '
-             'im Anfrageformular als Hinweis, welche Teilnehmenden die Gruppe als '
-             'befreit angeben kann. 0 = keine Altersbefreiung.')
+             'im Anfrageformular nur als Hinweis: Die Gruppe zählt diese Kinder selbst '
+             'bei den weiteren Befreiten mit, gerechnet wird mit dieser Zahl. '
+             '0 = keine Altersbefreiung.')
     # Rückmeldung KJR 11/2026: Den Hinweis zum Kurbeitrag im Anfrageformular pflegt
     # die Geschäftsstelle je Einrichtung selbst. Leer = eingebauter Standardtext.
     visitor_tax_note = fields.Html(
@@ -139,10 +140,22 @@ class KjrFacility(models.Model):
         help='Erscheint im Anfrageformular der Website im Kasten zu Endreinigung und '
              'Kurbeitrag. Leer lassen, um den Standardtext zu verwenden (Betrag pro '
              'Person und Nacht, Befreiung der Betreuungspersonen, Altersgrenze).')
+    # Rückmeldung KJR 05.11.2026: Auch der Hilfetext unter dem Eingabefeld der weiteren
+    # Befreiten ist je Einrichtung pflegbar, und ob Betreuende befreit sind, ist eine
+    # Einstellung statt einer festen Annahme.
+    visitor_tax_exempt_note = fields.Html(
+        string='Hinweis zu befreiten Teilnehmenden (Website)', sanitize=True,
+        help='Erscheint im Anfrageformular unter dem Feld „Weitere vom Kurbeitrag befreite '
+             'Teilnehmende (Anzahl)“. Leer lassen, um den Standardtext zu verwenden.')
+    visitor_tax_leaders_exempt = fields.Boolean(
+        string='Betreuende vom Kurbeitrag befreit', default=True,
+        help='An: Betreuende zählen beim Kurbeitrag nicht mit. Aus: Kurbeitrag auch für '
+             'Betreuende. Die Texte im Anfrageformular passen sich an.')
     # Rückmeldung KJR 11/2026: Anzahlung je Einrichtung voreinstellen. Gilt für neue
-    # Buchungen; an der Buchung bleibt der Satz änderbar.
+    # Buchungen; an der Buchung bleibt der Satz änderbar. Standard 0: Der KJR nimmt
+    # keine Anzahlung (Rückmeldung 05.11.2026).
     deposit_pct_default = fields.Float(
-        string='Anzahlung (%)', default=20.0, digits=(5, 2),
+        string='Anzahlung (%)', default=0.0, digits=(5, 2),
         help='Anzahlung in Prozent des Gesamtbetrags, die neue Buchungen dieser '
              'Einrichtung vorbelegt bekommen. 0 = keine Anzahlung; dann entfällt sie '
              'auch im Vertrag.')
@@ -223,6 +236,7 @@ class KjrFacility(models.Model):
             'visitor_tax': ((tariff.visitor_tax_per_person_night or 0.0)
                             or (self.visitor_tax_per_person_night or 0.0)),
             'exempt_age': self.visitor_tax_exempt_age or 0,
+            'leaders_exempt': self.visitor_tax_leaders_exempt,
         }
 
     @api.constrains('max_advance_months', 'min_persons', 'min_nights', 'capacity',

@@ -1,5 +1,25 @@
 # Changelog — kjr_facility
 
+## 19.0.7.7.0 (2026-11-05)
+
+Nachbesserung nach Boras Originalmail (03.11.): „Im Vertrag steht Anzahlung, sowas
+haben wir nicht“ und „Diese Angaben stimmen nicht“ zum Hilfetext der Befreiten.
+
+### Geändert
+- **Keine Anzahlung als Standard:** Vorgabe an Einrichtung und Buchung 0 %. Die
+  Buchung übernimmt den Satz der Einrichtung jetzt auch im Backend-Formular
+  (onchange, solange Anfrage oder Reservierung). Bei 0 % sind Knopf „Anzahlung
+  anfordern“, Schritt „Anzahlung“ in der Statusleiste und die Anzahlungsfelder
+  ausgeblendet; die Aktion lehnt 0 % ab, der Mahn-Cron überspringt solche Buchungen.
+- **Migration:** Einrichtungen mit unveränderten 20 % und noch nicht verbindliche,
+  unbezahlte Buchungen mit 20 % werden auf 0 % gesetzt (Fälligkeit geleert).
+- **Hinweis unter „Weitere vom Kurbeitrag befreite Teilnehmende“** je Einrichtung
+  pflegbar (Feld `visitor_tax_exempt_note`, im Reiter „Hinweis zum Kurbeitrag“).
+  Leer = Standardtext.
+- **Betreuende vom Kurbeitrag befreit** ist jetzt eine Einstellung je Einrichtung
+  (Standard an = bisheriges Verhalten). Aus: Betreuende zählen beim Kurbeitrag mit,
+  Standardtexte und Plausibilitätsprüfung im Formular passen sich an.
+
 ## 19.0.7.6.0 (2026-11-03)
 
 Rückmeldung KJR (Bora) zum Testmonat, über Marvin.

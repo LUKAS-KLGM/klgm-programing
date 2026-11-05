@@ -88,7 +88,7 @@
                     <button name="action_confirm" string="Verbindlich buchen" type="object"
                             class="btn-primary" invisible="state not in ('draft','reserved')"/>
                     <button name="action_request_deposit" string="Anzahlung anfordern" type="object"
-                            invisible="state != 'confirmed'"/>
+                            invisible="state != 'confirmed' or not deposit_pct"/>
                     <button name="action_check_in" string="Anreise" type="object"
                             invisible="state not in ('confirmed','deposit')"/>
                     <button name="action_create_invoice" string="Rechnung erstellen" type="object"
@@ -109,8 +109,11 @@
                     <button name="action_reset_draft" string="Auf Anfrage zurück" type="object"
                             groups="kjr_facility.group_kjr_facility_manager"
                             invisible="state in ('draft','invoiced','done','cancelled')"/>
-                    <field name="state" widget="statusbar"
+                    <!-- Ohne Anzahlung (0 %) entfällt der Schritt „Anzahlung“ in der Statusleiste. -->
+                    <field name="state" widget="statusbar" invisible="not deposit_pct"
                            statusbar_visible="draft,reserved,confirmed,deposit,checked_in,invoiced,done"/>
+                    <field name="state" widget="statusbar" invisible="deposit_pct"
+                           statusbar_visible="draft,reserved,confirmed,checked_in,invoiced,done"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -206,9 +209,9 @@
                                     <field name="amount_tax"/>
                                     <field name="amount_total"/>
                                     <field name="deposit_pct"/>
-                                    <field name="deposit_amount"/>
-                                    <field name="deposit_due_date"/>
-                                    <field name="deposit_paid"/>
+                                    <field name="deposit_amount" invisible="not deposit_pct"/>
+                                    <field name="deposit_due_date" invisible="not deposit_pct"/>
+                                    <field name="deposit_paid" invisible="not deposit_pct"/>
                                 </group>
                             </group>
                             <group>

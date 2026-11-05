@@ -128,11 +128,11 @@ class KjrFacilityBooking(models.Model):
         help='Anzahl der TEILNEHMENDEN, für die zusätzlich kein Kurbeitrag '
              'anfällt: Einwohner:innen der Standortgemeinde, Teilnehmende unter der '
              'an der Einrichtung hinterlegten Altersgrenze sowie Schwerbehinderte. '
-             'ACHTUNG: Betreuer:innen '
-             '(Feld „Betreuer") sind nach der Satzungslage ohnehin befreit und gehen '
-             'gar nicht erst in die Berechnung ein. Sie dürfen hier NICHT noch einmal '
-             'eingetragen werden, sonst wird doppelt abgezogen. '
-             'Beitragspflichtig sind: Teilnehmer minus dieser Wert.')
+             'Ist an der Einrichtung „Betreuende vom Kurbeitrag befreit“ gesetzt '
+             '(Standard), gehen Betreuende gar nicht erst in die Berechnung ein und '
+             'dürfen hier NICHT noch einmal eingetragen werden, sonst wird doppelt '
+             'abgezogen. Beitragspflichtig sind dann: Teilnehmende minus dieser Wert, '
+             'sonst Teilnehmende plus Betreuende minus dieser Wert.')
     room_ids = fields.Many2many(
         'kjr.facility.room', 'kjr_booking_room_rel', 'booking_id', 'room_id',
         string='Räume',
@@ -187,7 +187,8 @@ class KjrFacilityBooking(models.Model):
     amount_untaxed = fields.Monetary(string='Netto', compute='_compute_amounts', store=True)
     amount_tax = fields.Monetary(string='USt', compute='_compute_amounts', store=True)
     amount_total = fields.Monetary(string='Gesamt (brutto)', compute='_compute_amounts', store=True)
-    deposit_pct = fields.Float(string='Anzahlung (%)', default=20.0)
+    # Vorbelegung kommt aus der Einrichtung (create/onchange), 0 = keine Anzahlung.
+    deposit_pct = fields.Float(string='Anzahlung (%)', default=0.0)
     deposit_amount = fields.Monetary(string='Anzahlungsbetrag', compute='_compute_deposit', store=True)
     deposit_paid = fields.Boolean(string='Anzahlung erhalten', tracking=True)
     # F5: Anzahlungs-Fälligkeit für den Overdue-Cron.
@@ -468,9 +469,9 @@ class KjrFacilityBooking(models.Model):
     def _visitor_tax_person_count(self):
         """Anzahl der beitragspflichtigen Personen (Bemessungsgrundlage).
 
-        Nach der Satzungslage der Standortgemeinde sind Betreuende und
-        Begleitpersonen vom Kurbeitrag BEFREIT; sie gehen deshalb gar nicht erst in die
-        Grundmenge ein (``leader_count`` wird bewusst nicht addiert).
+        Sind an der Einrichtung Betreuende befreit (``visitor_tax_leaders_exempt``,
+        Standard), gehen sie gar nicht erst in die Grundmenge ein; sonst wird
+        ``leader_count`` addiert.
         ``visitor_tax_exempt_count`` erfasst ausschließlich ZUSÄTZLICH befreite
         Teilnehmende (Einwohner:innen der Standortgemeinde, Teilnehmende unter der
         Altersgrenze der Einrichtung,
@@ -478,10 +479,13 @@ class KjrFacilityBooking(models.Model):
         Abzug (siehe Hilfetext des Feldes). Das Ergebnis wird nie negativ.
         """
         self.ensure_one()
-        return max(0, (self.participant_count or 0) - (self.visitor_tax_exempt_count or 0))
+        persons = self.participant_count or 0
+        if self.facility_id and not self.facility_id.visitor_tax_leaders_exempt:
+            persons += self.leader_count or 0
+        return max(0, persons - (self.visitor_tax_exempt_count or 0))
 
     @api.depends(
-        'nights', 'check_in', 'check_out', 'participant_count',
+        'nights', 'check_in', 'check_out', 'participant_count', 'leader_count',
         'visitor_tax_exempt_count', 'meal_option', 'tariff_id', 'facility_id',
         'tariff_id.price_per_person_night', 'tariff_id.price_flat_per_night',
         'tariff_id.weekday_price_per_person_night', 'tariff_id.weekday_min_nights',
@@ -521,9 +525,9 @@ class KjrFacilityBooking(models.Model):
             }
             cleaning = rates['cleaning'] if nights > 0 else 0.0
             # F2: Kurbeitrag je beitragspflichtiger Person und Nacht.
-            # Bemessungsgrundlage siehe _visitor_tax_person_count(): Betreuende sind
-            # satzungsgemäß befreit und zählen nicht mit, visitor_tax_exempt_count
-            # zieht zusätzlich befreite Teilnehmende ab (nie negativ).
+            # Bemessungsgrundlage siehe _visitor_tax_person_count(): Betreuende zählen
+            # nur mit, wenn die Einrichtung sie nicht befreit; visitor_tax_exempt_count
+            # zieht zusätzlich Befreite ab (nie negativ).
             liable_persons = rec._visitor_tax_person_count()
             visitor_tax = nights * liable_persons * rates['visitor_tax']
             rec.amount_accommodation = accommodation
@@ -879,6 +883,13 @@ class KjrFacilityBooking(models.Model):
                 self.departure_time = self.facility_id.check_out_default_time
 
     @api.onchange('facility_id')
+    def _onchange_facility_deposit(self):
+        # Anzahlung aus der Einrichtung übernehmen, solange die Buchung noch nicht
+        # verbindlich ist (create() deckt Controller und Import ab).
+        if self.facility_id and self.state in ('draft', 'reserved') and not self.deposit_paid:
+            self.deposit_pct = self.facility_id.deposit_pct_default
+
+    @api.onchange('facility_id')
     def _onchange_facility_catering(self):
         """Bei Wechsel auf ein Selbstversorgerhaus die Verpflegung zuruecksetzen.
 
@@ -989,6 +1000,8 @@ class KjrFacilityBooking(models.Model):
         for rec in self:
             if rec.state not in ('confirmed',):
                 raise UserError(_('Anzahlung kann nur für bestätigte Buchungen angefordert werden.'))
+            if not rec.deposit_pct:
+                raise UserError(_('Für diese Buchung ist keine Anzahlung vereinbart (0 %).'))
             rec.state = 'deposit'
             rec._send_template('kjr_facility.mail_template_booking_deposit')
 
@@ -1489,6 +1502,7 @@ class KjrFacilityBooking(models.Model):
         today = fields.Date.today()
         bookings = self._automation_search([
             ('state', 'in', ('confirmed', 'deposit', 'checked_in')),
+            ('deposit_pct', '>', 0),
             ('deposit_paid', '=', False),
             ('deposit_reminder_sent', '=', False),
             ('deposit_due_date', '!=', False),

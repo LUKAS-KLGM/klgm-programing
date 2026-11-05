@@ -3,14 +3,17 @@
 18 Monate und Anfrage ohne Konto (Schalter je Einrichtung).
 
 Rückmeldung KJR 11/2026: eigener Hinweis zum Kurbeitrag, Telefon und E-Mail
-immer Pflicht, Anzahlung je Einrichtung mit Frist und Bankverbindung im Vertrag."""
+immer Pflicht, Anzahlung je Einrichtung mit Frist und Bankverbindung im Vertrag.
+
+Rückmeldung 05.11.2026: keine Anzahlung als Standard, Hinweis zu den Befreiten
+pflegbar, Befreiung der Betreuenden als Einstellung."""
 import re
 from datetime import timedelta
 
 from dateutil.relativedelta import relativedelta
 
 from odoo import fields
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import HttpCase, new_test_user, tagged
 from odoo.tests.common import TransactionCase
 
@@ -112,8 +115,9 @@ class TestKjrFacilityFees(TransactionCase):
 
     def test_anzahlung_aus_einrichtung(self):
         """Neue Buchungen übernehmen den Anzahlungssatz der Einrichtung."""
-        self.assertEqual(self.facility.deposit_pct_default, 20.0)
-        self.assertEqual(self._booking().deposit_pct, 20.0)
+        # Standard: keine Anzahlung (Rückmeldung KJR 05.11.2026).
+        self.assertEqual(self.facility.deposit_pct_default, 0.0)
+        self.assertEqual(self._booking().deposit_pct, 0.0)
         self.facility.deposit_pct_default = 30.0
         booking = self._booking()
         self.assertEqual(booking.deposit_pct, 30.0)
@@ -155,7 +159,7 @@ class TestKjrFacilityFees(TransactionCase):
             'acc_number': 'DE02120300000000202051',
         })
         booking = self._booking(check_in=today + timedelta(days=60),
-                                check_out=today + timedelta(days=62),
+                                check_out=today + timedelta(days=62), deposit_pct=20.0,
                                 deposit_due_date=today + timedelta(days=14))
         html = self.env['ir.actions.report']._render_qweb_html(
             'kjr_facility.action_report_booking_contract', booking.ids)[0].decode()
@@ -168,6 +172,36 @@ class TestKjrFacilityFees(TransactionCase):
             'kjr_facility.action_report_booking_contract', booking.ids)[0].decode()
         self.assertNotIn('Bitte überweisen Sie die Anzahlung', html)
         self.assertNotIn('Anzahlung (', html)
+
+    def test_ohne_anzahlung_keine_anforderung(self):
+        """Bei 0 % lässt sich keine Anzahlung anfordern, der Mahn-Cron greift nicht."""
+        today = fields.Date.today()
+        booking = self._booking(check_in=today + timedelta(days=60),
+                                check_out=today + timedelta(days=62))
+        booking.action_confirm()
+        self.assertEqual(booking.state, 'confirmed')
+        self.assertFalse(booking.deposit_due_date)
+        with self.assertRaises(UserError):
+            booking.action_request_deposit()
+        self.assertEqual(booking.state, 'confirmed')
+
+    def test_onchange_uebernimmt_anzahlung_der_einrichtung(self):
+        """Im Backend-Formular kommt der Satz beim Wählen der Einrichtung mit."""
+        self.facility.deposit_pct_default = 25.0
+        form = self.env['kjr.facility.booking'].new({'state': 'draft', 'deposit_pct': 0.0})
+        form.facility_id = self.facility
+        form._onchange_facility_deposit()
+        self.assertEqual(form.deposit_pct, 25.0)
+
+    def test_betreuende_nicht_befreit(self):
+        """Einstellung aus: Betreuende zählen beim Kurbeitrag mit."""
+        self.facility.write({'visitor_tax_per_person_night': 2.0,
+                             'visitor_tax_leaders_exempt': False})
+        booking = self._booking(visitor_tax_exempt_count=2)
+        # (10 Teilnehmende + 2 Betreuende − 2 befreit) × 4 Nächte × 2 € = 80 €.
+        self.assertEqual(booking.amount_visitor_tax, 80.0)
+        booking.leader_count = 3
+        self.assertEqual(booking.amount_visitor_tax, 88.0)
 
 
 @tagged('post_install', '-at_install')
@@ -307,6 +341,21 @@ class TestKjrFacilityRequestForm(HttpCase):
         html = self.url_open(self.url).text
         self.assertIn('RF eigener Kurbeitrag-Hinweis', html)
         self.assertNotIn('Ihre Betreuungspersonen sind als Begleitpersonen befreit', html)
+
+    def test_hinweis_befreite_und_betreuende(self):
+        """Hinweis unter dem Feld der Befreiten ist pflegbar und folgt der Einstellung."""
+        self.authenticate('rf_portal', 'rf_portal_pw_1')
+        html = self.url_open(self.url).text
+        self.assertIn('Sie sind ohnehin befreit', html)
+        self.facility.visitor_tax_leaders_exempt = False
+        html = self.url_open(self.url).text
+        self.assertNotIn('Sie sind ohnehin befreit', html)
+        self.assertNotIn('als Begleitpersonen befreit', html)
+        self.assertIn('Er gilt auch für Ihre', html)
+        self.facility.visitor_tax_exempt_note = '<p>RF eigener Befreiten-Hinweis</p>'
+        html = self.url_open(self.url).text
+        self.assertIn('RF eigener Befreiten-Hinweis', html)
+        self.assertNotIn('Im Zweifel leer', html)
 
     def test_telefon_und_email_pflicht_mit_konto(self):
         """Auch mit Konto sind Telefon und E-Mail Pflicht (vorbelegt aus dem Konto)."""

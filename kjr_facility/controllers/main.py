@@ -320,13 +320,21 @@ class KjrFacilityWebsite(http.Controller):
         # deshalb nur die WEITEREN Befreiungen unter den Teilnehmenden — die Obergrenze
         # ist die Teilnehmerzahl, nicht die Gesamtpersonenzahl. Sonst würde doppelt
         # abgezogen bzw. eine unplausible Zahl akzeptiert.
+        # Sind Betreuende an der Einrichtung NICHT befreit (Einstellung seit 11/2026),
+        # zählen sie zur Grundmenge, die Obergrenze ist dann die Gesamtpersonenzahl.
         exempt = self._to_int(post.get('visitor_tax_exempt_count'))
-        if exempt < 0 or (pax > 0 and exempt > pax):
+        if facility.visitor_tax_leaders_exempt:
+            if exempt < 0 or (pax > 0 and exempt > pax):
+                errors['visitor_tax_exempt_count'] = _(
+                    'Es können höchstens %(p)d teilnehmende Personen vom Kurbeitrag '
+                    'befreit sein, so viele Teilnehmende umfasst Ihre Anfrage. Betreuende sind '
+                    'als Begleitpersonen bereits automatisch befreit und hier nicht mitzuzählen.'
+                ) % {'p': pax}
+        elif exempt < 0 or (persons > 0 and exempt > persons):
             errors['visitor_tax_exempt_count'] = _(
-                'Es können höchstens %(p)d teilnehmende Personen vom Kurbeitrag '
-                'befreit sein, so viele Teilnehmende umfasst Ihre Anfrage. Betreuende sind '
-                'als Begleitpersonen bereits automatisch befreit und hier nicht mitzuzählen.'
-            ) % {'p': pax}
+                'Es können höchstens %(p)d Personen vom Kurbeitrag befreit sein, so viele '
+                'umfasst Ihre Anfrage.'
+            ) % {'p': persons}
 
         # BUG-a / B1: Verfügbarkeit VOR dem Anlegen prüfen — aber gegen die KAPAZITÄT,
         # nicht gegen die blosse Existenz einer Überschneidung. Ein Haus mit 42
