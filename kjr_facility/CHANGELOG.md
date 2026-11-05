@@ -13,6 +13,9 @@
   (0 Betreuende ist zulässig, das Feld darf aber nicht leer bleiben).
 - **Datenschutzhinweis aufklappbar** (`<details>`), darunter Pflicht-Checkbox „Ich habe
   die Datenschutzerklärung gelesen und verstanden.“ (auch serverseitig geprüft).
+- **„Voraussetzungen für eine Buchung“ grün** im Website-Grün (#45B49E) statt rot.
+- **Block „Diese Positionen kommen zur Unterkunft hinzu“ entfernt** (Endreinigung,
+  Kurbeitrag). Die Beträge stehen weiter in der Kostenvorschau und im Angebot.
 
 ## 19.0.7.7.0 (2026-11-05)
 

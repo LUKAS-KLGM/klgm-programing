@@ -122,7 +122,8 @@
 
                 <!-- Belegungsregeln der Einrichtung vorab transparent machen -->
                 <t t-if="facility.min_persons or facility.min_nights or facility.requires_organized_group or facility.max_advance_months">
-                    <div class="alert alert-secondary">
+                    <!-- Rückmeldung KJR 05.11.2026: grün wie die Website (Kopfleiste #45B49E) statt rot. -->
+                    <div class="alert o_kjr_requirements" style="background-color: #E3F4F0; border-color: #45B49E; color: #1F5A4E;">
                         <strong>Voraussetzungen für eine Buchung von <t t-esc="facility.name"/></strong>
                         <ul class="mb-0 mt-2">
                             <li t-if="facility.min_persons">Mindestbelegung:
@@ -139,29 +140,9 @@
                     </div>
                 </t>
 
-                <!-- Zusatzpositionen aus dem Tarif (keine Beträge im Template hartkodiert) -->
-                <!-- Beträge aus fees (kjr.facility._fee_rates): Tarif vor Einrichtung. -->
-                <t t-if="fees.get('cleaning') or fees.get('visitor_tax')">
-                    <div class="alert alert-info">
-                        <strong>Diese Positionen kommen zur Unterkunft<t t-if="facility.offers_catering"> und Verpflegung</t> hinzu</strong>
-                        <ul class="mb-0 mt-2">
-                            <li t-if="fees.get('cleaning')">
-                                <strong>Endreinigung:</strong>
-                                <t t-out="fees['cleaning']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/> einmalig je Aufenthalt.
-                            </li>
-                            <li t-if="fees.get('visitor_tax')">
-                                <strong>Kurbeitrag:</strong>
-                                <t t-out="fees['visitor_tax']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/> pro
-                                <t t-if="fees.get('leaders_exempt')">teilnehmender </t>Person und Nacht.
-                                <!-- Rückmeldung KJR 11/2026: eigener Hinweis je Einrichtung,
-                                     sonst der Standardtext. -->
-                                <div t-if="not is_html_empty(facility.visitor_tax_note)" class="mt-1"
-                                     t-out="facility.visitor_tax_note"/>
-                                <t t-else=""> Den Beitrag führen wir an die Gemeinde ab.</t>
-                            </li>
-                        </ul>
-                    </div>
-                </t>
+                <!-- Rückmeldung KJR 05.11.2026: Block „Diese Positionen kommen zur Unterkunft
+                     hinzu“ (Endreinigung, Kurbeitrag) entfernt. Die Beträge stehen weiter in der
+                     Kostenvorschau und im Angebot. -->
 
                 <!-- data-captcha: Spam-Schutz (kjr_website_antispam bzw. reCAPTCHA/Turnstile),
                      nur bei Anfragen ohne Konto. Die reCAPTCHA-Interaction schickt das

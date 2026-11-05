@@ -323,8 +323,6 @@ class TestKjrFacilityRequestForm(HttpCase):
         self.facility.final_cleaning_fee = 1240.0
         self.authenticate('rf_portal', 'rf_portal_pw_1')
         html = self.url_open(self.url).text
-        self.assertIn('1.240,00</span>\N{NO-BREAK SPACE}€', html)
-        self.assertIn('2,00</span>\N{NO-BREAK SPACE}€', html)
         self.assertNotIn('1240.00', html)
         check_in = fields.Date.today() + timedelta(days=30)
         response = self.url_open(self.url, data={
@@ -339,16 +337,14 @@ class TestKjrFacilityRequestForm(HttpCase):
         self.assertIn('1.240,00</span>\N{NO-BREAK SPACE}€', response.text)
         self.assertNotRegex(response.text, r'\d\.\d\d €')
 
-    def test_kurbeitrag_eigener_hinweis(self):
-        """Eigener Hinweis ersetzt den Standardtext, leer gilt der Standard."""
+    def test_kein_zusatzpositionen_block_voraussetzungen_gruen(self):
+        """Termin 05.11.2026: Block „Diese Positionen …“ entfällt, Voraussetzungen grün."""
         self.authenticate('rf_portal', 'rf_portal_pw_1')
         html = self.url_open(self.url).text
-        self.assertIn('Den Beitrag führen wir an die Gemeinde ab.', html)
-        self.assertNotIn('als Begleitpersonen befreit', html)
-        self.facility.visitor_tax_note = '<p>RF eigener Kurbeitrag-Hinweis</p>'
-        html = self.url_open(self.url).text
-        self.assertIn('RF eigener Kurbeitrag-Hinweis', html)
-        self.assertNotIn('Den Beitrag führen wir an die Gemeinde ab.', html)
+        self.assertNotIn('Diese Positionen kommen zur Unterkunft', html)
+        self.assertNotIn('Den Beitrag führen wir an die Gemeinde ab', html)
+        self.assertIn('o_kjr_requirements', html)
+        self.assertNotIn('alert-secondary', html)
 
     def test_formular_ohne_befreite_mit_pflicht_betreuende_gruppe(self):
         """Termin 05.11.2026: kein Befreiten-Feld mehr; Betreuende und Gruppe Pflicht."""
