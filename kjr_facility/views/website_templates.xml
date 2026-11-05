@@ -152,15 +152,14 @@
                             <li t-if="fees.get('visitor_tax')">
                                 <strong>Kurbeitrag:</strong>
                                 <t t-out="fees['visitor_tax']" t-options="{'widget': 'monetary', 'display_currency': res_company.currency_id}"/> pro
-                                teilnehmender Person und Nacht.
+                                <t t-if="fees.get('leaders_exempt')">teilnehmender </t>Person und Nacht.
                                 <!-- Rückmeldung KJR 11/2026: eigener Hinweis je Einrichtung,
                                      sonst der Standardtext. -->
                                 <div t-if="not is_html_empty(facility.visitor_tax_note)" class="mt-1"
                                      t-out="facility.visitor_tax_note"/>
                                 <t t-else=""> Den Beitrag führen wir an die Gemeinde ab.
-                                <t t-if="fees.get('leaders_exempt')">Ihre Betreuungspersonen sind als
-                                Begleitpersonen befreit. Sie rechnen wir automatisch heraus, Sie müssen
-                                dafür nichts angeben.</t><t t-else="">Er gilt auch für Ihre
+                                <t t-if="fees.get('leaders_exempt')">Ihre Betreuungspersonen sind als Begleitpersonen befreit.
+                                Sie rechnen wir automatisch heraus, Sie müssen dafür nichts angeben.</t><t t-else="">Er gilt auch für Ihre
                                 Betreuungspersonen.</t> Sind<t t-if="fees.get('leaders_exempt')"> darüber hinaus</t>
                                 einzelne Teilnehmende befreit (z. B. Einwohner:innen der
                                 Standortgemeinde<t t-if="fees.get('exempt_age')">, Teilnehmende unter
@@ -255,8 +254,8 @@
                         </t>
                         <t t-if="fees.get('visitor_tax')">
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">Weitere vom Kurbeitrag befreite
-                                    Teilnehmende (Anzahl)</label>
+                                <label class="form-label"><t t-if="fees.get('leaders_exempt')">Weitere vom Kurbeitrag befreite
+                                    Teilnehmende</t><t t-else="">Vom Kurbeitrag befreite Personen</t> (Anzahl)</label>
                                 <input type="number" name="visitor_tax_exempt_count" min="0"
                                        t-attf-class="form-control#{' is-invalid' if errors.get('visitor_tax_exempt_count') else ''}"
                                        t-att-value="values.get('visitor_tax_exempt_count','')"/>

@@ -131,7 +131,7 @@ class TestKjrFacilityFees(TransactionCase):
 
     def test_anzahlung_faelligkeit_beim_bestaetigen(self):
         today = fields.Date.today()
-        self.facility.deposit_due_days = 14
+        self.facility.write({'deposit_pct_default': 20.0, 'deposit_due_days': 14})
         booking = self._booking(check_in=today + timedelta(days=60),
                                 check_out=today + timedelta(days=62))
         booking._set_deposit_due_date()
@@ -201,6 +201,11 @@ class TestKjrFacilityFees(TransactionCase):
         # (10 Teilnehmende + 2 Betreuende − 2 befreit) × 4 Nächte × 2 € = 80 €.
         self.assertEqual(booking.amount_visitor_tax, 80.0)
         booking.leader_count = 3
+        self.assertEqual(booking.amount_visitor_tax, 88.0)
+        # Spätere Änderung an der Einrichtung lässt die Buchung (und ihre Rechnung) stehen.
+        self.facility.visitor_tax_leaders_exempt = True
+        self.assertFalse(booking.visitor_tax_leaders_exempt)
+        self.assertEqual(booking._visitor_tax_person_count(), 11)
         self.assertEqual(booking.amount_visitor_tax, 88.0)
 
 
@@ -352,6 +357,8 @@ class TestKjrFacilityRequestForm(HttpCase):
         self.assertNotIn('Sie sind ohnehin befreit', html)
         self.assertNotIn('als Begleitpersonen befreit', html)
         self.assertIn('Er gilt auch für Ihre', html)
+        self.assertIn('Vom Kurbeitrag befreite Personen', html)
+        self.assertNotIn('teilnehmender Person', html)
         self.facility.visitor_tax_exempt_note = '<p>RF eigener Befreiten-Hinweis</p>'
         html = self.url_open(self.url).text
         self.assertIn('RF eigener Befreiten-Hinweis', html)

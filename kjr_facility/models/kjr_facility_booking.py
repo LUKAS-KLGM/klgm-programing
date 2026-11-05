@@ -123,6 +123,12 @@ class KjrFacilityBooking(models.Model):
     # (Entscheidung vom 11.10.2026, Begruendung am Tarifeld
     # kjr.facility.tariff.visitor_tax_per_person_night). Der technische Feldname
     # bleibt bewusst visitor_tax_*.
+    # Stand der Einrichtungs-Einstellung beim Anlegen (wie die Beträge): eine spätere
+    # Änderung an der Einrichtung verändert bestehende Buchungen und Rechnungen nicht.
+    visitor_tax_leaders_exempt = fields.Boolean(
+        string='Betreuende vom Kurbeitrag befreit', default=True,
+        help='Übernommen aus der Einrichtung. An: Betreuende zählen beim Kurbeitrag '
+             'nicht mit. Aus: Kurbeitrag auch für Betreuende.')
     visitor_tax_exempt_count = fields.Integer(
         string='Zusätzlich vom Kurbeitrag befreit', default=0,
         help='Anzahl der TEILNEHMENDEN, für die zusätzlich kein Kurbeitrag '
@@ -469,9 +475,9 @@ class KjrFacilityBooking(models.Model):
     def _visitor_tax_person_count(self):
         """Anzahl der beitragspflichtigen Personen (Bemessungsgrundlage).
 
-        Sind an der Einrichtung Betreuende befreit (``visitor_tax_leaders_exempt``,
-        Standard), gehen sie gar nicht erst in die Grundmenge ein; sonst wird
-        ``leader_count`` addiert.
+        Sind Betreuende befreit (``visitor_tax_leaders_exempt`` der Buchung, beim
+        Anlegen aus der Einrichtung übernommen, Standard), gehen sie gar nicht erst
+        in die Grundmenge ein; sonst wird ``leader_count`` addiert.
         ``visitor_tax_exempt_count`` erfasst ausschließlich ZUSÄTZLICH befreite
         Teilnehmende (Einwohner:innen der Standortgemeinde, Teilnehmende unter der
         Altersgrenze der Einrichtung,
@@ -480,13 +486,13 @@ class KjrFacilityBooking(models.Model):
         """
         self.ensure_one()
         persons = self.participant_count or 0
-        if self.facility_id and not self.facility_id.visitor_tax_leaders_exempt:
+        if not self.visitor_tax_leaders_exempt:
             persons += self.leader_count or 0
         return max(0, persons - (self.visitor_tax_exempt_count or 0))
 
     @api.depends(
         'nights', 'check_in', 'check_out', 'participant_count', 'leader_count',
-        'visitor_tax_exempt_count', 'meal_option', 'tariff_id', 'facility_id',
+        'visitor_tax_leaders_exempt', 'visitor_tax_exempt_count', 'meal_option', 'tariff_id', 'facility_id',
         'tariff_id.price_per_person_night', 'tariff_id.price_flat_per_night',
         'tariff_id.weekday_price_per_person_night', 'tariff_id.weekday_min_nights',
         'tariff_id.visitor_tax_per_person_night', 'tariff_id.final_cleaning_fee',
@@ -805,6 +811,8 @@ class KjrFacilityBooking(models.Model):
                 # Anzahlung aus der Einrichtung vorbelegen (Rückmeldung KJR 11/2026).
                 if 'deposit_pct' not in vals:
                     vals['deposit_pct'] = facility.deposit_pct_default
+                if 'visitor_tax_leaders_exempt' not in vals:
+                    vals['visitor_tax_leaders_exempt'] = facility.visitor_tax_leaders_exempt
                 # Verpflegung nur, wenn die Einrichtung sie anbietet. Bei NEUEN
                 # Vorgaengen wird still auf 'none' normalisiert statt zu blockieren:
                 # der Weg fuehrt sonst beim Duplizieren einer Altbuchung und bei
@@ -884,10 +892,12 @@ class KjrFacilityBooking(models.Model):
 
     @api.onchange('facility_id')
     def _onchange_facility_deposit(self):
-        # Anzahlung aus der Einrichtung übernehmen, solange die Buchung noch nicht
-        # verbindlich ist (create() deckt Controller und Import ab).
-        if self.facility_id and self.state in ('draft', 'reserved') and not self.deposit_paid:
-            self.deposit_pct = self.facility_id.deposit_pct_default
+        # Anzahlung und Befreiung der Betreuenden aus der Einrichtung übernehmen,
+        # solange die Buchung noch nicht verbindlich ist (create() deckt Controller und Import ab).
+        if self.facility_id and self.state in ('draft', 'reserved'):
+            self.visitor_tax_leaders_exempt = self.facility_id.visitor_tax_leaders_exempt
+            if not self.deposit_paid:
+                self.deposit_pct = self.facility_id.deposit_pct_default
 
     @api.onchange('facility_id')
     def _onchange_facility_catering(self):

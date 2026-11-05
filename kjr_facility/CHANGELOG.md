@@ -18,7 +18,10 @@ haben wir nicht“ und „Diese Angaben stimmen nicht“ zum Hilfetext der Befre
   Leer = Standardtext.
 - **Betreuende vom Kurbeitrag befreit** ist jetzt eine Einstellung je Einrichtung
   (Standard an = bisheriges Verhalten). Aus: Betreuende zählen beim Kurbeitrag mit,
-  Standardtexte und Plausibilitätsprüfung im Formular passen sich an.
+  Standardtexte und Plausibilitätsprüfung im Formular passen sich an. Die Buchung
+  hält den Stand beim Anlegen fest (Feld an der Buchung), damit eine spätere
+  Änderung an der Einrichtung Beträge und Rechnungstext bestehender Buchungen nicht
+  verschiebt.
 
 ## 19.0.7.6.0 (2026-11-03)
 

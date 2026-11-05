@@ -201,6 +201,7 @@
                                            invisible="not facility_offers_catering and not amount_meals and meal_option == 'none'"/>
                                     <field name="amount_equipment"/>
                                     <field name="amount_cleaning"/>
+                                    <field name="visitor_tax_leaders_exempt"/>
                                     <field name="visitor_tax_exempt_count"/>
                                     <field name="amount_visitor_tax"/>
                                 </group>
