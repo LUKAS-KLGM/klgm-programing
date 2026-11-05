@@ -16,6 +16,7 @@ Rückmeldung KJR (Bora) im Termin 05.11.2026.
 - **Delegiertenförderung (§ 4.9) aus dem Antragsformular entfernt** (Förderart in der
   Auswahl und Block „Nur bei Delegiertenförderung“). Beantragt wird sie über die
   Unterschriftsliste der Vollversammlung; im Backend und auf der Hilfeseite bleibt sie.
+- **Hinweis „Nur Organisationskonto …“** unter „Überweisung des Zuschusses“ entfernt.
 
 ## 19.0.18.0.1 (2026-10-22)
 
