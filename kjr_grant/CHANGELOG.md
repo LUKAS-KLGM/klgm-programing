@@ -1,5 +1,16 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.18.1.0 (2026-11-05)
+
+Rückmeldung KJR (Bora) im Termin 05.11.2026.
+
+### Geändert
+- **Teilnahmeliste im Antragsformular:** Geschlecht, PLZ und Wohnort sind je Person
+  Pflicht (Vorlage `required` und Serverprüfung in `_check_participant_rows`).
+- **Neue Spalte „Leitung“** (`tn_lead_<n>`): setzt `is_leader` an der Teilnehmer:in,
+  zusätzlich zur bisherigen Ableitung aus der Kennziffer. Bei angekreuzter Leitung
+  ist die Kennziffer Pflicht.
+
 ## 19.0.18.0.1 (2026-10-22)
 
 ### Neu

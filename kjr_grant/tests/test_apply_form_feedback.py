@@ -140,8 +140,8 @@ class TestKjrApplyFormFeedback(TransactionCase):
     def test_participant_rows_read_across_gaps(self):
         """Zeile 3 hinter einer fehlenden Zeile 2 geht nicht mehr verloren."""
         rows = KjrWebsiteController._participant_form_rows({
-            'tn_name_1': 'Anna A', 'tn_age_1': '12',
-            'tn_name_3': 'Carl C', 'tn_age_3': '13',
+            'tn_name_1': 'Anna A', 'tn_age_1': '12', 'tn_zip_1': '87527', 'tn_city_1': 'Sonthofen',
+            'tn_name_3': 'Carl C', 'tn_age_3': '13', 'tn_zip_3': '87527', 'tn_city_3': 'Sonthofen',
         })
         self.assertEqual([r['name'] for r in rows], ['Anna A', 'Carl C'])
 
@@ -149,12 +149,13 @@ class TestKjrApplyFormFeedback(TransactionCase):
         """Jede ausgefüllte Zeile braucht Name und Alter (0 bis 120, ganze Zahl).
         Leere Zeilen werden übergangen."""
         post = {
-            'tn_name_1': 'Anna A', 'tn_age_1': '12',
-            'tn_name_2': 'Ben B', 'tn_age_2': '',
-            'tn_name_3': 'Carl C', 'tn_age_3': '13,5',
+            'tn_name_1': 'Anna A', 'tn_age_1': '12', 'tn_zip_1': '87527', 'tn_city_1': 'Sonthofen', 'tn_gender_1': 'female',
+            'tn_name_2': 'Ben B', 'tn_age_2': '', 'tn_zip_2': '87527', 'tn_city_2': 'Sonthofen', 'tn_gender_2': 'male',
+            'tn_name_3': 'Carl C', 'tn_age_3': '13,5', 'tn_zip_3': '87527', 'tn_city_3': 'Sonthofen', 'tn_gender_3': 'male',
             'tn_name_4': '', 'tn_age_4': '',
             'tn_name_5': '', 'tn_age_5': '9',
-            'tn_name_6': 'Dora D', 'tn_age_6': '121',
+            'tn_name_6': 'Dora D', 'tn_age_6': '121', 'tn_zip_6': '87527', 'tn_city_6': 'Sonthofen', 'tn_gender_6': 'female',
+            'tn_name_7': 'Emil E', 'tn_age_7': '10', 'tn_zip_7': '87527', 'tn_city_7': 'Sonthofen',
         }
         errors = {}
         with MockRequest(self.env, website=self.website):
@@ -167,13 +168,32 @@ class TestKjrApplyFormFeedback(TransactionCase):
         self.assertIn('Zeile 4: Name fehlt', text)
         self.assertIn('Zeile 5 (Dora D)', text)
         self.assertNotIn('Zeile 1', text)
-        self.assertNotIn('Zeile 6', text)
+        self.assertIn('Zeile 6 (Emil E): Geschlecht fehlt', text)
+        self.assertNotIn('Zeile 5 (Dora D): Geschlecht', text)
+
+    def test_participant_zip_city_and_leader_role(self):
+        """05.11.2026: PLZ und Wohnort Pflicht; Leitung angekreuzt ⇒ Kennziffer Pflicht."""
+        post = {
+            'tn_name_1': 'Anna A', 'tn_age_1': '12', 'tn_gender_1': 'female',
+            'tn_name_2': 'Lea L', 'tn_age_2': '30', 'tn_gender_2': 'female',
+            'tn_zip_2': '87527', 'tn_city_2': 'Sonthofen', 'tn_lead_2': 'on',
+            'tn_name_3': 'Max M', 'tn_age_3': '31', 'tn_gender_3': 'male',
+            'tn_zip_3': '87527', 'tn_city_3': 'Sonthofen', 'tn_lead_3': 'on', 'tn_role_3': 'EA',
+        }
+        errors = {}
+        with MockRequest(self.env, website=self.website):
+            KjrWebsiteController._check_participant_rows(post, errors)
+        text = errors.get('participants', '')
+        self.assertIn('Zeile 1 (Anna A): PLZ fehlt', text)
+        self.assertIn('Zeile 1 (Anna A): Wohnort fehlt', text)
+        self.assertIn('Zeile 2 (Lea L): Kennziffer fehlt (Leitung)', text)
+        self.assertNotIn('Zeile 3', text)
 
     def test_participant_rows_complete_or_empty_pass(self):
         errors = {}
         with MockRequest(self.env, website=self.website):
             KjrWebsiteController._check_participant_rows(
-                {'tn_name_1': 'Anna A', 'tn_age_1': '0', 'tn_name_2': '', 'tn_age_2': ''}, errors)
+                {'tn_name_1': 'Anna A', 'tn_age_1': '0', 'tn_zip_1': '87527', 'tn_city_1': 'Sonthofen', 'tn_gender_1': 'diverse', 'tn_name_2': '', 'tn_age_2': ''}, errors)
             KjrWebsiteController._check_participant_rows({}, errors)
         self.assertFalse(errors)
 
@@ -184,6 +204,7 @@ class TestKjrApplyFormFeedback(TransactionCase):
         self.assertIn('''name="tn_age_' + nr + '"''', arch)
         self.assertIn('required="required" aria-label="Alter in Jahren"', arch)
         self.assertIn('required="required" aria-label="Name, Vorname"', arch)
+        self.assertIn('''name="tn_gender_' + nr + '" class="form-select form-select-sm" required="required"''', arch)
 
     def test_added_rows_have_aria_labels(self):
         """Die per JavaScript angehängten Teilnehmer- und Belegzeilen tragen
@@ -191,6 +212,7 @@ class TestKjrApplyFormFeedback(TransactionCase):
         arch = self._arch()
         expected = [
             ('tn_gender_', 'Geschlecht'), ('tn_zip_', 'PLZ'), ('tn_city_', 'Wohnort'),
+            ('tn_lead_', 'Leitung'),
             ('tn_role_', 'Kennziffer'), ('tn_juleica_', 'Juleica'),
             ('rc_date_', 'Datum'), ('rc_no_', 'Beleg-Nr.'),
             ('rc_partner_', 'Empfänger:in / Einzahler:in'), ('rc_desc_', 'Bezeichnung'),
@@ -474,7 +496,7 @@ class TestKjrApplyFormHttp(HttpCase):
             'use_digital_receipts': '1',
             'rc_date_1': '2026-07-01', 'rc_partner_1': 'Skyline Park', 'rc_desc_1': 'Eintritt',
             'rc_direction_1': 'expense', 'rc_category_1': '', 'rc_amount_1': '100',
-            'tn_name_1': 'Anna Beispiel', 'tn_age_1': '14',
+            'tn_name_1': 'Anna Beispiel', 'tn_age_1': '14', 'tn_zip_1': '87527', 'tn_city_1': 'Sonthofen', 'tn_gender_1': 'female',
         }
         payload.update(extra)
         return payload
@@ -518,7 +540,7 @@ class TestKjrApplyFormHttp(HttpCase):
         """Fehlt das Alter in Zeile 2, kommt der Antrag mit Meldung zurück und
         Zeile 2 steht weiter im Formular."""
         response = self.url_open('/service/antrag-stellen', data=self._payload(
-            tn_name_2='Ben Beispiel', tn_age_2=''))
+            tn_name_2='Ben Beispiel', tn_age_2='', tn_zip_2='87527', tn_city_2='Sonthofen', tn_gender_2='male'))
         self.assertIn('Zeile 2 (Ben Beispiel): Alter fehlt', response.text)
         self.assertIn('name="tn_name_2"', response.text)
         self.assertIn('value="Ben Beispiel"', response.text)
@@ -526,7 +548,7 @@ class TestKjrApplyFormHttp(HttpCase):
 
     def test_complete_application_saved(self):
         response = self.url_open('/service/antrag-stellen', data=self._payload(
-            tn_name_3='Carl Beispiel', tn_age_3='15'))
+            tn_name_3='Carl Beispiel', tn_age_3='15', tn_zip_3='87527', tn_city_3='Sonthofen', tn_gender_3='male'))
         self.assertIn('antrag-bestaetigung', response.url)
         app = self._apps()
         self.assertEqual(len(app), 1)

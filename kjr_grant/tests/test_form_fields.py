@@ -52,7 +52,7 @@ class TestKjrGrantFormFields(TransactionCase):
     #   'participants'. In WEBSITE_REQUIRED_FIELDS stehen sie nicht, weil eine
     #   Teilnahmeliste ganz ohne Zeilen zulässig bleibt (Upload als Datei).
     #   Siehe Kommentar über der Teilnahmeliste in views/portal_templates.xml.
-    TEMPLATE_ONLY_REQUIRED = {'receipt_file', 'tn_name_1', 'tn_age_1'}
+    TEMPLATE_ONLY_REQUIRED = {'receipt_file', 'tn_name_1', 'tn_age_1', 'tn_gender_1', 'tn_zip_1', 'tn_city_1'}  # Geschlecht: 05.11.2026
 
     # Feldnamen, zu denen der Controller eine Fehlermeldung setzt, OHNE dass das
     # Feld Pflicht wäre. Sie dürfen deshalb in keiner Pflichtliste stehen:

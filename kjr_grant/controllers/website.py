@@ -49,7 +49,7 @@ MAX_PARTICIPANT_AGE = 120
 # Feldnamen einer Teilnehmerzeile (tn_<feld>_<nr>). Zeilen werden über ALLE
 # übermittelten Nummern gelesen, nicht nur bis zur ersten Lücke: sonst ginge
 # eine Zeile hinter einer leer gelassenen Zeile still verloren.
-PARTICIPANT_KEY_RE = re.compile(r'^tn_(name|age|gender|zip|city|role|juleica)_(\d+)$')
+PARTICIPANT_KEY_RE = re.compile(r'^tn_(name|age|gender|zip|city|lead|role|juleica)_(\d+)$')
 RECEIPT_KEY_RE = re.compile(r'^rc_(date|no|partner|desc|direction|category|amount)_(\d+)$')
 # Schutz gegen manipulierte Formulare mit beliebig vielen Zeilennummern.
 MAX_FORM_ROWS = 500
@@ -332,7 +332,7 @@ class KjrWebsiteController(http.Controller):
     @staticmethod
     def _empty_participant_row(nr):
         return {'nr': nr, 'name': '', 'age': '', 'gender': '', 'zip': '',
-                'city': '', 'role': '', 'juleica': False, 'empty': True}
+                'city': '', 'lead': False, 'role': '', 'juleica': False, 'empty': True}
 
     @classmethod
     def _participant_form_rows(cls, post):
@@ -349,10 +349,11 @@ class KjrWebsiteController(http.Controller):
                 'nr': idx, 'name': _v('name'), 'age': _v('age'),
                 'gender': _v('gender'), 'zip': _v('zip'), 'city': _v('city'),
                 'role': _v('role').upper(), 'juleica': bool(post.get(f'tn_juleica_{idx}')),
+                'lead': bool(post.get(f'tn_lead_{idx}')),
             }
             row['empty'] = not any((
                 row['name'], row['age'], row['gender'], row['zip'],
-                row['city'], row['role'], row['juleica'],
+                row['city'], row['role'], row['juleica'], row['lead'],
             ))
             rows.append(row)
         return rows
@@ -391,6 +392,15 @@ class KjrWebsiteController(http.Controller):
                 if row['name'] else _('Zeile %d', nr)
             if not row['name']:
                 problems.append(_('%s: Name fehlt', who))
+            # Rückmeldung KJR 05.11.2026: Geschlecht je Person Pflicht.
+            if row['gender'] not in PARTICIPANT_GENDERS:
+                problems.append(_('%s: Geschlecht fehlt', who))
+            if not row['zip']:
+                problems.append(_('%s: PLZ fehlt', who))
+            if not row['city']:
+                problems.append(_('%s: Wohnort fehlt', who))
+            if row['lead'] and row['role'] not in PARTICIPANT_ROLE_CODES:
+                problems.append(_('%s: Kennziffer fehlt (Leitung)', who))
             if not row['age']:
                 problems.append(_('%s: Alter fehlt', who))
             elif cls._valid_age(row['age']) is None:
@@ -405,8 +415,9 @@ class KjrWebsiteController(http.Controller):
             if more:
                 text += _(' und %d weitere Angabe(n)', more)
             errors['participants'] = _(
-                'Teilnahmeliste: Bitte geben Sie für jede teilnehmende Person Name '
-                'und Alter an (Alter in Jahren, z. B. 14). %s.', text,
+                'Teilnahmeliste: Bitte geben Sie für jede teilnehmende Person Name, '
+                'Alter, Geschlecht, PLZ und Wohnort an (Alter in Jahren, z. B. 14), bei '
+                'Gruppenleitung zusätzlich die Kennziffer. %s.', text,
             )
 
     @staticmethod
@@ -787,7 +798,8 @@ class KjrWebsiteController(http.Controller):
                 'city': row['city'],
                 # Kennziffer gesetzt ⇒ Mitarbeitende/Leitung. Die Förderlogik
                 # (Betreuungsschlüssel, Altersfenster-Ausnahme) hängt an is_leader.
-                'is_leader': bool(role_code),
+                # Seit 05.11.2026 zusätzlich eigenes Kreuz „Leitung“ im Formular.
+                'is_leader': row['lead'] or bool(role_code),
                 'has_juleica': row['juleica'],
             })
 

@@ -1940,7 +1940,8 @@
                             <p class="text-muted small">
                                 Laut Zuschussrichtlinien ist die Teilnahmeliste bei Maßnahmen mit
                                 Teilnehmenden Pflicht. Bitte alle Teilnehmenden eintragen.
-                                Name und Alter sind für jede Person Pflicht.
+                                Name, Alter, Geschlecht, PLZ und Wohnort sind für jede Person Pflicht. Bei Gruppenleitung
+                                bitte „Leitung“ ankreuzen und die Kennziffer angeben.
                             </p>
                             <div class="table-responsive">
                                 <table class="table table-sm" id="tn_table">
@@ -1949,9 +1950,10 @@
                                             <th>Nr.</th>
                                             <th>Name, Vorname *</th>
                                             <th>Alter *</th>
-                                            <th>Geschlecht</th>
-                                            <th>PLZ</th>
-                                            <th>Wohnort</th>
+                                            <th>Geschlecht *</th>
+                                            <th>PLZ *</th>
+                                            <th>Wohnort *</th>
+                                            <th>Leitung</th>
                                             <th>Kennziffer</th>
                                             <th>Juleica</th>
                                             <th></th>
@@ -1975,15 +1977,16 @@
                                             <td><input type="text" t-attf-name="tn_name_{{ tn['nr'] }}" class="form-control form-control-sm" t-att-value="tn['name']" required="required" aria-label="Name, Vorname"/></td>
                                             <td><input type="number" t-attf-name="tn_age_{{ tn['nr'] }}" class="form-control form-control-sm" style="width:80px" min="0" max="120" step="1" t-att-value="tn['age']" required="required" aria-label="Alter in Jahren"/></td>
                                             <td>
-                                                <select t-attf-name="tn_gender_{{ tn['nr'] }}" class="form-select form-select-sm" aria-label="Geschlecht">
+                                                <select t-attf-name="tn_gender_{{ tn['nr'] }}" class="form-select form-select-sm" required="required" aria-label="Geschlecht">
                                                     <option value="">-</option>
                                                     <option value="male"    t-att-selected="tn['gender'] == 'male'">männlich</option>
                                                     <option value="female"  t-att-selected="tn['gender'] == 'female'">weiblich</option>
                                                     <option value="diverse" t-att-selected="tn['gender'] == 'diverse'">divers</option>
                                                 </select>
                                             </td>
-                                            <td><input type="text" t-attf-name="tn_zip_{{ tn['nr'] }}" class="form-control form-control-sm" style="width:80px" t-att-value="tn['zip']" aria-label="PLZ"/></td>
-                                            <td><input type="text" t-attf-name="tn_city_{{ tn['nr'] }}" class="form-control form-control-sm" t-att-value="tn['city']" aria-label="Wohnort"/></td>
+                                            <td><input type="text" t-attf-name="tn_zip_{{ tn['nr'] }}" class="form-control form-control-sm" style="width:80px" t-att-value="tn['zip']" required="required" aria-label="PLZ"/></td>
+                                            <td><input type="text" t-attf-name="tn_city_{{ tn['nr'] }}" class="form-control form-control-sm" t-att-value="tn['city']" required="required" aria-label="Wohnort"/></td>
+                                            <td class="text-center"><input type="checkbox" t-attf-name="tn_lead_{{ tn['nr'] }}" class="form-check-input" t-att-checked="tn['lead'] and 'checked' or None" aria-label="Leitung"/></td>
                                             <td>
                                                 <select t-attf-name="tn_role_{{ tn['nr'] }}" class="form-select form-select-sm" aria-label="Kennziffer">
                                                     <option value="">-</option>
@@ -2017,14 +2020,15 @@
                                         '&lt;td class="tn-nr"&gt;' + nr + '&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;input type="text" name="tn_name_' + nr + '" class="form-control form-control-sm" required="required" aria-label="Name, Vorname"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;input type="number" name="tn_age_' + nr + '" class="form-control form-control-sm" style="width:80px" min="0" max="120" step="1" required="required" aria-label="Alter in Jahren"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;select name="tn_gender_' + nr + '" class="form-select form-select-sm" aria-label="Geschlecht"&gt;' +
+                                        '&lt;td&gt;&lt;select name="tn_gender_' + nr + '" class="form-select form-select-sm" required="required" aria-label="Geschlecht"&gt;' +
                                         '&lt;option value=""&gt;-&lt;/option&gt;' +
                                         '&lt;option value="male"&gt;männlich&lt;/option&gt;' +
                                         '&lt;option value="female"&gt;weiblich&lt;/option&gt;' +
                                         '&lt;option value="diverse"&gt;divers&lt;/option&gt;' +
                                         '&lt;/select&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;input type="text" name="tn_zip_' + nr + '" class="form-control form-control-sm" style="width:80px" aria-label="PLZ"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;input type="text" name="tn_city_' + nr + '" class="form-control form-control-sm" aria-label="Wohnort"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="tn_zip_' + nr + '" class="form-control form-control-sm" style="width:80px" required="required" aria-label="PLZ"/&gt;&lt;/td&gt;' +
+                                        '&lt;td&gt;&lt;input type="text" name="tn_city_' + nr + '" class="form-control form-control-sm" required="required" aria-label="Wohnort"/&gt;&lt;/td&gt;' +
+                                        '&lt;td class="text-center"&gt;&lt;input type="checkbox" name="tn_lead_' + nr + '" class="form-check-input" aria-label="Leitung"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;select name="tn_role_' + nr + '" class="form-select form-select-sm" aria-label="Kennziffer"&gt;' +
                                         '&lt;option value=""&gt;-&lt;/option&gt;' +
                                         '&lt;option value="EA"&gt;EA&lt;/option&gt;' +
