@@ -1963,7 +1963,16 @@
                             <h5 class="mb-0">4. Überweisung des Zuschusses soll erfolgen auf:</h5>
                         </div>
                         <div class="card-body">
-                            <!-- Rückmeldung KJR 05.11.2026: Hinweis „Nur Organisationskonto …“ entfernt. -->
+                            <!-- Rückmeldung KJR 05.11.2026: Text deutlicher. Bei den Förderarten mit
+                                 Privatkonto-Freigabe (§ 4.4) NUR Privatkonto, Antrag durch die Privatperson. -->
+                            <div class="alert alert-info">
+                                Überweisung nur auf ein Konto der Organisation. Bitte den Kontoinhaber exakt angeben.
+                                <t t-set="private_types" t-value="grant_types.filtered('allow_private_account') if grant_types else []"/>
+                                <t t-if="private_types">
+                                    <strong>Ausnahme <t t-foreach="private_types" t-as="pt"><t t-esc="pt.name"/><t t-if="not pt_last">, </t></t>:</strong>
+                                    Hier ist nur ein Privatkonto möglich. Den Antrag stellt die Privatperson.
+                                </t>
+                            </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label fw-bold">IBAN *</label>
