@@ -241,8 +241,6 @@ class TestKjrFacilityRequestForm(HttpCase):
         html = self.url_open(self.url).text
         latest = self.facility._latest_check_in(fields.Date.today())
         self.assertIn('max="%s"' % latest.isoformat(), html)
-        self.assertIn('Teilnehmende unter', html)
-        self.assertIn('6 Jahren', html)
         # Serverseitig: Anreise jenseits des Vorlaufs wird abgewiesen.
         too_late = latest + timedelta(days=1)
         response = self.url_open(self.url, data={
@@ -250,7 +248,7 @@ class TestKjrFacilityRequestForm(HttpCase):
             'check_in': too_late.isoformat(),
             'check_out': (too_late + timedelta(days=2)).isoformat(),
             'participant_count': '10', 'leader_count': '2',
-            'group_name': 'RF Gruppe', 'contact_person': 'RF Leitung',
+            'group_name': 'RF Gruppe', 'privacy_ack': '1', 'contact_person': 'RF Leitung',
             'contact_email': 'rf.leitung@example.com', 'contact_phone': '0123 1',
         })
         self.assertIn('höchstens 18 Monate im Voraus', response.text)
@@ -267,7 +265,7 @@ class TestKjrFacilityRequestForm(HttpCase):
             'check_in': check_in.isoformat(),
             'check_out': (check_in + timedelta(days=2)).isoformat(),
             'participant_count': '10', 'leader_count': '2',
-            'group_name': 'RF Gruppe', 'contact_person': 'RF Gast Leitung',
+            'group_name': 'RF Gruppe', 'privacy_ack': '1', 'contact_person': 'RF Gast Leitung',
         }
         # Pflichtangaben fehlen: Anschrift, E-Mail, Telefon.
         response = self.url_open(self.url, data=data)
@@ -302,7 +300,7 @@ class TestKjrFacilityRequestForm(HttpCase):
             'check_in': check_in.isoformat(),
             'check_out': (check_in + timedelta(days=2)).isoformat(),
             'participant_count': '10', 'leader_count': '2',
-            'group_name': 'RF Gruppe', 'contact_person': 'RF Vorschau',
+            'group_name': 'RF Gruppe', 'privacy_ack': '1', 'contact_person': 'RF Vorschau',
             'contact_email': 'rf.vorschau@example.com', 'contact_phone': '0123 2',
         })
         self.assertEqual(response.status_code, 200)
@@ -334,7 +332,7 @@ class TestKjrFacilityRequestForm(HttpCase):
             'check_in': check_in.isoformat(),
             'check_out': (check_in + timedelta(days=2)).isoformat(),
             'participant_count': '10', 'leader_count': '2',
-            'group_name': 'RF Gruppe', 'contact_person': 'RF Vorschau',
+            'group_name': 'RF Gruppe', 'privacy_ack': '1', 'contact_person': 'RF Vorschau',
             'contact_email': 'rf.vorschau@example.com', 'contact_phone': '0123 2',
         })
         self.assertEqual(response.status_code, 200)
@@ -366,6 +364,7 @@ class TestKjrFacilityRequestForm(HttpCase):
             'check_in': check_in.isoformat(),
             'check_out': (check_in + timedelta(days=2)).isoformat(),
             'participant_count': '10', 'contact_person': 'RF Pflicht2',
+            'privacy_ack': '1',
             'contact_email': 'rf.p2@example.com', 'contact_phone': '0123 9',
         }
         response = self.url_open(self.url, data=data)
@@ -380,6 +379,31 @@ class TestKjrFacilityRequestForm(HttpCase):
             [('facility_id', '=', self.facility.id)])
         self.assertEqual((booking.group_name, booking.leader_count), ('RF Klasse 7b', 0))
 
+    def test_datenschutz_aufklappbar_und_bestaetigung_pflicht(self):
+        """Termin 05.11.2026: Datenschutz aufklappbar, Bestätigung per Checkbox Pflicht."""
+        self.authenticate('rf_portal', 'rf_portal_pw_1')
+        html = self.url_open(self.url).text
+        self.assertIn('<details class="o_kjr_privacy_details">', html)
+        self.assertRegex(html, r'name="privacy_ack"[^>]*required')
+        check_in = fields.Date.today() + timedelta(days=30)
+        data = {
+            'csrf_token': self._csrf(html), 'action': 'submit',
+            'check_in': check_in.isoformat(),
+            'check_out': (check_in + timedelta(days=2)).isoformat(),
+            'participant_count': '10', 'leader_count': '1', 'group_name': 'RF DS',
+            'contact_person': 'RF DS', 'contact_email': 'rf.ds@example.com',
+            'contact_phone': '0123 7',
+        }
+        response = self.url_open(self.url, data=data)
+        self.assertIn('Datenschutzerklärung gelesen und', response.text)
+        self.assertIn('is-invalid', response.text)
+        self.assertFalse(self.env['kjr.facility.booking'].search(
+            [('facility_id', '=', self.facility.id)]))
+        data.update({'csrf_token': self._csrf(response.text), 'privacy_ack': '1'})
+        self.url_open(self.url, data=data)
+        self.assertTrue(self.env['kjr.facility.booking'].search(
+            [('facility_id', '=', self.facility.id)]))
+
     def test_telefon_und_email_pflicht_mit_konto(self):
         """Auch mit Konto sind Telefon und E-Mail Pflicht (vorbelegt aus dem Konto)."""
         self.authenticate('rf_portal', 'rf_portal_pw_1')
@@ -392,7 +416,7 @@ class TestKjrFacilityRequestForm(HttpCase):
             'check_in': check_in.isoformat(),
             'check_out': (check_in + timedelta(days=2)).isoformat(),
             'participant_count': '10', 'leader_count': '2',
-            'group_name': 'RF Gruppe', 'contact_person': 'RF Pflicht',
+            'group_name': 'RF Gruppe', 'privacy_ack': '1', 'contact_person': 'RF Pflicht',
             'contact_email': '', 'contact_phone': '',
         }
         response = self.url_open(self.url, data=data)

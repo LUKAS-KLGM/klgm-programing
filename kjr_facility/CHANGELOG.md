@@ -11,6 +11,8 @@
   entfernt.** Befreite erfasst die Geschäftsstelle nach dem Abnahmeprotokoll im Backend.
 - **Betreuende (Anzahl) und Gruppenbezeichnung sind Pflichtfelder** im Buchungsformular
   (0 Betreuende ist zulässig, das Feld darf aber nicht leer bleiben).
+- **Datenschutzhinweis aufklappbar** (`<details>`), darunter Pflicht-Checkbox „Ich habe
+  die Datenschutzerklärung gelesen und verstanden.“ (auch serverseitig geprüft).
 
 ## 19.0.7.7.0 (2026-11-05)
 

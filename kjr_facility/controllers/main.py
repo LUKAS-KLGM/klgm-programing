@@ -248,6 +248,11 @@ class KjrFacilityWebsite(http.Controller):
         for fname, label in required:
             if not str(post.get(fname) or '').strip():
                 errors[fname] = _('%s ist ein Pflichtfeld.') % label
+        # Rückmeldung KJR 05.11.2026: Datenschutzerklärung muss bestätigt werden.
+        if not post.get('privacy_ack'):
+            errors['privacy_ack'] = _(
+                'Bitte bestätigen Sie, dass Sie die Datenschutzerklärung gelesen und '
+                'verstanden haben.')
         if (str(post.get('contact_email') or '').strip()
                 and not email_normalize(post.get('contact_email'))):
             errors['contact_email'] = _('Bitte geben Sie eine gültige E-Mail-Adresse an.')
