@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KJR App',
-    'version': '19.0.18.1.1',
+    'version': '19.0.18.1.2',
     'category': 'Custom/KJR',
     'summary': 'Zuschussverwaltung, Juleica, Vollversammlung, Fördermittel-Akquise und Verwendungsnachweis für Kreisjugendringe (Odoo 19)',
     'author': 'KLGM UG (haftungsbeschränkt)',

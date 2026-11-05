@@ -2033,7 +2033,7 @@
                                 Laut Zuschussrichtlinien ist die Teilnahmeliste bei Maßnahmen mit
                                 Teilnehmenden Pflicht. Bitte alle Teilnehmenden eintragen.
                                 Name, Alter, Geschlecht, PLZ und Wohnort sind für jede Person Pflicht. Bei Gruppenleitung
-                                bitte „Leitung“ ankreuzen und die Kennziffer angeben.
+                                bitte „Leitung“ ankreuzen, dann erscheint die Kennziffer (Pflicht).
                             </p>
                             <div class="table-responsive">
                                 <table class="table table-sm" id="tn_table">
@@ -2080,7 +2080,7 @@
                                             <td><input type="text" t-attf-name="tn_city_{{ tn['nr'] }}" class="form-control form-control-sm" t-att-value="tn['city']" required="required" aria-label="Wohnort"/></td>
                                             <td class="text-center"><input type="checkbox" t-attf-name="tn_lead_{{ tn['nr'] }}" class="form-check-input" t-att-checked="tn['lead'] and 'checked' or None" aria-label="Leitung"/></td>
                                             <td>
-                                                <select t-attf-name="tn_role_{{ tn['nr'] }}" class="form-select form-select-sm" aria-label="Kennziffer">
+                                                <select t-attf-name="tn_role_{{ tn['nr'] }}" t-att-class="'form-select form-select-sm tn-role' + ('' if tn['lead'] else ' d-none')" t-att-required="'required' if tn['lead'] else None" aria-label="Kennziffer">
                                                     <option value="">-</option>
                                                     <option value="EA" t-att-selected="tn['role'] == 'EA'">EA</option>
                                                     <option value="HA" t-att-selected="tn['role'] == 'HA'">HA</option>
@@ -2121,7 +2121,7 @@
                                         '&lt;td&gt;&lt;input type="text" name="tn_zip_' + nr + '" class="form-control form-control-sm" style="width:80px" required="required" aria-label="PLZ"/&gt;&lt;/td&gt;' +
                                         '&lt;td&gt;&lt;input type="text" name="tn_city_' + nr + '" class="form-control form-control-sm" required="required" aria-label="Wohnort"/&gt;&lt;/td&gt;' +
                                         '&lt;td class="text-center"&gt;&lt;input type="checkbox" name="tn_lead_' + nr + '" class="form-check-input" aria-label="Leitung"/&gt;&lt;/td&gt;' +
-                                        '&lt;td&gt;&lt;select name="tn_role_' + nr + '" class="form-select form-select-sm" aria-label="Kennziffer"&gt;' +
+                                        '&lt;td&gt;&lt;select name="tn_role_' + nr + '" class="form-select form-select-sm tn-role d-none" aria-label="Kennziffer"&gt;' +
                                         '&lt;option value=""&gt;-&lt;/option&gt;' +
                                         '&lt;option value="EA"&gt;EA&lt;/option&gt;' +
                                         '&lt;option value="HA"&gt;HA&lt;/option&gt;' +
@@ -2133,6 +2133,17 @@
                                         '&lt;td&gt;&lt;button type="button" class="btn btn-sm btn-outline-danger" aria-label="Teilnehmerzeile entfernen" onclick="removeParticipantRow(this)"&gt;&lt;i class="fa fa-trash" title="Teilnehmerzeile entfernen"&gt;&lt;/i&gt;&lt;/button&gt;&lt;/td&gt;';
                                     tbody.appendChild(row);
                                 }
+                                // Rückmeldung KJR 05.11.2026: Kennziffer nur bei angekreuzter
+                                // „Leitung“ einblenden, dann Pflicht. Ohne Leitung wird sie geleert.
+                                document.addEventListener('change', function (ev) {
+                                    var cb = ev.target;
+                                    if (!cb.name || !/^tn_lead_\d+$/.test(cb.name)) { return; }
+                                    var sel = cb.closest('tr').querySelector('select.tn-role');
+                                    if (!sel) { return; }
+                                    sel.classList.toggle('d-none', !cb.checked);
+                                    sel.required = cb.checked;
+                                    if (!cb.checked) { sel.value = ''; }
+                                });
                                 function removeParticipantRow(btn) {
                                     var row = btn.closest('tr');
                                     row.remove();

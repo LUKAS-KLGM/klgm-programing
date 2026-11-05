@@ -198,6 +198,13 @@ class TestKjrApplyFormFeedback(TransactionCase):
         self.assertIn('Zeile 2 (Lea L): Kennziffer fehlt (Leitung)', text)
         self.assertNotIn('Zeile 3', text)
 
+    def test_role_only_shown_for_leader(self):
+        """05.11.2026: Kennziffer nur bei „Leitung“ sichtbar und dann Pflicht."""
+        arch = self._arch()
+        self.assertIn('tn-role d-none', arch)
+        self.assertIn("/^tn_lead_\\d+$/", arch)
+        self.assertIn('sel.required = cb.checked', arch)
+
     def test_participant_rows_complete_or_empty_pass(self):
         errors = {}
         with MockRequest(self.env, website=self.website):

@@ -1,5 +1,12 @@
 # Changelog — KJR App (`kjr_grant`)
 
+## 19.0.18.1.2 (2026-11-05)
+
+### Geändert
+- **Teilnahmeliste: Kennziffer nur bei „Leitung“** sichtbar und dann Pflicht
+  (auch in nach Fehlermeldung neu angezeigten und per „Teilnehmer:in hinzufügen“
+  angehängten Zeilen). Ohne Leitung wird die Kennziffer geleert.
+
 ## 19.0.18.1.1 (2026-11-05)
 
 ### Geändert
